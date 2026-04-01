@@ -1,4 +1,13 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ── Supabase ──────────────────────────────────────────────────────────────
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+const USER_ID = "emeieks-maxime-bankroll";
 
 // ── Game Logos & GameLogo component ──────────────────────────────────────
 const L={
@@ -1064,37 +1073,44 @@ export default function App(){
   const [modalPlayer,setModalPlayer]=useState(false);
   const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
 
-  // localStorage load
+  // ── Load: localStorage d'abord, puis Supabase ────────────────────────────
   useEffect(()=>{
-    try{
-      const b=localStorage.getItem("v7_bets"); if(b)setBets(JSON.parse(b));
-      const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
-      const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
-      const bm=localStorage.getItem("v7_bmakers"); if(bm)setBookmakers(JSON.parse(bm));
-    }catch{}
-    setLoaded(true);
+    async function loadData(){
+      try{
+        const b=localStorage.getItem("v7_bets"); if(b)setBets(JSON.parse(b));
+        const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
+        const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
+        const bm=localStorage.getItem("v7_bmakers"); if(bm)setBookmakers(JSON.parse(bm));
+        if(supabase){
+          const {data,error}=await supabase.from("bankroll_data").select("*").eq("user_id",USER_ID).single();
+          if(!error&&data){
+            if(data.bets){setBets(data.bets);localStorage.setItem("v7_bets",JSON.stringify(data.bets));}
+            if(data.bankroll){setBankroll(data.bankroll);localStorage.setItem("v7_bankroll",String(data.bankroll));}
+            if(data.custom_players)setCustom(data.custom_players);
+            if(data.bookmakers)setBookmakers(data.bookmakers);
+          }
+        }
+      }catch(e){console.log("Load error:",e);}
+      setLoaded(true);
+    }
+    loadData();
   },[]);
 
+  // ── Save: localStorage + Supabase (debounced) ─────────────────────────────
   useEffect(()=>{
     if(!loaded)return;
-    const t=setTimeout(()=>{try{localStorage.setItem("v7_bets",JSON.stringify(bets));}catch{}},800);
+    try{localStorage.setItem("v7_bets",JSON.stringify(bets));}catch{}
+    if(!supabase)return;
+    const t=setTimeout(async()=>{
+      try{
+        await supabase.from("bankroll_data").upsert({
+          user_id:USER_ID,bets,bankroll,custom_players:custom,bookmakers,
+          updated_at:new Date().toISOString()
+        },{onConflict:"user_id"});
+      }catch(e){console.log("Save error:",e);}
+    },1500);
     return()=>clearTimeout(t);
-  },[bets,loaded]);
-  useEffect(()=>{
-    if(!loaded)return;
-    const t=setTimeout(()=>{try{localStorage.setItem("v7_bankroll",String(bankroll));}catch{}},800);
-    return()=>clearTimeout(t);
-  },[bankroll,loaded]);
-  useEffect(()=>{
-    if(!loaded)return;
-    const t=setTimeout(()=>{try{localStorage.setItem("v7_custom_p",JSON.stringify(custom));}catch{}},400);
-    return()=>clearTimeout(t);
-  },[custom,loaded]);
-  useEffect(()=>{
-    if(!loaded)return;
-    const t=setTimeout(()=>{try{localStorage.setItem("v7_bmakers",JSON.stringify(bookmakers));}catch{}},400);
-    return()=>clearTimeout(t);
-  },[bookmakers,loaded]);
+  },[bets,bankroll,custom,bookmakers,loaded]);
 
   const showToast=useCallback((msg,color="#34D399")=>{
     setToast({msg,color});setTimeout(()=>setToast(null),2200);
