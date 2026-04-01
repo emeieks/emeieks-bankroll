@@ -1,13 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { supabase } from "./supabase.js";
 
-// ── User ID unique par navigateur ─────────────────────────────────────────
-function getUserId(){
-  let id=localStorage.getItem("emeieks_uid");
-  if(!id){id=crypto.randomUUID();localStorage.setItem("emeieks_uid",id);}
-  return id;
-}
-const USER_ID=getUserId();
+// ── ID fixe — même données sur tous tes appareils ─────────────────────────
+const USER_ID = "emeieks-maxime-bankroll";
 
 // ── Game Logos & GameLogo component ──────────────────────────────────────
 const L={
