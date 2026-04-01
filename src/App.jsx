@@ -1,8 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
-import { supabase } from "./supabase.js";
-
-// ── ID fixe — même données sur tous tes appareils ─────────────────────────
-const USER_ID = "emeieks-maxime-bankroll";
 
 // ── Game Logos & GameLogo component ──────────────────────────────────────
 const L={
@@ -1060,64 +1056,45 @@ export default function App(){
   const [collapsedMonths,setCollapsedMonths]=useState({});
   const [fLive,setFLive]=useState(false);
   const [fHeadshot,setFHeadshot]=useState(false);
+  const [fRole,setFRole]=useState("All");
+  const [fLeague,setFLeague]=useState("All");
   const FILTRES_PER_PAGE=30;
   const [modalBK,setModalBK]=useState(false);
   const [newBK,setNewBK]=useState("");
   const [modalPlayer,setModalPlayer]=useState(false);
   const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
 
-  // ── Supabase load ────────────────────────────────────────────────────────
+  // localStorage load
   useEffect(()=>{
-    async function loadData(){
-      try{
-        // Charger depuis localStorage en premier (instantané)
-        const lb=localStorage.getItem("v7_bets"); if(lb)setBets(JSON.parse(lb));
-        const lbk=localStorage.getItem("v7_bankroll"); if(lbk)setBankroll(parseFloat(lbk));
-        const lcp=localStorage.getItem("v7_custom_p"); if(lcp)setCustom(JSON.parse(lcp));
-        const lbm=localStorage.getItem("v7_bmakers"); if(lbm)setBookmakers(JSON.parse(lbm));
-
-        // Puis synchroniser avec Supabase (cloud)
-        const {data,error}=await supabase
-          .from("bankroll_data")
-          .select("*")
-          .eq("user_id",USER_ID)
-          .single();
-
-        if(!error&&data){
-          if(data.bets)setBets(data.bets);
-          if(data.bankroll)setBankroll(data.bankroll);
-          if(data.custom_players)setCustom(data.custom_players);
-          if(data.bookmakers)setBookmakers(data.bookmakers);
-          // Mettre à jour localStorage avec données cloud
-          localStorage.setItem("v7_bets",JSON.stringify(data.bets||[]));
-          localStorage.setItem("v7_bankroll",String(data.bankroll||7500));
-        }
-      }catch(e){console.log("Load error:",e);}
-      setLoaded(true);
-    }
-    loadData();
+    try{
+      const b=localStorage.getItem("v7_bets"); if(b)setBets(JSON.parse(b));
+      const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
+      const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
+      const bm=localStorage.getItem("v7_bmakers"); if(bm)setBookmakers(JSON.parse(bm));
+    }catch{}
+    setLoaded(true);
   },[]);
 
-  // ── Supabase save (debounced) ─────────────────────────────────────────────
   useEffect(()=>{
     if(!loaded)return;
-    // Sauvegarde localStorage immédiate
-    try{localStorage.setItem("v7_bets",JSON.stringify(bets));}catch{}
-    // Sauvegarde Supabase avec debounce
-    const t=setTimeout(async()=>{
-      try{
-        await supabase.from("bankroll_data").upsert({
-          user_id:USER_ID,
-          bets,
-          bankroll,
-          custom_players:custom,
-          bookmakers,
-          updated_at:new Date().toISOString()
-        },{onConflict:"user_id"});
-      }catch(e){console.log("Save error:",e);}
-    },1500);
+    const t=setTimeout(()=>{try{localStorage.setItem("v7_bets",JSON.stringify(bets));}catch{}},800);
     return()=>clearTimeout(t);
-  },[bets,bankroll,custom,bookmakers,loaded]);
+  },[bets,loaded]);
+  useEffect(()=>{
+    if(!loaded)return;
+    const t=setTimeout(()=>{try{localStorage.setItem("v7_bankroll",String(bankroll));}catch{}},800);
+    return()=>clearTimeout(t);
+  },[bankroll,loaded]);
+  useEffect(()=>{
+    if(!loaded)return;
+    const t=setTimeout(()=>{try{localStorage.setItem("v7_custom_p",JSON.stringify(custom));}catch{}},400);
+    return()=>clearTimeout(t);
+  },[custom,loaded]);
+  useEffect(()=>{
+    if(!loaded)return;
+    const t=setTimeout(()=>{try{localStorage.setItem("v7_bmakers",JSON.stringify(bookmakers));}catch{}},400);
+    return()=>clearTimeout(t);
+  },[bookmakers,loaded]);
 
   const showToast=useCallback((msg,color="#34D399")=>{
     setToast({msg,color});setTimeout(()=>setToast(null),2200);
@@ -1164,6 +1141,33 @@ export default function App(){
   },[settled]);
 
   const bkStatsSorted=useMemo(()=>Object.entries(bkStats).sort((a,z)=>z[1].profit-a[1].profit),[bkStats]);
+
+  const roleStats=useMemo(()=>{
+    const r={};
+    settled.forEach(b=>{
+      const role=b.role||"Inconnu";
+      const game=b.game||"?";
+      const key=game+"|"+role;
+      if(!r[key])r[key]={role,game,profit:0,count:0,staked:0,won:0};
+      r[key].profit+=b.profit;r[key].count++;r[key].staked+=b.stake;
+      if(b.status==="won")r[key].won++;
+    });
+    return Object.values(r).sort((a,b)=>b.profit-a.profit);
+  },[settled]);
+
+  const leagueStats=useMemo(()=>{
+    const l={};
+    settled.forEach(b=>{
+      const league=b.league||"";
+      if(!league)return;
+      const game=b.game||"?";
+      const key=game+"|"+league;
+      if(!l[key])l[key]={league,game,profit:0,count:0,staked:0,won:0};
+      l[key].profit+=b.profit;l[key].count++;l[key].staked+=b.stake;
+      if(b.status==="won")l[key].won++;
+    });
+    return Object.values(l).sort((a,b)=>b.profit-a.profit);
+  },[settled]);
 
   const liveStats=useMemo(()=>{
     const lb=settled.filter(b=>b.isLive);
@@ -1318,9 +1322,11 @@ export default function App(){
       if(fOverUnder==="Under"&&b.overUnder!=="Under")return false;
       if(fLive&&!b.isLive)return false;
       if(fHeadshot&&!b.isHeadshot)return false;
+      if(fRole!=="All"&&b.role!==fRole)return false;
+      if(fLeague!=="All"&&b.league!==fLeague)return false;
       return true;
     }).sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
-  },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot]);
+  },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fRole,fLeague]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
     const sorted=[...bets].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
@@ -1760,7 +1766,56 @@ export default function App(){
               {fPlayer&&<button onClick={()=>setFPlayer("")} style={{position:"absolute",right:24,bottom:22,background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:16}}>x</button>}
             </div>
             <div className="add-card">
-              <span className="add-label">Type de pari</span>
+              <span className="add-label">Position / Rôle</span>
+              {(()=>{
+                // Rôles disponibles selon jeux sélectionnés
+                const ROLES_BY_GAME={
+                  LoL:["Top Laner","Jungler","Mid Laner","Bot Laner","Support"],
+                  CS2:["AWPer","Rifler","IGL"],
+                  Dota2:["Carry","Mid","Offlane","Soft Support","Hard Support"],
+                  Valorant:["Duelist","Initiator","Controller","Sentinel","Flex"],
+                };
+                // Si un jeu est sélectionné → montre ses rôles, sinon tous
+                let roles=[];
+                if(fGames.length>0){
+                  fGames.forEach(g=>{if(ROLES_BY_GAME[g])roles=[...new Set([...roles,...ROLES_BY_GAME[g]])]});
+                } else {
+                  Object.values(ROLES_BY_GAME).forEach(r=>roles=[...new Set([...roles,...r])]);
+                }
+                return(
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <button className={"fchip "+(fRole==="All"?"on":"")} onClick={()=>setFRole("All")}>Tous</button>
+                    {roles.map(r=>(
+                      <button key={r} className={"fchip "+(fRole===r?"on":"")} onClick={()=>setFRole(fRole===r?"All":r)}>{r}</button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="add-card">
+              <span className="add-label">Ligue</span>
+              {(()=>{
+                const LEAGUES_BY_GAME={
+                  LoL:["LCK","LEC","LCS","LPL"],
+                  Valorant:["Americas","EMEA","Pacific"],
+                };
+                let leagues=[];
+                if(fGames.length>0){
+                  fGames.forEach(g=>{if(LEAGUES_BY_GAME[g])leagues=[...new Set([...leagues,...LEAGUES_BY_GAME[g]])]});
+                } else {
+                  Object.values(LEAGUES_BY_GAME).forEach(l=>leagues=[...new Set([...leagues,...l])]);
+                }
+                if(leagues.length===0)return <div style={{fontSize:11,color:"#334155"}}>Sélectionne LoL ou Valorant pour filtrer par ligue</div>;
+                return(
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <button className={"fchip "+(fLeague==="All"?"on":"")} onClick={()=>setFLeague("All")}>Toutes</button>
+                    {leagues.map(l=>(
+                      <button key={l} className={"fchip "+(fLeague===l?"on":"")} onClick={()=>setFLeague(fLeague===l?"All":l)}>{l}</button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
                 <button className={"fchip "+(fLive?"on":"")} onClick={()=>setFLive(v=>!v)} style={{display:"flex",alignItems:"center",gap:5}}>
                   🔴 Live
@@ -1771,7 +1826,7 @@ export default function App(){
               </div>
             </div>
             <div style={{display:"flex",gap:9,marginBottom:14}}>
-              <button onClick={()=>{setFGames([]);setFBKs([]);setFPlayer("");setFStatus("All");setFOverUnder("All");setFLive(false);setFHeadshot(false);setFiltresPage(1);}} style={{flex:1,padding:"11px",background:"#0D1220",border:"1px solid #1A2535",borderRadius:10,color:"#64748B",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:13}}>
+              <button onClick={()=>{setFGames([]);setFBKs([]);setFPlayer("");setFStatus("All");setFOverUnder("All");setFLive(false);setFHeadshot(false);setFRole("All");setFLeague("All");setFiltresPage(1);}} style={{flex:1,padding:"11px",background:"#0D1220",border:"1px solid #1A2535",borderRadius:10,color:"#64748B",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:13}}>
                 Reinitialiser
               </button>
             </div>
@@ -2172,6 +2227,62 @@ export default function App(){
                 );
               })}
             </div>
+
+            {roleStats.length>0&&(
+              <>
+                <div style={{fontSize:12,color:"#475569",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Par position</div>
+                <div className="stat-bloc" style={{marginBottom:16}}>
+                  {roleStats.map(r=>{
+                    const wr=r.count>0?(r.won/r.count*100).toFixed(0):0;
+                    const roi=r.staked>0?((r.profit/r.staked)*100):0;
+                    const gc=GAME_CFG[r.game]||{accent:"#94A3B8"};
+                    return(
+                      <div key={r.game+r.role} className="stat-row">
+                        <div style={{display:"flex",alignItems:"center",gap:9}}>
+                          <GameLogo game={r.game} size={18}/>
+                          <div>
+                            <div style={{fontWeight:700,fontSize:13,color:"#E2E8F0"}}>{r.role}</div>
+                            <div style={{fontSize:10,color:"#475569"}}>{r.count} paris · {wr}% WR · ROI {roi>=0?"+":""}{roi.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontWeight:700,fontSize:13,color:r.profit>=0?"#34D399":"#F87171"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</div>
+                          <div style={{fontSize:10,color:gc.accent}}>{r.game}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {leagueStats.length>0&&(
+              <>
+                <div style={{fontSize:12,color:"#475569",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Par ligue</div>
+                <div className="stat-bloc" style={{marginBottom:16}}>
+                  {leagueStats.map(l=>{
+                    const wr=l.count>0?(l.won/l.count*100).toFixed(0):0;
+                    const roi=l.staked>0?((l.profit/l.staked)*100):0;
+                    const gc=GAME_CFG[l.game]||{accent:"#94A3B8"};
+                    return(
+                      <div key={l.game+l.league} className="stat-row">
+                        <div style={{display:"flex",alignItems:"center",gap:9}}>
+                          <GameLogo game={l.game} size={18}/>
+                          <div>
+                            <div style={{fontWeight:700,fontSize:13,color:"#E2E8F0"}}>{l.league}</div>
+                            <div style={{fontSize:10,color:"#475569"}}>{l.count} paris · {wr}% WR · ROI {roi>=0?"+":""}{roi.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontWeight:700,fontSize:13,color:l.profit>=0?"#34D399":"#F87171"}}>{l.profit>=0?"+":""}{l.profit.toFixed(0)}$</div>
+                          <div style={{fontSize:10,color:roi>=0?"#34D399":"#F87171"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             {Object.keys(mapStats.global).length>0&&(
               <>
