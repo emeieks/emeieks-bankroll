@@ -1816,6 +1816,8 @@ export default function App(){
                 );
               })()}
             </div>
+            <div className="add-card">
+              <span className="add-label">Type de pari</span>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
                 <button className={"fchip "+(fLive?"on":"")} onClick={()=>setFLive(v=>!v)} style={{display:"flex",alignItems:"center",gap:5}}>
                   🔴 Live
