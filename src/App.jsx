@@ -5,44 +5,63 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 const SUPA_URL = "https://mtgryzsovqiolinobbjw.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Z3J5enNvdnFpb2xpbm9iYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDc3MTgsImV4cCI6MjA5MDYyMzcxOH0.2d4Vvm55p_SHi-wGRBrbfsxiwRh-wdqP9tDsHm_Qj3k";
 
-async function supaFetch(path, opts={}) {
+async function supaFetch(path, token, opts={}) {
   const res = await fetch(SUPA_URL + path, {
-    ...opts,
+    method: opts.method || "GET",
     headers: {
       "apikey": SUPA_KEY,
-      "Authorization": "Bearer " + (opts._token || SUPA_KEY),
+      "Authorization": "Bearer " + (token || SUPA_KEY),
       "Content-Type": "application/json",
-      "Prefer": opts._prefer || "",
-      ...(opts.headers||{})
-    }
+      "Prefer": opts.prefer || "",
+    },
+    body: opts.body || undefined,
   });
-  if (!res.ok) { const err = await res.text(); throw new Error(err); }
-  const ct = res.headers.get("content-type");
-  return ct && ct.includes("json") ? res.json() : null;
+  const text = await res.text();
+  if (!res.ok) throw new Error(text || res.status);
+  try { return text ? JSON.parse(text) : null; } catch { return null; }
 }
 
+// Auth
 async function supaSignUp(email, password) {
-  return supaFetch("/auth/v1/signup", { method:"POST", body: JSON.stringify({email, password}) });
-}
-async function supaSignIn(email, password) {
-  return supaFetch("/auth/v1/token?grant_type=password", { method:"POST", body: JSON.stringify({email, password}) });
-}
-async function supaSignOut(token) {
-  return supaFetch("/auth/v1/logout", { method:"POST", _token: token });
-}
-async function supaGetBets(token) {
-  return supaFetch("/rest/v1/bets?select=*&order=datetime.desc", { _token: token });
-}
-async function supaUpsertBets(token, bets) {
-  return supaFetch("/rest/v1/bets", {
-    method: "POST",
-    body: JSON.stringify(bets),
-    _token: token,
-    _prefer: "resolution=merge-duplicates",
+  return supaFetch("/auth/v1/signup", null, {
+    method:"POST", body: JSON.stringify({email, password})
   });
 }
-async function supaDeleteBet(token, id) {
-  return supaFetch(`/rest/v1/bets?id=eq.${id}`, { method:"DELETE", _token: token });
+async function supaSignIn(email, password) {
+  return supaFetch("/auth/v1/token?grant_type=password", null, {
+    method:"POST", body: JSON.stringify({email, password})
+  });
+}
+async function supaSignOut(token) {
+  return supaFetch("/auth/v1/logout", token, { method:"POST" });
+}
+
+// Bets — RLS filters by auth.uid() automatically
+async function supaGetBets(token) {
+  return supaFetch("/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc", token);
+}
+async function supaUpsertBets(token, bets) {
+  // Send in chunks of 500 to avoid request size limits
+  const chunks = [];
+  for (let i=0; i<bets.length; i+=500) chunks.push(bets.slice(i,i+500));
+  for (const chunk of chunks) {
+    await supaFetch("/rest/v1/bets", token, {
+      method: "POST",
+      body: JSON.stringify(chunk),
+      prefer: "resolution=merge-duplicates",
+    });
+  }
+  return true;
+}
+async function supaDeleteBets(token, ids) {
+  // Delete in chunks
+  const chunks = [];
+  for (let i=0; i<ids.length; i+=100) chunks.push(ids.slice(i,i+100));
+  for (const chunk of chunks) {
+    const inList = chunk.join(",");
+    await supaFetch("/rest/v1/bets?id=in.("+inList+")", token, { method:"DELETE" });
+  }
+  return true;
 }
 
 // ── Game Logos & GameLogo component ──────────────────────────────────────
@@ -1260,6 +1279,7 @@ export default function App(){
     LoL:["Worlds 2026","MSI 2026","LEC Spring 2026","LCK Summer 2026"],
     Valorant:["VCT Masters 2026","Champions 2026","VCT Americas 2026","VCT EMEA 2026"],
   });
+  const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
 
@@ -1340,7 +1360,8 @@ export default function App(){
     try{
       const fn=supaTab==="signup"?supaSignUp:supaSignIn;
       const data=await fn(supaEmail.trim(),supaPass);
-      if(data.error)throw new Error(data.error.message||data.error);
+      if(!data||data.error)throw new Error(data?.error?.message||data?.error||"Erreur de connexion");
+      if(!data.access_token)throw new Error("Pas de token reçu — vérifie ton email/mot de passe");
       const token=data.access_token;
       const email=data.user?.email||supaEmail.trim();
       setSupaToken(token);setSupaUser(email);
@@ -1348,17 +1369,22 @@ export default function App(){
       localStorage.setItem("supa_email",email);
       setSupaModal(false);setSupaEmail("");setSupaPass("");
       showToast("Connecté ✓","#22C55E");
-      // Pull bets from cloud on first login
+      // Pull remote bets after login
       setSyncing(true);
       try{
         const remote=await supaGetBets(token);
         if(remote&&remote.length>0){
-          setBets(remote);
-          showToast(`${remote.length} paris chargés du cloud ☁️`,"#7C3AED");
+          // Merge: keep local bets not on cloud + all cloud bets
+          setBets(prev=>{
+            const remoteIds=new Set(remote.map(b=>b.id));
+            const localOnly=prev.filter(b=>!remoteIds.has(b.id));
+            return [...remote,...localOnly];
+          });
+          showToast(remote.length+" paris chargés ☁️","#7C3AED");
         }
-      }catch{}
+      }catch(e){console.warn("Pull error:",e.message);}
       setSyncing(false);
-    }catch(e){setSupaError(e.message||"Erreur");}
+    }catch(e){setSupaError(e.message||"Erreur inconnue");}
     setSupaLoading(false);
   },[supaEmail,supaPass,supaTab,showToast]);
 
@@ -1369,34 +1395,52 @@ export default function App(){
     showToast("Déconnecté","#9CA3AF");
   },[supaToken,showToast]);
 
-  // ── Supabase: push bets to cloud (debounced) ──────────────────────────────
+  // ── Supabase: auto-push after every bets change (debounced 4s) ────────────
   useEffect(()=>{
     if(!supaToken||!loaded||bets.length===0)return;
     const t=setTimeout(async()=>{
       setSyncing(true);
-      try{await supaUpsertBets(supaToken,bets.map(b=>({...b,user_email:supaUser})));}catch{}
+      try{
+        // Strip fields not in DB schema
+        const rows=bets.map(({id,player,description,overUnder,odds,stake,bookmaker,status,
+          game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament})=>
+          ({id,player,description,overUnder,odds,stake,bookmaker,status,
+            game,league,role,team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament}));
+        await supaUpsertBets(supaToken,rows);
+      }catch(e){
+        if(e.message.includes("401")||e.message.includes("JWT expired")){
+          setSupaToken("");setSupaUser("");
+          localStorage.removeItem("supa_token");localStorage.removeItem("supa_email");
+        }
+      }
       setSyncing(false);
-    },3000);
+    },4000);
     return()=>clearTimeout(t);
-  },[bets,supaToken,supaUser,loaded]);
+  },[bets,supaToken,loaded]);
 
-  // ── Supabase: pull bets when token is restored from localStorage ──────────
+  // ── Supabase: pull on app load if token saved ─────────────────────────────
   useEffect(()=>{
     if(!supaToken||!loaded)return;
     (async()=>{
+      setSyncing(true);
       try{
         const remote=await supaGetBets(supaToken);
-        if(remote&&remote.length>0&&remote.length>bets.length){
-          setBets(remote);
-          showToast(`Sync cloud: ${remote.length} paris ☁️`,"#7C3AED");
+        if(remote&&remote.length>0){
+          setBets(prev=>{
+            const remoteIds=new Set(remote.map(b=>b.id));
+            const localOnly=prev.filter(b=>!remoteIds.has(b.id));
+            const merged=[...remote,...localOnly];
+            return merged;
+          });
+          showToast("Sync ☁️ "+remote.length+" paris","#7C3AED");
         }
       }catch(e){
-        // Token expired - clear it
         if(e.message.includes("401")||e.message.includes("JWT")){
           setSupaToken("");setSupaUser("");
           localStorage.removeItem("supa_token");localStorage.removeItem("supa_email");
         }
       }
+      setSyncing(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[loaded]);
@@ -1937,12 +1981,35 @@ export default function App(){
               <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:"#E5E7EB"}}>Mes Paris</div>
               <div style={{display:"flex",gap:6}}>
                 {selectMode&&selectedIds.length>0&&(
-                  <button onClick={()=>setBulkModal(true)}
-                    style={{background:"linear-gradient(135deg,#22C55E,#0EA5E9)",border:"none",borderRadius:7,padding:"5px 10px",color:"#0B1220",fontWeight:700,fontSize:11,fontFamily:"Inter,sans-serif",cursor:"pointer"}}>
-                    ✓ {selectedIds.length}
-                  </button>
+                  <>
+                    {confirmDelete?(
+                      <>
+                        <button onClick={()=>{
+                          setBets(b=>b.filter(bet=>!selectedIds.includes(bet.id)));
+                          setSelectMode(false);setSelectedIds([]);setConfirmDelete(false);
+                          showToast(selectedIds.length+" paris supprimés","#EF4444");
+                        }}
+                          style={{background:"#EF4444",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontWeight:700,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
+                          Confirmer
+                        </button>
+                        <button onClick={()=>setConfirmDelete(false)}
+                          style={{background:"#1F2937",border:"none",borderRadius:7,padding:"5px 10px",color:"#9CA3AF",fontWeight:600,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
+                          ✕
+                        </button>
+                      </>
+                    ):(
+                      <button onClick={()=>setConfirmDelete(true)}
+                        style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:7,padding:"5px 10px",color:"#F87171",fontWeight:700,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
+                        🗑 {selectedIds.length}
+                      </button>
+                    )}
+                    <button onClick={()=>setBulkModal(true)}
+                      style={{background:"linear-gradient(135deg,#22C55E,#0EA5E9)",border:"none",borderRadius:7,padding:"5px 10px",color:"#0B1220",fontWeight:700,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
+                      ✓ {selectedIds.length}
+                    </button>
+                  </>
                 )}
-                <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);}}
+                <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
                   style={{background:selectMode?"rgba(34,197,94,0.08)":"transparent",border:"1px solid "+(selectMode?"#22C55E":"#1F2937"),borderRadius:7,padding:"5px 10px",color:selectMode?"#22C55E":"#9CA3AF",fontWeight:600,fontSize:11,fontFamily:"Inter,sans-serif",cursor:"pointer"}}>
                   {selectMode?"Annuler":"Sél."}
                 </button>
@@ -2299,7 +2366,9 @@ export default function App(){
                   </div>
                 )}
               </div>
-              <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} onConfirm={()=>{const el=document.getElementById("odds-input-field");if(el)el.focus();}}/>
+              <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:12,padding:"4px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
+                <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} onConfirm={()=>{const el=document.getElementById("odds-input-field");if(el)el.focus();}}/>
+              </div>
               {form.autoInfo&&(
                 <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1.5px solid rgba(255,255,255,0.18)",borderRadius:10,padding:"7px 12px",flexWrap:"wrap"}}>
                   <GameLogo game={form.autoInfo.game} size={14}/>
@@ -3120,24 +3189,22 @@ export default function App(){
                   {bulkDatetime?"Appliquer la date à "+selectedIds.length+" paris":"Choisir une date"}
                 </button>
               </div>
-              {/* Tournoi */}
+              {/* Tournoi — menu déroulant */}
               {(()=>{
                 const allT=[...new Set(Object.values(savedTourneys).flat())].filter(Boolean);
                 if(allT.length===0)return null;
                 return(
                   <div style={{marginBottom:14}}>
                     <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Tournoi</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                      {allT.map(t=>(
-                        <button key={t} onClick={()=>setBulkTourney(bulkTourney===t?"":t)}
-                          style={{padding:"5px 11px",borderRadius:8,border:"1.5px solid "+(bulkTourney===t?"#7C3AED":"#1F2937"),background:bulkTourney===t?"rgba(124,58,237,0.12)":"transparent",color:bulkTourney===t?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                          🏆 {t}
-                        </button>
-                      ))}
-                      <button onClick={()=>setBulkTourney("Hors tournoi")}
-                        style={{padding:"5px 11px",borderRadius:8,border:"1.5px solid "+(bulkTourney==="Hors tournoi"?"#6B7280":"#1F2937"),background:bulkTourney==="Hors tournoi"?"rgba(107,114,128,0.12)":"transparent",color:bulkTourney==="Hors tournoi"?"#9CA3AF":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                        📅 Hors tournoi
-                      </button>
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#0B1220",border:"1px solid #374151",borderRadius:10,padding:"4px 4px 4px 12px",marginBottom:8}}>
+                      <span style={{fontSize:14,flexShrink:0}}>{bulkTourney&&bulkTourney!=="Hors tournoi"?"🏆":bulkTourney==="Hors tournoi"?"📅":"🏆"}</span>
+                      <select value={bulkTourney} onChange={e=>setBulkTourney(e.target.value)}
+                        style={{flex:1,background:"transparent",border:"none",color:bulkTourney?"#E5E7EB":"#6B7280",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:bulkTourney?600:400,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer",padding:"8px 0"}}>
+                        <option value="" style={{background:"#111827",color:"#6B7280"}}>Choisir un tournoi…</option>
+                        {allT.map(t=><option key={t} value={t} style={{background:"#111827",color:"#E5E7EB"}}>🏆 {t}</option>)}
+                        <option value="Hors tournoi" style={{background:"#111827",color:"#9CA3AF"}}>📅 Hors tournoi</option>
+                      </select>
+                      <span style={{color:"#6B7280",fontSize:16,paddingRight:10,flexShrink:0}}>⌄</span>
                     </div>
                     <button onClick={()=>bulkTourney&&applyBulkTourney(bulkTourney)} disabled={!bulkTourney}
                       style={{width:"100%",padding:"11px",background:bulkTourney?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkTourney?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
@@ -3369,15 +3436,22 @@ export default function App(){
                   <button onClick={()=>{
                     setSyncing(true);
                     supaGetBets(supaToken).then(remote=>{
-                      if(remote&&remote.length>0){setBets(remote);showToast(remote.length+" paris rechargés ☁️","#7C3AED");}
+                      if(remote&&remote.length>0){
+                        setBets(prev=>{
+                          const remoteIds=new Set(remote.map(b=>b.id));
+                          const localOnly=prev.filter(b=>!remoteIds.has(b.id));
+                          return [...remote,...localOnly];
+                        });
+                        showToast(remote.length+" paris rechargés ☁️","#7C3AED");
+                      }
                       setSyncing(false);setSupaModal(false);
-                    }).catch(()=>setSyncing(false));
+                    }).catch(e=>{setSyncing(false);showToast("Erreur: "+e.message,"#EF4444");});
                   }} style={{width:"100%",padding:"11px",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:8}}>
                     ↓ Recharger depuis le cloud
                   </button>
                   <button onClick={()=>{
                     setSyncing(true);
-                    supaUpsertBets(supaToken,bets.map(b=>({...b,user_email:supaUser}))).then(()=>{
+                    supaUpsertBets(supaToken,bets.map(({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament})=>({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament}))).then(()=>{
                       showToast(bets.length+" paris envoyés ☁️","#22C55E");setSyncing(false);setSupaModal(false);
                     }).catch(()=>setSyncing(false));
                   }} style={{width:"100%",padding:"11px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,color:"#22C55E",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:14}}>
