@@ -1,67 +1,48 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 
 
-// ── Supabase ──────────────────────────────────────────────────────────────
+// ── Supabase — sync sans login ────────────────────────────────────────────
 const SUPA_URL = "https://mtgryzsovqiolinobbjw.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Z3J5enNvdnFpb2xpbm9iYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDc3MTgsImV4cCI6MjA5MDYyMzcxOH0.2d4Vvm55p_SHi-wGRBrbfsxiwRh-wdqP9tDsHm_Qj3k";
 
-async function supaFetch(path, token, opts={}) {
+async function supaFetch(path, opts={}) {
   const res = await fetch(SUPA_URL + path, {
     method: opts.method || "GET",
     headers: {
       "apikey": SUPA_KEY,
-      "Authorization": "Bearer " + (token || SUPA_KEY),
+      "Authorization": "Bearer " + SUPA_KEY,
       "Content-Type": "application/json",
       "Prefer": opts.prefer || "",
     },
-    body: opts.body || undefined,
+    body: opts.body,
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(text || res.status);
+  if (!res.ok) throw new Error(text || String(res.status));
   try { return text ? JSON.parse(text) : null; } catch { return null; }
 }
 
-// Auth
-async function supaSignUp(email, password) {
-  return supaFetch("/auth/v1/signup", null, {
-    method:"POST", body: JSON.stringify({email, password})
-  });
-}
-async function supaSignIn(email, password) {
-  return supaFetch("/auth/v1/token?grant_type=password", null, {
-    method:"POST", body: JSON.stringify({email, password})
-  });
-}
-async function supaSignOut(token) {
-  return supaFetch("/auth/v1/logout", token, { method:"POST" });
+async function supaPullBets() {
+  return supaFetch("/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc");
 }
 
-// Bets — RLS filters by auth.uid() automatically
-async function supaGetBets(token) {
-  return supaFetch("/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc", token);
-}
-async function supaUpsertBets(token, bets) {
-  // Send in chunks of 500 to avoid request size limits
-  const chunks = [];
-  for (let i=0; i<bets.length; i+=500) chunks.push(bets.slice(i,i+500));
-  for (const chunk of chunks) {
-    await supaFetch("/rest/v1/bets", token, {
-      method: "POST",
-      body: JSON.stringify(chunk),
-      prefer: "resolution=merge-duplicates",
+async function supaPushBets(bets) {
+  const rows = bets.map(({id,player,description,overUnder,odds,stake,bookmaker,
+    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament})=>
+    ({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,
+      team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament}));
+  // Chunk en 500
+  for(let i=0;i<rows.length;i+=500){
+    await supaFetch("/rest/v1/bets",{
+      method:"POST",
+      body:JSON.stringify(rows.slice(i,i+500)),
+      prefer:"resolution=merge-duplicates",
     });
   }
-  return true;
 }
-async function supaDeleteBets(token, ids) {
-  // Delete in chunks
-  const chunks = [];
-  for (let i=0; i<ids.length; i+=100) chunks.push(ids.slice(i,i+100));
-  for (const chunk of chunks) {
-    const inList = chunk.join(",");
-    await supaFetch("/rest/v1/bets?id=in.("+inList+")", token, { method:"DELETE" });
-  }
-  return true;
+
+async function supaDeleteAllBets() {
+  // Vider toute la table
+  await supaFetch("/rest/v1/bets?id=gte.0",{method:"DELETE"});
 }
 
 // ── Game Logos & GameLogo component ──────────────────────────────────────
@@ -1283,16 +1264,10 @@ export default function App(){
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
 
-  // ── Supabase auth ─────────────────────────────────────────────────────────
-  const [supaToken,setSupaToken]=useState(()=>localStorage.getItem("supa_token")||"");
-  const [supaUser,setSupaUser]=useState(()=>localStorage.getItem("supa_email")||"");
-  const [supaModal,setSupaModal]=useState(false);
-  const [supaTab,setSupaTab]=useState("login"); // "login"|"signup"
-  const [supaEmail,setSupaEmail]=useState("");
-  const [supaPass,setSupaPass]=useState("");
-  const [supaLoading,setSupaLoading]=useState(false);
-  const [supaError,setSupaError]=useState("");
+  // ── Supabase sync (sans login) ───────────────────────────────────────────
   const [syncing,setSyncing]=useState(false);
+  const [supaOk,setSupaOk]=useState(false); // true si connexion confirmée
+  const [supaModal,setSupaModal]=useState(false);
 
   // ── Load: localStorage ───────────────────────────────────────────────────
   useEffect(()=>{
@@ -1354,92 +1329,33 @@ export default function App(){
     setToast({msg,color});setTimeout(()=>setToast(null),2200);
   },[]);
 
-  // ── Supabase: login / signup ─────────────────────────────────────────────
-  const supaLogin=useCallback(async()=>{
-    setSupaLoading(true);setSupaError("");
-    try{
-      const fn=supaTab==="signup"?supaSignUp:supaSignIn;
-      const data=await fn(supaEmail.trim(),supaPass);
-      if(!data||data.error)throw new Error(data?.error?.message||data?.error||"Erreur de connexion");
-      if(!data.access_token)throw new Error("Pas de token reçu — vérifie ton email/mot de passe");
-      const token=data.access_token;
-      const email=data.user?.email||supaEmail.trim();
-      setSupaToken(token);setSupaUser(email);
-      localStorage.setItem("supa_token",token);
-      localStorage.setItem("supa_email",email);
-      setSupaModal(false);setSupaEmail("");setSupaPass("");
-      showToast("Connecté ✓","#22C55E");
-      // Pull remote bets after login
-      setSyncing(true);
-      try{
-        const remote=await supaGetBets(token);
-        if(remote&&remote.length>0){
-          // Merge: keep local bets not on cloud + all cloud bets
-          setBets(prev=>{
-            const remoteIds=new Set(remote.map(b=>b.id));
-            const localOnly=prev.filter(b=>!remoteIds.has(b.id));
-            return [...remote,...localOnly];
-          });
-          showToast(remote.length+" paris chargés ☁️","#7C3AED");
-        }
-      }catch(e){console.warn("Pull error:",e.message);}
-      setSyncing(false);
-    }catch(e){setSupaError(e.message||"Erreur inconnue");}
-    setSupaLoading(false);
-  },[supaEmail,supaPass,supaTab,showToast]);
-
-  const supaLogout=useCallback(async()=>{
-    if(supaToken){try{await supaSignOut(supaToken);}catch{}}
-    setSupaToken("");setSupaUser("");
-    localStorage.removeItem("supa_token");localStorage.removeItem("supa_email");
-    showToast("Déconnecté","#9CA3AF");
-  },[supaToken,showToast]);
-
-  // ── Supabase: auto-push after every bets change (debounced 4s) ────────────
+  // ── Supabase: auto-push après chaque changement de paris (debounce 3s) ────
   useEffect(()=>{
-    if(!supaToken||!loaded||bets.length===0)return;
+    if(!loaded)return;
     const t=setTimeout(async()=>{
       setSyncing(true);
-      try{
-        // Strip fields not in DB schema
-        const rows=bets.map(({id,player,description,overUnder,odds,stake,bookmaker,status,
-          game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament})=>
-          ({id,player,description,overUnder,odds,stake,bookmaker,status,
-            game,league,role,team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament}));
-        await supaUpsertBets(supaToken,rows);
-      }catch(e){
-        if(e.message.includes("401")||e.message.includes("JWT expired")){
-          setSupaToken("");setSupaUser("");
-          localStorage.removeItem("supa_token");localStorage.removeItem("supa_email");
-        }
-      }
+      try{ await supaPushBets(bets); setSupaOk(true); }
+      catch(e){ setSupaOk(false); }
       setSyncing(false);
-    },4000);
+    },3000);
     return()=>clearTimeout(t);
-  },[bets,supaToken,loaded]);
+  },[bets,loaded]);
 
-  // ── Supabase: pull on app load if token saved ─────────────────────────────
+  // ── Supabase: pull au chargement de l'app ────────────────────────────────
   useEffect(()=>{
-    if(!supaToken||!loaded)return;
+    if(!loaded)return;
     (async()=>{
       setSyncing(true);
       try{
-        const remote=await supaGetBets(supaToken);
+        const remote=await supaPullBets();
+        setSupaOk(true);
         if(remote&&remote.length>0){
-          setBets(prev=>{
-            const remoteIds=new Set(remote.map(b=>b.id));
-            const localOnly=prev.filter(b=>!remoteIds.has(b.id));
-            const merged=[...remote,...localOnly];
-            return merged;
-          });
-          showToast("Sync ☁️ "+remote.length+" paris","#7C3AED");
+          // Prendre les paris cloud — ils font autorité
+          setBets(remote);
+          localStorage.setItem("v7_bets",JSON.stringify(remote));
+          showToast("☁️ "+remote.length+" paris chargés","#7C3AED");
         }
-      }catch(e){
-        if(e.message.includes("401")||e.message.includes("JWT")){
-          setSupaToken("");setSupaUser("");
-          localStorage.removeItem("supa_token");localStorage.removeItem("supa_email");
-        }
-      }
+      }catch(e){ setSupaOk(false); }
       setSyncing(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1907,8 +1823,8 @@ export default function App(){
               </div>
               <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                 <button onClick={()=>setSupaModal(true)}
-                  style={{display:"flex",alignItems:"center",gap:5,background:supaToken?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaToken?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:8,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaToken?"#22C55E":"#A78BFA",fontSize:10,fontWeight:700}}>
-                  <span>{supaToken?"☁️ Connecté":"☁️ Cloud"}</span>
+                  style={{display:"flex",alignItems:"center",gap:5,background:supaOk?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:8,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaOk?"#22C55E":"#A78BFA",fontSize:10,fontWeight:700}}>
+                  <span>{syncing?"☁️ Sync…":supaOk?"☁️ Sync ✓":"☁️ Cloud"}</span>
                   {supaToken&&<span style={{width:5,height:5,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 4px rgba(34,197,94,0.8)"}}/>}
                 </button>
                 <div style={{fontSize:11,color:"#9CA3AF",marginBottom:0}}>Profit Net</div>
@@ -3420,75 +3336,61 @@ export default function App(){
                 <span style={{fontSize:22}}>☁️</span>
                 <div>
                   <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>Cloud Sync</div>
-                  <div style={{fontSize:11,color:"#6B7280"}}>Sync tes paris entre tes appareils</div>
+                  <div style={{fontSize:11,color:"#6B7280"}}>Sync automatique entre tous tes appareils</div>
                 </div>
               </div>
-              {supaToken?(
-                <div>
-                  <div style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                      <span style={{width:7,height:7,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px rgba(34,197,94,0.8)"}}/>
-                      <span style={{fontSize:12,fontWeight:700,color:"#22C55E"}}>Connecté</span>
-                    </div>
-                    <div style={{fontSize:12,color:"#9CA3AF"}}>{supaUser}</div>
-                    <div style={{fontSize:11,color:"#6B7280",marginTop:4}}>{bets.length} paris synchronisés</div>
-                  </div>
-                  <button onClick={()=>{
-                    setSyncing(true);
-                    supaGetBets(supaToken).then(remote=>{
-                      if(remote&&remote.length>0){
-                        setBets(prev=>{
-                          const remoteIds=new Set(remote.map(b=>b.id));
-                          const localOnly=prev.filter(b=>!remoteIds.has(b.id));
-                          return [...remote,...localOnly];
-                        });
-                        showToast(remote.length+" paris rechargés ☁️","#7C3AED");
-                      }
-                      setSyncing(false);setSupaModal(false);
-                    }).catch(e=>{setSyncing(false);showToast("Erreur: "+e.message,"#EF4444");});
-                  }} style={{width:"100%",padding:"11px",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:8}}>
-                    ↓ Recharger depuis le cloud
-                  </button>
-                  <button onClick={()=>{
-                    setSyncing(true);
-                    supaUpsertBets(supaToken,bets.map(({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament})=>({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament}))).then(()=>{
-                      showToast(bets.length+" paris envoyés ☁️","#22C55E");setSyncing(false);setSupaModal(false);
-                    }).catch(()=>setSyncing(false));
-                  }} style={{width:"100%",padding:"11px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,color:"#22C55E",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:14}}>
-                    ↑ Pousser tous mes paris
-                  </button>
-                  <button onClick={()=>{supaLogout();setSupaModal(false);}}
-                    style={{width:"100%",padding:"11px",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:10,color:"#F87171",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                    Se déconnecter
-                  </button>
+
+              {/* Status */}
+              <div style={{background:supaOk?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.06)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.15)"),borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:supaOk?"#22C55E":"#EF4444",boxShadow:"0 0 6px "+(supaOk?"rgba(34,197,94,0.8)":"rgba(239,68,68,0.6)")}}/>
+                  <span style={{fontSize:12,fontWeight:700,color:supaOk?"#22C55E":"#F87171"}}>{syncing?"Synchronisation…":supaOk?"Connecté à Supabase":"Hors ligne — vérifie ta connexion"}</span>
                 </div>
-              ):(
-                <div>
-                  <div style={{display:"flex",gap:0,marginBottom:14,background:"#0B1220",borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
-                    {["login","signup"].map(tab=>(
-                      <button key={tab} onClick={()=>{setSupaTab(tab);setSupaError("");}}
-                        style={{flex:1,padding:"10px",background:supaTab===tab?"linear-gradient(135deg,#7C3AED,#3B82F6)":"transparent",border:"none",color:supaTab===tab?"#fff":"#6B7280",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
-                        {tab==="login"?"Se connecter":"Créer un compte"}
-                      </button>
-                    ))}
-                  </div>
-                  <input className="ifield" type="email" placeholder="Email" value={supaEmail}
-                    onChange={e=>setSupaEmail(e.target.value)} style={{marginBottom:8}}/>
-                  <input className="ifield" type="password" placeholder="Mot de passe (min 6 car.)" value={supaPass}
-                    onChange={e=>setSupaPass(e.target.value)} style={{marginBottom:supaError?8:14}}
-                    onKeyDown={e=>e.key==="Enter"&&supaLogin()}/>
-                  {supaError&&<div style={{fontSize:11,color:"#F87171",marginBottom:10,padding:"6px 10px",background:"rgba(239,68,68,0.08)",borderRadius:7}}>{supaError}</div>}
-                  <button onClick={supaLogin} disabled={supaLoading||!supaEmail||!supaPass}
-                    style={{width:"100%",padding:"13px",background:supaLoading||!supaEmail||!supaPass?"#1F2937":"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:supaLoading||!supaEmail||!supaPass?"#6B7280":"#fff",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:8}}>
-                    {supaLoading?"Connexion…":supaTab==="signup"?"Créer le compte":"Se connecter"}
-                  </button>
-                  <div style={{fontSize:10,color:"#4B5563",textAlign:"center",lineHeight:1.5}}>
-                    Tes paris sont liés à ton email.<br/>Accès depuis n'importe quel appareil.
-                  </div>
-                </div>
-              )}
-              <button onClick={()=>{setSupaModal(false);setSupaError("");}}
-                style={{width:"100%",padding:"11px",background:"#1F2937",border:"none",borderRadius:10,color:"#6B7280",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13,marginTop:10}}>
+                <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris · sync automatique toutes les 3s</div>
+              </div>
+
+              {/* Actions manuelles */}
+              <button onClick={()=>{
+                setSyncing(true);
+                supaPullBets().then(remote=>{
+                  if(remote&&remote.length>0){
+                    setBets(remote);
+                    localStorage.setItem("v7_bets",JSON.stringify(remote));
+                    showToast("☁️ "+remote.length+" paris rechargés","#7C3AED");
+                    setSupaOk(true);
+                  }
+                  setSyncing(false);setSupaModal(false);
+                }).catch(e=>{setSyncing(false);setSupaOk(false);showToast("Erreur: "+e.message,"#EF4444");});
+              }} style={{width:"100%",padding:"11px",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:8}}>
+                ↓ Forcer le rechargement depuis le cloud
+              </button>
+
+              <button onClick={()=>{
+                setSyncing(true);
+                supaPushBets(bets).then(()=>{
+                  setSupaOk(true);
+                  showToast("☁️ "+bets.length+" paris envoyés","#22C55E");
+                  setSyncing(false);setSupaModal(false);
+                }).catch(e=>{setSyncing(false);setSupaOk(false);showToast("Erreur: "+e.message,"#EF4444");});
+              }} style={{width:"100%",padding:"11px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,color:"#22C55E",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:14}}>
+                ↑ Forcer l'envoi vers le cloud
+              </button>
+
+              {/* Reset total */}
+              <button onClick={()=>{
+                if(!confirmDelete){setConfirmDelete(true);return;}
+                setBets([]);
+                localStorage.setItem("v7_bets","[]");
+                supaDeleteAllBets().catch(()=>{});
+                setConfirmDelete(false);setSupaModal(false);
+                showToast("Tous les paris supprimés","#EF4444");
+              }}
+                style={{width:"100%",padding:"11px",background:confirmDelete?"#EF4444":"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:10,color:confirmDelete?"#fff":"#F87171",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:8}}>
+                {confirmDelete?"⚠️ Confirmer la suppression de TOUS les paris":"🗑 Remettre à zéro"}
+              </button>
+
+              <button onClick={()=>{setSupaModal(false);setConfirmDelete(false);}}
+                style={{width:"100%",padding:"11px",background:"#1F2937",border:"none",borderRadius:10,color:"#6B7280",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13}}>
                 Fermer
               </button>
             </div>
