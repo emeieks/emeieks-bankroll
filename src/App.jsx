@@ -1239,7 +1239,7 @@ export default function App(){
   const [editingBet,setEditingBet]=useState(null);
   const [sessionMode,setSessionMode]=useState(false);
   const [duelMode,setDuelMode]=useState(false);
-  const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds1:"",odds2:"",stake:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:""});
+  const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:""});
   const [sessionMaps,setSessionMaps]=useState([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
   const [fGames,setFGames]=useState([]);
   const [fBKs,setFBKs]=useState([]);
@@ -1677,33 +1677,26 @@ export default function App(){
   }
 
   function addDuel(){
-    if(!duelForm.player1||!duelForm.player2||!duelForm.odds1||!duelForm.odds2||!duelForm.stake||!duelForm.bookmaker)return;
-    const info1=findPlayer(duelForm.player1)||{game:"CS2",league:"",role:"",team:""};
-    const info2=findPlayer(duelForm.player2)||{game:info1.game,league:"",role:"",team:""};
+    if(!duelForm.player1||!duelForm.player2||!duelForm.odds||!duelForm.stake||!duelForm.bookmaker||!duelForm.winner)return;
+    const winner=duelForm.winner; // "player1" or "player2"
+    const winnerName=winner==="player1"?duelForm.player1:duelForm.player2;
+    const loserName=winner==="player1"?duelForm.player2:duelForm.player1;
+    const infoW=findPlayer(winnerName)||{game:"CS2",league:"",role:"",team:""};
     const now=Date.now();
     const stake=parseFloat(duelForm.stake);
-    const tname=(()=>{const t=activeTourneys[info1.game];return(t&&(!t.end||new Date(t.end)>=new Date()))?t.name:"";})();
-    // 2 paris : un pour chaque joueur
-    const bet1={
-      id:now,player:duelForm.player1,
-      description:"Duel vs "+duelForm.player2+" — Plus de kills",
-      overUnder:"Over",odds:parseFloat(duelForm.odds1),stake,
+    const odds=parseFloat(duelForm.odds);
+    const tname=(()=>{const t=activeTourneys[infoW.game];return(t&&(!t.end||new Date(t.end)>=new Date()))?t.name:"";})();
+    const bet={
+      id:now,player:winnerName,
+      description:"Duel vs "+loserName+" — Plus de kills",
+      overUnder:"Over",odds,stake,
       bookmaker:duelForm.bookmaker,status:"pending",
-      game:info1.game,league:info1.league,role:info1.role,team:info1.team,
+      game:infoW.game,league:infoW.league,role:infoW.role,team:infoW.team,
       datetime:duelForm.datetime||nowDT(),isHeadshot:false,isLive:duelForm.isLive,
       mapTag:duelForm.mapTag,profit:0,tournament:tname,
     };
-    const bet2={
-      id:now+1,player:duelForm.player2,
-      description:"Duel vs "+duelForm.player1+" — Plus de kills",
-      overUnder:"Over",odds:parseFloat(duelForm.odds2),stake,
-      bookmaker:duelForm.bookmaker,status:"pending",
-      game:info2.game,league:info2.league,role:info2.role,team:info2.team,
-      datetime:duelForm.datetime||nowDT(),isHeadshot:false,isLive:duelForm.isLive,
-      mapTag:duelForm.mapTag,profit:0,tournament:tname,
-    };
-    setBets(b=>[bet1,...b]);
-    setDuelForm({player1:"",player2:"",odds1:"",odds2:"",stake:"",bookmaker:duelForm.bookmaker,mapTag:"Map 1",isLive:false,datetime:""});
+    setBets(b=>[bet,...b]);
+    setDuelForm({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:duelForm.bookmaker,mapTag:"Map 1",isLive:false,datetime:""});
     showToast("Duel enregistré ⚔️");
     setView("mesparis");
   }
@@ -2310,43 +2303,54 @@ export default function App(){
                 {/* Joueur 1 vs Joueur 2 */}
                 <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(245,158,11,0.2)",padding:"14px 16px",marginBottom:10}}>
                   <div style={{fontSize:12,color:"#F59E0B",fontWeight:700,marginBottom:12,letterSpacing:.5}}>⚔️ Duel — Plus de kills sur cette map</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center",marginBottom:12}}>
-                    {/* Joueur 1 */}
+
+                  {/* Joueurs */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"start",marginBottom:14}}>
                     <div>
                       <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Joueur 1</div>
-                      <PlayerAC value={duelForm.player1} onChange={v=>setDuelForm(f=>({...f,player1:v}))} allPlayers={allPlayers} onConfirm={()=>{}}/>
+                      <PlayerAC value={duelForm.player1} onChange={v=>setDuelForm(f=>({...f,player1:v,winner:""}))} allPlayers={allPlayers} onConfirm={()=>{}}/>
                       {duelForm.player1&&findPlayer(duelForm.player1)&&(
-                        <div style={{marginTop:5,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player1).game]?.accent||"#A78BFA",fontWeight:600}}>
+                        <div style={{marginTop:4,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player1).game]?.accent||"#A78BFA",fontWeight:600}}>
                           {findPlayer(duelForm.player1).team}
                         </div>
                       )}
                     </div>
-                    <div style={{fontSize:16,fontWeight:800,color:"#F59E0B",textAlign:"center"}}>VS</div>
-                    {/* Joueur 2 */}
+                    <div style={{fontSize:16,fontWeight:800,color:"#F59E0B",textAlign:"center",paddingTop:22}}>VS</div>
                     <div>
                       <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Joueur 2</div>
-                      <PlayerAC value={duelForm.player2} onChange={v=>setDuelForm(f=>({...f,player2:v}))} allPlayers={allPlayers} onConfirm={()=>{}}/>
+                      <PlayerAC value={duelForm.player2} onChange={v=>setDuelForm(f=>({...f,player2:v,winner:""}))} allPlayers={allPlayers} onConfirm={()=>{}}/>
                       {duelForm.player2&&findPlayer(duelForm.player2)&&(
-                        <div style={{marginTop:5,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player2).game]?.accent||"#A78BFA",fontWeight:600}}>
+                        <div style={{marginTop:4,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player2).game]?.accent||"#A78BFA",fontWeight:600}}>
                           {findPlayer(duelForm.player2).team}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Cotes */}
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                    <div>
-                      <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Cote {duelForm.player1||"J1"}</div>
-                      <div style={{background:"#0D0F1E",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
-                        <NumPad value={duelForm.odds1} onChange={v=>setDuelForm(f=>({...f,odds1:v}))} placeholder="1.50" step="0.01"/>
+                  {/* Sélection du gagnant — apparaît quand les 2 joueurs sont choisis */}
+                  {duelForm.player1&&duelForm.player2&&(
+                    <div style={{marginBottom:14}}>
+                      <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Qui va avoir le plus de kills ?</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                        <button onClick={()=>setDuelForm(f=>({...f,winner:"player1"}))}
+                          style={{padding:"12px 8px",borderRadius:12,border:"2px solid "+(duelForm.winner==="player1"?"#F59E0B":"#1F2937"),background:duelForm.winner==="player1"?"rgba(245,158,11,0.12)":"#111827",color:duelForm.winner==="player1"?"#F59E0B":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s",textTransform:"capitalize"}}>
+                          {duelForm.player1||"J1"}
+                          {duelForm.winner==="player1"&&<div style={{fontSize:9,color:"#F59E0B",marginTop:2}}>✓ SÉLECTIONNÉ</div>}
+                        </button>
+                        <button onClick={()=>setDuelForm(f=>({...f,winner:"player2"}))}
+                          style={{padding:"12px 8px",borderRadius:12,border:"2px solid "+(duelForm.winner==="player2"?"#F59E0B":"#1F2937"),background:duelForm.winner==="player2"?"rgba(245,158,11,0.12)":"#111827",color:duelForm.winner==="player2"?"#F59E0B":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s",textTransform:"capitalize"}}>
+                          {duelForm.player2||"J2"}
+                          {duelForm.winner==="player2"&&<div style={{fontSize:9,color:"#F59E0B",marginTop:2}}>✓ SÉLECTIONNÉ</div>}
+                        </button>
                       </div>
                     </div>
-                    <div>
-                      <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Cote {duelForm.player2||"J2"}</div>
-                      <div style={{background:"#0D0F1E",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
-                        <NumPad value={duelForm.odds2} onChange={v=>setDuelForm(f=>({...f,odds2:v}))} placeholder="1.50" step="0.01"/>
-                      </div>
+                  )}
+
+                  {/* Cote unique */}
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Cote</div>
+                    <div style={{background:"#0D0F1E",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
+                      <NumPad value={duelForm.odds} onChange={v=>setDuelForm(f=>({...f,odds:v}))} placeholder="1.50" step="0.01"/>
                     </div>
                   </div>
 
@@ -2382,13 +2386,13 @@ export default function App(){
 
                 {/* CTA Duel */}
                 {(()=>{
-                  const disabled=!duelForm.player1||!duelForm.player2||!duelForm.odds1||!duelForm.odds2||!duelForm.stake||!duelForm.bookmaker;
+                  const disabled=!duelForm.player1||!duelForm.player2||!duelForm.odds||!duelForm.stake||!duelForm.bookmaker||!duelForm.winner;
                   const missing=[];
                   if(!duelForm.bookmaker)missing.push("Bookmaker");
                   if(!duelForm.player1)missing.push("Joueur 1");
                   if(!duelForm.player2)missing.push("Joueur 2");
-                  if(!duelForm.odds1)missing.push("Cote J1");
-                  if(!duelForm.odds2)missing.push("Cote J2");
+                  if(!duelForm.winner)missing.push("Gagnant");
+                  if(!duelForm.odds)missing.push("Cote");
                   if(!duelForm.stake)missing.push("Mise");
                   return(
                     <>
