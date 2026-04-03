@@ -315,6 +315,7 @@ grizzly:{game:"LoL",league:"LPL",role:"Jungler",team:"Ultra Prime"},
 saber:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Ultra Prime"},
 hena:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Ultra Prime"},
 xiaoxia:{game:"LoL",league:"LPL",role:"Support",team:"Ultra Prime"},
+  raptor:{game:"Dota2",league:"LCK",role:"Jungle",team:"FearX"},
 yatoro:{game:"Dota2",league:"",role:"Carry",team:"Team Spirit"},
 collapse:{game:"Dota2",league:"",role:"Offlane",team:"Team Spirit"},
 larl:{game:"Dota2",league:"",role:"Mid",team:"Team Spirit"},
@@ -1595,11 +1596,19 @@ export default function App(){
       if(fLeague!=="All"&&b.league!==fLeague)return false;
       if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
       return true;
-    }).sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
+    }).sort((a,b2)=>{
+      if(a.status==="pending"&&b2.status!=="pending")return -1;
+      if(b2.status==="pending"&&a.status!=="pending")return 1;
+      return (b2.datetime||"").localeCompare(a.datetime||"");
+    });
   },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fRole,fLeague,fTourneys]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
-    const sorted=[...bets].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
+    const sorted=[...bets].sort((a,b2)=>{
+      if(a.status==="pending"&&b2.status!=="pending")return -1;
+      if(b2.status==="pending"&&a.status!=="pending")return 1;
+      return (b2.datetime||"").localeCompare(a.datetime||"");
+    });
     const bd={};
     sorted.forEach(b=>{
       const dk=toDateKey(b.datetime)||"?";
@@ -1995,11 +2004,38 @@ export default function App(){
               );
             })()}
 
+            {/* ── Quick game + BK filters ── */}
+            <div style={{marginBottom:8}}>
+              <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:4,marginBottom:6}}>
+                {["CS2","Dota2","LoL","Valorant"].map(g=>(
+                  <button key={g} onClick={()=>toggleArr(fGames,setFGames,g)}
+                    style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"1.5px solid "+(fGames.includes(g)?"#7C3AED":"#1F2937"),background:fGames.includes(g)?"rgba(124,58,237,0.1)":"#111827",color:fGames.includes(g)?"#A78BFA":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                    <GameLogo game={g} size={12}/>{g}
+                  </button>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:2}}>
+                {bookmakers.map(bk=>(
+                  <button key={bk} onClick={()=>toggleArr(fBKs,setFBKs,bk)}
+                    style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"1.5px solid "+(fBKs.includes(bk)?"#3B82F6":"#1F2937"),background:fBKs.includes(bk)?"rgba(59,130,246,0.1)":"#111827",color:fBKs.includes(bk)?"#60A5FA":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                    {(BK_LOGOS[bk]||bkPhotos[bk])&&<img src={BK_LOGOS[bk]||bkPhotos[bk]} alt="" style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>}
+                    {bk}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {bets.length===0&&<div style={{color:"#6B7280",fontSize:14,padding:20,textAlign:"center"}}>Aucun pari enregistré</div>}
 
             {monthKeys.slice(0,visibleMonths).map(mk=>{
               const monthDays=byMonth[mk];
-              const filteredMonthBets=monthDays.flatMap(dk=>byDay[dk]).filter(b=>(mpFilter==="all"||b.status===mpFilter)&&(fTourneys.size===0||fTourneys.has(b.tournament||"Hors tournoi")));
+              const filteredMonthBets=monthDays.flatMap(dk=>byDay[dk]).filter(b=>{
+                if(mpFilter!=="all"&&b.status!==mpFilter)return false;
+                if(fGames.length>0&&!fGames.includes(b.game))return false;
+                if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
+                if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
+                return true;
+              });
               if(filteredMonthBets.length===0)return null;
               const monthP=filteredMonthBets.filter(b=>b.status!=="pending").reduce((s,b)=>s+b.profit,0);
               const monthTotal=filteredMonthBets.length;
@@ -2024,7 +2060,12 @@ export default function App(){
                     <div style={{borderRadius:"0 0 12px 12px",overflow:"hidden",border:"1px solid #1F2937",borderTop:"none"}}>
                     {monthDays.map((dk,di)=>{
                       const dayBetsAll=byDay[dk];
-                      const dayBets=mpFilter==="all"?dayBetsAll:dayBetsAll.filter(b=>b.status===mpFilter);
+                      const dayBets=dayBetsAll.filter(b=>{
+                        if(mpFilter!=="all"&&b.status!==mpFilter)return false;
+                        if(fGames.length>0&&!fGames.includes(b.game))return false;
+                        if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
+                        return true;
+                      });
                       if(dayBets.length===0)return null;
                       const dayP=dayBets.filter(b=>b.status!=="pending").reduce((s,b)=>s+b.profit,0);
                       const hasSt=dayBets.some(b=>b.status!=="pending");
@@ -2288,7 +2329,12 @@ export default function App(){
               <>
                 {/* Bookmaker */}
                 <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(245,158,11,0.2)",padding:"14px 16px",marginBottom:10}}>
-                  <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500,display:"block",marginBottom:10}}>Bookmaker</span>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Bookmaker</span>
+                    <button onClick={()=>setModalBK(true)} style={{padding:"3px 10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#6B7280",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                      + Nouveau
+                    </button>
+                  </div>
                   <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:12,padding:"12px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
                     {(BK_LOGOS[duelForm.bookmaker]||bkPhotos[duelForm.bookmaker])&&<img src={BK_LOGOS[duelForm.bookmaker]||bkPhotos[duelForm.bookmaker]} alt="" style={{width:28,height:28,borderRadius:7,objectFit:"cover",flexShrink:0}}/>}
                     <select value={duelForm.bookmaker} onChange={e=>setDuelForm(f=>({...f,bookmaker:e.target.value}))}
