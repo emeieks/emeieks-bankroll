@@ -315,6 +315,246 @@ grizzly:{game:"LoL",league:"LPL",role:"Jungler",team:"Ultra Prime"},
 saber:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Ultra Prime"},
 hena:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Ultra Prime"},
 xiaoxia:{game:"LoL",league:"LPL",role:"Support",team:"Ultra Prime"},
+  // ── VCT China 2026 ──────────────────────────────────────────────────────
+  // All Gamers
+  k1ra:{game:"Valorant",league:"VCT China",role:"IGL",team:"All Gamers"},
+  "shr1mp":{game:"Valorant",league:"VCT China",role:"Duelist",team:"All Gamers"},
+  f4ngeer:{game:"Valorant",league:"VCT China",role:"Initiator",team:"All Gamers"},
+  iamgrq:{game:"Valorant",league:"VCT China",role:"Controller",team:"All Gamers"},
+  au1:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"All Gamers"},
+  // FunPlus Phoenix
+  aaaay:{game:"Valorant",league:"VCT China",role:"Initiator",team:"FunPlus Phoenix"},
+  berlin:{game:"Valorant",league:"VCT China",role:"IGL",team:"FunPlus Phoenix"},
+  ben1ley:{game:"Valorant",league:"VCT China",role:"Initiator",team:"FunPlus Phoenix"},
+  kovaq:{game:"Valorant",league:"VCT China",role:"Controller",team:"FunPlus Phoenix"},
+  setrod:{game:"Valorant",league:"VCT China",role:"Duelist",team:"FunPlus Phoenix"},
+  // EDward Gaming
+  "s1mple_edg":{game:"Valorant",league:"VCT China",role:"Duelist",team:"EDward Gaming"},
+  chichoo:{game:"Valorant",league:"VCT China",role:"Initiator",team:"EDward Gaming"},
+  zrc:{game:"Valorant",league:"VCT China",role:"Controller",team:"EDward Gaming"},
+  wuhorse:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"EDward Gaming"},
+  cr1t:{game:"Valorant",league:"VCT China",role:"Duelist",team:"EDward Gaming"},
+  // Bilibili Gaming
+  knight:{game:"Valorant",league:"VCT China",role:"IGL",team:"Bilibili Gaming"},
+  biank:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Bilibili Gaming"},
+  jinbo:{game:"Valorant",league:"VCT China",role:"Controller",team:"Bilibili Gaming"},
+  ctypp:{game:"Valorant",league:"VCT China",role:"Initiator",team:"Bilibili Gaming"},
+  dogdog:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"Bilibili Gaming"},
+  // JDG Esports
+  yuicaw:{game:"Valorant",league:"VCT China",role:"Duelist",team:"JDG Esports"},
+  jkuro:{game:"Valorant",league:"VCT China",role:"IGL",team:"JDG Esports"},
+  coconut:{game:"Valorant",league:"VCT China",role:"Initiator",team:"JDG Esports"},
+  stew_jdg:{game:"Valorant",league:"VCT China",role:"Controller",team:"JDG Esports"},
+  zhe:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"JDG Esports"},
+  // TYLOO
+  "sword9":{game:"Valorant",league:"VCT China",role:"Duelist",team:"TYLOO"},
+  splash:{game:"Valorant",league:"VCT China",role:"Initiator",team:"TYLOO"},
+  scales:{game:"Valorant",league:"VCT China",role:"Controller",team:"TYLOO"},
+  slowly:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"TYLOO"},
+  erv:{game:"Valorant",league:"VCT China",role:"Duelist",team:"TYLOO"},
+  // Titan Esports Club
+  haodong:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Titan Esports Club"},
+  lucas_tec:{game:"Valorant",league:"VCT China",role:"Initiator",team:"Titan Esports Club"},
+  dynamite:{game:"Valorant",league:"VCT China",role:"Controller",team:"Titan Esports Club"},
+  coco_tec:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"Titan Esports Club"},
+  ra1ny:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Titan Esports Club"},
+  // Dragon Ranger Gaming
+  "spiritz1":{game:"Valorant",league:"VCT China",role:"Duelist",team:"Dragon Ranger Gaming"},
+  vo0kashu:{game:"Valorant",league:"VCT China",role:"Initiator",team:"Dragon Ranger Gaming"},
+  flex1n:{game:"Valorant",league:"VCT China",role:"Controller",team:"Dragon Ranger Gaming"},
+  nicc:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"Dragon Ranger Gaming"},
+  akeman:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Dragon Ranger Gaming"},
+  // Xi Lai Gaming
+  xlg_player1:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Xi Lai Gaming"},
+  // Trace Esports
+  delb:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"Trace Esports"},
+  viva:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Trace Esports"},
+  kai_te:{game:"Valorant",league:"VCT China",role:"Initiator",team:"Trace Esports"},
+  xlele:{game:"Valorant",league:"VCT China",role:"Controller",team:"Trace Esports"},
+  abo:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Trace Esports"},
+  // Wolves Esports
+  yosemite:{game:"Valorant",league:"VCT China",role:"Controller",team:"Wolves Esports"},
+  "siufattbb":{game:"Valorant",league:"VCT China",role:"Initiator",team:"Wolves Esports"},
+  spring_wol:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Wolves Esports"},
+  jowa:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"Wolves Esports"},
+  satoshi:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Wolves Esports"},
+  // Nova Esports
+  guang:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Nova Esports"},
+  heybay:{game:"Valorant",league:"VCT China",role:"Initiator",team:"Nova Esports"},
+  ezeir:{game:"Valorant",league:"VCT China",role:"Controller",team:"Nova Esports"},
+  green_nova:{game:"Valorant",league:"VCT China",role:"Sentinel",team:"Nova Esports"},
+  obone:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Nova Esports"},
+  swagzor:{game:"Valorant",league:"VCT China",role:"Duelist",team:"Nova Esports"},
+  qiutian:{game:"Valorant",league:"VCT China",role:"IGL",team:"Nova Esports"},
+
+  // ── VCT Pacific 2026 — Corée ──────────────────────────────────────────────
+  // Nongshim RedForce
+  xross:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"Nongshim RedForce"},
+  rb:{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"Nongshim RedForce"},
+  francis:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Nongshim RedForce"},
+  dambi:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Nongshim RedForce"},
+  ivy:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Nongshim RedForce"},
+  // T1
+  "t1_ban":{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"T1"},
+  "t1_carpe":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"T1"},
+  sayaplayer:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"T1"},
+  munchkin:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"T1"},
+  lakia:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"T1"},
+  // DRX
+  beyn:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"DRX"},
+  free1ng:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"DRX"},
+  hyunmin:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"DRX"},
+  hermes:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"DRX"},
+  mako:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"DRX"},
+  yong:{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"DRX"},
+  // Gen.G
+  "ruler_geng":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Gen.G"},
+  "foxy9":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Gen.G"},
+  "sylvyr":{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Gen.G"},
+  "meteor_geng":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"Gen.G"},
+  "karon":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Gen.G"},
+  // Paper Rex
+  invy:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Paper Rex"},
+  jinggg:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Paper Rex"},
+  "f0rsaken":{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Paper Rex"},
+  d4v41:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Paper Rex"},
+  something:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"Paper Rex"},
+  // Global Esports
+  "lightningfast":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Global Esports"},
+  "russ_ge":{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"Global Esports"},
+  "ban_ge":{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"Global Esports"},
+  "patmen":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"Global Esports"},
+  // Rex Regum Qeon
+  "fl1pzjder":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Rex Regum Qeon"},
+  "mindfreak_rrq":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Rex Regum Qeon"},
+  // DetonatioN FocusMe
+  akame:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"DetonatioN FocusMe"},
+  caedye:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"DetonatioN FocusMe"},
+  meiy:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"DetonatioN FocusMe"},
+  ssees:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"DetonatioN FocusMe"},
+  yatsuka:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"DetonatioN FocusMe"},
+  // ZETA DIVISION
+  "laz":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"ZETA DIVISION"},
+  dep:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"ZETA DIVISION"},
+  crow:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"ZETA DIVISION"},
+  "SugarZ3ro":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"ZETA DIVISION"},
+
+  // ── VCT EMEA 2026 ────────────────────────────────────────────────────────
+  // BBL Esports
+  crewen:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"BBL Esports"},
+  "lar0k":{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"BBL Esports"},
+  loita:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"BBL Esports"},
+  "lovers_rock":{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"BBL Esports"},
+  rose_bbl:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"BBL Esports"},
+  // Fnatic
+  alfajer:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Fnatic"},
+  boaster:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Fnatic"},
+  crashies:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Fnatic"},
+  kaajak:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Fnatic"},
+  veqaj:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Fnatic"},
+  // Gentle Mates
+  beyaz:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Gentle Mates"},
+  ruxic:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Gentle Mates"},
+  tOpotti:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Gentle Mates"},
+  // Team Liquid
+  nats:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Team Liquid"},
+  "purp0":{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Team Liquid"},
+  kamo:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Team Liquid"},
+  miniboo:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Team Liquid"},
+  wayne:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Team Liquid"},
+  // Team Heretics
+  wo0t:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Team Heretics"},
+  // Natus Vincere
+  "n4rrate":{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Natus Vincere"},
+  suygetsu:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Natus Vincere"},
+  avez:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Natus Vincere"},
+  "dos9":{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Natus Vincere"},
+  lewn:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Natus Vincere"},
+  // Karmine Corp
+  // Team Vitality
+  chronicle:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Team Vitality"},
+  // GIANTX
+  "w1ldfireee":{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"GIANTX"},
+  // FUT Esports
+  // Eternal Fire
+  izzy:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Eternal Fire"},
+  nekky:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Eternal Fire"},
+  audaz:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Eternal Fire"},
+  favian:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Eternal Fire"},
+  echo_ef:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Eternal Fire"},
+
+  // ── VCT Americas 2026 ────────────────────────────────────────────────────
+  // MIBR
+  tex:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"MIBR"},
+  mazino:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"MIBR"},
+  verno:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"MIBR"},
+  // NRG
+  brawk:{game:"Valorant",league:"VCT Americas",role:"Flex",team:"NRG"},
+  mada:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"NRG"},
+  skuba:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"NRG"},
+  ethan:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"NRG"},
+  keiko:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"NRG"},
+  // FURIA
+  nerve:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"FURIA"},
+  eeiu:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"FURIA"},
+  koalanoob:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"FURIA"},
+  artzin:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"FURIA"},
+  alym:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"FURIA"},
+  // G2 Esports
+  "babybay":{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"G2 Esports VAL"},
+  valyn:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"G2 Esports VAL"},
+  jawgemo:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"G2 Esports VAL"},
+  leaf:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"G2 Esports VAL"},
+  trent:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"G2 Esports VAL"},
+  // LOUD
+  pancada:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"LOUD"},
+  virtyy:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"LOUD"},
+  cauanzin:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"LOUD"},
+  darker:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"LOUD"},
+  lukxo:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"LOUD"},
+  // Leviatán
+  kingg:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"Leviatán"},
+  blowz:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"Leviatán"},
+  sato:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Leviatán"},
+  spike:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Leviatán"},
+  neon_lev:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"Leviatán"},
+  // Cloud9
+  zellsis:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"Cloud9 VAL"},
+  penny:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"Cloud9 VAL"},
+  xeppaa:{game:"Valorant",league:"VCT Americas",role:"Flex",team:"Cloud9 VAL"},
+  "v1c":{game:"Valorant",league:"VCT Americas",role:"Controller",team:"Cloud9 VAL"},
+  oxy:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Cloud9 VAL"},
+  // 100 Thieves
+  asuna:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"100T VAL"},
+  bang:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"100T VAL"},
+  cryocells:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"100T VAL"},
+  vora:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"100T VAL"},
+  timotino:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"100T VAL"},
+  // Evil Geniuses
+  "c0m":{game:"Valorant",league:"VCT Americas",role:"IGL",team:"Evil Geniuses VAL"},
+  supamen:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Evil Geniuses VAL"},
+  okeanos:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"Evil Geniuses VAL"},
+  dgzin:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Evil Geniuses VAL"},
+  bao:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"Evil Geniuses VAL"},
+  // Sentinels
+  johnqt:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"Sentinels VAL"},
+  jonahp:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"Sentinels VAL"},
+  cortezia:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Sentinels VAL"},
+  reduxx:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"Sentinels VAL"},
+  kyu:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"Sentinels VAL"},
+  // KRÜ Esports
+  saadhak:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"KRÜ Esports"},
+  mwzera:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"KRÜ Esports"},
+  less:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"KRÜ Esports"},
+  silentzz:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"KRÜ Esports"},
+  dantedeu5:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"KRÜ Esports"},
+  // ENVY
+  rossy:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"ENVY VAL"},
+  keznit:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"ENVY VAL"},
+  "p0ppin":{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"ENVY VAL"},
+  demon1:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"ENVY VAL"},
+  eggsterr:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"ENVY VAL"},
+
   raptor:{game:"Dota2",league:"LCK",role:"Jungle",team:"FearX"},
 yatoro:{game:"Dota2",league:"",role:"Carry",team:"Team Spirit"},
 collapse:{game:"Dota2",league:"",role:"Offlane",team:"Team Spirit"},
