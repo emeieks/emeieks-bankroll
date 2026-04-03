@@ -1341,7 +1341,8 @@ export default function App(){
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
-  // ── Supabase: pull au chargement de l'app ────────────────────────────────
+
+  // ── Supabase: pull au chargement + merge intelligent ─────────────────────
   useEffect(()=>{
     if(!loaded)return;
     (async()=>{
@@ -1349,12 +1350,23 @@ export default function App(){
       try{
         const remote=await supaPullBets();
         setSupaOk(true);
-        if(remote&&remote.length>0){
-          // Prendre les paris cloud — ils font autorité
-          setBets(remote);
-          localStorage.setItem("v7_bets",JSON.stringify(remote));
-          showToast("☁️ "+remote.length+" paris chargés","#7C3AED");
-        }
+        setBets(prev=>{
+          if(!remote||remote.length===0){
+            // Supabase vide → pousser les paris locaux
+            if(prev.length>0){
+              supaPushBets(prev).catch(()=>{});
+            }
+            return prev;
+          }
+          if(prev.length===0) return remote;
+          // Merge : union par id, les paris locaux plus récents gagnent
+          const remoteMap=new Map(remote.map(b=>[b.id,b]));
+          prev.forEach(b=>remoteMap.set(b.id,b)); // local écrase remote si même id
+          const merged=[...remoteMap.values()].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
+          // Pousser le merge vers Supabase
+          supaPushBets(merged).catch(()=>{});
+          return merged;
+        });
       }catch(e){ setSupaOk(false); }
       setSyncing(false);
     })();
