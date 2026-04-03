@@ -41,8 +41,9 @@ async function supaPushBets(bets) {
 }
 
 async function supaDeleteAllBets() {
-  // Vider toute la table
-  await supaFetch("/rest/v1/bets?id=gte.0",{method:"DELETE"});
+  // Supprimer tous les enregistrements (neq trick car Supabase exige un filtre)
+  await supaFetch("/rest/v1/bets?id=neq.0",{method:"DELETE"});
+  await supaFetch("/rest/v1/bets?id=eq.0",{method:"DELETE"});
 }
 
 // ── Game Logos & GameLogo component ──────────────────────────────────────
@@ -1342,7 +1343,7 @@ export default function App(){
   },[bets,loaded]);
 
 
-  // ── Supabase: pull au chargement + merge intelligent ─────────────────────
+  // ── Supabase: pull au chargement — Supabase fait autorité ────────────────
   useEffect(()=>{
     if(!loaded)return;
     (async()=>{
@@ -1350,24 +1351,16 @@ export default function App(){
       try{
         const remote=await supaPullBets();
         setSupaOk(true);
-        setBets(prev=>{
-          if(!remote||remote.length===0){
-            // Supabase vide → pousser les paris locaux
-            if(prev.length>0){
-              supaPushBets(prev).catch(()=>{});
-            }
-            return prev;
-          }
-          if(prev.length===0) return remote;
-          // Merge : union par id, les paris locaux plus récents gagnent
-          const remoteMap=new Map(remote.map(b=>[b.id,b]));
-          prev.forEach(b=>remoteMap.set(b.id,b)); // local écrase remote si même id
-          const merged=[...remoteMap.values()].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
-          // Pousser le merge vers Supabase
-          supaPushBets(merged).catch(()=>{});
-          return merged;
-        });
-      }catch(e){ setSupaOk(false); }
+        // Supabase fait TOUJOURS autorité
+        // Si remote est vide = intentionnel (reset), on vide aussi local
+        const final=remote||[];
+        setBets(final);
+        localStorage.setItem("v7_bets",JSON.stringify(final));
+        if(final.length>0) showToast("☁️ "+final.length+" paris","#7C3AED");
+      }catch(e){
+        // Hors ligne → garder localStorage
+        setSupaOk(false);
+      }
       setSyncing(false);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3389,11 +3382,13 @@ export default function App(){
               </button>
 
               {/* Reset total */}
-              <button onClick={()=>{
+              <button onClick={async()=>{
                 if(!confirmDelete){setConfirmDelete(true);return;}
+                setSyncing(true);
                 setBets([]);
                 localStorage.setItem("v7_bets","[]");
-                supaDeleteAllBets().catch(()=>{});
+                try{ await supaDeleteAllBets(); }catch(e){}
+                setSyncing(false);
                 setConfirmDelete(false);setSupaModal(false);
                 showToast("Tous les paris supprimés","#EF4444");
               }}
