@@ -1825,7 +1825,7 @@ export default function App(){
                 <button onClick={()=>setSupaModal(true)}
                   style={{display:"flex",alignItems:"center",gap:5,background:supaOk?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:8,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaOk?"#22C55E":"#A78BFA",fontSize:10,fontWeight:700}}>
                   <span>{syncing?"☁️ Sync…":supaOk?"☁️ Sync ✓":"☁️ Cloud"}</span>
-                  {supaToken&&<span style={{width:5,height:5,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 4px rgba(34,197,94,0.8)"}}/>}
+                  {supaOk&&!syncing&&<span style={{width:5,height:5,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 4px rgba(34,197,94,0.8)"}}/>}
                 </button>
                 <div style={{fontSize:11,color:"#9CA3AF",marginBottom:0}}>Profit Net</div>
                 <div style={{fontSize:16,fontWeight:700,color:totalProfit>=0?"#22C55E":"#F87171"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
