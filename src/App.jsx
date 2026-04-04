@@ -1708,8 +1708,10 @@ export default function App(){
   },[loaded]);
 
   const allPlayers=useMemo(()=>{
-    const merged={...STATIC_PLAYERS};
-    Object.entries(custom).forEach(([k,v])=>{merged[k]=v;});
+    const merged={};
+    // Normalize all keys to lowercase so search always works regardless of casing in STATIC_PLAYERS
+    Object.entries(STATIC_PLAYERS).forEach(([k,v])=>{merged[k.toLowerCase()]=v;});
+    Object.entries(custom).forEach(([k,v])=>{merged[k.toLowerCase()]=v;});
     return merged;
   },[custom]);
 
