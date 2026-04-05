@@ -93,6 +93,46 @@ function BankrollChart({points,h=150}){
   );
 }
 
+// ── ProfitChart — bar chart profit par jour ──────────────────────────────
+function ProfitChart({points,h=110}){
+  if(!points||points.length<1)return(
+    <div style={{height:h,display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280",fontSize:12}}>Pas assez de données</div>
+  );
+  const W=400,H=h,padL=38,padB=18,padT=6,padR=6;
+  const vals=points.map(p=>p.v);
+  const maxAbs=Math.max(...vals.map(Math.abs),1);
+  const cw=W-padL-padR;
+  const ch=(H-padT-padB)/2; // half height for zero line
+  const zeroY=padT+ch;
+  const barW=Math.max(2,Math.floor(cw/vals.length)-1);
+  const xSamples=points.length<=7?points.map((_,i)=>i):[0,Math.floor(points.length/2),points.length-1];
+  return(
+    <svg width="100%" viewBox={"0 0 "+W+" "+H} preserveAspectRatio="none" style={{overflow:"visible"}}>
+      <defs>
+        <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22C55E" stopOpacity=".7"/><stop offset="100%" stopColor="#22C55E" stopOpacity=".15"/></linearGradient>
+        <linearGradient id="pr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F87171" stopOpacity=".15"/><stop offset="100%" stopColor="#F87171" stopOpacity=".7"/></linearGradient>
+      </defs>
+      {/* zero line */}
+      <line x1={padL} y1={zeroY} x2={W-padR} y2={zeroY} stroke="#374151" strokeWidth="1"/>
+      <text x={padL-3} y={zeroY+4} textAnchor="end" fontSize="8" fill="#6B7280">0</text>
+      <text x={padL-3} y={padT+5} textAnchor="end" fontSize="8" fill="#22C55E">+{maxAbs.toFixed(0)}</text>
+      <text x={padL-3} y={H-padB+4} textAnchor="end" fontSize="8" fill="#F87171">-{maxAbs.toFixed(0)}</text>
+      {/* bars */}
+      {points.map((p,i)=>{
+        const x=padL+i*(cw/vals.length)+1;
+        const ratio=p.v/maxAbs;
+        const barH=Math.abs(ratio)*ch;
+        const y=p.v>=0?zeroY-barH:zeroY;
+        return<rect key={i} x={x} y={y} width={barW} height={Math.max(1,barH)} fill={p.v>=0?"url(#pg)":"url(#pr)"} rx="1"/>;
+      })}
+      {/* x labels */}
+      {xSamples.filter(i=>points[i]).map((i,k)=>(
+        <text key={k} x={padL+i*(cw/vals.length)+barW/2} y={H-2} textAnchor="middle" fontSize="8" fill="#6B7280">{points[i].dt.slice(5,10).replace("-","/")}</text>
+      ))}
+    </svg>
+  );
+}
+
 // ── Data ──────────────────────────────────────────────────────────────────
 const STATIC_PLAYERS={
 faker:{game:"LoL",league:"LCK",role:"Mid Laner",team:"T1"},
@@ -2154,6 +2194,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
 // ── BetRow component ───────────────────────────────────────────────────────
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
   const [open,setOpen]=useState(false);
+  const [confirmDel,setConfirmDel]=useState(false);
   const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
   const isPending=bet.status==="pending";
   const profitColor=isPending?"#3B82F6":bet.profit>=0?"#22C55E":"#F87171";
@@ -2202,7 +2243,13 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
           {bet.status==="lost"&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}} style={{fontSize:11}}>↩ Attente</button>}
           <button className="editbtn" onClick={()=>{onEdit();setOpen(false);}} style={{fontSize:11}}>✎ Modif.</button>
           <button className="editbtn" onClick={()=>{onDuplicate(bet);setOpen(false);}} style={{fontSize:11}}>⧉ Dup.</button>
-          <button className="editbtn" onClick={()=>onDelete(bet.id)} style={{color:"#F87171",borderColor:"#F8717144",fontSize:11}}>🗑</button>
+          {!confirmDel
+            ?<button className="editbtn" onClick={()=>setConfirmDel(true)} style={{color:"#F87171",borderColor:"#F8717144",fontSize:11}}>🗑</button>
+            :<>
+              <button className="editbtn" onClick={()=>{onDelete(bet.id);}} style={{color:"#fff",background:"#EF4444",borderColor:"#EF4444",fontSize:11,fontWeight:700}}>Oui</button>
+              <button className="editbtn" onClick={()=>setConfirmDel(false)} style={{fontSize:11}}>Non</button>
+            </>
+          }
         </div>
       )}
     </div>
@@ -2687,9 +2734,19 @@ export default function App(){
   },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
+    const now=Date.now();
     const sorted=[...bets].sort((a,b2)=>{
+      // Pending toujours en premier
       if(a.status==="pending"&&b2.status!=="pending")return -1;
       if(b2.status==="pending"&&a.status!=="pending")return 1;
+      // Pending entre eux: les plus récents en premier
+      if(a.status==="pending"&&b2.status==="pending"){
+        return (b2.datetime||"").localeCompare(a.datetime||"");
+      }
+      // Settled entre eux: trier par settledAt desc (le plus récemment settlé en premier)
+      const sa=a.settledAt||0;
+      const sb=b2.settledAt||0;
+      if(sa!==sb)return sb-sa;
       return (b2.datetime||"").localeCompare(a.datetime||"");
     });
     const bd={};
@@ -2836,7 +2893,8 @@ export default function App(){
   },[showToast]);
 
   function applyBulkStatus(status){
-    setBets(b=>b.map(bet=>selectedIds.includes(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds)}:bet));
+    const now=Date.now();
+    setBets(b=>b.map((bet,i)=>selectedIds.includes(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null}:bet));
     setBulkModal(false);setSelectMode(false);setSelectedIds([]);setBulkDatetime("");
     showToast(selectedIds.length+" paris mis à jour");
   }
@@ -3123,9 +3181,9 @@ export default function App(){
 
             {bets.length===0&&<div style={{color:"#6B7280",fontSize:14,padding:20,textAlign:"center"}}>Aucun pari enregistré</div>}
 
-            {monthKeys.slice(0,visibleMonths).map(mk=>{
-              const monthDays=byMonth[mk];
-              const filteredMonthBets=monthDays.flatMap(dk=>byDay[dk]).filter(b=>{
+            {(()=>{
+              // Build flat sorted list: pending first (by datetime desc), then settled by settledAt desc
+              const filtered=allSortedBets.filter(b=>{
                 if(fStatus!=="All"&&b.status!==fStatus)return false;
                 if(fGames.length>0&&!fGames.includes(b.game))return false;
                 if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
@@ -3138,84 +3196,111 @@ export default function App(){
                 if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
                 if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
                 if(fLive&&!b.isLive)return false;
+                if(fHeadshot&&!b.isHeadshot)return false;
                 if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
                 if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
                 return true;
               });
-              if(filteredMonthBets.length===0)return null;
-              const monthP=filteredMonthBets.filter(b=>b.status!=="pending").reduce((s,b)=>s+b.profit,0);
-              const monthTotal=filteredMonthBets.length;
-              const isCollapsed=!!collapsedMonths[mk];
-              const toggleMonth=()=>setCollapsedMonths(c=>({...c,[mk]:!c[mk]}));
-              return(
-                <div key={mk} style={{marginBottom:10}}>
-                  {/* ── BIG MONTH HEADER — cliquable ── */}
-                  <button onClick={toggleMonth} style={{width:"100%",background:isCollapsed?"#111827":"linear-gradient(135deg,#0F1829 0%,#111D30 100%)",border:"1px solid "+(isCollapsed?"#1F2937":"#1E3050"),borderRadius:14,padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:isCollapsed?0:2,transition:"all .2s ease"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <span style={{fontSize:18,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:1}}>{fmtMonthFR(mk+"-01")}</span>
-                      <span style={{fontSize:11,color:"#6B7280",fontWeight:500}}>{monthTotal} paris</span>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <span style={{fontSize:16,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}$</span>
-                      <span style={{color:"#6B7280",fontSize:13,transition:"transform .2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
-                    </div>
-                  </button>
+              if(filtered.length===0&&bets.length>0)return<div style={{color:"#6B7280",fontSize:13,padding:"20px",textAlign:"center"}}>Aucun pari pour ces filtres</div>;
 
-                  {/* ── DAYS — only when expanded ── */}
-                  {!isCollapsed&&(
-                    <div style={{borderRadius:"0 0 12px 12px",overflow:"hidden",border:"1px solid #1F2937",borderTop:"none"}}>
-                    {monthDays.map((dk,di)=>{
-                      const dayBetsAll=byDay[dk];
-                      const dayBets=dayBetsAll.filter(b=>{
-                        if(fStatus!=="All"&&b.status!==fStatus)return false;
-                        if(fGames.length>0&&!fGames.includes(b.game))return false;
-                        if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
-                        if(fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
-                        if(fRole!=="All"&&b.role!==fRole)return false;
-                        if(fLeague!=="All"&&b.league!==fLeague)return false;
-                        if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
-                        if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
-                        if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
-                        if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
-                        if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
-                        if(fLive&&!b.isLive)return false;
-                        if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
-                        if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
-                        return true;
-                      });
-                      if(dayBets.length===0)return null;
-                      const dayP=dayBets.filter(b=>b.status!=="pending").reduce((s,b)=>s+b.profit,0);
-                      const hasSt=dayBets.some(b=>b.status!=="pending");
-                      const allDaySelected=dayBets.every(b=>selectedIds.includes(b.id));
-                      return(
-                        <div key={dk} style={{borderTop:di>0?"1px solid #0A0F1A":"none"}}>
-                          {/* ── Day header — bigger, white ── */}
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px 7px",background:"#0B1220"}}>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              {selectMode&&<button onClick={()=>setSelectedIds(ids=>allDaySelected?ids.filter(id=>!dayBets.map(b=>b.id).includes(id)):[...new Set([...ids,...dayBets.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(allDaySelected?"#22C55E":"#6B7280"),background:allDaySelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
-                              <span style={{fontSize:16,fontWeight:700,color:"#E5E7EB",letterSpacing:.2,borderBottom:"2px solid rgba(255,255,255,0.15)",paddingBottom:2}}>{fmtDayFR(dk)}</span>
-                            </div>
-                            {hasSt&&<span style={{fontSize:12,fontWeight:700,color:dayP>=0?"#22C55E":"#F87171"}}>{dayP>=0?"+":""}{dayP.toFixed(0)}$</span>}
-                          </div>
-                          {/* ── Bets ── */}
-                          {dayBets.map(b=>(
-                            selectMode
-                              ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)}/>
-                              :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)}/>
-                          ))}
+              // Pending on top
+              const pending=filtered.filter(b=>b.status==="pending");
+              const settled=filtered.filter(b=>b.status!=="pending");
+
+              // Group settled by settle date (settledAt → date), fallback to datetime date
+              const settledByDay={};
+              const settledDayKeys=[];
+              settled.forEach(b=>{
+                const sk=b.settledAt?new Date(b.settledAt).toISOString().slice(0,10):toDateKey(b.datetime)||"?";
+                if(!settledByDay[sk]){settledByDay[sk]=[];settledDayKeys.push(sk);}
+                settledByDay[sk].push(b);
+              });
+
+              // Group settle days by month
+              const settledByMonth={};
+              const settledMonthKeys=[];
+              settledDayKeys.forEach(dk=>{
+                const mk=dk.slice(0,7);
+                if(!settledByMonth[mk]){settledByMonth[mk]=[];settledMonthKeys.push(mk);}
+                settledByMonth[mk].push(dk);
+              });
+
+              const allPendingSelected=pending.length>0&&pending.every(b=>selectedIds.includes(b.id));
+
+              return(
+                <div>
+                  {/* ── PENDING SECTION ── */}
+                  {pending.length>0&&(
+                    <div style={{marginBottom:10}}>
+                      {/* Gros header En attente */}
+                      <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:14,padding:"14px 18px",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          {selectMode&&<button onClick={()=>setSelectedIds(ids=>allPendingSelected?ids.filter(id=>!pending.map(b=>b.id).includes(id)):[...new Set([...ids,...pending.map(b=>b.id)])])} style={{width:18,height:18,borderRadius:5,border:"2px solid "+(allPendingSelected?"#22C55E":"#374151"),background:allPendingSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
+                          <span style={{fontSize:18,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1}}>⏳ En attente</span>
+                          <span style={{fontSize:12,color:"#374151",fontWeight:500}}>{pending.length} paris</span>
                         </div>
-                      );
-                    })}
+                      </div>
+                      <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
+                        {pending.map(b=>(
+                          selectMode
+                            ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)}/>
+                            :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)}/>
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {/* ── SETTLED — groupés par mois puis par jour de settlement ── */}
+                  {settledMonthKeys.map(mk=>{
+                    const monthDays=settledByMonth[mk];
+                    const monthBets=monthDays.flatMap(dk=>settledByDay[dk]);
+                    const monthP=monthBets.reduce((s,b)=>s+b.profit,0);
+                    const allMonthSelected=monthBets.every(b=>selectedIds.includes(b.id));
+                    return(
+                      <div key={mk} style={{marginBottom:10}}>
+                        {/* Gros header mois */}
+                        <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"14px 18px",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            {selectMode&&<button onClick={()=>setSelectedIds(ids=>allMonthSelected?ids.filter(id=>!monthBets.map(b=>b.id).includes(id)):[...new Set([...ids,...monthBets.map(b=>b.id)])])} style={{width:18,height:18,borderRadius:5,border:"2px solid "+(allMonthSelected?"#22C55E":"#374151"),background:allMonthSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
+                            <span style={{fontSize:18,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:1}}>{fmtMonthFR(mk+"-01")}</span>
+                            <span style={{fontSize:12,color:"#374151",fontWeight:500}}>{monthBets.length} paris</span>
+                          </div>
+                          <span style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}$</span>
+                        </div>
+
+                        {/* Jours */}
+                        <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
+                          {monthDays.map((dk,di)=>{
+                            const dayBets=settledByDay[dk];
+                            const dayP=dayBets.reduce((s,b)=>s+b.profit,0);
+                            const allDaySelected=dayBets.every(b=>selectedIds.includes(b.id));
+                            // Format day nicely
+                            const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
+                            return(
+                              <div key={dk} style={{borderTop:di>0?"1px solid #0A0F1A":"none"}}>
+                                {/* Séparateur jour */}
+                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px 7px",background:"#0B1220"}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                    {selectMode&&<button onClick={()=>setSelectedIds(ids=>allDaySelected?ids.filter(id=>!dayBets.map(b=>b.id).includes(id)):[...new Set([...ids,...dayBets.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(allDaySelected?"#22C55E":"#6B7280"),background:allDaySelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
+                                    <span style={{fontSize:15,fontWeight:700,color:"#E5E7EB",letterSpacing:.2,borderBottom:"2px solid rgba(255,255,255,0.25)",paddingBottom:1}}>{dayLabel}</span>
+                                  </div>
+                                  <span style={{fontSize:13,fontWeight:700,color:dayP>=0?"#22C55E":"#F87171"}}>{dayP>=0?"+":""}{dayP.toFixed(0)}$</span>
+                                </div>
+                                {dayBets.map(b=>(
+                                  selectMode
+                                    ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)}/>
+                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)}/>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
-            })}
-            {monthKeys.length>visibleMonths&&(
-              <button onClick={()=>setVisibleMonths(v=>v+3)} style={{width:"100%",padding:"13px",background:"#111827",border:"1px solid #1F2937",borderRadius:12,color:"#9CA3AF",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:13,marginTop:4}}>
-                ↓ Voir {Math.min(3,monthKeys.length-visibleMonths)} mois de plus ({monthKeys.length-visibleMonths} restants)
-              </button>
-            )}
+            })()}
           </div>
         )}
 
@@ -4035,17 +4120,46 @@ export default function App(){
               return(
                 <div key={game} style={{marginBottom:10}}>
                   {/* Accordéon header */}
-                  <button onClick={toggle} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid "+(isOpen?cfg.accent+"55":"#1F2937"),borderRadius:isOpen?"14px 14px 0 0":"14px",padding:"12px 14px",cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <GameLogo game={game} size={18}/>
-                      <div>
+                  <button onClick={toggle} style={{width:"100%",display:"flex",flexDirection:"column",alignItems:"stretch",background:"#111827",border:"1px solid "+(isOpen?cfg.accent+"55":"#1F2937"),borderRadius:isOpen?"14px 14px 0 0":"14px",padding:"12px 14px",cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease",textAlign:"left"}}>
+                    {/* Top row */}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <GameLogo game={game} size={18}/>
                         <span style={{fontSize:14,fontWeight:700,color:cfg.accent}}>{game}</span>
-                        <span style={{fontSize:10,color:"#6B7280",marginLeft:8}}>{gs.count} paris</span>
+                        <span style={{fontSize:10,color:"#6B7280"}}>{gs.count} paris</span>
                       </div>
-                      <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}$</span>
-                      <span style={{fontSize:10,color:"#6B7280"}}>{gs.wr.toFixed(0)}% WR · @{gs.avgOdds.toFixed(2)}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}$</span>
+                        <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
+                      </div>
                     </div>
-                    <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
+                    {/* Stats row */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+                      <span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>{gs.wr.toFixed(0)}% WR</span>
+                      <span style={{fontSize:11,color:"#6B7280"}}>·</span>
+                      <span style={{fontSize:11,fontWeight:700,color:gs.roi>=0?"#22C55E":"#EF4444"}}>{gs.roi>=0?"+":""}{gs.roi.toFixed(1)}% ROI</span>
+                      <span style={{fontSize:11,color:"#6B7280"}}>·</span>
+                      <span style={{fontSize:11,color:"#9CA3AF"}}>@{gs.avgOdds.toFixed(2)} moy.</span>
+                      <span style={{fontSize:11,color:"#6B7280"}}>·</span>
+                      <span style={{fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444",background:gs.profit>=0?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",padding:"1px 6px",borderRadius:5}}>{gs.profit>=0?"+":""}{bankroll>0?(gs.profit/bankroll*100).toFixed(1):0}% BK</span>
+                    </div>
+                    {/* Progress bar: WR */}
+                    {(()=>{
+                      const wr=gs.wr;
+                      const roiAbs=Math.min(Math.abs(gs.roi),50); // cap à 50%
+                      return(
+                        <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                          {/* WR bar */}
+                          <div style={{flex:1,height:4,background:"#1F2937",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:wr+"%",background:wr>55?"linear-gradient(90deg,#22C55E,#4ADE80)":wr<45?"linear-gradient(90deg,#EF4444,#F87171)":"linear-gradient(90deg,#9CA3AF,#6B7280)",borderRadius:2,transition:"width .5s ease"}}/>
+                          </div>
+                          {/* ROI bar */}
+                          <div style={{flex:1,height:4,background:"#1F2937",borderRadius:2,overflow:"hidden",position:"relative"}}>
+                            <div style={{position:"absolute",top:0,left:gs.roi>=0?"50%":"calc(50% - "+(roiAbs/100*100/2)+"%)",height:"100%",width:(roiAbs/50*50)+"%",background:gs.roi>=0?"linear-gradient(90deg,#3B82F6,#06B6D4)":"linear-gradient(90deg,#EF4444,#F87171)",borderRadius:2,transition:"all .5s ease"}}/>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </button>
 
                   {isOpen&&(
@@ -4586,14 +4700,24 @@ export default function App(){
         })()}
 
         {/* ── BOTTOM NAV ── */}
-        <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0D1526",borderTop:"1px solid #1F2937",display:"flex",justifyContent:"space-around",padding:"8px 0 12px",zIndex:50,backdropFilter:"blur(12px)"}}>
-          {NAV.map(n=>(
-            <button key={n.id} className={"navitem "+(view===n.id?"on":"")} onClick={()=>setView(n.id)}>
-              <span style={{fontSize:18,filter:view===n.id?"drop-shadow(0 0 6px rgba(167,139,250,0.6))":"none"}}>{n.icon}</span>
-              <span className="lbl">{n.label}</span>
-            </button>
-          ))}
-        </div>
+        {(()=>{
+          const pendingCount=bets.filter(b=>b.status==="pending").length;
+          return(
+            <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0D1526",borderTop:"1px solid #1F2937",display:"flex",justifyContent:"space-around",padding:"8px 0 12px",zIndex:50,backdropFilter:"blur(12px)"}}>
+              {NAV.map(n=>(
+                <button key={n.id} className={"navitem "+(view===n.id?"on":"")} onClick={()=>setView(n.id)} style={{position:"relative"}}>
+                  <span style={{fontSize:18,filter:view===n.id?"drop-shadow(0 0 6px rgba(167,139,250,0.6))":"none"}}>{n.icon}</span>
+                  {n.id==="mesparis"&&pendingCount>0&&(
+                    <span style={{position:"absolute",top:2,right:8,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 5px",minWidth:16,textAlign:"center",lineHeight:"14px",border:"1.5px solid #0D1526"}}>
+                      {pendingCount}
+                    </span>
+                  )}
+                  <span className="lbl">{n.label}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* ── CALENDRIER MODAL ── */}
         {showCal&&(
