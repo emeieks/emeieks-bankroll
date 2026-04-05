@@ -562,6 +562,25 @@ xiaoxia:{game:"LoL",league:"LPL",role:"Support",team:"Ultra Prime"},
   diable:{game:"LoL",league:"LCK",role:"Bot Laner",team:"BNK FearX"},
   kellin:{game:"LoL",league:"LCK",role:"Support",team:"BNK FearX"},
   daystar:{game:"LoL",league:"LCK",role:"Mid Laner",team:"BNK FearX"},
+  // RRQ (Rex Regum Qeon) — VCT Pacific 2026
+  crazyguy:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"Rex Regum Qeon"},
+  xffero:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Rex Regum Qeon"},
+  jemkin:{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"Rex Regum Qeon"},
+  kushy:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Rex Regum Qeon"},
+  monyet:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Rex Regum Qeon"},
+  // ZETA DIVISION — VCT Pacific 2026
+  "sugarz3ro":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"ZETA DIVISION"},
+  "eko_zeta":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"ZETA DIVISION"},
+  absol:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"ZETA DIVISION"},
+  "xdll":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"ZETA DIVISION"},
+  "syouta":{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"ZETA DIVISION"},
+  // B8 (CS2) — PGL Bucharest 2026
+  alex666:{game:"CS2",league:"",role:"IGL",team:"B8"},
+  npl:{game:"CS2",league:"",role:"Rifler",team:"B8"},
+  kensizor:{game:"CS2",league:"",role:"Rifler",team:"B8"},
+  esenthial:{game:"CS2",league:"",role:"Rifler",team:"B8"},
+  s1zzi:{game:"CS2",league:"",role:"AWPer",team:"B8"},
+  // Wildcard CS2 update: CLASIA → nEMANHA (mars 2026)
   // BNK FearX — Valorant (VCT Challengers Korea 2026)
   "felix_bfx":{game:"Valorant",league:"VCT Challengers KR",role:"Duelist",team:"BNK FearX VAL"},
   "empty_bfx":{game:"Valorant",league:"VCT Challengers KR",role:"Initiator",team:"BNK FearX VAL"},
@@ -914,7 +933,7 @@ matheos:{game:"CS2",league:"",role:"Rifler",team:"FOKUS"},
 mhL:{game:"CS2",league:"",role:"AWPer",team:"Wildcard CS"},
 reck:{game:"CS2",league:"",role:"Rifler",team:"Wildcard CS"},
 hext:{game:"CS2",league:"",role:"Rifler",team:"Wildcard CS"},
-clasia:{game:"CS2",league:"",role:"Entry",team:"Wildcard CS"},
+nemanha_wc:{game:"CS2",league:"",role:"Rifler",team:"Wildcard CS"},
 peeping:{game:"CS2",league:"",role:"IGL",team:"Wildcard CS"},
 // Team Voca (CS2, avril 2026) — junior & Jeorge rejoints en mars 2026
 junior_voca:{game:"CS2",league:"",role:"Entry",team:"Team Voca"},
@@ -1190,6 +1209,537 @@ klaus:{game:"Valorant",league:"Pacific",role:"IGL",team:"VARREL"},
 xuna:{game:"Valorant",league:"Pacific",role:"Controller",team:"VARREL"},
 oonzmlp:{game:"Valorant",league:"Pacific",role:"Initiator",team:"VARREL"},
 zexy:{game:"Valorant",league:"Pacific",role:"Sentinel",team:"VARREL"},
+
+  // ═══════════════════════════════════════════════
+  // VCT AMERICAS 2026 — ROSTERS COMPLETS
+  // ═══════════════════════════════════════════════
+  // FURIA (rebuild complet 2026)
+  nerve_furia:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"FURIA VAL 26"},
+  // G2 Esports Americas (Ascension)
+  babybay_g2:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"G2 VAL 26"},
+  jawgemo_g2:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"G2 VAL 26"},
+  leaf_g2:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"G2 VAL 26"},
+  trent_g2:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"G2 VAL 26"},
+  // LOUD
+  pancada_loud:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"LOUD VAL 26"},
+  // MIBR
+  aspas:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"MIBR VAL 26"},
+  zekken:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"MIBR VAL 26"},
+  mazino_mibr:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"MIBR VAL 26"},
+  tex_mibr:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"MIBR VAL 26"},
+  less_mibr:{game:"Valorant",league:"VCT Americas",role:"Flex",team:"MIBR VAL 26"},
+  // NRG (Champions 2025)
+  ethan_nrg:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"NRG VAL 26"},
+  mada_nrg:{game:"Valorant",league:"VCT Americas",role:"Controller",team:"NRG VAL 26"},
+  brawk_nrg:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"NRG VAL 26"},
+  skuba_nrg:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"NRG VAL 26"},
+  keiko_nrg:{game:"Valorant",league:"VCT Americas",role:"Flex",team:"NRG VAL 26"},
+  // Sentinels
+  kyu_sen:{game:"Valorant",league:"VCT Americas",role:"Flex",team:"Sentinels VAL"},
+  // 100 Thieves
+  asuna_100t:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"100T VAL 26"},
+  bang_100t:{game:"Valorant",league:"VCT Americas",role:"Support",team:"100T VAL 26"},
+  vora_100t:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"100T VAL 26"},
+  // Cloud9
+  oxy_c9:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"Cloud9 VAL"},
+  penny_c9:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"Cloud9 VAL"},
+  // Evil Geniuses
+  c0m_eg:{game:"Valorant",league:"VCT Americas",role:"IGL",team:"EG VAL"},
+  supamen_eg:{game:"Valorant",league:"VCT Americas",role:"Duelist",team:"EG VAL"},
+  bao_eg:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"EG VAL"},
+  // Leviatán
+  spike_lev:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"Leviatán VAL"},
+  sato_lev:{game:"Valorant",league:"VCT Americas",role:"Flex",team:"Leviatán VAL"},
+  // KRÜ Esports
+  shyy:{game:"Valorant",league:"VCT Americas",role:"Initiator",team:"KRÜ VAL"},
+  melser:{game:"Valorant",league:"VCT Americas",role:"Sentinel",team:"KRÜ VAL"},
+  // ENVY (Ascension)
+
+  // ═══════════════════════════════════════════════
+  // VCT EMEA 2026 — ROSTERS COMPLETS
+  // ═══════════════════════════════════════════════
+  // BBL Esports (champion Kickoff)
+  // Fnatic
+  alfajer_fnc:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Fnatic VAL 26"},
+  boaster_fnc:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Fnatic VAL 26"},
+  // Team Vitality (+ Chronicle)
+  chronicle_vit:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Vitality VAL"},
+  derke:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Vitality VAL"},
+  profek:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Vitality VAL"},
+  jamppi:{game:"Valorant",league:"VCT EMEA",role:"Flex",team:"Vitality VAL"},
+  sayonara:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Vitality VAL"},
+  // Team Liquid
+  nats_tl:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Team Liquid VAL"},
+  // Gentle Mates
+  starxo:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Gentle Mates VAL"},
+  glyph:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Gentle Mates VAL"},
+  marteen:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Gentle Mates VAL"},
+  bipo:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Gentle Mates VAL"},
+  minny:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Gentle Mates VAL"},
+  // Team Heretics
+  boo_th:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Team Heretics VAL"},
+  riens:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Team Heretics VAL"},
+  benjyfishy:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Team Heretics VAL"},
+  comeback_th:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Team Heretics VAL"},
+  // NAVI
+  filu:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"NAVI VAL"},
+  chloric:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"NAVI VAL"},
+  hiro_navi:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"NAVI VAL"},
+  kolosha:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"NAVI VAL"},
+  // Karmine Corp (ex-NAVI core)
+  suygetsu_kc:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Karmine Corp VAL"},
+  avez_kc:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Karmine Corp VAL"},
+  dos9_kc:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Karmine Corp VAL"},
+  lewn_kc:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"Karmine Corp VAL"},
+  n4rrate_kc:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"Karmine Corp VAL"},
+  // GIANTX
+  cloud_gx:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"GIANTX VAL"},
+  grubinho:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"GIANTX VAL"},
+  flickless:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"GIANTX VAL"},
+  ara_gx:{game:"Valorant",league:"VCT EMEA",role:"Flex",team:"GIANTX VAL"},
+  westside:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"GIANTX VAL"},
+  // FUT Esports
+  sociablee:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"FUT Esports VAL"},
+  yetujey:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"FUT Esports VAL"},
+  xeus:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"FUT Esports VAL"},
+  krostaly:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"FUT Esports VAL"},
+  s0pp:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"FUT Esports VAL"},
+  // Eternal Fire (remplace ULF)
+  izzy_ef:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"Eternal Fire VAL"},
+  nekky_ef:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"Eternal Fire VAL"},
+  audaz_ef:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"Eternal Fire VAL"},
+  favian_ef:{game:"Valorant",league:"VCT EMEA",role:"Flex",team:"Eternal Fire VAL"},
+  // PCIFIC Esports
+  cned:{game:"Valorant",league:"VCT EMEA",role:"Duelist",team:"PCIFIC Esports VAL"},
+  al0rante:{game:"Valorant",league:"VCT EMEA",role:"IGL",team:"PCIFIC Esports VAL"},
+  qpert:{game:"Valorant",league:"VCT EMEA",role:"Controller",team:"PCIFIC Esports VAL"},
+  seven_pcf:{game:"Valorant",league:"VCT EMEA",role:"Initiator",team:"PCIFIC Esports VAL"},
+  ninja_pcf:{game:"Valorant",league:"VCT EMEA",role:"Sentinel",team:"PCIFIC Esports VAL"},
+
+  // ═══════════════════════════════════════════════
+  // VCT PACIFIC 2026 — équipes restantes
+  // ═══════════════════════════════════════════════
+  // T1
+  buzz_t1:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"T1 VAL"},
+  izu_t1:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"T1 VAL"},
+  meteor_t1:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"T1 VAL"},
+  munchkin_t1:{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"T1 VAL"},
+  stax:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"T1 VAL"},
+  // DRX
+  mako_drx:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"DRX VAL"},
+  yong_drx:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"DRX VAL"},
+  // Gen.G
+  iZu_geng:{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Gen.G VAL"},
+  ryu_geng:{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"Gen.G VAL"},
+  pumpkin_geng:{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Gen.G VAL"},
+  hope_geng:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Gen.G VAL"},
+  k1ng_geng:{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"Gen.G VAL"},
+  // Paper Rex
+  something_prx:{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Paper Rex VAL"},
+  // Global Esports
+  "wippie":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Global Esports VAL"},
+  "borkum":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"Global Esports VAL"},
+  "Lmemore":{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"Global Esports VAL"},
+  "BerserX":{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"Global Esports VAL"},
+  // Team Secret
+  "jessievash":{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"Team Secret VAL"},
+  "kellyS_ts":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"Team Secret VAL"},
+  "sylvan_ts":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"Team Secret VAL"},
+  "tenten_ts":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"Team Secret VAL"},
+  "rimuru_ts":{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"Team Secret VAL"},
+  // Nongshim RedForce
+  "xross_ns":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"NSR VAL"},
+  "rb_ns":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"NSR VAL"},
+  "francis_ns":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"NSR VAL"},
+  "dambi_ns":{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"NSR VAL"},
+  "ivy_ns":{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"NSR VAL"},
+  // DFM
+  "TENNN_dfm":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"DFM VAL"},
+  "Reita_dfm":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"DFM VAL"},
+  "XQQ_dfm":{game:"Valorant",league:"VCT Pacific",role:"IGL",team:"DFM VAL"},
+  // FULL SENSE
+  "boo_fs":{game:"Valorant",league:"VCT Pacific",role:"Duelist",team:"FULL SENSE VAL"},
+  "noppex":{game:"Valorant",league:"VCT Pacific",role:"Initiator",team:"FULL SENSE VAL"},
+  "garnetS":{game:"Valorant",league:"VCT Pacific",role:"Controller",team:"FULL SENSE VAL"},
+  "surf_fs":{game:"Valorant",league:"VCT Pacific",role:"Flex",team:"FULL SENSE VAL"},
+  "JessieVash_fs":{game:"Valorant",league:"VCT Pacific",role:"Sentinel",team:"FULL SENSE VAL"},
+
+  // ═══════════════════════════════════════════════
+  // VCT CHINA 2026 — équipes restantes
+  // ═══════════════════════════════════════════════
+  // Bilibili Gaming
+  "mistic_blg":{game:"Valorant",league:"VCT China",role:"Duelist",team:"BLG VAL"},
+  "lmeore_blg":{game:"Valorant",league:"VCT China",role:"Controller",team:"BLG VAL"},
+  "muggle_blg":{game:"Valorant",league:"VCT China",role:"IGL",team:"BLG VAL"},
+  "xccurate":{game:"Valorant",league:"VCT China",role:"Initiator",team:"BLG VAL"},
+  "Cr4t":{game:"Valorant",league:"VCT China",role:"Sentinel",team:"BLG VAL"},
+  // FPX
+  "berlin_fpx":{game:"Valorant",league:"VCT China",role:"Initiator",team:"FPX VAL"},
+  // XLG Esports
+  "stax_xlg":{game:"Valorant",league:"VCT China",role:"Duelist",team:"XLG VAL"},
+  "s1mon_xlg":{game:"Valorant",league:"VCT China",role:"Controller",team:"XLG VAL"},
+  "mDaiki":{game:"Valorant",league:"VCT China",role:"Flex",team:"XLG VAL"},
+  "CHICHOO":{game:"Valorant",league:"VCT China",role:"Sentinel",team:"XLG VAL"},
+  // JDG
+  "LXQ":{game:"Valorant",league:"VCT China",role:"Duelist",team:"JDG VAL"},
+  "Rb_jdg":{game:"Valorant",league:"VCT China",role:"Initiator",team:"JDG VAL"},
+  "Autumn":{game:"Valorant",league:"VCT China",role:"Flex",team:"JDG VAL"},
+  "cb_jdg":{game:"Valorant",league:"VCT China",role:"Sentinel",team:"JDG VAL"},
+  // Wolves Esports
+  "Satoshi_wolves":{game:"Valorant",league:"VCT China",role:"Duelist",team:"Wolves VAL"},
+  "ZmjjKK":{game:"Valorant",league:"VCT China",role:"Controller",team:"Wolves VAL"},
+
+  // ═══════════════════════════════════════════════
+  // LCK 2026 — ROSTERS COMPLETS
+  // ═══════════════════════════════════════════════
+  // T1 (Worlds 2025 champs — Gumayusi → Peyz)
+  // faker, oner, peyz déjà dans la base — ajout des manquants
+  zeus_t1:{game:"LoL",league:"LCK",role:"Top Laner",team:"T1"},
+  keria:{game:"LoL",league:"LCK",role:"Support",team:"T1"},
+  // Gen.G (déjà chovy, ruler)
+  doran_geng:{game:"LoL",league:"LCK",role:"Top Laner",team:"Gen.G"},
+  peanut:{game:"LoL",league:"LCK",role:"Jungler",team:"Gen.G"},
+  canyon:{game:"LoL",league:"LCK",role:"Jungler",team:"Gen.G"},
+  lehends:{game:"LoL",league:"LCK",role:"Support",team:"Gen.G"},
+  // HLE (Zeus, Kanavi, Zeka, Gumayusi, Delight)
+  kanavi:{game:"LoL",league:"LCK",role:"Jungler",team:"HLE"},
+  zeka:{game:"LoL",league:"LCK",role:"Mid Laner",team:"HLE"},
+  delight:{game:"LoL",league:"LCK",role:"Support",team:"HLE"},
+  // gumayusi déjà dans la base
+  zeus_hle:{game:"LoL",league:"LCK",role:"Top Laner",team:"HLE"},
+  // KT Rolster (Aiming, Ghost-rôle swap support, Cuzz, Pollu, nouveau mid)
+  aiming:{game:"LoL",league:"LCK",role:"Bot Laner",team:"KT Rolster"},
+  ghost_kt:{game:"LoL",league:"LCK",role:"Support",team:"KT Rolster"},
+  cuzz:{game:"LoL",league:"LCK",role:"Jungler",team:"KT Rolster"},
+  bdd:{game:"LoL",league:"LCK",role:"Mid Laner",team:"KT Rolster"},
+  kiin:{game:"LoL",league:"LCK",role:"Top Laner",team:"KT Rolster"},
+  // Dplus KIA (ShowMaker, Lucid, Siwoo, Smash, Career)
+  showmaker:{game:"LoL",league:"LCK",role:"Mid Laner",team:"Dplus KIA"},
+  lucid:{game:"LoL",league:"LCK",role:"Jungler",team:"Dplus KIA"},
+  siwoo:{game:"LoL",league:"LCK",role:"Top Laner",team:"Dplus KIA"},
+  smash_dp:{game:"LoL",league:"LCK",role:"Bot Laner",team:"Dplus KIA"},
+  career_dp:{game:"LoL",league:"LCK",role:"Support",team:"Dplus KIA"},
+  // DRX (Willer, ucal + nouveaux)
+  willer_drx:{game:"LoL",league:"LCK",role:"Jungler",team:"DRX"},
+  ucal:{game:"LoL",league:"LCK",role:"Mid Laner",team:"DRX"},
+  // FEARX — ajout Daystar déjà fait, joueurs de base
+  // BNK FearX LoL déjà complet dans la base
+  // Nongshim RedForce (Scout, Sponge, Taeyoon)
+  scout_ns:{game:"LoL",league:"LCK",role:"Mid Laner",team:"Nongshim RedForce"},
+  sponge_ns:{game:"LoL",league:"LCK",role:"Jungler",team:"Nongshim RedForce"},
+  // DN SOOPers (nouveau)
+  kingen_dns:{game:"LoL",league:"LCK",role:"Top Laner",team:"DN SOOPers"},
+  beryl_dns:{game:"LoL",league:"LCK",role:"Support",team:"DN SOOPers"},
+  // BRION
+  teddy_bro:{game:"LoL",league:"LCK",role:"Bot Laner",team:"BRION"},
+  gideon_bro:{game:"LoL",league:"LCK",role:"Jungler",team:"BRION"},
+
+  // ═══════════════════════════════════════════════
+  // LPL 2026 — ROSTERS COMPLETS
+  // ═══════════════════════════════════════════════
+  // BLG (Xun, Viper revenu + Knight, Bin, ON)
+  xun_blg:{game:"LoL",league:"LPL",role:"Jungler",team:"BLG"},
+  viper_blg:{game:"LoL",league:"LPL",role:"Bot Laner",team:"BLG"},
+  bin_blg:{game:"LoL",league:"LPL",role:"Top Laner",team:"BLG"},
+  on_blg:{game:"LoL",league:"LPL",role:"Support",team:"BLG"},
+  // JDG (GALA, Vampire, Xiaoxu, JunJia, HongQ)
+  gala:{game:"LoL",league:"LPL",role:"Bot Laner",team:"JD Gaming"},
+  vampire_jdg:{game:"LoL",league:"LPL",role:"Support",team:"JD Gaming"},
+  xiaoxu:{game:"LoL",league:"LPL",role:"Top Laner",team:"JD Gaming"},
+  junjia:{game:"LoL",league:"LPL",role:"Jungler",team:"JD Gaming"},
+  hongq:{game:"LoL",league:"LPL",role:"Mid Laner",team:"JD Gaming"},
+  // Weibo Gaming (Elk, jiejie, Zika/Breathe, Crisp/Erha)
+  elk:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Weibo Gaming"},
+  jiejie:{game:"LoL",league:"LPL",role:"Jungler",team:"Weibo Gaming"},
+  zika:{game:"LoL",league:"LPL",role:"Top Laner",team:"Weibo Gaming"},
+  xiaohu:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Weibo Gaming"},
+  crisp:{game:"LoL",league:"LPL",role:"Support",team:"Weibo Gaming"},
+  // TES (naiyou remplace Kanavi, reste)
+  "369":{game:"LoL",league:"LPL",role:"Top Laner",team:"Top Esports"},
+  naiyou:{game:"LoL",league:"LPL",role:"Jungler",team:"Top Esports"},
+  rookie:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Top Esports"},
+  jackeylove:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Top Esports"},
+  mark_tes:{game:"LoL",league:"LPL",role:"Support",team:"Top Esports"},
+  // EDG (Zdz, Xiaohao, Angel, Leave, Parukia)
+  zdz:{game:"LoL",league:"LPL",role:"Top Laner",team:"EDward Gaming LPL"},
+  xiaohao:{game:"LoL",league:"LPL",role:"Jungler",team:"EDward Gaming LPL"},
+  angel:{game:"LoL",league:"LPL",role:"Mid Laner",team:"EDward Gaming LPL"},
+  leave_edg:{game:"LoL",league:"LPL",role:"Bot Laner",team:"EDward Gaming LPL"},
+  parukia:{game:"LoL",league:"LPL",role:"Support",team:"EDward Gaming LPL"},
+  // Anyone's Legend (inchangé)
+  ame:{game:"LoL",league:"LPL",role:"Carry",team:"Anyone's Legend"},
+  nothingToSay:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Anyone's Legend"},
+  "fy":{game:"LoL",league:"LPL",role:"Support",team:"Anyone's Legend"},
+  xxs_al:{game:"LoL",league:"LPL",role:"Top Laner",team:"Anyone's Legend"},
+  xnova:{game:"LoL",league:"LPL",role:"Flex",team:"Anyone's Legend"},
+  // LNG
+  ale_lng:{game:"LoL",league:"LPL",role:"Top Laner",team:"LNG Esports"},
+  leyan:{game:"LoL",league:"LPL",role:"Jungler",team:"LNG Esports"},
+  // NIP (Care mid, Zhuo, Assum)
+  care_nip:{game:"LoL",league:"LPL",role:"Mid Laner",team:"NIP LPL"},
+  zhuo_nip:{game:"LoL",league:"LPL",role:"Flex",team:"NIP LPL"},
+
+  // ═══════════════════════════════════════════════
+  // CS2 — TOP 60 HLTV (manquants)
+  // ═══════════════════════════════════════════════
+  // Vitality (#1 HLTV) — ZywOo déjà là + compléter
+  mezii:{game:"CS2",league:"",role:"Rifler",team:"Vitality"},
+  floss:{game:"CS2",league:"",role:"Rifler",team:"Vitality"},
+  ropz:{game:"CS2",league:"",role:"Rifler",team:"Vitality"},
+  brollan:{game:"CS2",league:"",role:"Rifler",team:"Vitality"},
+  // MOUZ (torzsi AWP)
+  torzsi:{game:"CS2",league:"",role:"AWPer",team:"MOUZ"},
+  xertioN:{game:"CS2",league:"",role:"Rifler",team:"MOUZ"},
+  jimpphat:{game:"CS2",league:"",role:"Entry",team:"MOUZ"},
+  siuhy:{game:"CS2",league:"",role:"IGL",team:"MOUZ"},
+  "dexter_mouz":{game:"CS2",league:"",role:"Support",team:"MOUZ"},
+  // Team Spirit (donk)
+  donk:{game:"CS2",league:"",role:"Entry",team:"Team Spirit"},
+  magixx:{game:"CS2",league:"",role:"Rifler",team:"Team Spirit"},
+  chopper:{game:"CS2",league:"",role:"IGL",team:"Team Spirit"},
+  zont1x:{game:"CS2",league:"",role:"Rifler",team:"Team Spirit"},
+  tN1R:{game:"CS2",league:"",role:"AWPer",team:"Team Spirit"},
+  // Aurora (MAJ3R, XANTARES, woxic, Wicadia, soulfly)
+  "maj3r":{game:"CS2",league:"",role:"IGL",team:"Aurora"},
+  xantares:{game:"CS2",league:"",role:"Entry",team:"Aurora"},
+  woxic:{game:"CS2",league:"",role:"AWPer",team:"Aurora"},
+  wicadia:{game:"CS2",league:"",role:"Rifler",team:"Aurora"},
+  soulfly:{game:"CS2",league:"",role:"Rifler",team:"Aurora"},
+  // Falcons (karrigan déjà là — reste)
+  // FaZe déjà partiellement — compléter
+  twistzz:{game:"CS2",league:"",role:"Entry",team:"FaZe Clan"},
+  broky:{game:"CS2",league:"",role:"AWPer",team:"FaZe Clan"},
+  jcobbb:{game:"CS2",league:"",role:"Rifler",team:"FaZe Clan"},
+  // G2 (huNter, NiKo, malbsMd, SunPayus, HeavyGod)
+  niko_g2:{game:"CS2",league:"",role:"Rifler",team:"G2 Esports CS"},
+  "hunter_g2":{game:"CS2",league:"",role:"Entry",team:"G2 Esports CS"},
+  malbsmd:{game:"CS2",league:"",role:"AWPer",team:"G2 Esports CS"},
+  sunpayus:{game:"CS2",league:"",role:"Rifler",team:"G2 Esports CS"},
+  heavygod:{game:"CS2",league:"",role:"Rifler",team:"G2 Esports CS"},
+  // FUT Esports (HLTV #13)
+  "dem0n_fut":{game:"CS2",league:"",role:"IGL",team:"FUT Esports CS"},
+  "MAJ3R_fut":{game:"CS2",league:"",role:"AWPer",team:"FUT Esports CS"},
+  "calyx":{game:"CS2",league:"",role:"Rifler",team:"FUT Esports CS"},
+  "XANTARES_fut":{game:"CS2",league:"",role:"Entry",team:"FUT Esports CS"},
+  "woxic_fut":{game:"CS2",league:"",role:"Rifler",team:"FUT Esports CS"},
+  // Legacy (SA)
+  "art_leg":{game:"CS2",league:"",role:"IGL",team:"Legacy CS2"},
+  "latto":{game:"CS2",league:"",role:"Rifler",team:"Legacy CS2"},
+  "dumau":{game:"CS2",league:"",role:"Rifler",team:"Legacy CS2"},
+  "n1ssim":{game:"CS2",league:"",role:"AWPer",team:"Legacy CS2"},
+  "saadzin":{game:"CS2",league:"",role:"Rifler",team:"Legacy CS2"},
+  // HEROIC (raalz, shield, kraghen, bnox, cej0t + BERRY)
+  "cadiaN":{game:"CS2",league:"",role:"IGL",team:"HEROIC"},
+  "Nicoodoz":{game:"CS2",league:"",role:"Rifler",team:"HEROIC"},
+  "stavn":{game:"CS2",league:"",role:"Entry",team:"HEROIC"},
+  "TeSeS":{game:"CS2",league:"",role:"AWPer",team:"HEROIC"},
+  "susp_h":{game:"CS2",league:"",role:"Rifler",team:"HEROIC"},
+  // Liquid (Team Liquid CS2)
+  "nitr0_tl":{game:"CS2",league:"",role:"IGL",team:"Team Liquid CS"},
+  "jl_tl":{game:"CS2",league:"",role:"Rifler",team:"Team Liquid CS"},
+  "faven_tl":{game:"CS2",league:"",role:"Rifler",team:"Team Liquid CS"},
+  "NAF":{game:"CS2",league:"",role:"Rifler",team:"Team Liquid CS"},
+  "nertZ":{game:"CS2",league:"",role:"AWPer",team:"Team Liquid CS"},
+  // NAVI (Aleksib, iM, b1t, w0nderful, makazze)
+  "aleksib":{game:"CS2",league:"",role:"IGL",team:"NAVI CS"},
+  "im_navi":{game:"CS2",league:"",role:"Rifler",team:"NAVI CS"},
+  "b1t":{game:"CS2",league:"",role:"Entry",team:"NAVI CS"},
+  "w0nderful":{game:"CS2",league:"",role:"AWPer",team:"NAVI CS"},
+  "makazze":{game:"CS2",league:"",role:"Rifler",team:"NAVI CS"},
+  // Falcons CS2 (team Falcons CS2 — différent de Dota)
+  "xertioN_f":{game:"CS2",league:"",role:"Rifler",team:"Falcons CS"},
+  "flamez":{game:"CS2",league:"",role:"Entry",team:"Falcons CS"},
+  "kyousuke_f":{game:"CS2",league:"",role:"AWPer",team:"Falcons CS"},
+  "iM_f":{game:"CS2",league:"",role:"Rifler",team:"Falcons CS"},
+  "fl0m":{game:"CS2",league:"",role:"IGL",team:"Falcons CS"},
+  // paiN Gaming (SA)
+  "vsm":{game:"CS2",league:"",role:"Entry",team:"paiN Gaming CS"},
+  "brnz4n_pain":{game:"CS2",league:"",role:"Rifler",team:"paiN Gaming CS"},
+  "biguzera":{game:"CS2",league:"",role:"IGL",team:"paiN Gaming CS"},
+  "hardzao":{game:"CS2",league:"",role:"Rifler",team:"paiN Gaming CS"},
+  "nqz":{game:"CS2",league:"",role:"AWPer",team:"paiN Gaming CS"},
+  // TYLOO (top 21)
+  "SkYz":{game:"CS2",league:"",role:"AWPer",team:"TYLOO"},
+  "advent":{game:"CS2",league:"",role:"IGL",team:"TYLOO"},
+  "Zero_tyloo":{game:"CS2",league:"",role:"Rifler",team:"TYLOO"},
+  "Attacker":{game:"CS2",league:"",role:"Rifler",team:"TYLOO"},
+  "khk":{game:"CS2",league:"",role:"Entry",team:"TYLOO"},
+  // GamerLegion
+  "volt_gl":{game:"CS2",league:"",role:"AWPer",team:"GamerLegion"},
+  "isak_gl":{game:"CS2",league:"",role:"Rifler",team:"GamerLegion"},
+  "iM_gl":{game:"CS2",league:"",role:"Rifler",team:"GamerLegion"},
+  "DJF":{game:"CS2",league:"",role:"Entry",team:"GamerLegion"},
+  "dycha":{game:"CS2",league:"",role:"IGL",team:"GamerLegion"},
+  // Monte
+  "NertZ_m":{game:"CS2",league:"",role:"AWPer",team:"Monte CS"},
+  "PR":{game:"CS2",league:"",role:"Rifler",team:"Monte CS"},
+  "kaboose":{game:"CS2",league:"",role:"Rifler",team:"Monte CS"},
+  "smooya":{game:"CS2",league:"",role:"AWPer",team:"Monte CS"},
+  // NiP (NiP CS2)
+  "hampus":{game:"CS2",league:"",role:"IGL",team:"NiP CS"},
+  "Brollan_nip":{game:"CS2",league:"",role:"Entry",team:"NiP CS"},
+  "maxster":{game:"CS2",league:"",role:"Rifler",team:"NiP CS"},
+  "headtr1ck_nip":{game:"CS2",league:"",role:"AWPer",team:"NiP CS"},
+  // SINNERS (top 27)
+  "oskar_sin":{game:"CS2",league:"",role:"AWPer",team:"SINNERS"},
+  "FASHR":{game:"CS2",league:"",role:"Entry",team:"SINNERS"},
+  "arrowtide":{game:"CS2",league:"",role:"Rifler",team:"SINNERS"},
+  "majky":{game:"CS2",league:"",role:"Rifler",team:"SINNERS"},
+  "BOROS":{game:"CS2",league:"",role:"IGL",team:"SINNERS"},
+  // BetBoom
+  "Boombl4":{game:"CS2",league:"",role:"IGL",team:"BetBoom CS"},
+  "S1ren":{game:"CS2",league:"",role:"AWPer",team:"BetBoom CS"},
+  "d1Ledez":{game:"CS2",league:"",role:"Rifler",team:"BetBoom CS"},
+  "ArtFr0st":{game:"CS2",league:"",role:"Rifler",team:"BetBoom CS"},
+  "Magnojez":{game:"CS2",league:"",role:"Entry",team:"BetBoom CS"},
+  // BIG
+  "blamef":{game:"CS2",league:"",role:"IGL",team:"BIG CS"},
+  "tabsen":{game:"CS2",league:"",role:"Rifler",team:"BIG CS"},
+  "faven":{game:"CS2",league:"",role:"Rifler",team:"BIG CS"},
+  "JDC_big":{game:"CS2",league:"",role:"AWPer",team:"BIG CS"},
+  "gr1ks":{game:"CS2",league:"",role:"Entry",team:"BIG CS"},
+  // 9INE
+  "raalz":{game:"CS2",league:"",role:"IGL",team:"9INE CS"},
+  "kraghen":{game:"CS2",league:"",role:"AWPer",team:"9INE CS"},
+  "bnox":{game:"CS2",league:"",role:"Entry",team:"9INE CS"},
+  "flayy":{game:"CS2",league:"",role:"Rifler",team:"9INE CS"},
+  "cej0t":{game:"CS2",league:"",role:"Rifler",team:"9INE CS"},
+  // ECSTATIC
+  "TMB":{game:"CS2",league:"",role:"IGL",team:"ECSTATIC"},
+  "nicoodoz":{game:"CS2",league:"",role:"AWPer",team:"ECSTATIC"},
+  "Anlelele":{game:"CS2",league:"",role:"Rifler",team:"ECSTATIC"},
+  "Buzz_ec":{game:"CS2",league:"",role:"Entry",team:"ECSTATIC"},
+  "nutnut":{game:"CS2",league:"",role:"Rifler",team:"ECSTATIC"},
+  // Betclic Apogee
+  "hades_bc":{game:"CS2",league:"",role:"AWPer",team:"Betclic Apogee"},
+  "Demho":{game:"CS2",league:"",role:"Rifler",team:"Betclic Apogee"},
+  "Prism_bc":{game:"CS2",league:"",role:"Rifler",team:"Betclic Apogee"},
+  "eskyy":{game:"CS2",league:"",role:"Entry",team:"Betclic Apogee"},
+  "Dr3nquu":{game:"CS2",league:"",role:"Rifler",team:"Betclic Apogee"},
+  // TDK (Ax1Le, nafany)
+  "zorte":{game:"CS2",league:"",role:"AWPer",team:"TDK"},
+  "Ax1Le":{game:"CS2",league:"",role:"Entry",team:"TDK"},
+  "nafany":{game:"CS2",league:"",role:"IGL",team:"TDK"},
+  "sugaR":{game:"CS2",league:"",role:"Rifler",team:"TDK"},
+  "Xant3r":{game:"CS2",league:"",role:"Rifler",team:"TDK"},
+  // Marsborne
+  "WolfY_mb":{game:"CS2",league:"",role:"IGL",team:"Marsborne"},
+  "motm_mb":{game:"CS2",league:"",role:"AWPer",team:"Marsborne"},
+  "cxzi":{game:"CS2",league:"",role:"Rifler",team:"Marsborne"},
+  "chop_mb":{game:"CS2",league:"",role:"Entry",team:"Marsborne"},
+  "Grizz":{game:"CS2",league:"",role:"Rifler",team:"Marsborne"},
+  // EYEBALLERS
+  "JW":{game:"CS2",league:"",role:"AWPer",team:"EYEBALLERS"},
+  "maxster_eye":{game:"CS2",league:"",role:"Rifler",team:"EYEBALLERS"},
+  "Ro1f":{game:"CS2",league:"",role:"Entry",team:"EYEBALLERS"},
+  "bobeksde":{game:"CS2",league:"",role:"Rifler",team:"EYEBALLERS"},
+  "dex":{game:"CS2",league:"",role:"IGL",team:"EYEBALLERS"},
+  // Passion UA
+  "JT_pua":{game:"CS2",league:"",role:"IGL",team:"Passion UA"},
+  "try_pua":{game:"CS2",league:"",role:"AWPer",team:"Passion UA"},
+  "Senzu_pua":{game:"CS2",league:"",role:"Rifler",team:"Passion UA"},
+  "Kvem":{game:"CS2",league:"",role:"Entry",team:"Passion UA"},
+  "nicx":{game:"CS2",league:"",role:"Rifler",team:"Passion UA"},
+  // FlyQuest
+  "jks_fq":{game:"CS2",league:"",role:"Rifler",team:"FlyQuest CS"},
+  "INS_fq":{game:"CS2",league:"",role:"Entry",team:"FlyQuest CS"},
+  "Vexite":{game:"CS2",league:"",role:"IGL",team:"FlyQuest CS"},
+  "nettik":{game:"CS2",league:"",role:"AWPer",team:"FlyQuest CS"},
+  "story_fq":{game:"CS2",league:"",role:"Rifler",team:"FlyQuest CS"},
+
+  // ═══════════════════════════════════════════════
+  // DOTA 2 — ROSTERS COMPLETS (ESL One Birmingham 2026)
+  // ═══════════════════════════════════════════════
+  // Team Yandex (champions ESL One Birmingham 2026)
+  "watson_d2":{game:"Dota2",league:"",role:"Pos 1",team:"Team Yandex"},
+  "CHIRA_JUNIOR":{game:"Dota2",league:"",role:"Pos 2",team:"Team Yandex"},
+  "Noticed":{game:"Dota2",league:"",role:"Pos 3",team:"Team Yandex"},
+  "Saksa":{game:"Dota2",league:"",role:"Pos 4",team:"Team Yandex"},
+  "Malady":{game:"Dota2",league:"",role:"Pos 5",team:"Team Yandex"},
+  // Tundra (champion Birmingham — Malr1ne, Skiter, ATF, Cr1t, Sneyking)
+  "Malr1ne":{game:"Dota2",league:"",role:"Pos 1",team:"Tundra Esports"},
+  "Skiter":{game:"Dota2",league:"",role:"Pos 2",team:"Tundra Esports"},
+  "ATF":{game:"Dota2",league:"",role:"Pos 3",team:"Tundra Esports"},
+  "Cr1t":{game:"Dota2",league:"",role:"Pos 4",team:"Tundra Esports"},
+  "Sneyking":{game:"Dota2",league:"",role:"Pos 5",team:"Tundra Esports"},
+  // Xtreme Gaming (finaliste Birmingham)
+  "ame_xg":{game:"Dota2",league:"",role:"Pos 1",team:"Xtreme Gaming"},
+  "NothingToSay":{game:"Dota2",league:"",role:"Pos 2",team:"Xtreme Gaming"},
+  "fy_xg":{game:"Dota2",league:"",role:"Pos 5",team:"Xtreme Gaming"},
+  "Xxs":{game:"Dota2",league:"",role:"Pos 3",team:"Xtreme Gaming"},
+  "xNova":{game:"Dota2",league:"",role:"Pos 4",team:"Xtreme Gaming"},
+  // Team Spirit (Yatoro déjà là + reste)
+  // yatoro déjà dans la base
+  "Collapse":{game:"Dota2",league:"",role:"Pos 3",team:"Team Spirit"},
+  "mira_spirit":{game:"Dota2",league:"",role:"Pos 2",team:"Team Spirit"},
+  "Tobi_spirit":{game:"Dota2",league:"",role:"Pos 4",team:"Team Spirit"},
+  "miposhka":{game:"Dota2",league:"",role:"Pos 5",team:"Team Spirit"},
+  // PARIVISION (Satanic + 4)
+  "Satanic":{game:"Dota2",league:"",role:"Pos 1",team:"PARIVISION Dota2"},
+  "Palantimos":{game:"Dota2",league:"",role:"Pos 2",team:"PARIVISION Dota2"},
+  "bzm":{game:"Dota2",league:"",role:"Pos 3",team:"PARIVISION Dota2"},
+  "Save_d2":{game:"Dota2",league:"",role:"Pos 4",team:"PARIVISION Dota2"},
+  "illidan_d2":{game:"Dota2",league:"",role:"Pos 5",team:"PARIVISION Dota2"},
+  // MOUZ Dota2 (Crystallis déjà là)
+  // crystallis déjà dans la base
+  "Seleri":{game:"Dota2",league:"",role:"Pos 2",team:"MOUZ Dota2"},
+  "MidOne":{game:"Dota2",league:"",role:"Pos 2",team:"MOUZ Dota2"},
+  "ImmortalFaith":{game:"Dota2",league:"",role:"Pos 4",team:"MOUZ Dota2"},
+  "Quinn_d2":{game:"Dota2",league:"",role:"Pos 5",team:"MOUZ Dota2"},
+  // Team Falcons Dota2
+  "Arteezy":{game:"Dota2",league:"",role:"Pos 1",team:"Falcons Dota2"},
+  "Abed":{game:"Dota2",league:"",role:"Pos 2",team:"Falcons Dota2"},
+  "GH_d2":{game:"Dota2",league:"",role:"Pos 4",team:"Falcons Dota2"},
+  "DJ_d2":{game:"Dota2",league:"",role:"Pos 5",team:"Falcons Dota2"},
+  "Resolut1on":{game:"Dota2",league:"",role:"Pos 3",team:"Falcons Dota2"},
+  // Aurora Gaming Dota2
+  "Torontotokyo":{game:"Dota2",league:"",role:"Pos 1",team:"Aurora Dota2"},
+  "Larl":{game:"Dota2",league:"",role:"Pos 2",team:"Aurora Dota2"},
+  "Pure_aur":{game:"Dota2",league:"",role:"Pos 3",team:"Aurora Dota2"},
+  "Fishman":{game:"Dota2",league:"",role:"Pos 4",team:"Aurora Dota2"},
+  "BokerN1":{game:"Dota2",league:"",role:"Pos 5",team:"Aurora Dota2"},
+  // BetBoom Dota2
+  "RAMZES666":{game:"Dota2",league:"",role:"Pos 1",team:"BetBoom Dota2"},
+  "gpk":{game:"Dota2",league:"",role:"Pos 2",team:"BetBoom Dota2"},
+  "Zayac":{game:"Dota2",league:"",role:"Pos 4",team:"BetBoom Dota2"},
+  "SoNNeikO":{game:"Dota2",league:"",role:"Pos 5",team:"BetBoom Dota2"},
+  "sayuw":{game:"Dota2",league:"",role:"Pos 3",team:"BetBoom Dota2"},
+  // paiN Gaming Dota2
+  "hFn_d2":{game:"Dota2",league:"",role:"Pos 1",team:"paiN Dota2"},
+  "4dr":{game:"Dota2",league:"",role:"Pos 2",team:"paiN Dota2"},
+  "KJ_d2":{game:"Dota2",league:"",role:"Pos 3",team:"paiN Dota2"},
+  "Lelis":{game:"Dota2",league:"",role:"Pos 4",team:"paiN Dota2"},
+  "VoiD_d2":{game:"Dota2",league:"",role:"Pos 5",team:"paiN Dota2"},
+  // Virtus.pro Dota2
+  "Nightfall":{game:"Dota2",league:"",role:"Pos 3",team:"Virtus.pro Dota2"},
+  "solo_vp":{game:"Dota2",league:"",role:"Pos 5",team:"Virtus.pro Dota2"},
+  "Shad0wfall":{game:"Dota2",league:"",role:"Pos 1",team:"Virtus.pro Dota2"},
+  "qojqva":{game:"Dota2",league:"",role:"Pos 2",team:"Virtus.pro Dota2"},
+  "Antimage_vp":{game:"Dota2",league:"",role:"Pos 4",team:"Virtus.pro Dota2"},
+  // GamerLegion Dota2
+  "tOfu":{game:"Dota2",league:"",role:"Pos 5",team:"GamerLegion Dota2"},
+  "Ace_d2":{game:"Dota2",league:"",role:"Pos 3",team:"GamerLegion Dota2"},
+  "miCKe":{game:"Dota2",league:"",role:"Pos 1",team:"GamerLegion Dota2"},
+  "iNSaNiA":{game:"Dota2",league:"",role:"Pos 4",team:"GamerLegion Dota2"},
+  "Nisha_d2":{game:"Dota2",league:"",role:"Pos 2",team:"GamerLegion Dota2"},
+  // OG Dota2
+  "Bzm_og":{game:"Dota2",league:"",role:"Pos 1",team:"OG Dota2"},
+  "inYourdreaM":{game:"Dota2",league:"",role:"Pos 2",team:"OG Dota2"},
+  "ATF_og":{game:"Dota2",league:"",role:"Pos 3",team:"OG Dota2"},
+  "Chu":{game:"Dota2",league:"",role:"Pos 4",team:"OG Dota2"},
+  "ana_og":{game:"Dota2",league:"",role:"Pos 1",team:"OG Dota2"},
+  // Nigma Galaxy Dota2
+  "w33":{game:"Dota2",league:"",role:"Pos 2",team:"Nigma Galaxy"},
+  "iLTW":{game:"Dota2",league:"",role:"Pos 1",team:"Nigma Galaxy"},
+  "KuroKy":{game:"Dota2",league:"",role:"Pos 5",team:"Nigma Galaxy"},
+  "NobodyXD":{game:"Dota2",league:"",role:"Pos 4",team:"Nigma Galaxy"},
+  "Davai_Lama":{game:"Dota2",league:"",role:"Pos 3",team:"Nigma Galaxy"},
+  // Team Liquid Dota2
+  "Nisha_tl":{game:"Dota2",league:"",role:"Pos 2",team:"Team Liquid Dota2"},
+  "zai":{game:"Dota2",league:"",role:"Pos 4",team:"Team Liquid Dota2"},
+  "m1CKe_tl":{game:"Dota2",league:"",role:"Pos 1",team:"Team Liquid Dota2"},
+  "MiCkEy":{game:"Dota2",league:"",role:"Pos 3",team:"Team Liquid Dota2"},
+  "insania":{game:"Dota2",league:"",role:"Pos 5",team:"Team Liquid Dota2"},
 };
 
 const STATIC_PLAYERS_COUNT=Object.keys(STATIC_PLAYERS).length;
@@ -1315,7 +1865,7 @@ function addRecentPlayer(key){
   }catch{}
 }
 
-function PlayerAC({value,onChange,allPlayers,onConfirm}){
+function PlayerAC({value,onChange,allPlayers,onConfirm,activeTourneys={}}){
   const [open,setOpen]=useState(false);
   const [inputVal,setInputVal]=useState(value);
   const ref=useRef(null);
@@ -1339,7 +1889,7 @@ function PlayerAC({value,onChange,allPlayers,onConfirm}){
     // Priorité: commence par q > contient q
     const starts=all.filter(([k])=>k.startsWith(q));
     const contains=all.filter(([k])=>!k.startsWith(q)&&k.includes(q));
-    return [...starts,...contains].slice(0,8).map(([k,p])=>[k,p,false]);
+    return [...starts,...contains].slice(0,6).map(([k,p])=>[k,p,false]);
   },[allPlayers,inputVal,recents]);
 
   useEffect(()=>{
@@ -1351,7 +1901,7 @@ function PlayerAC({value,onChange,allPlayers,onConfirm}){
     const v=e.target.value;
     setInputVal(v);setOpen(true);
     clearTimeout(debounceRef.current);
-    debounceRef.current=setTimeout(()=>onChange(v),80);
+    debounceRef.current=setTimeout(()=>onChange(v),30);
   },[onChange]);
 
   const handleSelect=useCallback((key)=>{
@@ -1375,7 +1925,7 @@ function PlayerAC({value,onChange,allPlayers,onConfirm}){
         )}
       </div>
       {open&&sugg.length>0&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#111827",border:"1px solid #1F2937",borderRadius:10,zIndex:200,overflow:"hidden",boxShadow:"0 8px 28px rgba(0,0,0,0.7)"}}>
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#111827",border:"1px solid #1F2937",borderRadius:10,zIndex:500,overflow:"hidden",boxShadow:"0 8px 28px rgba(0,0,0,0.7)"}}>
           {inputVal.trim().length<1&&<div style={{padding:"6px 13px 2px",fontSize:10,color:"#6B7280",fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>Récents</div>}
           {sugg.map(([key,p,isRecent])=>{
             const isSelected=key===inputVal.toLowerCase().trim();
@@ -1386,6 +1936,7 @@ function PlayerAC({value,onChange,allPlayers,onConfirm}){
                 onMouseLeave={e=>e.currentTarget.style.background=isSelected?"rgba(124,58,237,0.08)":"transparent"}>
                 {isRecent&&<span style={{fontSize:10,color:"#6B7280"}}>🕐</span>}
                 <GameLogo game={p.game} size={16}/>
+                {(()=>{const t=activeTourneys[p.game];const hasTourney=t&&(!t.end||new Date(t.end)>=new Date());return hasTourney?<span style={{fontSize:12,flexShrink:0}} title={t.name}>🏆</span>:null;})()}
                 <div style={{flex:1}}>
                   <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{key}</span>
                   <span style={{fontSize:11,color:"#9CA3AF",marginLeft:7}}>{p.team}</span>
@@ -1454,6 +2005,152 @@ function PlayerSearchPanel({allPlayers,custom,setCustom,setEditingPlayer}){
   );
 }
 
+// ── EditBetModal component ─────────────────────────────────────────────────
+const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,calcProfit,allPlayers}){
+  const ebGame=bet.game||"CS2";
+  const ebIsHS=bet.isHeadshot;
+  // Build kills options
+  let ebOpts=[];
+  if(ebIsHS) ebOpts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
+  else if(ebGame==="LoL") ebOpts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
+  else if(ebGame==="CS2") ebOpts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
+  else if(ebGame==="Dota2") ebOpts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
+  else ebOpts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
+  // Extract current kills line: "Over 14.5 Kills" → "14.5 Kills"
+  const ebDescParts=bet.description?.split(" ")||[];
+  const initKills=ebDescParts.length>=2?ebDescParts.slice(1).join(" "):"";
+  if(initKills&&!ebOpts.includes(initKills))ebOpts=[initKills,...ebOpts];
+
+  const [ebBK,setEbBK]=useState(bet.bookmaker||"");
+  const [ebPlayer,setEbPlayer]=useState(bet.player||"");
+  const [ebOU,setEbOU]=useState(bet.overUnder||"Over");
+  const [ebLine,setEbLine]=useState(initKills);
+  const [ebOdds,setEbOdds]=useState(String(bet.odds||""));
+  const [ebStake,setEbStake]=useState(String(bet.stake||""));
+  const [ebMap,setEbMap]=useState(bet.mapTag||"Map 1");
+
+  const labelStyle={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5,display:"block"};
+  const fieldStyle={width:"100%",background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 12px",color:"#E5E7EB",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:600,outline:"none",boxSizing:"border-box"};
+
+  function save(){
+    const newDesc=ebOU+" "+(ebLine||initKills||bet.description?.split(" ").slice(1).join(" ")||"");
+    const odds=parseFloat(ebOdds)||bet.odds;
+    const stake=parseFloat(ebStake)||bet.stake;
+    onSave({...bet,
+      player:ebPlayer||bet.player,
+      bookmaker:ebBK||bet.bookmaker,
+      overUnder:ebOU,
+      description:newDesc,
+      odds,stake,
+      mapTag:ebMap,
+      profit:calcProfit(bet.status,stake,odds),
+    });
+  }
+
+  return(
+    <div className="moverlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxHeight:"88vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>✎ Modifier le pari</div>
+            <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{bet.player} · {ebGame}</div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#6B7280",fontSize:20,cursor:"pointer",lineHeight:1,padding:"0 4px"}}>×</button>
+        </div>
+
+        {/* Bookmaker */}
+        <div style={{marginBottom:12}}>
+          <span style={labelStyle}>Bookmaker</span>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {bookmakers.map(bk=>(
+              <button key={bk} onClick={()=>setEbBK(bk)}
+                style={{padding:"7px 12px",borderRadius:8,border:"1.5px solid "+(ebBK===bk?"#7C3AED":"#1F2937"),background:ebBK===bk?"rgba(124,58,237,0.15)":"transparent",color:ebBK===bk?"#A78BFA":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                {bk}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Joueur */}
+        <div style={{marginBottom:12}}>
+          <span style={labelStyle}>Joueur</span>
+          <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:10,position:"relative",zIndex:300}}>
+            <PlayerAC value={ebPlayer} onChange={v=>setEbPlayer(v)} allPlayers={allPlayers} onConfirm={()=>{}}/>
+          </div>
+        </div>
+
+        {/* Over / Under */}
+        <div style={{marginBottom:12}}>
+          <span style={labelStyle}>Over / Under</span>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {["Over","Under"].map(ou=>(
+              <button key={ou} onClick={()=>setEbOU(ou)}
+                style={{padding:"11px 0",borderRadius:10,border:"1.5px solid "+(ebOU===ou?(ou==="Over"?"#22C55E":"#EF4444"):"#1F2937"),background:ebOU===ou?(ou==="Over"?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)"):"transparent",color:ebOU===ou?(ou==="Over"?"#22C55E":"#EF4444"):"#6B7280",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                {ou}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Kills */}
+        <div style={{marginBottom:12}}>
+          <span style={labelStyle}>Ligne ({ebIsHS?"Headshots":"Kills"})</span>
+          <select value={ebLine} onChange={e=>setEbLine(e.target.value)}
+            style={{...fieldStyle,appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
+            <option value="" style={{background:"#111827"}}>Choisir une ligne...</option>
+            {ebOpts.map(o=><option key={o} value={o} style={{background:"#111827"}}>{o}</option>)}
+          </select>
+        </div>
+
+        {/* Cote + Mise */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          <div>
+            <span style={labelStyle}>Cote</span>
+            <NumPad value={ebOdds} onChange={v=>setEbOdds(v)} placeholder="1.75" step="0.01"/>
+          </div>
+          <div>
+            <span style={labelStyle}>Mise ($)</span>
+            <NumPad value={ebStake} onChange={v=>setEbStake(v)} placeholder="50" step="1"/>
+          </div>
+        </div>
+
+        {/* Gain potentiel */}
+        {ebOdds&&ebStake&&(
+          <div style={{textAlign:"center",marginBottom:12,padding:"8px",background:"rgba(34,197,94,0.06)",borderRadius:8,border:"1px solid rgba(34,197,94,0.15)"}}>
+            <span style={{fontSize:12,color:"#6B7280"}}>Gain potentiel : </span>
+            <span style={{fontSize:14,fontWeight:700,color:"#22C55E"}}>+{(parseFloat(ebStake||0)*(parseFloat(ebOdds||1)-1)).toFixed(2)}$</span>
+          </div>
+        )}
+
+        {/* Map */}
+        <div style={{marginBottom:16}}>
+          <span style={labelStyle}>Map</span>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=>(
+              <button key={m} onClick={()=>setEbMap(m)}
+                style={{padding:"7px 12px",borderRadius:8,border:"1.5px solid "+(ebMap===m?"#F59E0B":"#1F2937"),background:ebMap===m?"rgba(245,158,11,0.1)":"transparent",color:ebMap===m?"#F59E0B":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Boutons */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <button onClick={onClose}
+            style={{padding:"13px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14}}>
+            Annuler
+          </button>
+          <button onClick={save}
+            style={{padding:"13px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14}}>
+            ✓ Sauvegarder
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // ── BetRow component ───────────────────────────────────────────────────────
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
   const [open,setOpen]=useState(false);
@@ -1479,6 +2176,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
             <div style={{fontSize:13,color:"#9CA3AF",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>
               <span style={{color:"#94A3B8",fontWeight:700}}>@{bet.odds}</span>
               {bet.bookmaker&&<span style={{color:"#3B82F6",fontWeight:600}}> · {bet.bookmaker}</span>}
+              <span style={{color:"#A78BFA",fontWeight:600}}> · {bet.stake}$</span>
               {bet.league&&<span style={{color:"#9CA3AF"}}> · {bet.league}</span>}
             </div>
           </div>
@@ -1498,7 +2196,10 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
           <span style={{fontSize:9,color:"#6B7280",alignSelf:"center",flex:1}}>{fmtDate(bet.datetime)}</span>
           {isPending&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"won");setOpen(false);}} style={{color:"#22C55E",borderColor:"#22C55E44",fontSize:11}}>✓ Gagné</button>}
           {isPending&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}} style={{color:"#F87171",borderColor:"#F8717144",fontSize:11}}>✗ Perdu</button>}
-          {!isPending&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}} style={{fontSize:11}}>↩ Annuler</button>}
+          {bet.status==="won"&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}} style={{color:"#F87171",borderColor:"#F8717144",fontSize:11}}>✗ Perdu</button>}
+          {bet.status==="won"&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}} style={{fontSize:11}}>↩ Attente</button>}
+          {bet.status==="lost"&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"won");setOpen(false);}} style={{color:"#22C55E",borderColor:"#22C55E44",fontSize:11}}>✓ Gagné</button>}
+          {bet.status==="lost"&&<button className="editbtn" onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}} style={{fontSize:11}}>↩ Attente</button>}
           <button className="editbtn" onClick={()=>{onEdit();setOpen(false);}} style={{fontSize:11}}>✎ Modif.</button>
           <button className="editbtn" onClick={()=>{onDuplicate(bet);setOpen(false);}} style={{fontSize:11}}>⧉ Dup.</button>
           <button className="editbtn" onClick={()=>onDelete(bet.id)} style={{color:"#F87171",borderColor:"#F8717144",fontSize:11}}>🗑</button>
@@ -1583,6 +2284,12 @@ export default function App(){
   const [fDuel,setFDuel]=useState(false);
   const [fMinOdds,setFMinOdds]=useState("");
   const [fMaxOdds,setFMaxOdds]=useState("");
+  const [fMinStake,setFMinStake]=useState("");
+  const [fMaxStake,setFMaxStake]=useState("");
+  const [fMapFilter,setFMapFilter]=useState("all");
+  const [deletedBets,setDeletedBets]=useState([]);
+  const [showCorbeille,setShowCorbeille]=useState(false);
+  const [settledOrder,setSettledOrder]=useState({});
   const [fRole,setFRole]=useState("All");
   const [fLeague,setFLeague]=useState("All");
   const FILTRES_PER_PAGE=30;
@@ -1675,10 +2382,8 @@ export default function App(){
   useEffect(()=>{
     if(!loaded)return;
     const t=setTimeout(async()=>{
-      setSyncing(true);
       try{ await supaPushBets(bets); setSupaOk(true); }
       catch(e){ setSupaOk(false); }
-      setSyncing(false);
     },3000);
     return()=>clearTimeout(t);
   },[bets,loaded]);
@@ -1741,8 +2446,8 @@ export default function App(){
   const bkStatsSorted=useMemo(()=>Object.entries(bkStats).sort((a,z)=>z[1].profit-a[1].profit),[bkStats]);
 
   const oddsRangeStats=useMemo(()=>{
-    const step=0.05;
-    const start=1.01;
+    const step=0.10;
+    const start=1.00;
     const ranges={};
     settled.forEach(b=>{
       const o=b.odds;if(!o||o<start)return;
@@ -1862,7 +2567,16 @@ export default function App(){
       // Live & HS counted inline above during main forEach loop
       const liveS=liveCnt>0?{count:liveCnt,won:liveWon,profit:liveProfit,staked:liveStaked,wr:liveWon/liveCnt*100,roi:liveStaked>0?liveProfit/liveStaked*100:0}:null;
       const hsS=hsCnt>0?{count:hsCnt,won:hsWon,profit:hsProfit,staked:hsStaked,wr:hsWon/hsCnt*100,roi:hsStaked>0?hsProfit/hsStaked*100:0}:null;
-      result[game]={count:gb.length,won,profit,staked,oddsSum,wr:gb.length>0?won/gb.length*100:0,roi:staked>0?profit/staked*100:0,avgOdds:gb.length>0?oddsSum/gb.length:0,topP,roles,leagues,maps,tourneys,kills:killsArr,hs:hsArr,liveS,hsS,duels:duelsArr};
+      // Over/Under stats
+      let overCnt=0,overWon=0,overProfit=0,overStaked=0;
+      let underCnt=0,underWon=0,underProfit=0,underStaked=0;
+      gb.forEach(b=>{
+        if(b.overUnder==="Over"){overCnt++;overProfit+=b.profit;overStaked+=b.stake;if(b.status==="won")overWon++;}
+        else if(b.overUnder==="Under"){underCnt++;underProfit+=b.profit;underStaked+=b.stake;if(b.status==="won")underWon++;}
+      });
+      const overS=overCnt>0?{count:overCnt,won:overWon,profit:overProfit,staked:overStaked,wr:overWon/overCnt*100,roi:overStaked>0?overProfit/overStaked*100:0}:null;
+      const underS=underCnt>0?{count:underCnt,won:underWon,profit:underProfit,staked:underStaked,wr:underWon/underCnt*100,roi:underStaked>0?underProfit/underStaked*100:0}:null;
+      result[game]={count:gb.length,won,profit,staked,oddsSum,wr:gb.length>0?won/gb.length*100:0,roi:staked>0?profit/staked*100:0,avgOdds:gb.length>0?oddsSum/gb.length:0,topP,roles,leagues,maps,tourneys,kills:killsArr,hs:hsArr,liveS,hsS,duels:duelsArr,overS,underS};
     });
     return result;
   },[settled]);
@@ -1939,18 +2653,23 @@ export default function App(){
   },[dailyProfit,calYear,calMonth]);
 
   const filteredBets=useMemo(()=>{
+    // Fast path: no active filters
+    const noFilters=fGames.length===0&&fBKs.length===0&&!fPlayer&&fStatus==="All"&&fOverUnder==="All"&&!fLive&&!fHeadshot&&!fDuel&&!fMinOdds&&!fMaxOdds&&!fMinStake&&!fMaxStake&&fMapFilter==="all"&&fRole==="All"&&fLeague==="All"&&fTourneys.size===0;
+    if(noFilters)return bets;
     return bets.filter(b=>{
       if(fGames.length>0&&!fGames.includes(b.game))return false;
       if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
       if(fPlayer&&!b.player.toLowerCase().includes(fPlayer.toLowerCase()))return false;
       if(fStatus!=="All"&&b.status!==fStatus)return false;
-      if(fOverUnder==="Over"&&b.overUnder!=="Over")return false;
-      if(fOverUnder==="Under"&&b.overUnder!=="Under")return false;
+      if(fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
       if(fLive&&!b.isLive)return false;
       if(fHeadshot&&!b.isHeadshot)return false;
       if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
       if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
       if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
+      if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
+      if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
+      if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
       if(fRole!=="All"&&b.role!==fRole)return false;
       if(fLeague!=="All"&&b.league!==fLeague)return false;
       if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
@@ -1958,9 +2677,14 @@ export default function App(){
     }).sort((a,b2)=>{
       if(a.status==="pending"&&b2.status!=="pending")return -1;
       if(b2.status==="pending"&&a.status!=="pending")return 1;
+      // Both settled: most recently settled first
+      if(a.status!=="pending"&&b2.status!=="pending"){
+        const sa=a.settledAt||0,sb=b2.settledAt||0;
+        if(sa!==sb)return sb-sa;
+      }
       return (b2.datetime||"").localeCompare(a.datetime||"");
     });
-  },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fRole,fLeague,fTourneys]);
+  },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
     const sorted=[...bets].sort((a,b2)=>{
@@ -2007,6 +2731,25 @@ export default function App(){
     const stake=parseFloat(form.stake),odds=parseFloat(form.odds);
     const desc=form.description?form.overUnder+" "+form.description:form.overUnder;
     const tname=(()=>{const t=activeTourneys[info.game];return(t&&(!t.end||new Date(t.end)>=new Date()))?t.name:"";})();
+    if(editingBet){
+      // Mode édition — remplace le pari existant avec tous les champs
+      const updatedBet={
+        ...editingBet,
+        player:form.player,description:desc,overUnder:form.overUnder,
+        odds,stake,bookmaker:form.bookmaker,
+        game:info.game,league:info.league,role:info.role,team:info.team,
+        datetime:form.datetime||nowDT(),isHeadshot:form.isHeadshot||false,isLive:form.isLive||false,
+        mapTag:form.mapTag||"",
+        profit:calcProfit(editingBet.status,stake,odds),
+        tournament:form.tournament||tname,
+      };
+      setBets(b=>b.map(bet=>bet.id===editingBet.id?updatedBet:bet));
+      setEditingBet(null);
+      setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:""}));
+      showToast("Pari modifié ✓");
+      setView("mesparis");
+      return;
+    }
     setBets(b=>[{
       id:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
       odds,stake,bookmaker:form.bookmaker,status:form.status,
@@ -2016,7 +2759,7 @@ export default function App(){
       tournament:tname,
     },...b]);
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:""}));
-    showToast("Pari enregistre");
+    showToast("Pari enregistré ✓");
     setView("mesparis");
   }
 
@@ -2070,10 +2813,18 @@ export default function App(){
   }
 
   const updateStatus=useCallback((id,status)=>{
-    setBets(b=>b.map(bet=>bet.id!==id?bet:{...bet,status,profit:calcProfit(status,bet.stake,bet.odds)}));
+    const now=Date.now();
+    setBets(b=>b.map(bet=>bet.id!==id?bet:{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now:null}));
+    if(status!=="pending"){setSettledOrder(prev=>({...prev,[id]:now}));}
+  },[]);
+
+    const openEdit=useCallback((b)=>{
+    setEditingBet({...b});
   },[]);
 
   const deleteBet=useCallback((id)=>{
+    const found=bets.find(b=>b.id===id);
+    if(found)setDeletedBets(prev=>[{...found,deletedAt:Date.now()},...prev].slice(0,50));
     setBets(b=>b.filter(bet=>bet.id!==id));
     supaDeleteOneBet(id).catch(()=>{});
   },[]);
@@ -2142,7 +2893,7 @@ export default function App(){
     {id:"mesparis",icon:"📋",label:"Mes Paris"},
     {id:"add",icon:"➕",label:"Pari"},
     {id:"statistiques",icon:"💲",label:"Stats"},
-    {id:"players",icon:"🎮",label:"Joueurs"},
+    {id:"players",icon:"⚙️",label:"Gestion"},
   ];
 
   const customEntries=useMemo(()=>Object.entries(custom),[custom]);
@@ -2317,7 +3068,9 @@ export default function App(){
                     {confirmDelete?(
                       <>
                         <button onClick={()=>{
-                          setBets(b=>b.filter(bet=>!selectedIds.includes(bet.id)));
+                          const removed=bets.filter(b=>selectedIds.includes(b.id));
+    setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
+    setBets(b=>b.filter(bet=>!selectedIds.includes(bet.id)));
                           supaDeleteManyBets(selectedIds).catch(()=>{});
                           setSelectMode(false);setSelectedIds([]);setConfirmDelete(false);
                           showToast(selectedIds.length+" paris supprimés","#EF4444");
@@ -2351,7 +3104,7 @@ export default function App(){
 
             {/* ── Status chips + Filtre button ── */}
             {(()=>{
-              const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0);
+              const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0)+(fOverUnder!=="All"?1:0)+(fRole!=="All"?1:0)+(fLeague!=="All"?1:0);
               return(
                 <div style={{display:"flex",gap:5,marginBottom:10,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
                   <button onClick={()=>setView("filtres")}
@@ -2359,7 +3112,7 @@ export default function App(){
                     🔍 Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:2}}>{activeFilters}</span>}
                   </button>
                   {activeFilters>0&&(
-                    <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
+                    <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
                       style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
                       × Effacer tout
                     </button>
@@ -2376,10 +3129,16 @@ export default function App(){
                 if(fStatus!=="All"&&b.status!==fStatus)return false;
                 if(fGames.length>0&&!fGames.includes(b.game))return false;
                 if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
+                if(fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
+                if(fRole!=="All"&&b.role!==fRole)return false;
+                if(fLeague!=="All"&&b.league!==fLeague)return false;
                 if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
                 if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
+                if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
+                if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
                 if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
                 if(fLive&&!b.isLive)return false;
+                if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
                 if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
                 return true;
               });
@@ -2411,10 +3170,17 @@ export default function App(){
                         if(fStatus!=="All"&&b.status!==fStatus)return false;
                         if(fGames.length>0&&!fGames.includes(b.game))return false;
                         if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre"))return false;
+                        if(fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
+                        if(fRole!=="All"&&b.role!==fRole)return false;
+                        if(fLeague!=="All"&&b.league!==fLeague)return false;
                         if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
                         if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
+                        if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
+                        if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
                         if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
                         if(fLive&&!b.isLive)return false;
+                        if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
+                        if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
                         return true;
                       });
                       if(dayBets.length===0)return null;
@@ -2434,40 +3200,8 @@ export default function App(){
                           {/* ── Bets ── */}
                           {dayBets.map(b=>(
                             selectMode
-                              ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>{
-                                setEditingBet({...b});
-                                setForm({...EMPTY_FORM,
-                                  player:b.player,
-                                  description:b.description?.split(" ").slice(2).join(" ")||"",
-                                  overUnder:b.overUnder||"Over",
-                                  odds:String(b.odds),
-                                  stake:String(b.stake),
-                                  bookmaker:b.bookmaker||"",
-                                  datetime:b.datetime||nowDT(),
-                                  isHeadshot:!!b.isHeadshot,
-                                  isLive:!!b.isLive,
-                                  mapTag:b.mapTag||"Map 1",
-                                  autoInfo:findPlayer(b.player),
-                                });
-                                setView("add");
-                              }}/>
-                              :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>{
-                setEditingBet({...b});
-                setForm({...EMPTY_FORM,
-                  player:b.player,
-                  description:b.description?.split(" ").slice(2).join(" ")||"",
-                  overUnder:b.overUnder||"Over",
-                  odds:String(b.odds),
-                  stake:String(b.stake),
-                  bookmaker:b.bookmaker||"",
-                  datetime:b.datetime||nowDT(),
-                  isHeadshot:!!b.isHeadshot,
-                  isLive:!!b.isLive,
-                  mapTag:b.mapTag||"Map 1",
-                  autoInfo:findPlayer(b.player),
-                });
-                setView("add");
-              }}/>
+                              ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)}/>
+                              :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)}/>
                           ))}
                         </div>
                       );
@@ -2648,6 +3382,69 @@ export default function App(){
                 );
               })()}
             </div>
+            {/* ── Filtre Map ── */}
+            <div className="add-card">
+              <span className="add-label">Map</span>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                {[{v:"all",l:"Toutes"},{v:"none",l:"Sans tag"},{v:"Map 1",l:"Map 1"},{v:"Map 2",l:"Map 2"},{v:"Map 3",l:"Map 3"},{v:"Map 4",l:"Map 4"},{v:"Map 5",l:"Map 5"}].map(({v,l})=>(
+                  <button key={v} className={"fchip "+(fMapFilter===v?"on":"")} onClick={()=>setFMapFilter(v)}>{l}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Filtre Mise min/max ── */}
+            <div className="add-card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <span className="add-label">Mise ($)</span>
+                {(fMinStake||fMaxStake)&&(
+                  <button onClick={()=>{setFMinStake("");setFMaxStake("");}}
+                    style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>× Effacer</button>
+                )}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:4}}>Min</div>
+                  <input type="number" step="1" min="0" placeholder="ex: 10"
+                    value={fMinStake} onChange={e=>setFMinStake(e.target.value)}
+                    className="ifield" style={{marginBottom:0,fontSize:14}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:4}}>Max</div>
+                  <input type="number" step="1" min="0" placeholder="ex: 100"
+                    value={fMaxStake} onChange={e=>setFMaxStake(e.target.value)}
+                    className="ifield" style={{marginBottom:0,fontSize:14}}/>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Filtre Tournoi (tous jeux) ── */}
+            {(()=>{
+              const allTourneys=[...new Set(bets.filter(b=>b.tournament).map(b=>b.tournament))];
+              const hasHors=bets.some(b=>!b.tournament);
+              const opts=[...(hasHors?["Hors tournoi"]:[]),...allTourneys];
+              if(opts.length===0)return null;
+              const toggleT=(t)=>setFTourneys(prev=>{const n=new Set(prev);if(n.has(t))n.delete(t);else n.add(t);return n;});
+              return(
+                <div className="add-card">
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span className="add-label">Tournoi</span>
+                    {fTourneys.size>0&&<button onClick={()=>setFTourneys(new Set())} style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>× Effacer ({fTourneys.size})</button>}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {opts.map(t=>{
+                      const isOn=fTourneys.has(t);
+                      return(
+                        <button key={t} onClick={()=>toggleT(t)}
+                          style={{padding:"5px 11px",borderRadius:8,border:"1.5px solid "+(isOn?"#7C3AED":"#1F2937"),background:isOn?"rgba(124,58,237,0.12)":"transparent",color:isOn?"#A78BFA":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                          {t==="Hors tournoi"?"📅 Sans tournoi":"🏆 "+t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Tournoi — apparaît si un jeu est sélectionné */}
             {fGames.length>0&&(()=>{
               const tourneysForGame=[...new Set(
@@ -2700,7 +3497,7 @@ export default function App(){
               );
             })()}
             <div style={{display:"flex",gap:9,marginBottom:8}}>
-              <button onClick={()=>{setFGames([]);setFBKs([]);setFPlayer("");setFStatus("All");setFOverUnder("All");setFLive(false);setFHeadshot(false);setFDuel(false);setFMinOdds("");setFMaxOdds("");setFRole("All");setFLeague("All");setFTourneys(new Set());setFiltresPage(1);}} style={{flex:1,padding:"11px",background:"#111827",border:"1px solid #1F2937",borderRadius:10,color:"#9CA3AF",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,fontSize:13}}>
+              <button onClick={()=>{setFGames([]);setFBKs([]);setFPlayer("");setFStatus("All");setFOverUnder("All");setFLive(false);setFHeadshot(false);setFDuel(false);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFRole("All");setFLeague("All");setFTourneys(new Set());setFiltresPage(1);}} style={{flex:1,padding:"11px",background:"#111827",border:"1px solid #1F2937",borderRadius:10,color:"#9CA3AF",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,fontSize:13}}>
                 Réinitialiser
               </button>
               <button onClick={()=>setView("mesparis")} style={{flex:1,padding:"11px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:700,fontSize:13}}>
@@ -2727,23 +3524,7 @@ export default function App(){
             <div className="stat-bloc">
               {filteredBets.length===0&&<div style={{padding:"18px 15px",color:"#6B7280",fontSize:13}}>Aucun pari</div>}
               {filteredBets.slice(0,(filtresPage)*FILTRES_PER_PAGE).map(b=>(
-                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>{
-                setEditingBet({...b});
-                setForm({...EMPTY_FORM,
-                  player:b.player,
-                  description:b.description?.split(" ").slice(2).join(" ")||"",
-                  overUnder:b.overUnder||"Over",
-                  odds:String(b.odds),
-                  stake:String(b.stake),
-                  bookmaker:b.bookmaker||"",
-                  datetime:b.datetime||nowDT(),
-                  isHeadshot:!!b.isHeadshot,
-                  isLive:!!b.isLive,
-                  mapTag:b.mapTag||"Map 1",
-                  autoInfo:findPlayer(b.player),
-                });
-                setView("add");
-              }}/>
+                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)}/>
               ))}
             </div>
             {filteredBets.length>filtresPage*FILTRES_PER_PAGE&&(
@@ -2760,9 +3541,18 @@ export default function App(){
           <div className="view-enter" style={{margin:"-16px -14px",padding:"0",minHeight:"calc(100vh - 84px)",background:"#0D0F1E"}}>
 
             {/* ── Top header bar ── */}
+            {editingBet&&(
+              <div style={{background:"rgba(124,58,237,0.12)",borderBottom:"1px solid rgba(124,58,237,0.25)",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,color:"#A78BFA",fontWeight:700}}>✎ Mode modification — {editingBet.player}</span>
+                <button onClick={()=>{setEditingBet(null);setForm({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?form.bookmaker:""});}}
+                  style={{fontSize:11,color:"#6B7280",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                  × Annuler
+                </button>
+              </div>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 16px 12px"}}>
               <div style={{fontSize:17,fontWeight:700,color:"#E5E7EB",letterSpacing:-.2}}>
-                {duelMode?"Duel ⚔️":sessionMode?"Session multi-map":"Ajouter pari"}
+                {duelMode?"Duel ⚔️":sessionMode?"Session multi-map":editingBet?"✎ Modifier pari":"Ajouter pari"}
               </div>
               <div style={{display:"flex",gap:7}}>
                 <button onClick={()=>setForm(f=>({...f,isLive:!f.isLive}))}
@@ -2812,7 +3602,7 @@ export default function App(){
                   <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"start",marginBottom:14}}>
                     <div>
                       <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Joueur 1</div>
-                      <PlayerAC value={duelForm.player1} onChange={v=>setDuelForm(f=>({...f,player1:v,winner:""}))} allPlayers={allPlayers} onConfirm={()=>{}}/>
+                      <PlayerAC value={duelForm.player1} onChange={v=>setDuelForm(f=>({...f,player1:v,winner:""}))} allPlayers={allPlayers} activeTourneys={activeTourneys} onConfirm={()=>{}}/>
                       {duelForm.player1&&findPlayer(duelForm.player1)&&(
                         <div style={{marginTop:4,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player1).game]?.accent||"#A78BFA",fontWeight:600}}>
                           {findPlayer(duelForm.player1).team}
@@ -2822,7 +3612,7 @@ export default function App(){
                     <div style={{fontSize:16,fontWeight:800,color:"#F59E0B",textAlign:"center",paddingTop:22}}>VS</div>
                     <div>
                       <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Joueur 2</div>
-                      <PlayerAC value={duelForm.player2} onChange={v=>setDuelForm(f=>({...f,player2:v,winner:""}))} allPlayers={allPlayers} onConfirm={()=>{}}/>
+                      <PlayerAC value={duelForm.player2} onChange={v=>setDuelForm(f=>({...f,player2:v,winner:""}))} allPlayers={allPlayers} activeTourneys={activeTourneys} onConfirm={()=>{}}/>
                       {duelForm.player2&&findPlayer(duelForm.player2)&&(
                         <div style={{marginTop:4,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player2).game]?.accent||"#A78BFA",fontWeight:600}}>
                           {findPlayer(duelForm.player2).team}
@@ -2965,7 +3755,7 @@ export default function App(){
                 )}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:12,padding:"4px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
-                <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
+                <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} activeTourneys={activeTourneys} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
               </div>
               {form.autoInfo&&(
                 <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1.5px solid rgba(255,255,255,0.18)",borderRadius:10,padding:"7px 12px",flexWrap:"wrap"}}>
@@ -3010,11 +3800,13 @@ export default function App(){
               {form.autoInfo&&(()=>{
                 const game=form.autoInfo.game;
                 let opts=[];
-                if(form.isHeadshot) opts=Array.from({length:10},(_,i)=>(i+4.5).toFixed(1)+" Headshots");
-                else if(game==="LoL") opts=Array.from({length:15},(_,i)=>(i+0.5).toFixed(1)+" Kills");
-                else if(game==="CS2") opts=Array.from({length:12},(_,i)=>(i+9.5).toFixed(1)+" Kills");
-                else if(game==="Dota2") opts=Array.from({length:11},(_,i)=>(i+2.5).toFixed(1)+" Kills");
-                else if(game==="Valorant") opts=Array.from({length:12},(_,i)=>(i+9.5).toFixed(1)+" Kills");
+                if(form.isHeadshot) opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
+                else if(game==="LoL") opts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
+                else if(game==="CS2") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
+                else if(game==="Dota2") opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
+                else if(game==="Valorant") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
+                // Si la valeur éditée n'est pas dans les options, l'ajouter
+                if(form.description&&!opts.includes(form.description)){opts=[form.description,...opts];}
                 if(opts.length===0)return null;
                 return(
                   <div style={{background:"#0D0F1E",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"4px"}}>
@@ -3160,8 +3952,14 @@ export default function App(){
                       boxShadow:isDisabled?"none":"0 8px 28px rgba(124,58,237,0.4)",
                       transition:"all .25s",marginBottom:missing.length>0?4:8,
                     }}>
-                    {sessionMode?"Enregistrer session ("+sessionMaps.filter(m=>m.enabled&&m.odds).length+" maps)":"Ajouter pari"}
+                    {sessionMode?"Enregistrer session ("+sessionMaps.filter(m=>m.enabled&&m.odds).length+" maps)":editingBet?"✓ Sauvegarder modifications":"Ajouter pari"}
                   </button>
+                  {editingBet&&(
+                    <button onClick={()=>{setEditingBet(null);setForm({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?form.bookmaker:""});}}
+                      style={{width:"100%",padding:"14px",background:"transparent",border:"1px solid #374151",borderRadius:16,color:"#9CA3AF",fontWeight:600,fontSize:15,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginTop:8}}>
+                      × Annuler modification
+                    </button>
+                  )}
                   {!sessionMode&&missing.length>0&&(
                     <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8,justifyContent:"center"}}>
                       {missing.map(f=>(
@@ -3406,6 +4204,29 @@ export default function App(){
                         </>
                       )}
 
+                      {/* Over / Under */}
+                      {(gs.overS||gs.underS)&&(
+                        <>
+                          <div style={{fontSize:11,color:"#60A5FA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"14px 14px 6px",borderBottom:"1px solid rgba(96,165,250,0.2)",fontFamily:"'Inter',sans-serif",borderTop:"1px solid #1F2937"}}>📊 Over / Under</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 64px 16px",gap:2,padding:"4px 14px 6px"}}>
+                            <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textTransform:"uppercase"}}>Type</span>
+                            <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"center"}}>N</span>
+                            <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"center"}}>WR%</span>
+                            <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"right"}}>Profit</span>
+                            <span/>
+                          </div>
+                          {[{label:"🔼 Over",s:gs.overS},{label:"🔽 Under",s:gs.underS}].filter(x=>x.s).map(({label,s})=>(
+                            <div key={label} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 64px 16px",gap:2,padding:"6px 14px",borderTop:"1px solid #1F2937",alignItems:"center"}}>
+                              <span style={{fontSize:12,fontWeight:600,color:"#60A5FA"}}>{label}</span>
+                              <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{s.count}</span>
+                              <span style={{fontSize:11,fontWeight:700,color:s.wr>55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{s.wr.toFixed(0)}%</span>
+                              <span style={{fontSize:11,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span>
+                              <span style={{fontSize:10}}>{s.wr>55?"✅":s.wr<45?"❌":""}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+
                       {/* Headshots */}
                       {gs.hs.length>0&&(
                         <>
@@ -3531,7 +4352,7 @@ export default function App(){
           <div className="view-enter">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div>
-                <div style={{fontSize:16,fontWeight:700,color:"#E5E7EB",letterSpacing:.3}}>Joueurs</div>
+                <div style={{fontSize:16,fontWeight:700,color:"#E5E7EB",letterSpacing:.3}}>Gestion</div>
                 <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{Object.keys(allPlayers).length} joueurs · {customCount} modifiés</div>
               </div>
               <button onClick={()=>{setPform({name:"",game:"LoL",league:"",role:"",team:""});setModalPlayer(true);}}
@@ -3624,6 +4445,59 @@ export default function App(){
             )}
             <div style={{fontSize:11,color:"#6B7280",textAlign:"center",padding:12}}>
               Recherche un joueur pour l'éditer (équipe, rôle, ligue)
+            </div>
+
+            {/* ── CORBEILLE ── */}
+            <div style={{marginTop:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:15}}>🗑️</span>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Corbeille</div>
+                    <div style={{fontSize:10,color:"#6B7280"}}>{deletedBets.length} paris supprimés récemment</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  {deletedBets.length>0&&(
+                    <button onClick={()=>setDeletedBets([])}
+                      style={{fontSize:11,color:"#EF4444",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                      Vider
+                    </button>
+                  )}
+                  <button onClick={()=>setShowCorbeille(v=>!v)}
+                    style={{fontSize:11,color:showCorbeille?"#A78BFA":"#9CA3AF",background:showCorbeille?"rgba(124,58,237,0.1)":"transparent",border:"1px solid "+(showCorbeille?"#7C3AED":"#1F2937"),borderRadius:7,padding:"5px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                    {showCorbeille?"▲ Masquer":"▼ Voir"}
+                  </button>
+                </div>
+              </div>
+              {showCorbeille&&(
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {deletedBets.length===0&&(
+                    <div style={{textAlign:"center",color:"#4B5563",fontSize:12,padding:"16px 0"}}>Aucun pari supprimé récemment</div>
+                  )}
+                  {deletedBets.map((b,i)=>(
+                    <div key={b.id+"_"+i} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 13px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <GameLogo game={b.game} size={13}/>
+                          <span style={{fontSize:13,fontWeight:700,color:"#9CA3AF",textTransform:"capitalize"}}>{b.player}</span>
+                          <span style={{fontSize:11,color:"#6B7280"}}>— {b.description}</span>
+                        </div>
+                        <div style={{fontSize:10,color:"#4B5563",marginTop:2}}>@{b.odds} · {b.stake}$ · {b.bookmaker||"—"}</div>
+                        <div style={{fontSize:9,color:"#374151",marginTop:1}}>Supprimé {b.deletedAt?new Date(b.deletedAt).toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):""}</div>
+                      </div>
+                      <button onClick={()=>{
+                        const restored={...b};delete restored.deletedAt;
+                        setBets(prev=>[restored,...prev]);
+                        setDeletedBets(prev=>prev.filter((_,idx)=>idx!==i));
+                        showToast("Pari restauré ✓");
+                      }} style={{padding:"6px 12px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:7,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",flexShrink:0}}>
+                        ↩ Restaurer
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -3887,68 +4761,21 @@ export default function App(){
 
         {/* ── EDIT BET MODAL ── */}
         {editingBet&&(
-          <div className="moverlay" onClick={()=>setEditingBet(null)}>
-            <div className="modal" onClick={e=>e.stopPropagation()}>
-              <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Modifier le pari</div>
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:12,color:"#9CA3AF",marginBottom:6}}>Statut</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
-                  {["won","lost","pending"].map(s=>(
-                    <button key={s} onClick={()=>setEditingBet(b=>({...b,status:s}))}
-                      style={{padding:"10px 6px",borderRadius:8,border:"1.5px solid "+(editingBet.status===s?STATUS_CFG[s].color+"66":"#1F2937"),background:editingBet.status===s?STATUS_CFG[s].bg:"#0B1220",color:editingBet.status===s?STATUS_CFG[s].color:"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                      {STATUS_CFG[s].label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:12,color:"#9CA3AF",marginBottom:6}}>Over / Under</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-                  <button className={"ou-btn over"+((editingBet.overUnder||"Over")==="Over"?" on":"")} onClick={()=>setEditingBet(b=>({...b,overUnder:"Over"}))}>Over</button>
-                  <button className={"ou-btn under"+(editingBet.overUnder==="Under"?" on":"")} onClick={()=>setEditingBet(b=>({...b,overUnder:"Under"}))}>Under</button>
-                </div>
-              </div>
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:12,color:"#9CA3AF",marginBottom:6}}>Bookmaker</div>
-                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                  {bookmakers.map(bk=>(
-                    <button key={bk} className={"bkchip"+(editingBet.bookmaker===bk?" on":"")} onClick={()=>setEditingBet(b=>({...b,bookmaker:bk}))}>{bk}</button>
-                  ))}
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-                <div>
-                  <div style={{fontSize:12,color:"#9CA3AF",marginBottom:6}}>Cote</div>
-                  <NumPad value={String(editingBet.odds)} onChange={v=>setEditingBet(b=>({...b,odds:parseFloat(v)||b.odds}))} placeholder="Cote" step="0.01"/>
-                </div>
-                <div>
-                  <div style={{fontSize:12,color:"#9CA3AF",marginBottom:6}}>Mise</div>
-                  <NumPad value={String(editingBet.stake)} onChange={v=>setEditingBet(b=>({...b,stake:parseFloat(v)||b.stake}))} placeholder="Mise" step="1"/>
-                </div>
-              </div>
-              {editingBet.status!=="pending"&&(
-                <div style={{textAlign:"center",marginBottom:8,fontSize:13,color:"#9CA3AF"}}>
-                  Profit: <span style={{color:editingBet.status==="won"?"#22C55E":"#F87171",fontWeight:700}}>
-                    {editingBet.status==="won"?"+"+((editingBet.stake*(editingBet.odds-1)).toFixed(2))+"-"+parseFloat(editingBet.stake||0).toFixed(2)+"$":"-"+parseFloat(editingBet.stake||0).toFixed(2)+"$"}
-                  </span>
-                </div>
-              )}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <button onClick={()=>setEditingBet(null)} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14}}>Annuler</button>
-                <button onClick={()=>{
-                  const newProfit=calcProfit(editingBet.status,editingBet.stake,editingBet.odds);
-                  setBets(b=>b.map(bet=>bet.id===editingBet.id?{...editingBet,profit:newProfit}:bet));
-                  setEditingBet(null);
-                  showToast("Pari mis a jour");
-                }} style={{padding:"12px",background:"linear-gradient(135deg,#22C55E,#0EA5E9)",border:"none",borderRadius:10,color:"#0B1220",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14}}>
-                  Sauvegarder
-                </button>
-              </div>
-            </div>
-          </div>
+          <EditBetModal
+            bet={editingBet}
+            bookmakers={bookmakers}
+            calcProfit={calcProfit}
+            allPlayers={allPlayers}
+            onClose={()=>setEditingBet(null)}
+            onSave={(updated)=>{
+              setBets(b=>b.map(bet=>bet.id===updated.id?updated:bet));
+              setEditingBet(null);
+              showToast("Pari modifié ✓");
+            }}
+          />
         )}
 
-        {/* ── MODAL ADD BOOKMAKER ── */}
+                {/* ── MODAL ADD BOOKMAKER ── */}
         {modalBK&&(
           <div className="moverlay" onClick={()=>{setModalBK(false);setNewBK("");setNewBKPhoto("");}}>
             <div className="modal" onClick={e=>e.stopPropagation()}>
