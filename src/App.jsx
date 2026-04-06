@@ -3100,7 +3100,7 @@ const fetchAnalyse=useCallback(async()=>{
               <button onClick={()=>setView("filtres")} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"13px",color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
                 🔍 Filtres
               </button>
-              <button onClick={()=>setView("statistiques")} style={{background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(59,130,246,0.1))",border:"1px solid rgba(124,58,237,0.35)",borderRadius:12,padding:"13px",color:"#A78BFA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <button onClick={()=>setView("statistiques")} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"13px",color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
                 💲 Stats
               </button>
             </div>
@@ -4584,19 +4584,28 @@ const fetchAnalyse=useCallback(async()=>{
         {filtered.map((b,i)=>{
           const isOver=b.direction==="OVER";
           const sc=sportColor(b.sport);
+          const gameKey=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+          const bkName=bkShortName(b.source);
+          const matchTime=b.match_time||b.start_time||null;
           return(
             <div key={i} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"13px 14px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                <span style={{fontSize:16,flexShrink:0}}>{sportEmoji(b.sport)}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                {gameKey&&L[gameKey]
+                  ? <img src={L[gameKey]} style={{width:20,height:20,borderRadius:4,flexShrink:0}} alt={gameKey}/>
+                  : <span style={{fontSize:16,flexShrink:0}}>{sportEmoji(b.sport)}</span>
+                }
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.match||"?"}</span>
-                    <span style={{fontSize:9,fontWeight:700,color:"#60A5FA",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.2)",padding:"2px 7px",borderRadius:5,flexShrink:0}}>{bkShortName(b.source)}</span>
+                  <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.match||"?"}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2,flexWrap:"wrap"}}>
+                    <span style={{fontSize:10,color:"#6B7280"}}>{b.tournament||""}</span>
+                    {matchTime&&<>
+                      <span style={{fontSize:10,color:"#4B5563"}}>·</span>
+                      <span style={{fontSize:10,color:"#60A5FA",fontWeight:600}}>🕐 {matchTime}</span>
+                    </>}
                   </div>
-                  <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{b.tournament||""}</div>
                 </div>
                 <span style={{fontSize:9,fontWeight:700,color:sc,background:sc+"22",border:"1px solid "+sc+"44",padding:"2px 6px",borderRadius:5,flexShrink:0}}>
-                  {b.sport?.includes("Legend")?"LoL":b.sport?.includes("CS")?"CS2":b.sport?.includes("Dota")?"Dota":b.sport?.includes("Valor")?"VAL":b.sport||"?"}
+                  {gameKey||b.sport?.slice(0,4)||"?"}
                 </span>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
@@ -4606,6 +4615,9 @@ const fetchAnalyse=useCallback(async()=>{
                 <span style={{fontSize:10,color:"#F59E0B",fontWeight:600,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",padding:"2px 6px",borderRadius:5}}>{mapLabel(b.map)}</span>
                 <span style={{fontSize:10,fontWeight:700,color:isOver?"#22C55E":"#F87171",background:isOver?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isOver?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),padding:"2px 7px",borderRadius:5}}>
                   {isOver?"▲ OVER":"▼ UNDER"}
+                </span>
+                <span style={{fontSize:9,fontWeight:700,color:"#60A5FA",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.2)",padding:"2px 7px",borderRadius:5,marginLeft:"auto"}}>
+                  {bkName}
                 </span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:6}}>
