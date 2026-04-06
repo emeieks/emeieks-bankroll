@@ -2956,6 +2956,7 @@ const [analyseFDir,setAnalyseFDir]=useState("All");
     {id:"mesparis",icon:"📋",label:"Mes Paris"},
     {id:"add",icon:"➕",label:"Pari"},
     {id:"statistiques",icon:"💲",label:"Stats"},
+    {id:"analyse",icon:"🔍",label:"Analyse"},
     {id:"players",icon:"⚙️",label:"Gestion"},
   ];
 
