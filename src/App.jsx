@@ -1997,7 +1997,7 @@ function PlayerAC({value,onChange,allPlayers,onConfirm,activeTourneys={}}){
 
 
 // ── PlayerSearchPanel ──────────────────────────────────────────────────────
-function PlayerSearchPanel({allPlayers,custom,setCustom,setEditingPlayer}){
+function PlayerSearchPanel({allPlayers,custom,setCustom,setEditingPlayer,blacklist,toggleBlacklist}){
   const [pSearch,setPSearch]=useState("");
   const filtered=useMemo(()=>{
     const q=pSearch.toLowerCase().trim();
@@ -2034,6 +2034,11 @@ function PlayerSearchPanel({allPlayers,custom,setCustom,setEditingPlayer}){
                     style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11}}>
                     ×
                   </button>}
+                  {!isCustom&&<button onClick={()=>toggleBlacklist(key)}
+                    style={{background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:8,padding:"5px 10px",color:"#F87171",cursor:"pointer",fontSize:11}}
+                    title="Masquer ce joueur de la liste">
+                    🙈
+                  </button>}
                 </div>
               </div>
             );
@@ -2068,6 +2073,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
   const [ebOdds,setEbOdds]=useState(String(bet.odds||""));
   const [ebStake,setEbStake]=useState(String(bet.stake||""));
   const [ebMap,setEbMap]=useState(bet.mapTag||"Map 1");
+  const [ebLive,setEbLive]=useState(!!bet.isLive);
 
   const labelStyle={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5,display:"block"};
   const fieldStyle={width:"100%",background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 12px",color:"#E5E7EB",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:600,outline:"none",boxSizing:"border-box"};
@@ -2083,6 +2089,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
       description:newDesc,
       odds,stake,
       mapTag:ebMap,
+      isLive:ebLive,
       profit:calcProfit(bet.status,stake,odds),
     });
   }
@@ -2175,6 +2182,15 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
           </div>
         </div>
 
+        {/* Live toggle */}
+        <div style={{marginBottom:16}}>
+          <button onClick={()=>setEbLive(v=>!v)}
+            style={{width:"100%",padding:"11px",borderRadius:10,border:"1.5px solid "+(ebLive?"#EF4444":"#1F2937"),background:ebLive?"rgba(239,68,68,0.1)":"transparent",color:ebLive?"#EF4444":"#6B7280",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:ebLive?"#EF4444":"#374151",boxShadow:ebLive?"0 0 6px rgba(239,68,68,0.8)":"none"}}/>
+            {ebLive?"🔴 LIVE — Pari en direct":"LIVE — Pari prématch"}
+          </button>
+        </div>
+
         {/* Boutons */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           <button onClick={onClose}
@@ -2225,6 +2241,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
           <div style={{textAlign:"right",flexShrink:0}}>
             <div style={{fontWeight:700,fontSize:13,color:profitColor}}>{profitTxt}</div>
             <div style={{fontSize:9,color:sc.color,marginTop:1}}>{sc.label}</div>
+            {bet.bookmaker&&<div style={{fontSize:9,color:"#3B82F6",marginTop:1,fontWeight:600}}>{bet.bookmaker}</div>}
           </div>
           {/* Chevron */}
           <span style={{color:"#1F2937",fontSize:12,marginLeft:2,flexShrink:0,transition:"transform .15s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
@@ -2294,6 +2311,15 @@ export default function App(){
   const [bets,setBets]=useState([]);
   const [bankroll,setBankroll]=useState(7500);
   const [custom,setCustom]=useState({});
+  const [blacklist,setBlacklist]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_blacklist")||"[]"));}catch{return new Set();}});
+  function toggleBlacklist(key){
+    setBlacklist(prev=>{
+      const n=new Set(prev);
+      if(n.has(key))n.delete(key);else n.add(key);
+      try{localStorage.setItem("v7_blacklist",JSON.stringify([...n]));}catch{}
+      return n;
+    });
+  }
   const [bookmakers,setBookmakers]=useState(DEFAULT_BK);
   const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
   const [stickyBK,setStickyBK]=useState(false);
@@ -2365,6 +2391,16 @@ const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
 const [analyseFSport,setAnalyseFSport]=useState("all");
 const [analyseFSource,setAnalyseFSource]=useState("all");
 const [analyseFDir,setAnalyseFDir]=useState("All");
+const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
+const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
+function toggleHideAnalyseBet(key){
+  setHiddenAnalyseBets(prev=>{
+    const n=new Set(prev);
+    if(n.has(key))n.delete(key);else n.add(key);
+    try{localStorage.setItem("v7_hidden_analyse",JSON.stringify([...n]));}catch{}
+    return n;
+  });
+}
   // ── Supabase sync (sans login) ───────────────────────────────────────────
   const [syncing,setSyncing]=useState(false);
   const [supaOk,setSupaOk]=useState(false); // true si connexion confirmée
@@ -2466,11 +2502,12 @@ const [analyseFDir,setAnalyseFDir]=useState("All");
 
   const allPlayers=useMemo(()=>{
     const merged={};
-    // Normalize all keys to lowercase so search always works regardless of casing in STATIC_PLAYERS
-    Object.entries(STATIC_PLAYERS).forEach(([k,v])=>{merged[k.toLowerCase()]=v;});
+    Object.entries(STATIC_PLAYERS).forEach(([k,v])=>{
+      if(!blacklist.has(k.toLowerCase()))merged[k.toLowerCase()]=v;
+    });
     Object.entries(custom).forEach(([k,v])=>{merged[k.toLowerCase()]=v;});
     return merged;
-  },[custom]);
+  },[custom,blacklist]);
 
   const findPlayer=useCallback((name)=>{
     const key=name.toLowerCase().trim();
@@ -3276,6 +3313,8 @@ const fetchAnalyse=useCallback(async()=>{
                     const monthDays=settledByMonth[mk];
                     const monthBets=monthDays.flatMap(dk=>settledByDay[dk]);
                     const monthP=monthBets.reduce((s,b)=>s+b.profit,0);
+                    const monthStaked=monthBets.reduce((s,b)=>s+b.stake,0);
+                    const monthROI=monthStaked>0?((monthP/monthStaked)*100):0;
                     const allMonthSelected=monthBets.every(b=>selectedIds.includes(b.id));
                     return(
                       <div key={mk} style={{marginBottom:10}}>
@@ -3286,7 +3325,10 @@ const fetchAnalyse=useCallback(async()=>{
                             <span style={{fontSize:18,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:1}}>{fmtMonthFR(mk+"-01")}</span>
                             <span style={{fontSize:12,color:"#374151",fontWeight:500}}>{monthBets.length} paris</span>
                           </div>
-                          <span style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}$</span>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}$</div>
+                            <div style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#F87171"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}% ROI</div>
+                          </div>
                         </div>
 
                         {/* Jours */}
@@ -3850,15 +3892,6 @@ const fetchAnalyse=useCallback(async()=>{
             <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(124,58,237,0.15)",padding:"14px 16px",marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Joueur</span>
-                {form.autoInfo?.game==="CS2"&&(
-                  <div onClick={()=>setForm(f=>({...f,isHeadshot:!f.isHeadshot,description:""}))}
-                    style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",padding:"3px 10px",borderRadius:10,border:"1px solid "+(form.isHeadshot?"rgba(124,58,237,0.5)":"rgba(255,255,255,0.08)"),background:form.isHeadshot?"rgba(124,58,237,0.12)":"transparent"}}>
-                    <span style={{fontSize:10,fontWeight:600,color:form.isHeadshot?"#A78BFA":"#6B7280"}}>HS</span>
-                    <div style={{width:26,height:14,borderRadius:7,background:form.isHeadshot?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,0.12)",position:"relative",transition:"background .2s"}}>
-                      <div style={{width:10,height:10,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:form.isHeadshot?14:2,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}/>
-                    </div>
-                  </div>
-                )}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:12,padding:"4px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
                 <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} activeTourneys={activeTourneys} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
@@ -3887,6 +3920,28 @@ const fetchAnalyse=useCallback(async()=>{
               )}
               {form.player&&!form.autoInfo&&<div style={{marginTop:6,fontSize:10,color:"#F59E0B"}}>Joueur non reconnu — tu peux quand même enregistrer.</div>}
             </div>
+
+            {/* ── 2b. BLOC HEADSHOT (CS2 seulement) ── */}
+            {form.autoInfo?.game==="CS2"&&(
+              <div style={{background:"#131525",borderRadius:16,border:"1.5px solid "+(form.isHeadshot?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.06)"),padding:"14px 16px",marginBottom:10,transition:"border-color .2s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:12,color:"#9CA3AF",fontWeight:500,marginBottom:2}}>Type de stat</div>
+                    <div style={{fontSize:11,color:"#4B5563"}}>Kills ou Headshots uniquement</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>setForm(f=>({...f,isHeadshot:false,description:""}))}
+                      style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(form.isHeadshot?"rgba(255,255,255,0.08)":"#22C55E"),background:form.isHeadshot?"transparent":"rgba(34,197,94,0.1)",color:form.isHeadshot?"#6B7280":"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
+                      🎯 Kills
+                    </button>
+                    <button onClick={()=>setForm(f=>({...f,isHeadshot:true,description:""}))}
+                      style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(form.isHeadshot?"#A78BFA":"rgba(255,255,255,0.08)"),background:form.isHeadshot?"rgba(124,58,237,0.15)":"transparent",color:form.isHeadshot?"#A78BFA":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
+                      💀 HS
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── 3. DESCRIPTION + OVER/UNDER ── */}
             <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(124,58,237,0.15)",padding:"14px 16px",marginBottom:10}}>
@@ -3989,10 +4044,19 @@ const fetchAnalyse=useCallback(async()=>{
                   <div key={i} style={{padding:"10px 12px",borderRadius:12,border:"1px solid "+(m.enabled?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.04)"),background:m.enabled?"rgba(124,58,237,0.04)":"transparent",marginBottom:7,opacity:m.enabled?1:0.4}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:m.enabled?8:0}}>
                       <span style={{fontWeight:600,fontSize:13,color:m.enabled?"#A78BFA":"#4B5563"}}>Map {i+1}</span>
-                      <button onClick={()=>setSessionMaps(ms=>ms.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))}
-                        style={{background:"none",border:"none",color:m.enabled?"#7C3AED":"#4B5563",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:700}}>
-                        {m.enabled?"ON":"OFF"}
-                      </button>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        {m.enabled&&(
+                          <button onClick={()=>setSessionMaps(ms=>ms.map((x,j)=>j===i?{...x,locked:!x.locked}:x))}
+                            title={m.locked?"Déverrouiller":"Verrouiller cote"}
+                            style={{background:m.locked?"rgba(245,158,11,0.15)":"transparent",border:"1px solid "+(m.locked?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.08)"),borderRadius:7,padding:"3px 8px",color:m.locked?"#F59E0B":"#4B5563",cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif"}}>
+                            {m.locked?"🔒":"🔓"}
+                          </button>
+                        )}
+                        <button onClick={()=>setSessionMaps(ms=>ms.map((x,j)=>j===i?{...x,enabled:!x.enabled,locked:false}:x))}
+                          style={{background:"none",border:"none",color:m.enabled?"#7C3AED":"#4B5563",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:700}}>
+                          {m.enabled?"ON":"OFF"}
+                        </button>
+                      </div>
                     </div>
                     {m.enabled&&(
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -4537,10 +4601,18 @@ const fetchAnalyse=useCallback(async()=>{
             {analyseLastFetch?"Mis à jour: "+analyseLastFetch.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):"Pas encore chargé"}
           </div>
         </div>
-        <button onClick={fetchAnalyse}
-          style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 14px rgba(124,58,237,0.3)"}}>
-          {analyseLoading?"⏳ Chargement...":"↻ Actualiser"}
-        </button>
+        <div style={{display:"flex",gap:7,alignItems:"center"}}>
+          {hiddenAnalyseBets.size>0&&(
+            <button onClick={()=>setShowHiddenAnalyse(v=>!v)}
+              style={{padding:"6px 12px",background:showHiddenAnalyse?"rgba(239,68,68,0.12)":"rgba(255,255,255,0.04)",border:"1px solid "+(showHiddenAnalyse?"rgba(239,68,68,0.3)":"#1F2937"),borderRadius:8,color:showHiddenAnalyse?"#F87171":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+              {showHiddenAnalyse?"Masquer pris":"Voir pris ("+hiddenAnalyseBets.size+")"}
+            </button>
+          )}
+          <button onClick={fetchAnalyse}
+            style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 14px rgba(124,58,237,0.3)"}}>
+            {analyseLoading?"⏳ Chargement...":"↻ Actualiser"}
+          </button>
+        </div>
       </div>
       {filtered.length>0&&(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:12}}>
@@ -4581,14 +4653,19 @@ const fetchAnalyse=useCallback(async()=>{
         </div>
       )}
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map((b,i)=>{
+        {filtered.filter(b=>{
+          const key=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
+          return showHiddenAnalyse||!hiddenAnalyseBets.has(key);
+        }).map((b,i)=>{
           const isOver=b.direction==="OVER";
           const sc=sportColor(b.sport);
           const gameKey=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
           const bkName=bkShortName(b.source);
           const matchTime=b.match_time||b.start_time||null;
+          const betKey=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
+          const isHidden=hiddenAnalyseBets.has(betKey);
           return(
-            <div key={i} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"13px 14px"}}>
+            <div key={i} style={{background:"#111827",border:"1px solid "+(isHidden?"rgba(239,68,68,0.15)":"#1F2937"),borderRadius:14,padding:"13px 14px",opacity:isHidden?0.5:1}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                 {gameKey&&L[gameKey]
                   ? <img src={L[gameKey]} style={{width:20,height:20,borderRadius:4,flexShrink:0}} alt={gameKey}/>
@@ -4604,6 +4681,11 @@ const fetchAnalyse=useCallback(async()=>{
                     </>}
                   </div>
                 </div>
+                <button onClick={()=>toggleHideAnalyseBet(betKey)}
+                  title={isHidden?"Réafficher":"Marquer comme pris"}
+                  style={{background:isHidden?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.25)":"rgba(239,68,68,0.25)"),borderRadius:8,padding:"4px 9px",color:isHidden?"#22C55E":"#F87171",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",flexShrink:0}}>
+                  {isHidden?"✓ Pris":"✓ Pris"}
+                </button>
                 <span style={{fontSize:9,fontWeight:700,color:sc,background:sc+"22",border:"1px solid "+sc+"44",padding:"2px 6px",borderRadius:5,flexShrink:0}}>
                   {gameKey||b.sport?.slice(0,4)||"?"}
                 </span>
@@ -4712,7 +4794,7 @@ const fetchAnalyse=useCallback(async()=>{
               </div>
             </div>
 
-            <PlayerSearchPanel allPlayers={allPlayers} custom={custom} setCustom={setCustom} setEditingPlayer={setEditingPlayer}/>
+            <PlayerSearchPanel allPlayers={allPlayers} custom={custom} setCustom={setCustom} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist}/>
             {customCount>0&&(
               <>
                 <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600}}>Mes modifications</div>
@@ -4745,7 +4827,38 @@ const fetchAnalyse=useCallback(async()=>{
               Recherche un joueur pour l'éditer (équipe, rôle, ligue)
             </div>
 
-            {/* ── CORBEILLE ── */}
+            {/* ── JOUEURS MASQUÉS ── */}
+            {blacklist.size>0&&(
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span>🙈 Joueurs masqués ({blacklist.size})</span>
+                  <button onClick={()=>setBlacklist(new Set())&&localStorage.setItem("v7_blacklist","[]")}
+                    style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                    Tout restaurer
+                  </button>
+                </div>
+                <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden"}}>
+                  {[...blacklist].map(key=>{
+                    const p=STATIC_PLAYERS[key]||{game:"?",team:"?",role:"?"};
+                    return(
+                      <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #1F2937"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:9}}>
+                          <GameLogo game={p.game} size={16}/>
+                          <div>
+                            <div style={{fontWeight:700,fontSize:13,color:"#6B7280",textTransform:"capitalize"}}>{key}</div>
+                            <div style={{fontSize:10,color:"#4B5563"}}>{p.team} · {p.role}</div>
+                          </div>
+                        </div>
+                        <button onClick={()=>toggleBlacklist(key)}
+                          style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8,padding:"5px 10px",color:"#22C55E",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                          Restaurer
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div style={{marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
