@@ -4580,7 +4580,9 @@ const fetchAnalyse=useCallback(async()=>{
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:6}}>
                 {[{label:"Book",val:b.book_line,col:"#E5E7EB"},{label:"PP",val:b.pp_line_original,col:"#E5E7EB"},{label:"PP/2",val:b.pp_line_per_map,col:"#E5E7EB"},{label:"Diff",val:"+"+parseFloat(b.diff||0).toFixed(2),col:"#F59E0B"},{label:"Cote",val:"@"+(b.odds||0),col:"#A78BFA"}].map(({label,val,col})=>(
                     <div style={{fontSize:9,color:"#6B7280",marginBottom:2}}>{label}</div>
-                    <div style={{fontSize:14,fontWeight:700,color:col}}>{val}</div>
+              <div style={{fontSize:14,fontWeight:700,color:col}}>{val}</div>
+            </div>
+          ))}
                   </div>
                 ))}
               </div>
