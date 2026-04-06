@@ -2955,7 +2955,6 @@ const [analyseFDir,setAnalyseFDir]=useState("All");
     {id:"home",icon:"🏠",label:"Accueil"},
     {id:"mesparis",icon:"📋",label:"Mes Paris"},
     {id:"add",icon:"➕",label:"Pari"},
-    {id:"statistiques",icon:"💲",label:"Stats"},
     {id:"analyse",icon:"🔍",label:"Analyse"},
     {id:"players",icon:"⚙️",label:"Gestion"},
   ];
@@ -3094,41 +3093,45 @@ const fetchAnalyse=useCallback(async()=>{
               ))}
             </div>
 
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:12}}>
               <button onClick={()=>setShowCal(true)} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"13px",color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                Calendrier
+                📅 Calendrier
               </button>
               <button onClick={()=>setView("filtres")} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"13px",color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-                Filtres
+                🔍 Filtres
+              </button>
+              <button onClick={()=>setView("statistiques")} style={{background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(59,130,246,0.1))",border:"1px solid rgba(124,58,237,0.35)",borderRadius:12,padding:"13px",color:"#A78BFA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                💲 Stats
               </button>
             </div>
 
-            <div className="card">
-              <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,marginBottom:11}}>Paris recents</div>
-              {bets.length===0&&<div style={{color:"#6B7280",fontSize:13}}>Aucun pari</div>}
-              {allSortedBets.slice(0,5).map(b=>(
-                <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #1F2937"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <GameLogo game={b.game} size={18}/>
+            {/* ── Paris récents (compact) ── */}
+
+            <div className="card" style={{marginBottom:12,padding:"10px 14px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1}}>Paris récents</div>
+                {bets.length>3&&<button onClick={()=>setView("mesparis")} style={{background:"none",border:"none",color:"#7C3AED",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Voir tous ({bets.length})</button>}
+              </div>
+              {bets.length===0&&<div style={{color:"#6B7280",fontSize:12}}>Aucun pari</div>}
+              {allSortedBets.slice(0,3).map(b=>(
+                <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1F2937"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <GameLogo game={b.game} size={15}/>
                     <div>
-                      <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{b.player}</div>
-                      <div style={{fontSize:10,color:"#9CA3AF"}}>{b.description} - @{b.odds}</div>
+                      <div style={{fontWeight:600,fontSize:12,color:"#E5E7EB",textTransform:"capitalize"}}>{b.player}</div>
+                      <div style={{fontSize:10,color:"#6B7280"}}>{b.description}</div>
                     </div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:13,fontWeight:700,color:b.status==="won"?"#22C55E":b.status==="lost"?"#F87171":"#3B82F6"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:b.status==="won"?"#22C55E":b.status==="lost"?"#F87171":"#3B82F6"}}>
                       {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+b.profit.toFixed(2)+"$"}
                     </div>
-                    <div style={{fontSize:10,color:"#6B7280"}}>{toDateKey(b.datetime)}</div>
                   </div>
                 </div>
               ))}
-              {bets.length>5&&<div style={{textAlign:"center",marginTop:10}}>
-                <button onClick={()=>setView("mesparis")} style={{background:"none",border:"none",color:"#7C3AED",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  Voir tous ({bets.length})
-                </button>
-              </div>}
             </div>
+
+
           </div>
         )}
 
@@ -4498,6 +4501,33 @@ const fetchAnalyse=useCallback(async()=>{
     if(sport?.includes("Valor"))return"#FF4655";
     return"#9CA3AF";
   };
+  const sportEmoji=(sport)=>{
+    if(sport?.includes("CS")||sport==="CS2")return"🎯";
+    if(sport?.includes("Legend")||sport==="LoL")return"⚔️";
+    if(sport?.includes("Dota"))return"🏆";
+    if(sport?.includes("Valor"))return"🔺";
+    return"🎮";
+  };
+  const bkShortName=(source)=>{
+    if(source==="Betby")return"Roobet";
+    if(source==="Thunderpick")return"Stake";
+    return source||"?";
+  };
+  const diffColor=(diff)=>{
+    const d=parseFloat(diff)||0;
+    if(d>=2.0)return"#4ADE80";
+    if(d>=1.75)return"#22C55E";
+    if(d>=1.5)return"#16A34A";
+    return"#15803D";
+  };
+  const diffBg=(diff)=>{
+    const d=parseFloat(diff)||0;
+    if(d>=2.0)return"rgba(74,222,128,0.15)";
+    if(d>=1.75)return"rgba(34,197,94,0.12)";
+    if(d>=1.5)return"rgba(22,163,74,0.10)";
+    return"rgba(21,128,61,0.08)";
+  };
+  const mapLabel=(map)=>(!map||map==="?")?"?":"Map "+map;
   return(
     <div className="view-enter">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -4556,32 +4586,39 @@ const fetchAnalyse=useCallback(async()=>{
           const sc=sportColor(b.sport);
           return(
             <div key={i} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"13px 14px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                <span style={{fontSize:16,flexShrink:0}}>{sportEmoji(b.sport)}</span>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.match||"?"}</div>
-                  <div style={{fontSize:10,color:"#6B7280"}}>{b.tournament||""}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.match||"?"}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:"#60A5FA",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.2)",padding:"2px 7px",borderRadius:5,flexShrink:0}}>{bkShortName(b.source)}</span>
+                  </div>
+                  <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{b.tournament||""}</div>
                 </div>
-                <div style={{display:"flex",gap:4,flexShrink:0,marginLeft:8}}>
-                  <span style={{fontSize:9,fontWeight:700,color:sc,background:sc+"22",border:"1px solid "+sc+"44",padding:"2px 6px",borderRadius:5}}>
-                    {b.sport?.includes("Legend")?"LoL":b.sport?.includes("CS")?"CS2":b.sport?.includes("Dota")?"Dota":b.sport?.includes("Valor")?"VAL":b.sport||"?"}
-                  </span>
-                  <span style={{fontSize:9,fontWeight:700,color:"#60A5FA",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.2)",padding:"2px 6px",borderRadius:5}}>{b.source?.slice(0,2)||"?"}</span>
-                </div>
+                <span style={{fontSize:9,fontWeight:700,color:sc,background:sc+"22",border:"1px solid "+sc+"44",padding:"2px 6px",borderRadius:5,flexShrink:0}}>
+                  {b.sport?.includes("Legend")?"LoL":b.sport?.includes("CS")?"CS2":b.sport?.includes("Dota")?"Dota":b.sport?.includes("Valor")?"VAL":b.sport||"?"}
+                </span>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
                 <span style={{fontSize:15,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{b.player||"?"}</span>
                 <span style={{fontSize:10,color:"#9CA3AF"}}>·</span>
                 <span style={{fontSize:11,color:"#A78BFA",fontWeight:600,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"2px 7px",borderRadius:5}}>{b.stat||"kills"}</span>
-                <span style={{fontSize:10,color:"#F59E0B",fontWeight:600,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",padding:"2px 6px",borderRadius:5}}>M{b.map||"?"}</span>
+                <span style={{fontSize:10,color:"#F59E0B",fontWeight:600,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",padding:"2px 6px",borderRadius:5}}>{mapLabel(b.map)}</span>
                 <span style={{fontSize:10,fontWeight:700,color:isOver?"#22C55E":"#F87171",background:isOver?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isOver?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),padding:"2px 7px",borderRadius:5}}>
                   {isOver?"▲ OVER":"▼ UNDER"}
                 </span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:6}}>
-                {[{label:"Book",val:b.book_line,col:"#E5E7EB"},{label:"PP",val:b.pp_line_original,col:"#E5E7EB"},{label:"PP/2",val:b.pp_line_per_map,col:"#E5E7EB"},{label:"Diff",val:"+"+parseFloat(b.diff||0).toFixed(2),col:"#F59E0B"},{label:"Cote",val:"@"+(b.odds||0),col:"#A78BFA"}].map(({label,val,col})=>(
-                  <div key={label} style={{background:"#0B1220",borderRadius:8,padding:"7px 8px",textAlign:"center"}}>
+                {[
+                  {label:"Book",val:b.book_line,col:"#E5E7EB",bg:"#0B1220"},
+                  {label:"PP",val:b.pp_line_original,col:"#E5E7EB",bg:"#0B1220"},
+                  {label:"PP/Map",val:b.pp_line_per_map,col:"#E5E7EB",bg:"#0B1220"},
+                  {label:"Diff",val:"+"+parseFloat(b.diff||0).toFixed(2),col:diffColor(b.diff),bg:diffBg(b.diff)},
+                  {label:"Cote",val:"@"+(b.odds||0),col:"#A78BFA",bg:"#0B1220"},
+                ].map(({label,val,col,bg})=>(
+                  <div key={label} style={{background:bg,borderRadius:8,padding:"7px 8px",textAlign:"center"}}>
                     <div style={{fontSize:9,color:"#6B7280",marginBottom:2}}>{label}</div>
-                    <div style={{fontSize:14,fontWeight:700,color:col}}>{val}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:col}}>{val}</div>
                   </div>
                 ))}
               </div>
