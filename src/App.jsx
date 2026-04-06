@@ -2359,7 +2359,12 @@ export default function App(){
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
-
+const [analyseBets,setAnalyseBets]=useState([]);
+const [analyseLoading,setAnalyseLoading]=useState(false);
+const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
+const [analyseFSport,setAnalyseFSport]=useState("all");
+const [analyseFSource,setAnalyseFSource]=useState("all");
+const [analyseFDir,setAnalyseFDir]=useState("All");
   // ── Supabase sync (sans login) ───────────────────────────────────────────
   const [syncing,setSyncing]=useState(false);
   const [supaOk,setSupaOk]=useState(false); // true si connexion confirmée
