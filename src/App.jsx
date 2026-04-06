@@ -1813,7 +1813,7 @@ const STATUS_CFG={
   won:{label:"Gagne",color:"#4ADE80",bg:"rgba(34,197,94,0.1)"},
   lost:{label:"Perdu",color:"#F87171",bg:"rgba(248,113,113,0.1)"},
 };
-const EMPTY_FORM={player:"",overUnder:"Over",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false};
+const EMPTY_FORM={player:"",overUnder:"Over",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 
 function toDateKey(dt){return dt?dt.slice(0,10):"";}
@@ -2241,7 +2241,6 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
           <div style={{textAlign:"right",flexShrink:0}}>
             <div style={{fontWeight:700,fontSize:13,color:profitColor}}>{profitTxt}</div>
             <div style={{fontSize:9,color:sc.color,marginTop:1}}>{sc.label}</div>
-            {bet.bookmaker&&<div style={{fontSize:9,color:"#3B82F6",marginTop:1,fontWeight:600}}>{bet.bookmaker}</div>}
           </div>
           {/* Chevron */}
           <span style={{color:"#1F2937",fontSize:12,marginLeft:2,flexShrink:0,transition:"transform .15s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
@@ -2844,7 +2843,7 @@ function toggleHideAnalyseBet(key){
       };
       setBets(b=>b.map(bet=>bet.id===editingBet.id?updatedBet:bet));
       setEditingBet(null);
-      setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:""}));
+      setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked}));
       showToast("Pari modifié ✓");
       setView("mesparis");
       return;
@@ -2857,7 +2856,7 @@ function toggleHideAnalyseBet(key){
       mapTag:form.mapTag||"",profit:calcProfit(form.status,stake,odds),
       tournament:tname,
     },...b]);
-    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:""}));
+    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked}));
     showToast("Pari enregistré ✓");
     setView("mesparis");
   }
@@ -2880,7 +2879,7 @@ function toggleHideAnalyseBet(key){
       tournament:tname,
     }));
     setBets(b=>[...newBets,...b]);
-    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:""}));
+    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked}));
     setSessionMaps([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
     showToast(newBets.length+" paris enregistres");
     setView("mesparis");
@@ -3147,10 +3146,10 @@ const fetchAnalyse=useCallback(async()=>{
             <div className="card" style={{marginBottom:12,padding:"10px 14px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1}}>Paris récents</div>
-                {bets.length>3&&<button onClick={()=>setView("mesparis")} style={{background:"none",border:"none",color:"#7C3AED",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Voir tous ({bets.length})</button>}
+                {bets.length>0&&<button onClick={()=>setView("mesparis")} style={{background:"none",border:"none",color:"#7C3AED",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Voir tous ({bets.length})</button>}
               </div>
               {bets.length===0&&<div style={{color:"#6B7280",fontSize:12}}>Aucun pari</div>}
-              {allSortedBets.slice(0,3).map(b=>(
+              {allSortedBets.map(b=>(
                 <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1F2937"}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <GameLogo game={b.game} size={15}/>
@@ -4074,15 +4073,25 @@ const fetchAnalyse=useCallback(async()=>{
 
             {/* ── 5. MAP TAG ── */}
             <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(124,58,237,0.15)",padding:"14px 16px",marginBottom:10}}>
-              <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500,display:"block",marginBottom:12}}>Map</span>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Map</span>
+                {form.mapTag&&(
+                  <button onClick={()=>setForm(f=>({...f,mapLocked:!f.mapLocked}))}
+                    title={form.mapLocked?"Déverrouiller la map":"Verrouiller la map"}
+                    style={{background:form.mapLocked?"rgba(245,158,11,0.15)":"transparent",border:"1px solid "+(form.mapLocked?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.08)"),borderRadius:8,padding:"4px 10px",color:form.mapLocked?"#F59E0B":"#4B5563",cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                    {form.mapLocked?"🔒 Locked":"🔓 Lock"}
+                  </button>
+                )}
+              </div>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
                 {MAP_TAGS.map(t=>(
-                  <button key={t} onClick={()=>setForm(f=>({...f,mapTag:f.mapTag===t?"":t}))}
-                    style={{padding:"8px 16px",borderRadius:20,border:"1.5px solid "+(form.mapTag===t?"#7C3AED":"rgba(255,255,255,0.08)"),background:form.mapTag===t?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.02)",color:form.mapTag===t?"#A78BFA":"#9CA3AF",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,transition:"all .2s ease",boxShadow:form.mapTag===t?"0 0 12px rgba(124,58,237,0.15)":"none"}}>
+                  <button key={t} onClick={()=>!form.mapLocked&&setForm(f=>({...f,mapTag:f.mapTag===t?"":t}))}
+                    style={{padding:"8px 16px",borderRadius:20,border:"1.5px solid "+(form.mapTag===t?"#7C3AED":"rgba(255,255,255,0.08)"),background:form.mapTag===t?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.02)",color:form.mapTag===t?"#A78BFA":"#9CA3AF",fontSize:13,cursor:form.mapLocked?"not-allowed":"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,transition:"all .2s ease",boxShadow:form.mapTag===t?"0 0 12px rgba(124,58,237,0.15)":"none",opacity:form.mapLocked&&form.mapTag!==t?0.4:1}}>
                     {t}
                   </button>
                 ))}
               </div>
+              {form.mapLocked&&<div style={{fontSize:10,color:"#F59E0B",marginTop:8}}>🔒 Map verrouillée — sera conservée pour le prochain pari</div>}
             </div>
 
             {/* ── 6. STATUT ── */}
@@ -4859,6 +4868,44 @@ const fetchAnalyse=useCallback(async()=>{
                 </div>
               </div>
             )}
+            {/* ── BOOKMAKERS ── */}
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600}}>
+                💰 Bookmakers
+              </div>
+              <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden",marginBottom:8}}>
+                {bookmakers.map((bk,idx)=>{
+                  const logo=BK_LOGOS[bk]||bkPhotos[bk];
+                  return(
+                    <div key={bk} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:idx<bookmakers.length-1?"1px solid #1F2937":"none"}}>
+                      {logo&&<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:6,objectFit:"cover",flexShrink:0}}/>}
+                      <span style={{flex:1,fontWeight:600,fontSize:14,color:"#E5E7EB"}}>{bk}</span>
+                      <button onClick={()=>{
+                        const newName=prompt("Nouveau nom pour "+bk+":",bk);
+                        if(!newName||!newName.trim()||newName.trim()===bk)return;
+                        setBookmakers(b=>b.map(x=>x===bk?newName.trim():x));
+                        setBets(b=>b.map(bet=>bet.bookmaker===bk?{...bet,bookmaker:newName.trim()}:bet));
+                        showToast(bk+" → "+newName.trim());
+                      }} style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:7,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                        ✎
+                      </button>
+                      <button onClick={()=>{
+                        if(!window.confirm("Supprimer "+bk+" ?"))return;
+                        setBookmakers(b=>b.filter(x=>x!==bk));
+                        showToast(bk+" supprimé","#EF4444");
+                      }} style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif"}}>
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={()=>setModalBK(true)}
+                style={{width:"100%",padding:"11px",background:"rgba(124,58,237,0.08)",border:"1px dashed rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                + Ajouter un bookmaker
+              </button>
+            </div>
+
             <div style={{marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
