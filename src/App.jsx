@@ -2960,6 +2960,18 @@ const [analyseFDir,setAnalyseFDir]=useState("All");
     {id:"players",icon:"⚙️",label:"Gestion"},
   ];
 
+const fetchAnalyse=useCallback(async()=>{
+    setAnalyseLoading(true);
+    try{
+      const r=await fetch(SUPA_URL+"/rest/v1/bets_comparaison?select=*&order=diff.desc",{
+        headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+      });
+      const data=await r.json();
+      setAnalyseBets(Array.isArray(data)?data:[]);
+      setAnalyseLastFetch(new Date());
+    }catch{setAnalyseBets([]);}
+    setAnalyseLoading(false);
+  },[]);  
   const customEntries=useMemo(()=>Object.entries(custom),[custom]);
   const customCount=useMemo(()=>Object.keys(custom).length,[custom]);
   const todayKey=useMemo(()=>toDateKey(nowDT()),[]);
