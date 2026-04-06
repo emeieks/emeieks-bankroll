@@ -2390,6 +2390,8 @@ const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
 const [analyseFSport,setAnalyseFSport]=useState("all");
 const [analyseFSource,setAnalyseFSource]=useState("all");
 const [analyseFDir,setAnalyseFDir]=useState("All");
+const [analyseSort,setAnalyseSort]=useState("diff"); // "diff" ou "time"
+const [showAllRecents,setShowAllRecents]=useState(false);
 const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
 const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
 function toggleHideAnalyseBet(key){
@@ -3149,7 +3151,7 @@ const fetchAnalyse=useCallback(async()=>{
                 {bets.length>0&&<button onClick={()=>setView("mesparis")} style={{background:"none",border:"none",color:"#7C3AED",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Voir tous ({bets.length})</button>}
               </div>
               {bets.length===0&&<div style={{color:"#6B7280",fontSize:12}}>Aucun pari</div>}
-              {allSortedBets.map(b=>(
+              {(showAllRecents?allSortedBets:allSortedBets.slice(0,6)).map(b=>(
                 <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid #1F2937"}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <GameLogo game={b.game} size={15}/>
@@ -3165,6 +3167,12 @@ const fetchAnalyse=useCallback(async()=>{
                   </div>
                 </div>
               ))}
+              {allSortedBets.length>6&&(
+                <button onClick={()=>setShowAllRecents(v=>!v)}
+                  style={{width:"100%",marginTop:8,padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                  {showAllRecents?"▲ Réduire":"▼ Afficher plus ("+(allSortedBets.length-6)+" paris)"}
+                </button>
+              )}
             </div>
 
 
@@ -4564,6 +4572,13 @@ const fetchAnalyse=useCallback(async()=>{
     if(analyseFSource!=="all"&&b.source!==analyseFSource)return false;
     if(analyseFDir!=="All"&&b.direction!==analyseFDir)return false;
     return true;
+  }).sort((a,b)=>{
+    if(analyseSort==="time"){
+      const ta=a.match_time||a.start_time||"99:99";
+      const tb=b.match_time||b.start_time||"99:99";
+      return ta.localeCompare(tb);
+    }
+    return (b.diff||0)-(a.diff||0);
   });
   const topDiff=filtered.length>0?Math.max(...filtered.map(b=>b.diff||0)):0;
   const avgOdds=filtered.length>0?(filtered.reduce((s,b)=>s+(b.odds||0),0)/filtered.length).toFixed(2):0;
@@ -4650,6 +4665,15 @@ const fetchAnalyse=useCallback(async()=>{
             {d==="All"?"Tous":d}
           </button>
         ))}
+        {/* Tri */}
+        <div style={{display:"flex",gap:4,marginLeft:"auto"}}>
+          {[{v:"diff",l:"↓ Diff"},{v:"time",l:"🕐 Heure"}].map(({v,l})=>(
+            <button key={v} onClick={()=>setAnalyseSort(v)}
+              style={{padding:"6px 12px",borderRadius:8,border:"1.5px solid "+(analyseSort===v?"#F59E0B":"#1F2937"),background:analyseSort===v?"rgba(245,158,11,0.12)":"transparent",color:analyseSort===v?"#F59E0B":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
       {!analyseLoading&&analyseBets.length===0&&(
         <div style={{textAlign:"center",padding:"40px 20px",color:"#4B5563"}}>
