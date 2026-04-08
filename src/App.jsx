@@ -4773,7 +4773,7 @@ const fetchAnalyse=useCallback(async()=>{
                   </div>
                   {/* PP line */}
                   <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.pp_line_per_map||"?"}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.pp_line_original||b.pp_line_per_map||"?"}</div>
                     <div style={{fontSize:9,color:"#6B7280"}}>PP</div>
                   </div>
                   {/* Diff */}
