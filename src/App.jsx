@@ -4618,63 +4618,68 @@ const fetchAnalyse=useCallback(async()=>{
   const mapLabel=(map)=>(!map||map==="?")?"?":"Map "+map;
   return(
     <div className="view-enter">
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div>
-          <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",letterSpacing:.3}}>🔍 Analyse</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",letterSpacing:.3}}>Positive EV Bets</div>
           <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>
             {analyseLastFetch?"Mis à jour: "+analyseLastFetch.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):"Pas encore chargé"}
           </div>
         </div>
-        <div style={{display:"flex",gap:7,alignItems:"center"}}>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
           {hiddenAnalyseBets.size>0&&(
             <button onClick={()=>setShowHiddenAnalyse(v=>!v)}
-              style={{padding:"6px 12px",background:showHiddenAnalyse?"rgba(239,68,68,0.12)":"rgba(255,255,255,0.04)",border:"1px solid "+(showHiddenAnalyse?"rgba(239,68,68,0.3)":"#1F2937"),borderRadius:8,color:showHiddenAnalyse?"#F87171":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-              {showHiddenAnalyse?"Masquer pris":"Voir pris ("+hiddenAnalyseBets.size+")"}
+              style={{padding:"6px 10px",background:showHiddenAnalyse?"rgba(239,68,68,0.12)":"rgba(255,255,255,0.04)",border:"1px solid "+(showHiddenAnalyse?"rgba(239,68,68,0.3)":"#1F2937"),borderRadius:7,color:showHiddenAnalyse?"#F87171":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+              {showHiddenAnalyse?"Masquer pris":"Pris ("+hiddenAnalyseBets.size+")"}
             </button>
           )}
           <button onClick={fetchAnalyse}
-            style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 14px rgba(124,58,237,0.3)"}}>
-            {analyseLoading?"⏳ Chargement...":"↻ Actualiser"}
+            style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",background:"#1F2937",border:"1px solid #374151",borderRadius:7,color:"#E5E7EB",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+            {analyseLoading?"⏳":"↻"} Actualiser
           </button>
         </div>
       </div>
-      {filtered.length>0&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:12}}>
-          {[{label:"Bets",val:filtered.length,col:"#A78BFA"},{label:"Max Diff",val:topDiff.toFixed(2),col:"#F59E0B"},{label:"Cote moy",val:"@"+avgOdds,col:"#22C55E"}].map(k=>(
-            <div key={k.label} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"11px 12px"}}>
-              <div style={{fontSize:9,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{k.label}</div>
-              <div style={{fontSize:17,fontWeight:700,color:k.col}}>{k.val}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+
+      {/* Filtres */}
+      <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10,alignItems:"center"}}>
         <select value={analyseFSport} onChange={e=>setAnalyseFSport(e.target.value)}
-          style={{background:"#111827",border:"1px solid #1F2937",borderRadius:8,padding:"6px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}>
-          <option value="all">Tous les sports</option>
+          style={{background:"#111827",border:"1px solid #1F2937",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}>
+          <option value="all">Tous sports</option>
           {sports.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
         <select value={analyseFSource} onChange={e=>setAnalyseFSource(e.target.value)}
-          style={{background:"#111827",border:"1px solid #1F2937",borderRadius:8,padding:"6px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}>
+          style={{background:"#111827",border:"1px solid #1F2937",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}>
           <option value="all">Toutes sources</option>
           {sources.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
         {["All","OVER","UNDER"].map(d=>(
           <button key={d} onClick={()=>setAnalyseFDir(d)}
-            style={{padding:"6px 12px",borderRadius:8,border:"1.5px solid "+(analyseFDir===d?"#7C3AED":"#1F2937"),background:analyseFDir===d?"rgba(124,58,237,0.12)":"transparent",color:analyseFDir===d?"#A78BFA":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+            style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(analyseFDir===d?"#7C3AED":"#1F2937"),background:analyseFDir===d?"rgba(124,58,237,0.15)":"transparent",color:analyseFDir===d?"#A78BFA":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
             {d==="All"?"Tous":d}
           </button>
         ))}
-        {/* Tri */}
-        <div style={{display:"flex",gap:4,marginLeft:"auto"}}>
+        <div style={{display:"flex",gap:3,marginLeft:"auto"}}>
           {[{v:"diff",l:"↓ Diff"},{v:"time",l:"🕐 Heure"}].map(({v,l})=>(
             <button key={v} onClick={()=>setAnalyseSort(v)}
-              style={{padding:"6px 12px",borderRadius:8,border:"1.5px solid "+(analyseSort===v?"#F59E0B":"#1F2937"),background:analyseSort===v?"rgba(245,158,11,0.12)":"transparent",color:analyseSort===v?"#F59E0B":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+              style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(analyseSort===v?"#F59E0B":"#1F2937"),background:analyseSort===v?"rgba(245,158,11,0.1)":"transparent",color:analyseSort===v?"#F59E0B":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
               {l}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Stats bar */}
+      {filtered.length>0&&(
+        <div style={{display:"flex",gap:8,marginBottom:10,padding:"8px 12px",background:"#0B1220",borderRadius:8,border:"1px solid #1F2937"}}>
+          {[{l:"Bets",v:filtered.length,c:"#A78BFA"},{l:"Max Diff",v:"+"+topDiff.toFixed(2),c:"#4ADE80"},{l:"Cote moy",v:"@"+avgOdds,c:"#F59E0B"}].map(k=>(
+            <div key={k.l} style={{display:"flex",gap:5,alignItems:"center"}}>
+              <span style={{fontSize:10,color:"#6B7280"}}>{k.l}:</span>
+              <span style={{fontSize:12,fontWeight:700,color:k.c}}>{k.v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!analyseLoading&&analyseBets.length===0&&(
         <div style={{textAlign:"center",padding:"40px 20px",color:"#4B5563"}}>
           <div style={{fontSize:32,marginBottom:12}}>🔍</div>
@@ -4685,76 +4690,94 @@ const fetchAnalyse=useCallback(async()=>{
           </button>
         </div>
       )}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.filter(b=>{
-          const key=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
-          return showHiddenAnalyse||!hiddenAnalyseBets.has(key);
-        }).map((b,i)=>{
-          const isOver=b.direction==="OVER";
-          const sc=sportColor(b.sport);
-          const gameKey=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
-          const bkName=bkShortName(b.source);
-          const matchTime=b.match_time||b.start_time||null;
-          const betKey=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
-          const isHidden=hiddenAnalyseBets.has(betKey);
-          return(
-            <div key={i} style={{background:"#111827",border:"1px solid "+(isHidden?"rgba(239,68,68,0.15)":"#1F2937"),borderRadius:14,padding:"13px 14px",opacity:isHidden?0.5:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                {gameKey&&L[gameKey]
-                  ? <img src={L[gameKey]} style={{width:20,height:20,borderRadius:4,flexShrink:0}} alt={gameKey}/>
-                  : <span style={{fontSize:16,flexShrink:0}}>{sportEmoji(b.sport)}</span>
-                }
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.match||"?"}</div>
-                  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2,flexWrap:"wrap"}}>
-                    <span style={{fontSize:10,color:"#6B7280"}}>{b.tournament||""}</span>
-                    {matchTime&&<>
-                      <span style={{fontSize:10,color:"#4B5563"}}>·</span>
-                      <span style={{fontSize:10,color:"#60A5FA",fontWeight:600}}>🕐 {matchTime}</span>
-                    </>}
+
+      {/* Tableau OddsJam style */}
+      {filtered.length>0&&(
+        <div style={{background:"#0B1220",borderRadius:10,border:"1px solid #1F2937",overflow:"hidden"}}>
+          {/* Header colonnes */}
+          <div style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px 36px",gap:0,padding:"7px 12px",borderBottom:"1px solid #1F2937",background:"#060D18"}}>
+            {["","ÉVÉNEMENT","JOUEUR","MARCHÉ","BOOK","PP","DIFF","COTE",""].map((h,i)=>(
+              <div key={i} style={{fontSize:9,color:"#4B5563",fontWeight:700,letterSpacing:.8,textAlign:i>=4?"center":"left"}}>{h}</div>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {filtered.filter(b=>{
+            const key=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
+            return showHiddenAnalyse||!hiddenAnalyseBets.has(key);
+          }).map((b,i)=>{
+            const isOver=b.direction==="OVER";
+            const sc=sportColor(b.sport);
+            const gameKey=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+            const bkName=bkShortName(b.source);
+            const matchTime=b.match_time||b.start_time||null;
+            const betKey=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
+            const isHidden=hiddenAnalyseBets.has(betKey);
+            const d=parseFloat(b.diff||0);
+            return(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px 36px",gap:0,padding:"9px 12px",borderBottom:"1px solid #0F172A",background:isHidden?"rgba(239,68,68,0.03)":i%2===0?"#0B1220":"#0D1526",alignItems:"center",opacity:isHidden?0.5:1}}>
+                {/* Sport icon */}
+                <div>
+                  {gameKey&&L[gameKey]
+                    ? <img src={L[gameKey]} style={{width:16,height:16,borderRadius:3}} alt={gameKey}/>
+                    : <span style={{fontSize:13}}>{sportEmoji(b.sport)}</span>
+                  }
+                </div>
+                {/* Événement */}
+                <div style={{minWidth:0,paddingRight:8}}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.match||"?"}</div>
+                  <div style={{display:"flex",gap:4,alignItems:"center",marginTop:1}}>
+                    <span style={{fontSize:9,color:sc,fontWeight:700,background:sc+"18",padding:"1px 5px",borderRadius:3}}>{gameKey||b.sport?.slice(0,4)||"?"}</span>
+                    {matchTime&&<span style={{fontSize:9,color:"#60A5FA"}}>🕐 {matchTime}</span>}
                   </div>
                 </div>
-                <button onClick={()=>toggleHideAnalyseBet(betKey)}
-                  title={isHidden?"Réafficher":"Marquer comme pris"}
-                  style={{background:isHidden?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.25)":"rgba(239,68,68,0.25)"),borderRadius:8,padding:"4px 9px",color:isHidden?"#22C55E":"#F87171",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",flexShrink:0}}>
-                  {isHidden?"✓ Pris":"✓ Pris"}
-                </button>
-                <span style={{fontSize:9,fontWeight:700,color:sc,background:sc+"22",border:"1px solid "+sc+"44",padding:"2px 6px",borderRadius:5,flexShrink:0}}>
-                  {gameKey||b.sport?.slice(0,4)||"?"}
-                </span>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-                <span style={{fontSize:15,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{b.player||"?"}</span>
-                <span style={{fontSize:10,color:"#9CA3AF"}}>·</span>
-                <span style={{fontSize:11,color:"#A78BFA",fontWeight:600,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"2px 7px",borderRadius:5}}>{b.stat||"kills"}</span>
-                <span style={{fontSize:10,color:"#F59E0B",fontWeight:600,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",padding:"2px 6px",borderRadius:5}}>{mapLabel(b.map)}</span>
-                <span style={{fontSize:10,fontWeight:700,color:isOver?"#22C55E":"#F87171",background:isOver?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isOver?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),padding:"2px 7px",borderRadius:5}}>
-                  {isOver?"▲ OVER":"▼ UNDER"}
-                </span>
-                <span style={{fontSize:9,fontWeight:700,color:"#60A5FA",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.2)",padding:"2px 7px",borderRadius:5,marginLeft:"auto"}}>
-                  {bkName}
-                </span>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:6}}>
-                {[
-                  {label:"Book",val:b.book_line,col:"#E5E7EB",bg:"#0B1220"},
-                  {label:"PP",val:b.pp_line_original,col:"#E5E7EB",bg:"#0B1220"},
-                  {label:"PP/Map",val:b.pp_line_per_map,col:"#E5E7EB",bg:"#0B1220"},
-                  {label:"Diff",val:"+"+parseFloat(b.diff||0).toFixed(2),col:diffColor(b.diff),bg:diffBg(b.diff)},
-                  {label:"Cote",val:"@"+(b.odds||0),col:"#A78BFA",bg:"#0B1220"},
-                ].map(({label,val,col,bg})=>(
-                  <div key={label} style={{background:bg,borderRadius:8,padding:"7px 8px",textAlign:"center"}}>
-                    <div style={{fontSize:9,color:"#6B7280",marginBottom:2}}>{label}</div>
-                    <div style={{fontSize:13,fontWeight:700,color:col}}>{val}</div>
+                {/* Joueur */}
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>{b.player||"?"}</div>
+                  <div style={{fontSize:9,color:"#6B7280"}}>{bkName}</div>
+                </div>
+                {/* Marché */}
+                <div>
+                  <div style={{fontSize:10,color:"#A78BFA",fontWeight:600}}>{b.stat||"kills"}</div>
+                  <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
+                    <span style={{fontSize:9,color:"#F59E0B"}}>Map {b.map||"?"}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:isOver?"#22C55E":"#F87171"}}>{isOver?"▲":"▼"}</span>
                   </div>
-                ))}
+                </div>
+                {/* Book line */}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.book_line||"?"}</div>
+                  <div style={{fontSize:9,color:"#6B7280"}}>book</div>
+                </div>
+                {/* PP line */}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.pp_line_per_map||"?"}</div>
+                  <div style={{fontSize:9,color:"#6B7280"}}>PP</div>
+                </div>
+                {/* Diff */}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:13,fontWeight:800,color:diffColor(b.diff),background:diffBg(b.diff),borderRadius:5,padding:"2px 4px"}}>+{d.toFixed(2)}</div>
+                </div>
+                {/* Cote */}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>@{b.odds||"?"}</div>
+                </div>
+                {/* Action */}
+                <div style={{textAlign:"center"}}>
+                  <button onClick={()=>toggleHideAnalyseBet(betKey)}
+                    title={isHidden?"Réafficher":"Marquer comme pris"}
+                    style={{background:"transparent",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"#1F2937"),borderRadius:5,padding:"3px 5px",color:isHidden?"#22C55E":"#4B5563",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>
+                    ✓
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
       {filtered.length>0&&(
-        <div style={{textAlign:"center",padding:"16px 0",fontSize:11,color:"#4B5563"}}>
+        <div style={{textAlign:"center",padding:"12px 0",fontSize:10,color:"#4B5563"}}>
           {filtered.length} bet{filtered.length>1?"s":""} · {analyseLastFetch?analyseLastFetch.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):"?"}
         </div>
       )}
