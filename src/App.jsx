@@ -4731,21 +4731,19 @@ const fetchAnalyse=useCallback(async()=>{
                   {/* Événement */}
                   <div style={{minWidth:0,paddingRight:8}}>
                     <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.match||"?"}</div>
-                    {matchTime&&<span style={{fontSize:9,color:"#60A5FA"}}>🕐 {matchTime}</span>}
                   </div>
-                  {/* Nom joueur + logo bookmaker */}
+                  {/* Nom joueur + kills/map + logo bookmaker */}
                   <div style={{minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:4}}>
-                      <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize",flex:1}}>{b.player||"?"}</span>
-                      {BK_LOGOS[bkName]
-                        ? <img src={BK_LOGOS[bkName]} style={{width:14,height:14,borderRadius:3,flexShrink:0}} alt={bkName}/>
-                        : <span style={{fontSize:9,color:"#60A5FA",fontWeight:700,flexShrink:0}}>{bkName}</span>
-                      }
-                    </div>
+                    <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize",display:"block"}}>{b.player||"?"}</span>
                     <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
-                      <span style={{fontSize:10,color:"#A78BFA",fontWeight:600}}>{b.stat==="kills"?"Kills":b.stat==="headshots"?"Headshots":b.stat||"kills"}</span>
+                      <span style={{fontSize:10,color:"#A78BFA",fontWeight:600}}>{b.stat==="kills"?"Kills":b.stat==="headshots"?"HS":b.stat||"kills"}</span>
                       <span style={{fontSize:9,color:"#6B7280"}}>·</span>
                       <span style={{fontSize:10,color:"#F59E0B",fontWeight:600}}>Map {b.map||"?"}</span>
+                      <span style={{fontSize:9,color:"#6B7280"}}>·</span>
+                      {BK_LOGOS[bkName]
+                        ? <img src={BK_LOGOS[bkName]} style={{width:12,height:12,borderRadius:2,flexShrink:0}} alt={bkName}/>
+                        : <span style={{fontSize:9,color:"#60A5FA",fontWeight:700}}>{bkName}</span>
+                      }
                     </div>
                   </div>
                   {/* Marché - direction */}
@@ -4771,9 +4769,12 @@ const fetchAnalyse=useCallback(async()=>{
                     <div style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>@{b.odds||"?"}</div>
                   </div>
                 </div>
-                {/* Panel expanded - bouton masquer */}
+                {/* Panel expanded - heure + bouton masquer */}
                 {isExpanded&&(
-                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <span style={{fontSize:10,color:"#60A5FA",fontWeight:600}}>
+                      {matchTime?"🕐 "+matchTime:"Heure non disponible"}
+                    </span>
                     <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
                       style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#22C55E":"#F87171",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>
                       {isHidden?"✓ Réafficher":"✓ Marquer comme pris"}
