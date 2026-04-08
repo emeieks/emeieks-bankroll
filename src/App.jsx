@@ -2393,8 +2393,11 @@ const [analyseFDir,setAnalyseFDir]=useState("All");
 const [analyseSort,setAnalyseSort]=useState("diff"); // "diff" ou "time"
 const [showAllRecents,setShowAllRecents]=useState(false);
 const [expandedAnalyseBet,setExpandedAnalyseBet]=useState(null);
+const [analyseFHeure,setAnalyseFHeure]=useState(""); // filtre heure ex: "12:00"
 const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
 const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
+const [collapsedMonths,setCollapsedMonths]=useState(new Set());
+function toggleMonth(mk){setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});}
 function toggleHideAnalyseBet(key){
   setHiddenAnalyseBets(prev=>{
     const n=new Set(prev);
@@ -3326,20 +3329,24 @@ const fetchAnalyse=useCallback(async()=>{
                     const allMonthSelected=monthBets.every(b=>selectedIds.includes(b.id));
                     return(
                       <div key={mk} style={{marginBottom:10}}>
-                        {/* Gros header mois */}
-                        <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"14px 18px",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        {/* Gros header mois cliquable */}
+                        <div onClick={()=>toggleMonth(mk)} style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"14px 18px",marginBottom:collapsedMonths.has(mk)?0:4,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            {selectMode&&<button onClick={()=>setSelectedIds(ids=>allMonthSelected?ids.filter(id=>!monthBets.map(b=>b.id).includes(id)):[...new Set([...ids,...monthBets.map(b=>b.id)])])} style={{width:18,height:18,borderRadius:5,border:"2px solid "+(allMonthSelected?"#22C55E":"#374151"),background:allMonthSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
+                            {selectMode&&<button onClick={e=>{e.stopPropagation();setSelectedIds(ids=>allMonthSelected?ids.filter(id=>!monthBets.map(b=>b.id).includes(id)):[...new Set([...ids,...monthBets.map(b=>b.id)])])}} style={{width:18,height:18,borderRadius:5,border:"2px solid "+(allMonthSelected?"#22C55E":"#374151"),background:allMonthSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
                             <span style={{fontSize:18,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:1}}>{fmtMonthFR(mk+"-01")}</span>
                             <span style={{fontSize:12,color:"#374151",fontWeight:500}}>{monthBets.length} paris</span>
                           </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}$</div>
-                            <div style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#F87171"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}% ROI</div>
+                          <div style={{display:"flex",alignItems:"center",gap:12}}>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}$</div>
+                              <div style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#F87171"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}% ROI</div>
+                            </div>
+                            <span style={{fontSize:14,color:"#4B5563"}}>{collapsedMonths.has(mk)?"▶":"▼"}</span>
                           </div>
                         </div>
 
-                        {/* Jours */}
+                        {/* Jours — cachés si mois collapsed */}
+                        {!collapsedMonths.has(mk)&&(
                         <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
                           {monthDays.map((dk,di)=>{
                             const dayBets=settledByDay[dk];
@@ -3366,6 +3373,7 @@ const fetchAnalyse=useCallback(async()=>{
                             );
                           })}
                         </div>
+                        )}
                       </div>
                     );
                   })}
@@ -4572,6 +4580,11 @@ const fetchAnalyse=useCallback(async()=>{
     if(analyseFSport!=="all"&&b.sport!==analyseFSport)return false;
     if(analyseFSource!=="all"&&b.source!==analyseFSource)return false;
     if(analyseFDir!=="All"&&b.direction!==analyseFDir)return false;
+    if(analyseFHeure){
+      const t=b.match_time||b.start_time||null;
+      if(!t)return false;
+      return t>=analyseFHeure;
+    }
     return true;
   }).sort((a,b)=>{
     if(analyseSort==="time"){
@@ -4659,7 +4672,11 @@ const fetchAnalyse=useCallback(async()=>{
             {d==="All"?"Tous":d}
           </button>
         ))}
-        <div style={{display:"flex",gap:3,marginLeft:"auto"}}>
+        <div style={{display:"flex",gap:3,marginLeft:"auto",alignItems:"center"}}>
+          <input type="time" value={analyseFHeure} onChange={e=>setAnalyseFHeure(e.target.value)}
+            title="Filtrer par heure de début"
+            style={{background:"#111827",border:"1px solid "+(analyseFHeure?"#F59E0B":"#1F2937"),borderRadius:6,padding:"4px 7px",color:analyseFHeure?"#F59E0B":"#6B7280",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",width:82}}/>
+          {analyseFHeure&&<button onClick={()=>setAnalyseFHeure("")} style={{background:"transparent",border:"none",color:"#6B7280",fontSize:12,cursor:"pointer",padding:"0 2px"}}>✕</button>}
           {[{v:"diff",l:"↓ Diff"},{v:"time",l:"🕐 Heure"}].map(({v,l})=>(
             <button key={v} onClick={()=>setAnalyseSort(v)}
               style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(analyseSort===v?"#F59E0B":"#1F2937"),background:analyseSort===v?"rgba(245,158,11,0.1)":"transparent",color:analyseSort===v?"#F59E0B":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
