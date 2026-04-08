@@ -4716,27 +4716,23 @@ const fetchAnalyse=useCallback(async()=>{
             const d=parseFloat(b.diff||0);
             return(
               <div key={i} style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px 36px",gap:0,padding:"9px 12px",borderBottom:"1px solid #0F172A",background:isHidden?"rgba(239,68,68,0.03)":i%2===0?"#0B1220":"#0D1526",alignItems:"center",opacity:isHidden?0.5:1}}>
-                {/* Sport icon */}
+                {/* Bookmaker logo */}
                 <div>
-                  <span style={{fontSize:13}}>{sportEmoji(b.sport)}</span>
+                  {BK_LOGOS[bkName]
+                    ? <img src={BK_LOGOS[bkName]} style={{width:18,height:18,borderRadius:4,objectFit:"cover"}} alt={bkName}/>
+                    : <span style={{fontSize:11,color:"#60A5FA",fontWeight:700}}>{bkName}</span>
+                  }
                 </div>
                 {/* Événement */}
                 <div style={{minWidth:0,paddingRight:8}}>
                   <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.match||"?"}</div>
                   <div style={{display:"flex",gap:4,alignItems:"center",marginTop:1}}>
-                    <span style={{fontSize:9,color:sc,fontWeight:700,background:sc+"18",padding:"1px 5px",borderRadius:3}}>{gameKey||b.sport?.slice(0,4)||"?"}</span>
                     {matchTime&&<span style={{fontSize:9,color:"#60A5FA"}}>🕐 {matchTime}</span>}
                   </div>
                 </div>
                 {/* Joueur */}
                 <div style={{minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:5}}>
-                    <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>{b.player||"?"}</span>
-                    {BK_LOGOS[bkName]
-                      ? <img src={BK_LOGOS[bkName]} style={{width:14,height:14,borderRadius:3,flexShrink:0}} alt={bkName}/>
-                      : <span style={{fontSize:9,color:"#60A5FA",fontWeight:700,flexShrink:0}}>{bkName}</span>
-                    }
-                  </div>
+                  <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize",display:"block"}}>{b.player||"?"}</span>
                 </div>
                 {/* Marché */}
                 <div>
