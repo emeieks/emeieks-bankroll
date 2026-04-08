@@ -2392,6 +2392,7 @@ const [analyseFSource,setAnalyseFSource]=useState("all");
 const [analyseFDir,setAnalyseFDir]=useState("All");
 const [analyseSort,setAnalyseSort]=useState("diff"); // "diff" ou "time"
 const [showAllRecents,setShowAllRecents]=useState(false);
+const [expandedAnalyseBet,setExpandedAnalyseBet]=useState(null);
 const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
 const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
 function toggleHideAnalyseBet(key){
@@ -4695,8 +4696,8 @@ const fetchAnalyse=useCallback(async()=>{
       {filtered.length>0&&(
         <div style={{background:"#0B1220",borderRadius:10,border:"1px solid #1F2937",overflow:"hidden"}}>
           {/* Header colonnes */}
-          <div style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px 36px",gap:0,padding:"7px 12px",borderBottom:"1px solid #1F2937",background:"#060D18"}}>
-            {["","ÉVÉNEMENT","JOUEUR","MARCHÉ","BOOK","PP","DIFF","COTE",""].map((h,i)=>(
+          <div style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px",gap:0,padding:"7px 12px",borderBottom:"1px solid #1F2937",background:"#060D18"}}>
+            {["","ÉVÉNEMENT","JOUEUR","DIR","BOOK","PP","DIFF","COTE"].map((h,i)=>(
               <div key={i} style={{fontSize:9,color:"#4B5563",fontWeight:700,letterSpacing:.8,textAlign:i>=4?"center":"left"}}>{h}</div>
             ))}
           </div>
@@ -4713,61 +4714,72 @@ const fetchAnalyse=useCallback(async()=>{
             const matchTime=b.match_time||b.start_time||null;
             const betKey=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
             const isHidden=hiddenAnalyseBets.has(betKey);
+            const isExpanded=expandedAnalyseBet===betKey;
             const d=parseFloat(b.diff||0);
             return(
-              <div key={i} style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px 36px",gap:0,padding:"9px 12px",borderBottom:"1px solid #0F172A",background:isHidden?"rgba(239,68,68,0.03)":i%2===0?"#0B1220":"#0D1526",alignItems:"center",opacity:isHidden?0.5:1}}>
-                {/* Bookmaker logo */}
-                <div>
-                  {BK_LOGOS[bkName]
-                    ? <img src={BK_LOGOS[bkName]} style={{width:18,height:18,borderRadius:4,objectFit:"cover"}} alt={bkName}/>
-                    : <span style={{fontSize:11,color:"#60A5FA",fontWeight:700}}>{bkName}</span>
-                  }
-                </div>
-                {/* Événement */}
-                <div style={{minWidth:0,paddingRight:8}}>
-                  <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.match||"?"}</div>
-                  <div style={{display:"flex",gap:4,alignItems:"center",marginTop:1}}>
+              <div key={i}>
+                {/* Row principale cliquable */}
+                <div onClick={()=>setExpandedAnalyseBet(isExpanded?null:betKey)}
+                  style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px",gap:0,padding:"9px 12px",borderBottom:isExpanded?"none":"1px solid #0F172A",background:isHidden?"rgba(239,68,68,0.05)":isExpanded?"#131E30":i%2===0?"#0B1220":"#0D1526",alignItems:"center",opacity:isHidden?0.5:1,cursor:"pointer"}}>
+                  {/* Logo jeu */}
+                  <div>
+                    {gameKey&&L[gameKey]
+                      ? <img src={L[gameKey]} style={{width:16,height:16,borderRadius:3}} alt={gameKey}/>
+                      : <span style={{fontSize:12}}>{sportEmoji(b.sport)}</span>
+                    }
+                  </div>
+                  {/* Événement */}
+                  <div style={{minWidth:0,paddingRight:8}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.match||"?"}</div>
                     {matchTime&&<span style={{fontSize:9,color:"#60A5FA"}}>🕐 {matchTime}</span>}
                   </div>
-                </div>
-                {/* Joueur */}
-                <div style={{minWidth:0}}>
-                  <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize",display:"block"}}>{b.player||"?"}</span>
-                </div>
-                {/* Marché */}
-                <div>
-                  <div style={{fontSize:12,color:"#A78BFA",fontWeight:700}}>{b.stat==="kills"?"Kills":b.stat==="headshots"?"Headshots":b.stat||"kills"}</div>
-                  <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
-                    <span style={{fontSize:11,color:"#F59E0B",fontWeight:600}}>Map {b.map||"?"}</span>
-                    <span style={{fontSize:11,fontWeight:700,color:isOver?"#22C55E":"#F87171"}}>{isOver?"▲":"▼"}</span>
+                  {/* Nom joueur + logo bookmaker */}
+                  <div style={{minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize",flex:1}}>{b.player||"?"}</span>
+                      {BK_LOGOS[bkName]
+                        ? <img src={BK_LOGOS[bkName]} style={{width:14,height:14,borderRadius:3,flexShrink:0}} alt={bkName}/>
+                        : <span style={{fontSize:9,color:"#60A5FA",fontWeight:700,flexShrink:0}}>{bkName}</span>
+                      }
+                    </div>
+                    <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
+                      <span style={{fontSize:10,color:"#A78BFA",fontWeight:600}}>{b.stat==="kills"?"Kills":b.stat==="headshots"?"Headshots":b.stat||"kills"}</span>
+                      <span style={{fontSize:9,color:"#6B7280"}}>·</span>
+                      <span style={{fontSize:10,color:"#F59E0B",fontWeight:600}}>Map {b.map||"?"}</span>
+                    </div>
+                  </div>
+                  {/* Marché - direction */}
+                  <div style={{textAlign:"center"}}>
+                    <span style={{fontSize:11,fontWeight:700,color:isOver?"#22C55E":"#F87171"}}>{isOver?"▲ OVER":"▼ UNDER"}</span>
+                  </div>
+                  {/* Book line */}
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.book_line||"?"}</div>
+                    <div style={{fontSize:9,color:"#6B7280"}}>book</div>
+                  </div>
+                  {/* PP line */}
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.pp_line_per_map||"?"}</div>
+                    <div style={{fontSize:9,color:"#6B7280"}}>PP</div>
+                  </div>
+                  {/* Diff */}
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:13,fontWeight:800,color:diffColor(b.diff),background:diffBg(b.diff),borderRadius:5,padding:"2px 4px"}}>+{d.toFixed(2)}</div>
+                  </div>
+                  {/* Cote */}
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>@{b.odds||"?"}</div>
                   </div>
                 </div>
-                {/* Book line */}
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.book_line||"?"}</div>
-                  <div style={{fontSize:9,color:"#6B7280"}}>book</div>
-                </div>
-                {/* PP line */}
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.pp_line_per_map||"?"}</div>
-                  <div style={{fontSize:9,color:"#6B7280"}}>PP</div>
-                </div>
-                {/* Diff */}
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:13,fontWeight:800,color:diffColor(b.diff),background:diffBg(b.diff),borderRadius:5,padding:"2px 4px"}}>+{d.toFixed(2)}</div>
-                </div>
-                {/* Cote */}
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>@{b.odds||"?"}</div>
-                </div>
-                {/* Action */}
-                <div style={{textAlign:"center"}}>
-                  <button onClick={()=>toggleHideAnalyseBet(betKey)}
-                    title={isHidden?"Réafficher":"Marquer comme pris"}
-                    style={{background:"transparent",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"#1F2937"),borderRadius:5,padding:"3px 5px",color:isHidden?"#22C55E":"#4B5563",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>
-                    ✓
-                  </button>
-                </div>
+                {/* Panel expanded - bouton masquer */}
+                {isExpanded&&(
+                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
+                      style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#22C55E":"#F87171",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>
+                      {isHidden?"✓ Réafficher":"✓ Marquer comme pris"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
