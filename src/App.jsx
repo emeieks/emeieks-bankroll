@@ -2350,7 +2350,6 @@ export default function App(){
   const [fTourneys,setFTourneys]=useState(new Set()); // Set vide = tous
   const [fOverUnder,setFOverUnder]=useState("All");
   const [filtresPage,setFiltresPage]=useState(1);
-  const [collapsedMonths,setCollapsedMonths]=useState({});
   const [fLive,setFLive]=useState(false);
   const [fHeadshot,setFHeadshot]=useState(false);
   const [fDuel,setFDuel]=useState(false);
