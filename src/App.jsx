@@ -4221,39 +4221,17 @@ const fetchAnalyse=useCallback(async()=>{
 
 
             {/* ── GRAPHIQUES BANKROLL ── */}
-            {settled.length>=2&&(()=>{
-              // Profit par jour
-              const dayMap={};
-              [...settled].sort((a,b)=>(a.datetime||"").localeCompare(b.datetime||"")).forEach(b=>{
-                const dk=(b.datetime||"").slice(0,10);
-                if(!dk)return;
-                if(!dayMap[dk])dayMap[dk]=0;
-                dayMap[dk]+=b.profit;
-              });
-              const profitPoints=Object.entries(dayMap).sort((a,b2)=>a[0].localeCompare(b2[0])).map(([dt,v])=>({dt,v:parseFloat(v.toFixed(2))}));
-              return(
-                <div style={{marginBottom:16}}>
-                  {/* Bankroll cumulative */}
-                  <div className="card" style={{padding:"12px 14px",marginBottom:10}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                      <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,fontWeight:700}}>Bankroll cumulative</div>
-                      <div style={{fontSize:12,fontWeight:700,color:totalProfit>=0?"#22C55E":"#F87171"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
-                    </div>
-                    <BankrollChart points={chartPoints} h={140}/>
+            {settled.length>=2&&(
+              <div style={{marginBottom:16}}>
+                <div className="card" style={{padding:"12px 14px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,fontWeight:700}}>Bankroll cumulative</div>
+                    <div style={{fontSize:12,fontWeight:700,color:totalProfit>=0?"#22C55E":"#F87171"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
                   </div>
-                  {/* Profit par jour */}
-                  {profitPoints.length>=2&&(
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                        <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,fontWeight:700}}>Profit par jour</div>
-                        <div style={{fontSize:10,color:"#6B7280"}}>{profitPoints.length} jours</div>
-                      </div>
-                      <ProfitChart points={profitPoints} h={110}/>
-                    </div>
-                  )}
+                  <BankrollChart points={chartPoints} h={140}/>
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {/* ── PAR JEU — accordéons regroupés ── */}
             {ALL_GAMES.map(game=>{
@@ -4820,16 +4798,36 @@ const fetchAnalyse=useCallback(async()=>{
                     <div style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>@{b.odds||"?"}</div>
                   </div>
                 </div>
-                {/* Panel expanded - heure + bouton masquer */}
+                {/* Panel expanded - heure + boutons */}
                 {isExpanded&&(
-                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <span style={{fontSize:10,color:"#60A5FA",fontWeight:600}}>
+                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+                    <span style={{fontSize:10,color:"#60A5FA",fontWeight:600,flexShrink:0}}>
                       {matchTime?"🕐 "+matchTime:"Heure non disponible"}
                     </span>
-                    <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
-                      style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#22C55E":"#F87171",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>
-                      {isHidden?"✓ Réafficher":"✓ Marquer comme pris"}
-                    </button>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <button onClick={e=>{
+                        e.stopPropagation();
+                        const bkMap={"Betby":"Betby","Thunderpick":"Thunderpick","betby":"Betby","thunderpick":"Thunderpick"};
+                        const bk=bkMap[b.source]||b.source||"";
+                        const statLabel=b.stat==="headshots"?"HS":"Kills";
+                        const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
+                        const mapTag=b.map!=null?"Map "+b.map:"Map 1";
+                        const ou=b.direction==="OVER"?"Over":"Under";
+                        const gk=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+                        const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
+                        setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo});
+                        setEditingBet(null);
+                        setExpandedAnalyseBet(null);
+                        setView("add");
+                      }}
+                        style={{padding:"5px 14px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:7,color:"#A78BFA",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                        + Ajouter
+                      </button>
+                      <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
+                        style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#22C55E":"#F87171",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                        {isHidden?"✓ Réafficher":"✓ Pris"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
