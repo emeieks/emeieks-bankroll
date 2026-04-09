@@ -4220,6 +4220,41 @@ const fetchAnalyse=useCallback(async()=>{
 
 
 
+            {/* ── GRAPHIQUES BANKROLL ── */}
+            {settled.length>=2&&(()=>{
+              // Profit par jour
+              const dayMap={};
+              [...settled].sort((a,b)=>(a.datetime||"").localeCompare(b.datetime||"")).forEach(b=>{
+                const dk=(b.datetime||"").slice(0,10);
+                if(!dk)return;
+                if(!dayMap[dk])dayMap[dk]=0;
+                dayMap[dk]+=b.profit;
+              });
+              const profitPoints=Object.entries(dayMap).sort((a,b2)=>a[0].localeCompare(b2[0])).map(([dt,v])=>({dt,v:parseFloat(v.toFixed(2))}));
+              return(
+                <div style={{marginBottom:16}}>
+                  {/* Bankroll cumulative */}
+                  <div className="card" style={{padding:"12px 14px",marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,fontWeight:700}}>Bankroll cumulative</div>
+                      <div style={{fontSize:12,fontWeight:700,color:totalProfit>=0?"#22C55E":"#F87171"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
+                    </div>
+                    <BankrollChart points={chartPoints} h={140}/>
+                  </div>
+                  {/* Profit par jour */}
+                  {profitPoints.length>=2&&(
+                    <div className="card" style={{padding:"12px 14px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,fontWeight:700}}>Profit par jour</div>
+                        <div style={{fontSize:10,color:"#6B7280"}}>{profitPoints.length} jours</div>
+                      </div>
+                      <ProfitChart points={profitPoints} h={110}/>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* ── PAR JEU — accordéons regroupés ── */}
             {ALL_GAMES.map(game=>{
               const gs=perGameStats[game];
