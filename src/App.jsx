@@ -22,18 +22,7 @@ async function supaFetch(path, opts={}) {
 }
 
 async function supaPullBets() {
-  // Paginer pour dépasser la limite de 1000 de Supabase
-  const limit = 1000;
-  let all = [];
-  let offset = 0;
-  while(true) {
-    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc&limit=${limit}&offset=${offset}`);
-    if(!batch || batch.length === 0) break;
-    all = [...all, ...batch];
-    if(batch.length < limit) break;
-    offset += limit;
-  }
-  return all;
+  return supaFetch("/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc");
 }
 
 async function supaPushBets(bets) {
@@ -1824,7 +1813,7 @@ const STATUS_CFG={
   won:{label:"Gagne",color:"#4ADE80",bg:"rgba(34,197,94,0.1)"},
   lost:{label:"Perdu",color:"#F87171",bg:"rgba(248,113,113,0.1)"},
 };
-const EMPTY_FORM={player:"",overUnder:"Over",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false};
+const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 
 function toDateKey(dt){return dt?dt.slice(0,10):"";}
@@ -2244,7 +2233,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
             <div style={{fontSize:13,color:"#9CA3AF",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>
               <span style={{color:"#94A3B8",fontWeight:700}}>@{bet.odds}</span>
               {bet.bookmaker&&<span style={{color:"#3B82F6",fontWeight:600}}> · {bet.bookmaker}</span>}
-              <span style={{color:"#A78BFA",fontWeight:600}}> · {bet.stake}€</span>
+              <span style={{color:"#A78BFA",fontWeight:600}}> · {bet.stake}$</span>
               {bet.league&&<span style={{color:"#9CA3AF"}}> · {bet.league}</span>}
             </div>
           </div>
@@ -2299,7 +2288,7 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
               <GameLogo game={bet.game} size={18}/>
               <div style={{minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</div>
-                <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{bet.description} - @{bet.odds} - {bet.stake}€</div>
+                <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{bet.description} - @{bet.odds} - {bet.stake}$</div>
               </div>
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
@@ -2321,7 +2310,6 @@ export default function App(){
   const [bets,setBets]=useState([]);
   const [bankroll,setBankroll]=useState(7500);
   const [custom,setCustom]=useState({});
-  // Sauvegarder custom players dans localStorage à chaque changement
   useEffect(()=>{
     try{localStorage.setItem("v7_custom_p",JSON.stringify(custom));}catch{}
   },[custom]);
@@ -2337,6 +2325,7 @@ export default function App(){
   const [bookmakers,setBookmakers]=useState(DEFAULT_BK);
   const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
   const [stickyBK,setStickyBK]=useState(false);
+  const [lockedStatus,setLockedStatus]=useState(null); // null = pas de lock, "pending"|"won"|"lost"
   const [view,setView]=useState("home");
   const [loaded,setLoaded]=useState(false);
   const [toast,setToast]=useState(null);
@@ -2368,6 +2357,8 @@ export default function App(){
   const [fLive,setFLive]=useState(false);
   const [fHeadshot,setFHeadshot]=useState(false);
   const [fDuel,setFDuel]=useState(false);
+  const [fDateFrom,setFDateFrom]=useState("");
+  const [fDateTo,setFDateTo]=useState("");
   const [fMinOdds,setFMinOdds]=useState("");
   const [fMaxOdds,setFMaxOdds]=useState("");
   const [fMinStake,setFMinStake]=useState("");
@@ -2448,6 +2439,11 @@ function toggleHideAnalyseBet(key){
     try{localStorage.setItem("v7_sticky_bk",JSON.stringify({active:stickyBK,bk:stickyBK?form.bookmaker:""}));}catch{}
   },[stickyBK,form.bookmaker,loaded]);
 
+  // Persister lockedStatus
+  useEffect(()=>{
+    try{localStorage.setItem("v7_locked_status",lockedStatus||"");}catch{}
+  },[lockedStatus]);
+
   // Persister tournois actifs
   useEffect(()=>{
     if(!loaded)return;
@@ -2518,29 +2514,6 @@ function toggleHideAnalyseBet(key){
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[loaded]);
-
-  // ── Reouvrir clavier iPhone au retour sur l'app ──────────────────────────
-  const lastFocusedRef = useRef(null);
-  useEffect(()=>{
-    function onFocusIn(e){
-      if(e.target&&(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")){
-        lastFocusedRef.current = e.target;
-      }
-    }
-    function onVisibilityChange(){
-      if(document.visibilityState==="visible" && lastFocusedRef.current){
-        setTimeout(()=>{
-          try{ lastFocusedRef.current.focus(); }catch{}
-        }, 300);
-      }
-    }
-    document.addEventListener("focusin", onFocusIn);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return ()=>{
-      document.removeEventListener("focusin", onFocusIn);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  },[]);
 
   const allPlayers=useMemo(()=>{
     const merged={};
@@ -2785,7 +2758,7 @@ function toggleHideAnalyseBet(key){
 
   const filteredBets=useMemo(()=>{
     // Fast path: no active filters
-    const noFilters=fGames.length===0&&fBKs.length===0&&!fPlayer&&fStatus==="All"&&fOverUnder==="All"&&!fLive&&!fHeadshot&&!fDuel&&!fMinOdds&&!fMaxOdds&&!fMinStake&&!fMaxStake&&fMapFilter==="all"&&fRole==="All"&&fLeague==="All"&&fTourneys.size===0;
+    const noFilters=fGames.length===0&&fBKs.length===0&&!fPlayer&&fStatus==="All"&&fOverUnder==="All"&&!fLive&&!fHeadshot&&!fDuel&&!fMinOdds&&!fMaxOdds&&!fMinStake&&!fMaxStake&&fMapFilter==="all"&&fRole==="All"&&fLeague==="All"&&fTourneys.size===0&&!fDateFrom&&!fDateTo;
     if(noFilters)return bets;
     return bets.filter(b=>{
       if(fGames.length>0&&!fGames.includes(b.game))return false;
@@ -2796,6 +2769,8 @@ function toggleHideAnalyseBet(key){
       if(fLive&&!b.isLive)return false;
       if(fHeadshot&&!b.isHeadshot)return false;
       if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
+      if(fDateFrom&&b.datetime&&b.datetime<fDateFrom)return false;
+      if(fDateTo&&b.datetime&&b.datetime>fDateTo+"T23:59:59")return false;
       if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
       if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
       if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
@@ -2815,7 +2790,7 @@ function toggleHideAnalyseBet(key){
       }
       return (b2.datetime||"").localeCompare(a.datetime||"");
     });
-  },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys]);
+  },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
     const now=Date.now();
@@ -2886,20 +2861,21 @@ function toggleHideAnalyseBet(key){
       };
       setBets(b=>b.map(bet=>bet.id===editingBet.id?updatedBet:bet));
       setEditingBet(null);
-      setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked}));
+      setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
       showToast("Pari modifié ✓");
       setView("mesparis");
       return;
     }
+    const finalStatus=form.status;
     setBets(b=>[{
       id:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
-      odds,stake,bookmaker:form.bookmaker,status:form.status,
+      odds,stake,bookmaker:form.bookmaker,status:finalStatus,
       game:info.game,league:info.league,role:info.role,team:info.team,
       datetime:form.datetime||nowDT(),isHeadshot:form.isHeadshot||false,isLive:form.isLive||false,
-      mapTag:form.mapTag||"",profit:calcProfit(form.status,stake,odds),
+      mapTag:form.mapTag||"",profit:calcProfit(finalStatus,stake,odds),
       tournament:tname,
     },...b]);
-    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked}));
+    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
     showToast("Pari enregistré ✓");
     setView("mesparis");
   }
@@ -2922,7 +2898,7 @@ function toggleHideAnalyseBet(key){
       tournament:tname,
     }));
     setBets(b=>[...newBets,...b]);
-    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked}));
+    setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
     setSessionMaps([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
     showToast(newBets.length+" paris enregistres");
     setView("mesparis");
@@ -3268,7 +3244,7 @@ const fetchAnalyse=useCallback(async()=>{
 
             {/* ── Status chips + Filtre button ── */}
             {(()=>{
-              const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0)+(fOverUnder!=="All"?1:0)+(fRole!=="All"?1:0)+(fLeague!=="All"?1:0);
+              const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0)+(fOverUnder!=="All"?1:0)+(fRole!=="All"?1:0)+(fLeague!=="All"?1:0)+(fDateFrom?1:0)+(fDateTo?1:0);
               return(
                 <div style={{display:"flex",gap:5,marginBottom:10,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
                   <button onClick={()=>setView("filtres")}
@@ -3296,6 +3272,8 @@ const fetchAnalyse=useCallback(async()=>{
                 if(fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
                 if(fRole!=="All"&&b.role!==fRole)return false;
                 if(fLeague!=="All"&&b.league!==fLeague)return false;
+                if(fDateFrom&&b.datetime&&b.datetime<fDateFrom)return false;
+                if(fDateTo&&b.datetime&&b.datetime>fDateTo+"T23:59:59")return false;
                 if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
                 if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
                 if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
@@ -3442,6 +3420,28 @@ const fetchAnalyse=useCallback(async()=>{
             </div>
 
             <div className="add-card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span className="add-label" style={{marginBottom:0}}>📅 Période</span>
+                {(fDateFrom||fDateTo)&&(
+                  <button onClick={()=>{setFDateFrom("");setFDateTo("");}}
+                    style={{padding:"3px 10px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,color:"#F87171",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                    Effacer
+                  </button>
+                )}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <span style={{fontSize:10,color:"#6B7280",fontWeight:600}}>Du</span>
+                  <input type="date" className="ifield" value={fDateFrom} onChange={e=>setFDateFrom(e.target.value)} style={{height:36,fontSize:13,padding:"0 10px"}}/>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  <span style={{fontSize:10,color:"#6B7280",fontWeight:600}}>Au</span>
+                  <input type="date" className="ifield" value={fDateTo} onChange={e=>setFDateTo(e.target.value)} style={{height:36,fontSize:13,padding:"0 10px"}}/>
+                </div>
+              </div>
+            </div>
+
+            <div className="add-card">
               <span className="add-label">Jeu</span>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
                 {ALL_GAMES.map(g=>(
@@ -3577,7 +3577,7 @@ const fetchAnalyse=useCallback(async()=>{
                       <div style={{fontSize:10,color:parseFloat(roi)>=0?"#22C55E":"#EF4444"}}>{parseFloat(roi)>=0?"+":""}{roi}% ROI</div>
                     </div>
                     <div style={{fontSize:16,fontWeight:700,color:profit>=0?"#22C55E":"#EF4444"}}>
-                      {profit>=0?"+":""}{profit.toFixed(0)}€
+                      {profit>=0?"+":""}{profit.toFixed(0)}$
                     </div>
                   </div>
                 );
@@ -3974,7 +3974,27 @@ const fetchAnalyse=useCallback(async()=>{
               {form.player&&!form.autoInfo&&<div style={{marginTop:6,fontSize:10,color:"#F59E0B"}}>Joueur non reconnu — tu peux quand même enregistrer.</div>}
             </div>
 
-
+            {/* ── 2b. BLOC HEADSHOT (CS2 seulement) ── */}
+            {form.autoInfo?.game==="CS2"&&(
+              <div style={{background:"#131525",borderRadius:16,border:"1.5px solid "+(form.isHeadshot?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.06)"),padding:"14px 16px",marginBottom:10,transition:"border-color .2s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:12,color:"#9CA3AF",fontWeight:500,marginBottom:2}}>Type de stat</div>
+                    <div style={{fontSize:11,color:"#4B5563"}}>Kills ou Headshots uniquement</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>setForm(f=>({...f,isHeadshot:false,description:""}))}
+                      style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(form.isHeadshot?"rgba(255,255,255,0.08)":"#22C55E"),background:form.isHeadshot?"transparent":"rgba(34,197,94,0.1)",color:form.isHeadshot?"#6B7280":"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
+                      🎯 Kills
+                    </button>
+                    <button onClick={()=>setForm(f=>({...f,isHeadshot:true,description:""}))}
+                      style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(form.isHeadshot?"#A78BFA":"rgba(255,255,255,0.08)"),background:form.isHeadshot?"rgba(124,58,237,0.15)":"transparent",color:form.isHeadshot?"#A78BFA":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
+                      💀 HS
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── 3. DESCRIPTION + OVER/UNDER ── */}
             <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(124,58,237,0.15)",padding:"14px 16px",marginBottom:10}}>
@@ -3994,13 +4014,9 @@ const fetchAnalyse=useCallback(async()=>{
               {form.autoInfo&&(()=>{
                 const game=form.autoInfo.game;
                 let opts=[];
-                if(game==="CS2"){
-                  // Kills CS2 + Headshots CS2 dans le même dropdown
-                  const kills=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
-                  const hs=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
-                  opts=[...kills,...hs];
-                }
+                if(form.isHeadshot) opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
                 else if(game==="LoL") opts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
+                else if(game==="CS2") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
                 else if(game==="Dota2") opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
                 else if(game==="Valorant") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
                 // Si la valeur éditée n'est pas dans les options, l'ajouter
@@ -4009,9 +4025,7 @@ const fetchAnalyse=useCallback(async()=>{
                 return(
                   <div style={{background:"#0D0F1E",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"4px"}}>
                     <select id="kills-select" value={form.description} onChange={e=>{
-                        const val=e.target.value;
-                        const isHS=val.includes("Headshot");
-                        setForm(f=>({...f,description:val,isHeadshot:isHS}));
+                        setForm(f=>({...f,description:e.target.value}));
                         if(e.target.value){
                           setTimeout(()=>{const el=document.getElementById("odds-input-field");if(el)el.focus();},80);
                         }
@@ -4135,16 +4149,23 @@ const fetchAnalyse=useCallback(async()=>{
             </div>
 
             {/* ── 6. STATUT ── */}
-            <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(124,58,237,0.15)",padding:"14px 16px",marginBottom:16}}>
-              <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500,display:"block",marginBottom:12}}>État</span>
+            <div style={{background:"#131525",borderRadius:16,border:"1px solid "+(lockedStatus?"rgba(245,158,11,0.3)":"rgba(124,58,237,0.15)"),padding:"14px 16px",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>État</span>
+                <button onClick={()=>setLockedStatus(lockedStatus===form.status?null:form.status)}
+                  style={{display:"flex",alignItems:"center",gap:4,padding:"3px 10px",background:lockedStatus?"rgba(245,158,11,0.12)":"rgba(255,255,255,0.04)",border:"1px solid "+(lockedStatus?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.08)"),borderRadius:6,color:lockedStatus?"#F59E0B":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                  {lockedStatus?"🔒 Locké":"🔓 Locker"}
+                </button>
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 {["pending","won","lost"].map(s=>(
-                  <button key={s} onClick={()=>setForm(f=>({...f,status:s}))}
-                    style={{padding:"11px 0",borderRadius:12,border:"1.5px solid "+(form.status===s?STATUS_CFG[s].color+"88":"rgba(255,255,255,0.07)"),background:form.status===s?STATUS_CFG[s].bg:"rgba(255,255,255,0.02)",color:form.status===s?STATUS_CFG[s].color:"#9CA3AF",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease"}}>
-                    {STATUS_CFG[s].label}
+                  <button key={s} onClick={()=>{setForm(f=>({...f,status:s}));if(lockedStatus)setLockedStatus(s);}}
+                    style={{padding:"11px 0",borderRadius:12,border:"1.5px solid "+(form.status===s?STATUS_CFG[s].color+"88":"rgba(255,255,255,0.07)"),background:form.status===s?STATUS_CFG[s].bg:"rgba(255,255,255,0.02)",color:form.status===s?STATUS_CFG[s].color:"#9CA3AF",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease",boxShadow:lockedStatus===s?"0 0 8px "+STATUS_CFG[s].color+"44":"none"}}>
+                    {STATUS_CFG[s].label}{lockedStatus===s?" 🔒":""}
                   </button>
                 ))}
               </div>
+              {lockedStatus&&<div style={{fontSize:10,color:"#F59E0B",marginTop:8}}>🔒 Statut "{STATUS_CFG[lockedStatus].label}" verrouillé pour les prochains bets</div>}
             </div>
 
             {/* ── CTA ── */}
