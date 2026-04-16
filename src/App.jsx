@@ -22,7 +22,18 @@ async function supaFetch(path, opts={}) {
 }
 
 async function supaPullBets() {
-  return supaFetch("/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc");
+  // Paginer pour dépasser la limite de 1000 de Supabase
+  const limit = 1000;
+  let all = [];
+  let offset = 0;
+  while(true) {
+    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc&limit=${limit}&offset=${offset}`);
+    if(!batch || batch.length === 0) break;
+    all = [...all, ...batch];
+    if(batch.length < limit) break;
+    offset += limit;
+  }
+  return all;
 }
 
 async function supaPushBets(bets) {
@@ -2233,7 +2244,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
             <div style={{fontSize:13,color:"#9CA3AF",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>
               <span style={{color:"#94A3B8",fontWeight:700}}>@{bet.odds}</span>
               {bet.bookmaker&&<span style={{color:"#3B82F6",fontWeight:600}}> · {bet.bookmaker}</span>}
-              <span style={{color:"#A78BFA",fontWeight:600}}> · {bet.stake}$</span>
+              <span style={{color:"#A78BFA",fontWeight:600}}> · {bet.stake}€</span>
               {bet.league&&<span style={{color:"#9CA3AF"}}> · {bet.league}</span>}
             </div>
           </div>
@@ -2288,7 +2299,7 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
               <GameLogo game={bet.game} size={18}/>
               <div style={{minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</div>
-                <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{bet.description} - @{bet.odds} - {bet.stake}$</div>
+                <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{bet.description} - @{bet.odds} - {bet.stake}€</div>
               </div>
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
@@ -2310,6 +2321,7 @@ export default function App(){
   const [bets,setBets]=useState([]);
   const [bankroll,setBankroll]=useState(7500);
   const [custom,setCustom]=useState({});
+  // Sauvegarder custom players dans localStorage à chaque changement
   useEffect(()=>{
     try{localStorage.setItem("v7_custom_p",JSON.stringify(custom));}catch{}
   },[custom]);
@@ -2325,7 +2337,7 @@ export default function App(){
   const [bookmakers,setBookmakers]=useState(DEFAULT_BK);
   const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
   const [stickyBK,setStickyBK]=useState(false);
-  const [lockedStatus,setLockedStatus]=useState(null); // null = pas de lock, "pending"|"won"|"lost"
+  const [lockedStatus,setLockedStatus]=useState(null);
   const [view,setView]=useState("home");
   const [loaded,setLoaded]=useState(false);
   const [toast,setToast]=useState(null);
@@ -2333,6 +2345,7 @@ export default function App(){
   const [calMonth,setCalMonth]=useState(new Date().getMonth());
   const [calYear,setCalYear]=useState(new Date().getFullYear());
   const [calSelected,setCalSelected]=useState(null);
+  const [calGames,setCalGames]=useState([]);
   const [visibleMonths,setVisibleMonths]=useState(1);
   const [selectMode,setSelectMode]=useState(false);
   const [selectedIds,setSelectedIds]=useState([]);
@@ -2438,11 +2451,7 @@ function toggleHideAnalyseBet(key){
     if(!loaded)return;
     try{localStorage.setItem("v7_sticky_bk",JSON.stringify({active:stickyBK,bk:stickyBK?form.bookmaker:""}));}catch{}
   },[stickyBK,form.bookmaker,loaded]);
-
-  // Persister lockedStatus
-  useEffect(()=>{
-    try{localStorage.setItem("v7_locked_status",lockedStatus||"");}catch{}
-  },[lockedStatus]);
+  useEffect(()=>{try{localStorage.setItem("v7_locked_status",lockedStatus||"");}catch{}},[lockedStatus]);
 
   // Persister tournois actifs
   useEffect(()=>{
@@ -2515,6 +2524,29 @@ function toggleHideAnalyseBet(key){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[loaded]);
 
+  // ── Reouvrir clavier iPhone au retour sur l'app ──────────────────────────
+  const lastFocusedRef = useRef(null);
+  useEffect(()=>{
+    function onFocusIn(e){
+      if(e.target&&(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")){
+        lastFocusedRef.current = e.target;
+      }
+    }
+    function onVisibilityChange(){
+      if(document.visibilityState==="visible" && lastFocusedRef.current){
+        setTimeout(()=>{
+          try{ lastFocusedRef.current.focus(); }catch{}
+        }, 300);
+      }
+    }
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return ()=>{
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  },[]);
+
   const allPlayers=useMemo(()=>{
     const merged={};
     Object.entries(STATIC_PLAYERS).forEach(([k,v])=>{
@@ -2533,6 +2565,18 @@ function toggleHideAnalyseBet(key){
   },[allPlayers]);
 
   const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
+
+  const globalOverUnderStats=useMemo(()=>{
+    let overCnt=0,overWon=0,overProfit=0,overStaked=0;
+    let underCnt=0,underWon=0,underProfit=0,underStaked=0;
+    settled.forEach(b=>{
+      if(b.overUnder==="Over"){overCnt++;overProfit+=b.profit;overStaked+=b.stake;if(b.status==="won")overWon++;}
+      else if(b.overUnder==="Under"){underCnt++;underProfit+=b.profit;underStaked+=b.stake;if(b.status==="won")underWon++;}
+    });
+    const overS=overCnt>0?{count:overCnt,won:overWon,profit:overProfit,staked:overStaked,wr:overWon/overCnt*100,roi:overStaked>0?overProfit/overStaked*100:0}:null;
+    const underS=underCnt>0?{count:underCnt,won:underWon,profit:underProfit,staked:underStaked,wr:underWon/underCnt*100,roi:underStaked>0?underProfit/underStaked*100:0}:null;
+    return{overS,underS};
+  },[settled]);
 
   // Stats
   const bkStats=useMemo(()=>{
@@ -2741,13 +2785,14 @@ function toggleHideAnalyseBet(key){
   const {dailyProfit,dailyPending}=useMemo(()=>{
     const dp={},dpd={};
     bets.forEach(b=>{
+      if(calGames.length>0&&!calGames.includes(b.game))return;
       const dk=toDateKey(b.datetime);
       if(!dk)return;
       if(b.status!=="pending"){dp[dk]=(dp[dk]||0)+b.profit;}
       else{dpd[dk]=(dpd[dk]||0)+1;}
     });
     return{dailyProfit:dp,dailyPending:dpd};
-  },[bets]);
+  },[bets,calGames]);
 
   const monthProfit=useMemo(()=>{
     const mo=String(calMonth+1).padStart(2,"0");
@@ -2791,6 +2836,8 @@ function toggleHideAnalyseBet(key){
       return (b2.datetime||"").localeCompare(a.datetime||"");
     });
   },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
+
+  const calFilteredBets=useMemo(()=>calGames.length>0?bets.filter(b=>calGames.includes(b.game)):bets,[bets,calGames]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
     const now=Date.now();
@@ -2866,13 +2913,12 @@ function toggleHideAnalyseBet(key){
       setView("mesparis");
       return;
     }
-    const finalStatus=form.status;
     setBets(b=>[{
       id:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
-      odds,stake,bookmaker:form.bookmaker,status:finalStatus,
+      odds,stake,bookmaker:form.bookmaker,status:form.status,
       game:info.game,league:info.league,role:info.role,team:info.team,
       datetime:form.datetime||nowDT(),isHeadshot:form.isHeadshot||false,isLive:form.isLive||false,
-      mapTag:form.mapTag||"",profit:calcProfit(finalStatus,stake,odds),
+      mapTag:form.mapTag||"",profit:calcProfit(form.status,stake,odds),
       tournament:tname,
     },...b]);
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
@@ -3409,16 +3455,7 @@ const fetchAnalyse=useCallback(async()=>{
               </button>
             </div>
 
-            {/* Statut */}
-            <div className="add-card">
-              <span className="add-label">Statut</span>
-              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                {[{k:"All",label:"Tous"},{k:"pending",label:"⏳ Attente"},{k:"won",label:"✓ Gagnés"},{k:"lost",label:"✗ Perdus"}].map(t=>(
-                  <button key={t.k} className={"fchip "+(fStatus===t.k?"on":"")} onClick={()=>setFStatus(t.k)}>{t.label}</button>
-                ))}
-              </div>
-            </div>
-
+            {/* Période */}
             <div className="add-card">
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <span className="add-label" style={{marginBottom:0}}>📅 Période</span>
@@ -3438,6 +3475,16 @@ const fetchAnalyse=useCallback(async()=>{
                   <span style={{fontSize:10,color:"#6B7280",fontWeight:600}}>Au</span>
                   <input type="date" className="ifield" value={fDateTo} onChange={e=>setFDateTo(e.target.value)} style={{height:36,fontSize:13,padding:"0 10px"}}/>
                 </div>
+              </div>
+            </div>
+
+            {/* Statut */}
+            <div className="add-card">
+              <span className="add-label">Statut</span>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                {[{k:"All",label:"Tous"},{k:"pending",label:"⏳ Attente"},{k:"won",label:"✓ Gagnés"},{k:"lost",label:"✗ Perdus"}].map(t=>(
+                  <button key={t.k} className={"fchip "+(fStatus===t.k?"on":"")} onClick={()=>setFStatus(t.k)}>{t.label}</button>
+                ))}
               </div>
             </div>
 
@@ -3577,7 +3624,7 @@ const fetchAnalyse=useCallback(async()=>{
                       <div style={{fontSize:10,color:parseFloat(roi)>=0?"#22C55E":"#EF4444"}}>{parseFloat(roi)>=0?"+":""}{roi}% ROI</div>
                     </div>
                     <div style={{fontSize:16,fontWeight:700,color:profit>=0?"#22C55E":"#EF4444"}}>
-                      {profit>=0?"+":""}{profit.toFixed(0)}$
+                      {profit>=0?"+":""}{profit.toFixed(0)}€
                     </div>
                   </div>
                 );
@@ -3974,27 +4021,7 @@ const fetchAnalyse=useCallback(async()=>{
               {form.player&&!form.autoInfo&&<div style={{marginTop:6,fontSize:10,color:"#F59E0B"}}>Joueur non reconnu — tu peux quand même enregistrer.</div>}
             </div>
 
-            {/* ── 2b. BLOC HEADSHOT (CS2 seulement) ── */}
-            {form.autoInfo?.game==="CS2"&&(
-              <div style={{background:"#131525",borderRadius:16,border:"1.5px solid "+(form.isHeadshot?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.06)"),padding:"14px 16px",marginBottom:10,transition:"border-color .2s"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div>
-                    <div style={{fontSize:12,color:"#9CA3AF",fontWeight:500,marginBottom:2}}>Type de stat</div>
-                    <div style={{fontSize:11,color:"#4B5563"}}>Kills ou Headshots uniquement</div>
-                  </div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>setForm(f=>({...f,isHeadshot:false,description:""}))}
-                      style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(form.isHeadshot?"rgba(255,255,255,0.08)":"#22C55E"),background:form.isHeadshot?"transparent":"rgba(34,197,94,0.1)",color:form.isHeadshot?"#6B7280":"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
-                      🎯 Kills
-                    </button>
-                    <button onClick={()=>setForm(f=>({...f,isHeadshot:true,description:""}))}
-                      style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(form.isHeadshot?"#A78BFA":"rgba(255,255,255,0.08)"),background:form.isHeadshot?"rgba(124,58,237,0.15)":"transparent",color:form.isHeadshot?"#A78BFA":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
-                      💀 HS
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* ── 3. DESCRIPTION + OVER/UNDER ── */}
             <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(124,58,237,0.15)",padding:"14px 16px",marginBottom:10}}>
@@ -4014,9 +4041,13 @@ const fetchAnalyse=useCallback(async()=>{
               {form.autoInfo&&(()=>{
                 const game=form.autoInfo.game;
                 let opts=[];
-                if(form.isHeadshot) opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
+                if(game==="CS2"){
+                  // Kills CS2 + Headshots CS2 dans le même dropdown
+                  const kills=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
+                  const hs=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
+                  opts=[...kills,...hs];
+                }
                 else if(game==="LoL") opts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
-                else if(game==="CS2") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
                 else if(game==="Dota2") opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
                 else if(game==="Valorant") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
                 // Si la valeur éditée n'est pas dans les options, l'ajouter
@@ -4025,7 +4056,9 @@ const fetchAnalyse=useCallback(async()=>{
                 return(
                   <div style={{background:"#0D0F1E",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"4px"}}>
                     <select id="kills-select" value={form.description} onChange={e=>{
-                        setForm(f=>({...f,description:e.target.value}));
+                        const val=e.target.value;
+                        const isHS=val.includes("Headshot");
+                        setForm(f=>({...f,description:val,isHeadshot:isHS}));
                         if(e.target.value){
                           setTimeout(()=>{const el=document.getElementById("odds-input-field");if(el)el.focus();},80);
                         }
@@ -4152,7 +4185,7 @@ const fetchAnalyse=useCallback(async()=>{
             <div style={{background:"#131525",borderRadius:16,border:"1px solid "+(lockedStatus?"rgba(245,158,11,0.3)":"rgba(124,58,237,0.15)"),padding:"14px 16px",marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>État</span>
-                <button onClick={()=>setLockedStatus(lockedStatus===form.status?null:form.status)}
+                <button onClick={()=>setLockedStatus(lockedStatus?null:form.status)}
                   style={{display:"flex",alignItems:"center",gap:4,padding:"3px 10px",background:lockedStatus?"rgba(245,158,11,0.12)":"rgba(255,255,255,0.04)",border:"1px solid "+(lockedStatus?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.08)"),borderRadius:6,color:lockedStatus?"#F59E0B":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                   {lockedStatus?"🔒 Locké":"🔓 Locker"}
                 </button>
@@ -4165,7 +4198,7 @@ const fetchAnalyse=useCallback(async()=>{
                   </button>
                 ))}
               </div>
-              {lockedStatus&&<div style={{fontSize:10,color:"#F59E0B",marginTop:8}}>🔒 Statut "{STATUS_CFG[lockedStatus].label}" verrouillé pour les prochains bets</div>}
+              {lockedStatus&&<div style={{fontSize:10,color:"#F59E0B",marginTop:8}}>🔒 "{STATUS_CFG[lockedStatus]?.label}" verrouillé pour les prochains bets</div>}
             </div>
 
             {/* ── CTA ── */}
@@ -4274,6 +4307,45 @@ const fetchAnalyse=useCallback(async()=>{
                     <div style={{fontSize:12,fontWeight:700,color:totalProfit>=0?"#22C55E":"#F87171"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
                   </div>
                   <BankrollChart points={chartPoints} h={140}/>
+                </div>
+              </div>
+            )}
+
+            {/* ── COMPARATEUR GLOBAL OVER/UNDER ── */}
+            {(globalOverUnderStats.overS||globalOverUnderStats.underS)&&(
+              <div className="card" style={{padding:"12px 14px",marginBottom:16}}>
+                <div style={{fontSize:11,color:"#60A5FA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>📊 Over / Under — Tous jeux</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[{label:"🔼 Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.08)"},{label:"🔽 Under",s:globalOverUnderStats.underS,color:"#F87171",bg:"rgba(239,68,68,0.08)"}].map(({label,s,color,bg})=>{
+                    if(!s)return null;
+                    return(
+                      <div key={label} style={{background:bg,borderRadius:12,padding:"12px 14px",border:"1px solid "+(s.profit>=0?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)")}}>
+                        <div style={{fontSize:13,fontWeight:700,color,marginBottom:8}}>{label}</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:"#9CA3AF"}}>Paris</span>
+                            <span style={{fontSize:11,fontWeight:700,color:"#E5E7EB"}}>{s.count}</span>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:"#9CA3AF"}}>Win Rate</span>
+                            <span style={{fontSize:12,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:"#9CA3AF"}}>ROI</span>
+                            <span style={{fontSize:11,fontWeight:700,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:"#9CA3AF"}}>Profit</span>
+                            <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
+                          </div>
+                        </div>
+                        {/* Barre WR */}
+                        <div style={{marginTop:8,height:4,background:"#1F2937",borderRadius:2,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:s.wr+"%",background:s.wr>=55?"linear-gradient(90deg,#22C55E,#4ADE80)":s.wr<45?"linear-gradient(90deg,#EF4444,#F87171)":"linear-gradient(90deg,#9CA3AF,#6B7280)",borderRadius:2,transition:"width .5s ease"}}/>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -5227,6 +5299,16 @@ const fetchAnalyse=useCallback(async()=>{
                 </div>
                 <button onClick={()=>{let m=calMonth+1,y=calYear;if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);setCalSelected(null);}} style={{background:"none",border:"1px solid #1F2937",borderRadius:7,padding:"6px 12px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14,fontWeight:700}}>Suiv</button>
               </div>
+              {/* Filtre jeu calendrier */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                {ALL_GAMES.map(g=>(
+                  <button key={g} onClick={()=>setCalGames(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g])}
+                    style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:8,border:"1.5px solid "+(calGames.includes(g)?"#7C3AED":"#1F2937"),background:calGames.includes(g)?"rgba(124,58,237,0.15)":"transparent",color:calGames.includes(g)?"#A78BFA":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                    <GameLogo game={g} size={12}/>{g}
+                  </button>
+                ))}
+                {calGames.length>0&&<button onClick={()=>setCalGames([])} style={{padding:"4px 8px",borderRadius:8,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tous</button>}
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}}>
                 {FR_DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:9,color:"#9CA3AF",fontWeight:600,padding:"3px 0",textTransform:"uppercase"}}>{d}</div>)}
               </div>
@@ -5255,7 +5337,7 @@ const fetchAnalyse=useCallback(async()=>{
                 })()}
               </div>
               {calSelected&&(()=>{
-                const selectedDayBets=byDay[calSelected]||[];
+                const selectedDayBets=(calGames.length>0?calFilteredBets.filter(b=>toDateKey(b.datetime)===calSelected):byDay[calSelected])||[];
                 const dp=dailyProfit[calSelected];
                 return(
                   <div>
