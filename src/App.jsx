@@ -2230,18 +2230,18 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
   return(
     <div className="betrow" style={{WebkitTapHighlightColor:"transparent"}}>
       {/* ── Main row (always visible) ── */}
-      <div onClick={()=>setOpen(v=>!v)} style={{padding:"9px 13px",cursor:"pointer",userSelect:"none"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <div onClick={()=>setOpen(v=>!v)} style={{padding:"13px 15px",cursor:"pointer",userSelect:"none"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
           {/* Left: game logo + player */}
-          <GameLogo game={bet.game} size={17}/>
+          <GameLogo game={bet.game} size={22}/>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-              <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</span>
-              {bet.isLive&&<span style={{fontSize:9,fontWeight:800,color:"#FF4757",background:"rgba(255,71,87,0.15)",padding:"1px 5px",borderRadius:3,border:"1px solid rgba(255,71,87,0.3)",letterSpacing:.5,flexShrink:0}}>LIVE</span>}
-              {bet.mapTag&&<span style={{fontSize:9,fontWeight:700,color:"#F59E0B",background:"rgba(245,158,11,0.1)",padding:"1px 5px",borderRadius:3,border:"1px solid rgba(245,158,11,0.2)",flexShrink:0}}>{bet.mapTag}</span>}
-              {bet.description&&<span style={{fontSize:12,color:"#94A3B8",fontWeight:500}}>— {bet.description}</span>}
+            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              <span style={{fontWeight:700,fontSize:16,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</span>
+              {bet.isLive&&<span style={{fontSize:10,fontWeight:800,color:"#FF4757",background:"rgba(255,71,87,0.15)",padding:"2px 6px",borderRadius:4,border:"1px solid rgba(255,71,87,0.3)",letterSpacing:.5,flexShrink:0}}>LIVE</span>}
+              {bet.mapTag&&<span style={{fontSize:10,fontWeight:700,color:"#F59E0B",background:"rgba(245,158,11,0.1)",padding:"2px 7px",borderRadius:4,border:"1px solid rgba(245,158,11,0.2)",flexShrink:0}}>{bet.mapTag}</span>}
+              {bet.description&&<span style={{fontSize:13,color:"#94A3B8",fontWeight:500}}>— {bet.description}</span>}
             </div>
-            <div style={{fontSize:13,color:"#9CA3AF",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>
+            <div style={{fontSize:13,color:"#9CA3AF",marginTop:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:600}}>
               <span style={{color:"#94A3B8",fontWeight:700}}>@{bet.odds}</span>
               {bet.bookmaker&&<span style={{color:"#3B82F6",fontWeight:600}}> · {bet.bookmaker}</span>}
               <span style={{color:"#A78BFA",fontWeight:600}}> · {bet.stake}€</span>
@@ -2250,11 +2250,11 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit}){
           </div>
           {/* Right: amount + status dot */}
           <div style={{textAlign:"right",flexShrink:0}}>
-            <div style={{fontWeight:700,fontSize:13,color:profitColor}}>{profitTxt}</div>
-            <div style={{fontSize:9,color:sc.color,marginTop:1}}>{sc.label}</div>
+            <div style={{fontWeight:800,fontSize:15,color:profitColor}}>{profitTxt}</div>
+            <div style={{fontSize:10,color:sc.color,marginTop:2,fontWeight:600}}>{sc.label}</div>
           </div>
           {/* Chevron */}
-          <span style={{color:"#1F2937",fontSize:12,marginLeft:2,flexShrink:0,transition:"transform .15s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
+          <span style={{color:"#374151",fontSize:12,marginLeft:2,flexShrink:0,transition:"transform .15s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
         </div>
       </div>
 
@@ -2321,10 +2321,7 @@ export default function App(){
   const [bets,setBets]=useState([]);
   const [bankroll,setBankroll]=useState(7500);
   const [custom,setCustom]=useState({});
-  // Sauvegarder custom players dans localStorage à chaque changement
-  useEffect(()=>{
-    try{localStorage.setItem("v7_custom_p",JSON.stringify(custom));}catch{}
-  },[custom]);
+
   const [blacklist,setBlacklist]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_blacklist")||"[]"));}catch{return new Set();}});
   function toggleBlacklist(key){
     setBlacklist(prev=>{
@@ -2340,6 +2337,11 @@ export default function App(){
   const [lockedStatus,setLockedStatus]=useState(null);
   const [view,setView]=useState("home");
   const [loaded,setLoaded]=useState(false);
+  // Sauvegarder custom players dans localStorage — guard loaded pour ne pas écraser au démarrage
+  useEffect(()=>{
+    if(!loaded)return;
+    try{localStorage.setItem("v7_custom_p",JSON.stringify(custom));}catch{}
+  },[custom,loaded]);
   const [toast,setToast]=useState(null);
   const [showCal,setShowCal]=useState(false);
   const [calMonth,setCalMonth]=useState(new Date().getMonth());
@@ -2451,7 +2453,7 @@ function toggleHideAnalyseBet(key){
     if(!loaded)return;
     try{localStorage.setItem("v7_sticky_bk",JSON.stringify({active:stickyBK,bk:stickyBK?form.bookmaker:""}));}catch{}
   },[stickyBK,form.bookmaker,loaded]);
-  useEffect(()=>{try{localStorage.setItem("v7_locked_status",lockedStatus||"");}catch{}},[lockedStatus]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("v7_locked_status",lockedStatus||"");}catch{}},[lockedStatus,loaded]);
 
   // Persister tournois actifs
   useEffect(()=>{
@@ -2841,15 +2843,19 @@ function toggleHideAnalyseBet(key){
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
     const now=Date.now();
+    // Extraire le numéro de map depuis mapTag (ex: "Map 2" → 2)
+    function mapNum(b){const m=b.mapTag?parseInt(b.mapTag.replace(/\D/g,""))||1:1;return m;}
     const sorted=[...bets].sort((a,b2)=>{
       // Pending toujours en premier
       if(a.status==="pending"&&b2.status!=="pending")return -1;
       if(b2.status==="pending"&&a.status!=="pending")return 1;
-      // Pending entre eux: les plus récents en premier
+      // Pending entre eux: trier par date desc (plus récent en haut) puis map desc (Map 2 avant Map 1)
       if(a.status==="pending"&&b2.status==="pending"){
-        return (b2.datetime||"").localeCompare(a.datetime||"");
+        const dateCmp=(b2.datetime||"").localeCompare(a.datetime||"");
+        if(dateCmp!==0)return dateCmp;
+        return mapNum(b2)-mapNum(a); // map plus haute en haut
       }
-      // Settled entre eux: trier par settledAt desc (le plus récemment settlé en premier)
+      // Settled entre eux: trier par settledAt desc
       const sa=a.settledAt||0;
       const sb=b2.settledAt||0;
       if(sa!==sb)return sb-sa;
