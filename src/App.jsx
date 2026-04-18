@@ -2849,11 +2849,11 @@ function toggleHideAnalyseBet(key){
       // Pending toujours en premier
       if(a.status==="pending"&&b2.status!=="pending")return -1;
       if(b2.status==="pending"&&a.status!=="pending")return 1;
-      // Pending entre eux: trier par date desc (plus récent en haut) puis map desc (Map 2 avant Map 1)
+      // Pending entre eux: map d'abord (Map 2 en haut, Map 1 en bas), puis date desc
       if(a.status==="pending"&&b2.status==="pending"){
-        const dateCmp=(b2.datetime||"").localeCompare(a.datetime||"");
-        if(dateCmp!==0)return dateCmp;
-        return mapNum(b2)-mapNum(a); // map plus haute en haut
+        const mapCmp=mapNum(b2)-mapNum(a); // Map 2 avant Map 1
+        if(mapCmp!==0)return mapCmp;
+        return (b2.datetime||"").localeCompare(a.datetime||""); // à map égale, plus récent en haut
       }
       // Settled entre eux: trier par settledAt desc
       const sa=a.settledAt||0;
