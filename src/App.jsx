@@ -2462,20 +2462,16 @@ function toggleHideAnalyseBet(key){
     try{
       const b=localStorage.getItem("v7_bets"); if(b)setBets(JSON.parse(b));
       const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
-      // Charger custom players depuis Supabase
-      try {
-        const cpSupa = await supaFetchCustomPlayers();
+      // Fallback localStorage pour les custom players
+      const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
+      // Charger custom players depuis Supabase (async, sans bloquer le useEffect)
+      supaFetchCustomPlayers().then(cpSupa=>{
         if(cpSupa && cpSupa.length > 0) {
           const obj = {};
           cpSupa.forEach(p => { obj[p.name.toLowerCase()] = {game:p.game, league:p.league, role:p.role, team:p.team}; });
           setCustom(obj);
-        } else {
-          // Fallback localStorage si Supabase vide
-          const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
         }
-      } catch(e) {
-        const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
-      }
+      }).catch(()=>{});
       const bm=localStorage.getItem("v7_bmakers"); if(bm)setBookmakers(JSON.parse(bm));
       const bp=localStorage.getItem("v7_bkphotos"); if(bp)setBkPhotos(JSON.parse(bp));
       const tv=localStorage.getItem("v7_tourneys"); if(tv)setActiveTourneys(JSON.parse(tv));
