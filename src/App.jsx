@@ -5,6 +5,32 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 const SUPA_URL = "https://mtgryzsovqiolinobbjw.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Z3J5enNvdnFpb2xpbm9iYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDc3MTgsImV4cCI6MjA5MDYyMzcxOH0.2d4Vvm55p_SHi-wGRBrbfsxiwRh-wdqP9tDsHm_Qj3k";
 
+// ── Custom players Supabase ──────────────────────────────────────────────────
+async function supaFetchCustomPlayers() {
+  const res = await fetch(SUPA_URL + "/rest/v1/custom_players?select=name,game,league,role,team&order=name.asc", {
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY}
+  });
+  if(!res.ok) return null;
+  return await res.json();
+}
+async function supaUpsertCustomPlayer(name, data) {
+  await fetch(SUPA_URL + "/rest/v1/custom_players", {
+    method: "POST",
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates"},
+    body: JSON.stringify({name: name.toLowerCase().trim(), game: data.game||"LoL", league: data.league||"", role: data.role||"", team: data.team||""})
+  });
+}
+async function supaDeleteCustomPlayer(name) {
+  await fetch(SUPA_URL + "/rest/v1/custom_players?name=eq." + encodeURIComponent(name.toLowerCase().trim()), {
+    method: "DELETE",
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY}
+  });
+}
+async function supaRenameCustomPlayer(oldName, newName, data) {
+  await supaDeleteCustomPlayer(oldName);
+  await supaUpsertCustomPlayer(newName, data);
+}
+
 async function supaFetch(path, opts={}) {
   const res = await fetch(SUPA_URL + path, {
     method: opts.method || "GET",
@@ -2041,7 +2067,7 @@ function PlayerSearchPanel({allPlayers,custom,setCustom,setEditingPlayer,blackli
                     style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:8,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif",fontWeight:600}}>
                     ✎ Éd.
                   </button>
-                  {isCustom&&<button onClick={()=>setCustom(c=>{const n={...c};delete n[key];return n;})}
+                  {isCustom&&<button onClick={()=>{supaDeleteCustomPlayer(key).catch(()=>{});setCustom(c=>{const n={...c};delete n[key];return n;});}}
                     style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11}}>
                     ×
                   </button>}
@@ -2436,7 +2462,20 @@ function toggleHideAnalyseBet(key){
     try{
       const b=localStorage.getItem("v7_bets"); if(b)setBets(JSON.parse(b));
       const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
-      const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
+      // Charger custom players depuis Supabase
+      try {
+        const cpSupa = await supaFetchCustomPlayers();
+        if(cpSupa && cpSupa.length > 0) {
+          const obj = {};
+          cpSupa.forEach(p => { obj[p.name.toLowerCase()] = {game:p.game, league:p.league, role:p.role, team:p.team}; });
+          setCustom(obj);
+        } else {
+          // Fallback localStorage si Supabase vide
+          const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
+        }
+      } catch(e) {
+        const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
+      }
       const bm=localStorage.getItem("v7_bmakers"); if(bm)setBookmakers(JSON.parse(bm));
       const bp=localStorage.getItem("v7_bkphotos"); if(bp)setBkPhotos(JSON.parse(bp));
       const tv=localStorage.getItem("v7_tourneys"); if(tv)setActiveTourneys(JSON.parse(tv));
@@ -3037,10 +3076,12 @@ function toggleHideAnalyseBet(key){
   function savePlayer(){
     if(!pform.name.trim())return;
     const key=pform.name.toLowerCase().trim();
-    setCustom(c=>({...c,[key]:{game:pform.game,league:pform.league,role:pform.role,team:pform.team}}));
+    const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team};
+    supaUpsertCustomPlayer(key, data).catch(()=>{});
+    setCustom(c=>({...c,[key]:data}));
     setPform({name:"",game:"LoL",league:"",role:"",team:""});
     setModalPlayer(false);
-    showToast(pform.name+" ajoute");
+    showToast(pform.name+" ajouté ✓");
   }
   function saveBookmaker(){
     if(!newBK.trim())return;
@@ -5052,7 +5093,7 @@ const fetchAnalyse=useCallback(async()=>{
                           style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
                           ✎ Éd.
                         </button>
-                        <button onClick={()=>setCustom(c=>{const n={...c};delete n[key];return n;})}
+                        <button onClick={()=>{supaDeleteCustomPlayer(key).catch(()=>{});setCustom(c=>{const n={...c};delete n[key];return n;});}}
                           style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif"}}>
                           ×
                         </button>
@@ -5559,8 +5600,8 @@ const fetchAnalyse=useCallback(async()=>{
               {/* Champ nom/pseudo */}
               <div style={{marginBottom:8}}>
                 <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Pseudo</div>
-                <input className="ifield" placeholder="Pseudo du joueur..." value={editingPlayer.data.displayName||editingPlayer.key}
-                  onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,displayName:e.target.value.toLowerCase().trim()}}))}/>
+                <input className="ifield" placeholder="Pseudo du joueur..." value={editingPlayer.data.displayName!==undefined?editingPlayer.data.displayName:editingPlayer.key}
+                  onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,displayName:e.target.value}}))}/>
                 <div style={{fontSize:10,color:"#6B7280",marginTop:4}}>Renomme le joueur (ex: corriger une faute de frappe)</div>
               </div>
 
@@ -5595,9 +5636,10 @@ const fetchAnalyse=useCallback(async()=>{
                   const {key,data}=editingPlayer;
                   const newKey=(data.displayName||key).toLowerCase().trim()||key;
                   const playerData={game:data.game,league:data.league||"",role:data.role||"",team:data.team||""};
+                  if(newKey!==key) supaRenameCustomPlayer(key,newKey,playerData).catch(()=>{});
+                  else supaUpsertCustomPlayer(newKey,playerData).catch(()=>{});
                   setCustom(c=>{
                     const n={...c};
-                    // If renamed, remove old key and add new one
                     if(newKey!==key) delete n[key];
                     n[newKey]=playerData;
                     return n;
@@ -5661,13 +5703,12 @@ const fetchAnalyse=useCallback(async()=>{
               </button>
 
               {/* Reset total */}
-              <button onClick={async()=>{
+              <button onClick={()=>{
                 if(!confirmDelete){setConfirmDelete(true);return;}
                 setSyncing(true);
                 setBets([]);
                 localStorage.setItem("v7_bets","[]");
-                try{ await supaDeleteAllBets(); }catch(e){}
-                setSyncing(false);
+                supaDeleteAllBets().catch(()=>{}).finally(()=>{setSyncing(false);});
                 setConfirmDelete(false);setSupaModal(false);
                 showToast("Tous les paris supprimés","#EF4444");
               }}
