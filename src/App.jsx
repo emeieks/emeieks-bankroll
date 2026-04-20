@@ -2279,7 +2279,8 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
 });
 
 // ── BetRow component ───────────────────────────────────────────────────────
-const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPhotos={}}){
+const EMPTY_OBJ={};
+const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPhotos=EMPTY_OBJ}){
   const [open,setOpen]=useState(false);
   const [confirmDel,setConfirmDel]=useState(false);
   const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
@@ -3126,10 +3127,12 @@ function toggleHideAnalyseBet(key){
   },[]);
 
   const deleteBet=useCallback((id)=>{
-    const found=bets.find(b=>b.id===id);
-    if(found)setDeletedBets(prev=>[{...found,deletedAt:Date.now()},...prev].slice(0,50));
-    setBets(b=>b.filter(bet=>bet.id!==id));
-    supaDeleteOneBet(id).catch(()=>{});
+    setBets(prev=>{
+      const found=prev.find(b=>b.id===id);
+      if(found)setDeletedBets(p=>[{...found,deletedAt:Date.now()},...p].slice(0,50));
+      supaDeleteOneBet(id).catch(()=>{});
+      return prev.filter(bet=>bet.id!==id);
+    });
   },[]);
 
   const duplicateBet=useCallback((bet)=>{
@@ -3734,124 +3737,6 @@ const fetchAnalyse=useCallback(async()=>{
         )}
 
         {/* ── VUE DÉPÔTS PAR BOOKMAKER ── */}
-        {viewDepots&&(
-          <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:400,overflowY:"auto",fontFamily:"'Inter',sans-serif"}}>
-            <div style={{padding:"16px 16px 32px"}}>
-              {/* Header */}
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-                <button onClick={()=>setViewDepots(false)} style={{background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,padding:"8px 14px",color:"#A78BFA",cursor:"pointer",fontSize:16,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>←</button>
-                <div>
-                  <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB"}}>Dépôts par site</div>
-                  <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
-                    <svg width="16" height="12" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="solVD" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solVD)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solVD)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solVD)"/></svg>
-                    <span style={{fontSize:11,color:"#6B7280"}}>Solana</span>
-                  </div>
-                </div>
-                <button onClick={()=>{setDepotForm({site:"",username:"",type:"depot",sol:"",solPrice:"",date:new Date().toISOString().slice(0,10)});setModalDepot(true);}}
-                  style={{marginLeft:"auto",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,padding:"9px 16px",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",boxShadow:"0 4px 14px rgba(124,58,237,0.3)"}}>
-                  + Ajouter
-                </button>
-              </div>
-
-              {/* Cards par bookmaker */}
-              {(()=>{
-                // Grouper par site + username (clé unique = "site||username")
-                const groups=[];
-                const seen={};
-                depots.forEach(d=>{
-                  const key=d.site+"||"+(d.username||"");
-                  if(!seen[key]){seen[key]=true;groups.push({site:d.site,username:d.username||""});}
-                });
-                if(groups.length===0) return(
-                  <div style={{textAlign:"center",padding:"40px 20px",color:"#4B5563"}}>
-                    <div style={{fontSize:32,marginBottom:12}}>💰</div>
-                    <div style={{fontSize:14}}>Aucun dépôt enregistré</div>
-                  </div>
-                );
-                return groups.map(({site,username})=>{
-                  const key=site+"||"+username;
-                  const groupDepots=depots.filter(d=>d.site===site&&(d.username||"")===(username||""));
-                  const solDepot=groupDepots.filter(d=>d.type!=="retrait").reduce((s,d)=>s+(parseFloat(d.sol)||0),0);
-                  const solRetrait=groupDepots.filter(d=>d.type==="retrait").reduce((s,d)=>s+(parseFloat(d.sol)||0),0);
-                  const netSOL=solDepot-solRetrait;
-                  const logo=BK_LOGOS[site]||bkPhotos[site];
-                  return(
-                    <div key={key} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:18,marginBottom:12,overflow:"hidden"}}>
-                      {/* Header bookmaker + compte */}
-                      <div style={{display:"flex",alignItems:"center",gap:14,padding:"16px 18px",borderBottom:"1px solid #1F2937"}}>
-                        <div style={{width:56,height:56,borderRadius:14,background:"#1F2937",border:"1px solid #374151",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
-                          {logo
-                            ? <img src={logo} alt={site} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                            : <span style={{fontSize:18,fontWeight:800,color:"#6B7280"}}>{site.slice(0,2).toUpperCase()}</span>
-                          }
-                        </div>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",marginBottom:2}}>{site}</div>
-                          {username&&<div style={{fontSize:12,color:"#A78BFA",fontWeight:600,marginBottom:2}}>@{username}</div>}
-                          <div style={{fontSize:11,color:"#6B7280"}}>{groupDepots.length} mouvement{groupDepots.length>1?"s":""}</div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:5,justifyContent:"flex-end",marginBottom:2}}>
-                            <svg width="22" height="17" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="solVDL" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solVDL)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solVDL)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solVDL)"/></svg>
-                            <span style={{fontSize:20,fontWeight:800,color:netSOL>=0?"#4ADE80":"#F87171"}}>{netSOL>=0?"+":"-"}{Math.abs(netSOL).toFixed(2)} SOL</span>
-                          </div>
-                          <div style={{fontSize:10,color:"#6B7280"}}>{solDepot.toFixed(2)} dép · {solRetrait.toFixed(2)} ret</div>
-                        </div>
-                      </div>
-                      {/* Liste des mouvements */}
-                      {groupDepots.sort((a,b)=>b.date.localeCompare(a.date)).map((d,i)=>{
-                        const isRetrait=d.type==="retrait";
-                        return(
-                          <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",borderBottom:i<groupDepots.length-1?"1px solid rgba(255,255,255,0.03)":"none",borderLeft:"3px solid "+(isRetrait?"#F87171":"#22C55E")}}>
-                            <div>
-                              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                <span style={{fontSize:10,fontWeight:700,color:isRetrait?"#F87171":"#22C55E"}}>{isRetrait?"↑ Retrait":"↓ Dépôt"}</span>
-                                <span style={{fontSize:11,color:"#6B7280"}}>{d.date}</span>
-                              </div>
-                            </div>
-                            <div style={{display:"flex",alignItems:"center",gap:10}}>
-                              <span style={{fontSize:13,fontWeight:700,color:isRetrait?"#F87171":"#4ADE80"}}>{isRetrait?"-":"+"}{(parseFloat(d.sol)||0).toFixed(2)} SOL</span>
-                              <button onClick={()=>{setEditDepotId(d.id);setDepotForm({site:d.site,username:d.username||"",type:d.type||"depot",sol:String(d.sol||""),solPrice:String(d.solPrice||""),date:d.date||new Date().toISOString().slice(0,10)});setModalDepot(true);}}
-                                style={{background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.2)",borderRadius:6,padding:"4px 8px",color:"#A78BFA",cursor:"pointer",fontSize:11}}>✎</button>
-                              <button onClick={()=>setDepots(prev=>prev.filter(x=>x.id!==d.id))}
-                                style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,padding:"4px 8px",color:"#EF4444",cursor:"pointer",fontSize:11}}>×</button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                });
-              })()}
-
-              {/* Résumé global */}
-              {depots.length>0&&(()=>{
-                const totalD=depots.filter(d=>d.type!=="retrait").reduce((s,d)=>s+(parseFloat(d.sol)||0),0);
-                const totalR=depots.filter(d=>d.type==="retrait").reduce((s,d)=>s+(parseFloat(d.sol)||0),0);
-                const net=totalD-totalR;
-                return(
-                  <div style={{background:"rgba(0,255,163,0.04)",border:"1px solid rgba(0,255,163,0.15)",borderRadius:14,padding:"14px 16px",marginTop:4}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-                      <svg width="16" height="12" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="solVD" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solVD)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solVD)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solVD)"/></svg>
-                      <span style={{fontSize:11,fontWeight:700,color:"#4ADE80",textTransform:"uppercase",letterSpacing:1}}>Total</span>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                      {[{l:"Dépôts",v:"+"+totalD.toFixed(2),c:"#4ADE80"},{l:"Retraits",v:"-"+totalR.toFixed(2),c:"#F87171"},{l:"Net",v:(net>=0?"+":"")+net.toFixed(2),c:net>=0?"#4ADE80":"#F87171"}].map(k=>(
-                        <div key={k.l} style={{textAlign:"center",background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px"}}>
-                          <div style={{fontSize:9,color:"#6B7280",marginBottom:3}}>{k.l}</div>
-                          <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"center"}}>
-                            <svg width="16" height="12" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="solVD" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solVD)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solVD)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solVD)"/></svg>
-                            <span style={{fontSize:12,fontWeight:800,color:k.c}}>{k.v} SOL</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
 
         {/* ── FILTRES ── */}
         {view==="filtres"&&(
@@ -5093,12 +4978,10 @@ const fetchAnalyse=useCallback(async()=>{
                     const avgOdds=s.count>0?(s.oddsSum/s.count).toFixed(2):0;
                     const logo=BK_LOGOS[bk]||bkPhotos[bk];
                     // Dépôts/retraits pour ce bookmaker
-                    const bkDepots=depots.filter(d=>d.site===bk&&d.type!=="retrait").reduce((s,d)=>s+d.sol,0);
-                    const bkRetraits=depots.filter(d=>d.site===bk&&d.type==="retrait").reduce((s,d)=>s+d.sol,0);
-                    const hasMouvement=bkDepots>0||bkRetraits>0;
+
                     return(
                       <div key={bk} style={{padding:"12px 14px",borderBottom:"1px solid #1F2937"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:hasMouvement?6:0}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:9}}>
                             {logo&&<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:6,objectFit:"cover",flexShrink:0}}/>}
                             <div>
@@ -5111,22 +4994,7 @@ const fetchAnalyse=useCallback(async()=>{
                             <div style={{fontSize:10,color:bkROI>=0?"#22C55E":"#EF4444"}}>{bkROI>=0?"+":""}{bkROI.toFixed(1)}% ROI</div>
                           </div>
                         </div>
-                        {hasMouvement&&(
-                          <div style={{display:"flex",gap:8,paddingTop:5,borderTop:"1px solid rgba(255,255,255,0.04)"}}>
-                            {bkDepots>0&&(
-                              <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(0,255,163,0.06)",border:"1px solid rgba(0,255,163,0.15)",borderRadius:6,padding:"3px 8px"}}>
-                                <svg width="10" height="8" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="bkS1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#bkS1)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#bkS1)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#bkS1)"/></svg>
-                                <span style={{fontSize:10,color:"#4ADE80",fontWeight:700}}>↓ {bkDepots.toFixed(2)} SOL</span>
-                              </div>
-                            )}
-                            {bkRetraits>0&&(
-                              <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(248,113,113,0.06)",border:"1px solid rgba(248,113,113,0.15)",borderRadius:6,padding:"3px 8px"}}>
-                                <svg width="10" height="8" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="bkS2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#bkS2)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#bkS2)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#bkS2)"/></svg>
-                                <span style={{fontSize:10,color:"#F87171",fontWeight:700}}>↑ {bkRetraits.toFixed(2)} SOL</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
+
                       </div>
                     );
                   })}
@@ -5495,32 +5363,6 @@ const fetchAnalyse=useCallback(async()=>{
               Recherche un joueur pour l'éditer (équipe, rôle, ligue)
             </div>
 
-            {/* ── DÉPÔTS CRYPTO ── */}
-            <div style={{marginBottom:20}}>              {/* Card compact avec boutons */}
-              <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div>
-                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                    <svg width="11" height="9" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="solBK" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solBK)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solBK)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solBK)"/></svg>
-                    <span style={{fontSize:12,color:"#E5E7EB",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Dépôts (SOL)</span>
-                  </div>
-                  <div style={{fontSize:11,color:"#6B7280"}}>
-                    {depots.length===0?"Aucun mouvement":depots.length+" mouvement"+(depots.length>1?"s":"")+" enregistré"+(depots.length>1?"s":"")}
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setViewDepots(true)}
-                    style={{display:"flex",alignItems:"center",gap:5,background:"linear-gradient(135deg,rgba(0,255,163,0.08),rgba(220,31,255,0.08))",border:"1px solid rgba(0,255,163,0.25)",borderRadius:10,padding:"8px 14px",color:"#4ADE80",cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif",fontWeight:700}}>
-                    <svg width="11" height="9" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="solBK2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#solBK2)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#solBK2)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solBK2)"/></svg>
-                    Gérer
-                  </button>
-                  <button onClick={()=>{setDepotForm({site:"",username:"",type:"depot",sol:"",solPrice:"",date:new Date().toISOString().slice(0,10)});setModalDepot(true);}}
-                    style={{background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif",fontWeight:700,boxShadow:"0 4px 12px rgba(124,58,237,0.3)"}}>
-                    + Ajouter
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* ── JOUEURS MASQUÉS ── */}
             {blacklist.size>0&&(
               <div style={{marginBottom:16}}>
@@ -5736,14 +5578,15 @@ const fetchAnalyse=useCallback(async()=>{
               {(()=>{
                 const navItems=NAV.filter(n=>n.id!=="add");
                 const mid=Math.floor(navItems.length/2);
-                return navItems.map((n,idx)=>(<>
-                  {idx===mid&&(
-                    <button key="add-fab" onClick={()=>setView("add")}
+                const items=[];
+                navItems.forEach((n,idx)=>{
+                  if(idx===mid){
+                    items.push(<button key="add-fab" onClick={()=>setView("add")}
                       style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,0.55)",flexShrink:0,transform:view==="add"?"scale(0.93)":"scale(1)",transition:"transform .15s ease",marginBottom:4}}>
                       <span style={{fontSize:30,color:"#fff",lineHeight:1,marginTop:-1}}>+</span>
-                    </button>
-                  )}
-                  <button key={n.id} className={"navitem "+(view===n.id?"on":"")} onClick={()=>setView(n.id)} style={{position:"relative"}}>
+                    </button>);
+                  }
+                  items.push(<button key={n.id} className={"navitem "+(view===n.id?"on":"")} onClick={()=>setView(n.id)} style={{position:"relative"}}>
                     <span style={{fontSize:18,filter:view===n.id?"drop-shadow(0 0 6px rgba(167,139,250,0.6))":"none"}}>{n.icon}</span>
                     {n.id==="mesparis"&&pendingCount>0&&(
                       <span style={{position:"absolute",top:2,right:8,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 5px",minWidth:16,textAlign:"center",lineHeight:"14px",border:"1.5px solid #0D1526"}}>
@@ -5751,8 +5594,9 @@ const fetchAnalyse=useCallback(async()=>{
                       </span>
                     )}
                     <span className="lbl">{n.label}</span>
-                  </button>
-                </>));
+                  </button>);
+                });
+                return items;
               })()}
             </div>
           );
@@ -5948,132 +5792,7 @@ const fetchAnalyse=useCallback(async()=>{
           />
         )}
 
-                {/* ── MODAL DÉPÔT/RETRAIT ── */}
-        {modalDepot&&(
-          <div className="moverlay" onClick={()=>{setModalDepot(false);setEditDepotId(null);setShowNewAccount(false);setNewAccountInput("");}}>
-            <div className="modal" onClick={e=>e.stopPropagation()}>
-              {/* Header + Date en haut */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,rgba(0,255,163,0.15),rgba(220,31,255,0.15))",border:"1px solid rgba(0,255,163,0.25)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    <svg width="18" height="14" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="sH" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#sH)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#sH)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#sH)"/></svg>
-                  </div>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{editDepotId?"Modifier mouvement":"Nouveau mouvement"}</div>
-                    <div style={{fontSize:11,color:"#6B7280"}}>Solana (SOL)</div>
-                  </div>
-                </div>
-                {/* Date en haut à droite */}
-                <input type="date" value={depotForm.date} onChange={e=>setDepotForm(f=>({...f,date:e.target.value}))}
-                  style={{background:"#1F2937",border:"1px solid #374151",borderRadius:8,padding:"5px 8px",color:"#9CA3AF",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}/>
-              </div>
 
-              {/* Type */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-                {[{v:"depot",l:"↓ Dépôt",c:"#22C55E",bg:"rgba(34,197,94,0.1)",border:"rgba(34,197,94,0.3)"},{v:"retrait",l:"↑ Retrait",c:"#F87171",bg:"rgba(248,113,113,0.1)",border:"rgba(248,113,113,0.3)"}].map(t=>(
-                  <button key={t.v} onClick={()=>setDepotForm(f=>({...f,type:t.v}))}
-                    style={{padding:"12px",borderRadius:12,border:"2px solid "+(depotForm.type===t.v?t.border:"#1F2937"),background:depotForm.type===t.v?t.bg:"rgba(255,255,255,0.02)",color:depotForm.type===t.v?t.c:"#6B7280",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s"}}>
-                    {t.l}
-                  </button>
-                ))}
-              </div>
-
-              {/* Site — logos BK */}
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:10,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Site / Bookmaker</div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
-                  {bookmakers.map(bk=>{
-                    const logo=BK_LOGOS[bk]||bkPhotos[bk];
-                    const isSelected=depotForm.site===bk;
-                    return(
-                      <button key={bk} onClick={()=>setDepotForm(f=>({...f,site:bk}))}
-                        title={bk}
-                        style={{width:44,height:44,borderRadius:12,border:"2px solid "+(isSelected?"#7C3AED":"#1F2937"),background:isSelected?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s",boxShadow:isSelected?"0 0 10px rgba(124,58,237,0.3)":"none"}}>
-                        {logo
-                          ? <img src={logo} alt={bk} style={{width:28,height:28,borderRadius:6,objectFit:"cover"}}/>
-                          : <span style={{fontSize:10,fontWeight:700,color:isSelected?"#A78BFA":"#6B7280",textAlign:"center",lineHeight:1.1,padding:"0 2px"}}>{bk.slice(0,3)}</span>
-                        }
-                      </button>
-                    );
-                  })}
-                </div>
-                {depotForm.site&&<div style={{fontSize:10,color:"#A78BFA",fontWeight:600,marginBottom:6}}>✓ {depotForm.site}</div>}
-                <input className="ifield" placeholder="Autre site..." value={bookmakers.includes(depotForm.site)?""  :depotForm.site} onChange={e=>setDepotForm(f=>({...f,site:e.target.value}))} style={{marginBottom:0,fontSize:13}}/>
-              </div>
-
-              {/* Compte — menu déroulant */}
-              {depotForm.site&&(
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:10,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Compte</div>
-                <div style={{display:"flex",gap:6}}>
-                  <div style={{flex:1,position:"relative"}}>
-                    <select value={depotForm.username} onChange={e=>setDepotForm(f=>({...f,username:e.target.value}))}
-                      style={{width:"100%",background:"#0D0F1E",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"11px 14px",color:depotForm.username?"#E5E7EB":"#6B7280",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:600,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
-                      <option value="" style={{background:"#131525",color:"#6B7280"}}>Sélectionner un compte...</option>
-                      {(bkAccounts[depotForm.site]||[]).map(acc=>(
-                        <option key={acc} value={acc} style={{background:"#131525",color:"#E5E7EB"}}>{acc}</option>
-                      ))}
-                    </select>
-                    <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:"#6B7280",pointerEvents:"none",fontSize:12}}>⌄</span>
-                  </div>
-                  <button onClick={()=>{setShowNewAccount(v=>!v);setNewAccountInput("");}}
-                    style={{padding:"0 14px",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:18,cursor:"pointer",fontFamily:"'Inter',sans-serif",flexShrink:0,height:44}}>+</button>
-                </div>
-                {/* Champ inline nouveau compte */}
-                {showNewAccount&&(
-                  <div style={{display:"flex",gap:6,marginTop:6}}>
-                    <input className="ifield" autoFocus placeholder="Nom du compte..." value={newAccountInput} onChange={e=>setNewAccountInput(e.target.value)}
-                      onKeyDown={e=>{if(e.key==="Enter"&&newAccountInput.trim()){const n=newAccountInput.trim();if(!(bkAccounts[depotForm.site]||[]).includes(n)){setBkAccounts(prev=>({...prev,[depotForm.site]:[...(prev[depotForm.site]||[]),n]}));}setDepotForm(f=>({...f,username:n}));setNewAccountInput("");setShowNewAccount(false);}}}
-                      style={{flex:1,marginBottom:0,fontSize:14}}/>
-                    <button onClick={()=>{const n=newAccountInput.trim();if(!n)return;if(!(bkAccounts[depotForm.site]||[]).includes(n)){setBkAccounts(prev=>({...prev,[depotForm.site]:[...(prev[depotForm.site]||[]),n]}));}setDepotForm(f=>({...f,username:n}));setNewAccountInput("");setShowNewAccount(false);}}
-                      style={{padding:"0 14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",flexShrink:0}}>OK</button>
-                    <button onClick={()=>{setShowNewAccount(false);setNewAccountInput("");}}
-                      style={{padding:"0 12px",background:"rgba(255,255,255,0.04)",border:"1px solid #1F2937",borderRadius:10,color:"#6B7280",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",flexShrink:0}}>×</button>
-                  </div>
-                )}
-                {/* Supprimer compte sélectionné */}
-                {depotForm.username&&(
-                  <button onClick={()=>{setBkAccounts(prev=>({...prev,[depotForm.site]:(prev[depotForm.site]||[]).filter(x=>x!==depotForm.username)}));setDepotForm(f=>({...f,username:""}));}}
-                    style={{marginTop:5,fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
-                    × Supprimer "{depotForm.username}"
-                  </button>
-                )}
-              </div>
-              )}
-
-              {/* Montant SOL seulement */}
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:10,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:5,display:"flex",alignItems:"center",gap:4}}>
-                  <svg width="10" height="8" viewBox="0 0 397 311" fill="none"><defs><linearGradient id="sS" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#00FFA3"/><stop offset="100%" stopColor="#DC1FFF"/></linearGradient></defs><path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z" fill="url(#sS)"/><path d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z" fill="url(#sS)"/><path d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#sS)"/></svg>
-                  Montant (SOL)
-                </div>
-                <input className="ifield" type="number" step="0.01" placeholder="0.00" value={depotForm.sol} onChange={e=>setDepotForm(f=>({...f,sol:e.target.value}))} style={{marginBottom:0,fontSize:20,fontWeight:800}}/>
-              </div>
-
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <button onClick={()=>setModalDepot(false)} style={{padding:"13px",background:"#1F2937",border:"none",borderRadius:12,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14}}>Annuler</button>
-                <button onClick={()=>{
-                  if(!depotForm.site.trim()||!depotForm.sol)return;
-                  const solP=parseFloat(depotForm.solPrice)||0;
-                  const eur=parseFloat(depotForm.sol)*solP;
-                  if(editDepotId){
-                    // Mode modification
-                    setDepots(prev=>prev.map(x=>x.id===editDepotId?{...x,site:depotForm.site.trim(),username:depotForm.username.trim(),type:depotForm.type,sol:parseFloat(depotForm.sol),solPrice:solP,eur,date:depotForm.date}:x));
-                    setEditDepotId(null);
-                    showToast("Mouvement modifié ✓");
-                  } else {
-                    setDepots(prev=>[{id:Date.now(),site:depotForm.site.trim(),username:depotForm.username.trim(),type:depotForm.type,sol:parseFloat(depotForm.sol),solPrice:solP,eur,date:depotForm.date},...prev]);
-                    showToast((depotForm.type==="retrait"?"Retrait":"Dépôt")+" enregistré ✓");
-                  }
-                  setModalDepot(false);
-                }} disabled={!depotForm.site||!depotForm.sol}
-                  style={{padding:"13px",background:depotForm.site&&depotForm.sol?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:12,color:depotForm.site&&depotForm.sol?"#fff":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,boxShadow:depotForm.site&&depotForm.sol?"0 4px 16px rgba(124,58,237,0.3)":"none"}}>
-                  Enregistrer
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
                 {/* ── MODAL ADD BOOKMAKER ── */}
         {modalBK&&(
