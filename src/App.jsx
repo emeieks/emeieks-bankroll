@@ -5081,11 +5081,9 @@ const fetchAnalyse=useCallback(async()=>{
         {statsDrill&&(()=>{
           const {game,league,filterType,filterValue}=statsDrill;
           const mk=()=>({cnt:0,won:0,profit:0,staked:0,oddsSum:0});
-          const addB=(t,b)=>{t.cnt++;t.profit+=b.profit;t.staked+=b.stake;t.oddsSum+=b.odds;if(b.status==="won")t.won++;};
-          const toS=t=>t.cnt>0?{count:t.cnt,won:t.won,profit:t.profit,staked:t.staked,wr:t.won/t.cnt*100,roi:t.staked>0?t.profit/t.staked*100:0,avgOdds:t.cnt>0?t.oddsSum/t.cnt:0}:null;
-          // Base filter
+          const add=(t,b)=>{t.cnt++;t.profit+=b.profit;t.staked+=b.stake;t.oddsSum+=b.odds;if(b.status==="won")t.won++;};
+          const toS=t=>t.cnt>0?{n:t.cnt,wr:t.won/t.cnt*100,profit:t.profit,roi:t.staked>0?t.profit/t.staked*100:0,avg:t.cnt>0?t.oddsSum/t.cnt:0}:null;
           let betsF=settled.filter(b=>(!game||b.game===game)&&(!league||b.league===league));
-          // Sub-filter if drilling into a dimension
           if(filterType==="role")betsF=betsF.filter(b=>(b.role||"Inconnu")===filterValue);
           if(filterType==="map")betsF=betsF.filter(b=>(b.mapTag||"Sans tag")===filterValue);
           if(filterType==="tourney")betsF=betsF.filter(b=>(b.tournament||"Hors tournoi")===filterValue);
@@ -5093,128 +5091,118 @@ const fetchAnalyse=useCallback(async()=>{
           if(filterType==="kill")betsF=betsF.filter(b=>b.description&&b.description.includes(filterValue));
           if(filterType==="player")betsF=betsF.filter(b=>b.player&&b.player.toLowerCase()===filterValue.toLowerCase());
           if(!betsF.length)return null;
+
+          const isCS2=game==="CS2", isLoL=game==="LoL";
           const cfg=GAME_CFG[game]||{accent:"#A78BFA"};
-          const oddsOrder=["<1.50","1.50-1.74","1.75-1.99","2.00-2.49","≥2.50"];
-          const bucketOf=o=>o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
-          // Single pass computation
+          const over=mk(),under=mk(),overLive=mk(),overNL=mk(),underLive=mk(),underNL=mk();
+          const overHS=mk(),underHS=mk(),lolOverLive=mk(),lolUnderLive=mk(),lolOverNL=mk(),lolUnderNL=mk();
+          const live=mk(),nonLive=mk();
           const byRole={},byMap={},byBK={},byTourney={},byOdds={},byKill={},byMonth={};
-          const over=mk(),under=mk();
-          const overLive=mk(),overNL=mk(),underLive=mk(),underNL=mk();
           const overByRole={},underByRole={},overByMap={},underByMap={},overByBK={},underByBK={};
-          const overHS=mk(),underHS=mk();
-          const live=mk(),nonLive=mk(),hs=mk();
+          const oddsOrder=["<1.50","1.50-1.74","1.75-1.99","2.00-2.49","≥2.50"];
+          const bucket=o=>o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
+
           betsF.forEach(b=>{
             const isO=b.overUnder==="Over",isU=b.overUnder==="Under";
             const role=b.role||"Inconnu",map=b.mapTag||"Sans tag",bk=b.bookmaker||"Autre";
             const tour=b.tournament||"Hors tournoi",mo=b.datetime?b.datetime.slice(0,7):"?";
-            const bucket=bucketOf(b.odds||1);
-            // breakdown maps
-            if(!byRole[role])byRole[role]=mk(); addB(byRole[role],b);
-            if(!byMap[map])byMap[map]=mk(); addB(byMap[map],b);
-            if(!byBK[bk])byBK[bk]=mk(); addB(byBK[bk],b);
-            if(!byTourney[tour])byTourney[tour]=mk(); addB(byTourney[tour],b);
-            if(!byOdds[bucket])byOdds[bucket]=mk(); addB(byOdds[bucket],b);
-            if(!byMonth[mo])byMonth[mo]=mk(); addB(byMonth[mo],b);
-            // kills breakdown
-            if(b.description){
-              const parts=b.description.split(" ");
-              if(parts.length>=3&&(parts[2]==="Kills"||parts[2]==="Headshots")){
-                const killKey=parts[1]+" "+parts[2];
-                if(!byKill[killKey])byKill[killKey]=mk(); addB(byKill[killKey],b);
-              }
-            }
-            // Over/Under
-            if(isO){addB(over,b);if(b.isLive)addB(overLive,b);else addB(overNL,b);}
-            if(isU){addB(under,b);if(b.isLive)addB(underLive,b);else addB(underNL,b);}
-            if(isO){if(!overByRole[role])overByRole[role]=mk();addB(overByRole[role],b);}
-            if(isU){if(!underByRole[role])underByRole[role]=mk();addB(underByRole[role],b);}
-            if(isO){if(!overByMap[map])overByMap[map]=mk();addB(overByMap[map],b);}
-            if(isU){if(!underByMap[map])underByMap[map]=mk();addB(underByMap[map],b);}
-            if(isO){if(!overByBK[bk])overByBK[bk]=mk();addB(overByBK[bk],b);}
-            if(isU){if(!underByBK[bk])underByBK[bk]=mk();addB(underByBK[bk],b);}
-            if(b.isLive)addB(live,b);else addB(nonLive,b);
-            if(b.isHeadshot){addB(hs,b);if(isO)addB(overHS,b);if(isU)addB(underHS,b);}
+            const bkt=bucket(b.odds||1);
+            if(!byRole[role])byRole[role]=mk(); add(byRole[role],b);
+            if(!byMap[map])byMap[map]=mk(); add(byMap[map],b);
+            if(!byBK[bk])byBK[bk]=mk(); add(byBK[bk],b);
+            if(!byTourney[tour])byTourney[tour]=mk(); add(byTourney[tour],b);
+            if(!byOdds[bkt])byOdds[bkt]=mk(); add(byOdds[bkt],b);
+            if(!byMonth[mo])byMonth[mo]=mk(); add(byMonth[mo],b);
+            if(b.description){const p=b.description.split(" ");if(p.length>=3&&(p[2]==="Kills"||p[2]==="Headshots")){const k=p[1]+" "+p[2];if(!byKill[k])byKill[k]=mk();add(byKill[k],b);}}
+            if(isO){add(over,b);b.isLive?add(overLive,b):add(overNL,b);}
+            if(isU){add(under,b);b.isLive?add(underLive,b):add(underNL,b);}
+            if(isO){if(!overByRole[role])overByRole[role]=mk();add(overByRole[role],b);}
+            if(isU){if(!underByRole[role])underByRole[role]=mk();add(underByRole[role],b);}
+            if(isO){if(!overByMap[map])overByMap[map]=mk();add(overByMap[map],b);}
+            if(isU){if(!underByMap[map])underByMap[map]=mk();add(underByMap[map],b);}
+            if(isO){if(!overByBK[bk])overByBK[bk]=mk();add(overByBK[bk],b);}
+            if(isU){if(!underByBK[bk])underByBK[bk]=mk();add(underByBK[bk],b);}
+            if(isCS2&&b.isHeadshot){isO?add(overHS,b):isU?add(underHS,b):null;}
+            if(isLoL){if(isO){b.isLive?add(lolOverLive,b):add(lolOverNL,b);}if(isU){b.isLive?add(lolUnderLive,b):add(lolUnderNL,b);}}
+            b.isLive?add(live,b):add(nonLive,b);
           });
-          const rolesArr=Object.entries(byRole).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const mapsArr=Object.entries(byMap).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>a.label.localeCompare(b.label));
-          const bkArr=Object.entries(byBK).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const tourArr=Object.entries(byTourney).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const oddsArr=oddsOrder.map(k=>byOdds[k]?{label:k,...toS(byOdds[k])}:null).filter(Boolean);
-          const killArr=Object.entries(byKill).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>parseFloat(a.label)-parseFloat(b.label));
-          const monthArr=Object.entries(byMonth).map(([k,v])=>({label:k,...toS(v)})).sort((a,b)=>b.label.localeCompare(a.label)).slice(0,6);
-          const overByRoleArr=Object.entries(overByRole).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const underByRoleArr=Object.entries(underByRole).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const overByMapArr=Object.entries(overByMap).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>a.label.localeCompare(b.label));
-          const underByMapArr=Object.entries(underByMap).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>a.label.localeCompare(b.label));
-          const overByBKArr=Object.entries(overByBK).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const underByBKArr=Object.entries(underByBK).map(([k,v])=>({key:k,label:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+
+          const rolesArr=Object.entries(byRole).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const mapsArr=Object.entries(byMap).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>a.key.localeCompare(b.key));
+          const bkArr=Object.entries(byBK).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const tourArr=Object.entries(byTourney).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const oddsArr=oddsOrder.map(k=>byOdds[k]?{key:k,...toS(byOdds[k])}:null).filter(Boolean);
+          const killArr=Object.entries(byKill).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>parseFloat(a.key)-parseFloat(b.key));
+          const monthArr=Object.entries(byMonth).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.key.localeCompare(a.key)).slice(0,6);
+
           const totalP=betsF.reduce((s,b)=>s+b.profit,0);
           const totalStk=betsF.reduce((s,b)=>s+b.stake,0);
-          const totalWon=betsF.filter(b=>b.status==="won").length;
-          const gWR=betsF.length>0?(totalWon/betsF.length*100):0;
+          const gWR=betsF.length>0?(betsF.filter(b=>b.status==="won").length/betsF.length*100):0;
           const gROI=totalStk>0?(totalP/totalStk*100):0;
+          const pageTitle=filterType?({role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Kills",player:"Joueur"}[filterType]||filterType)+" — "+filterValue:(league?game+" · "+league:game);
+          const canDrill=!filterType;
 
-          // Label for header
-          const pageTitle=filterType?({role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Ligne kills",player:"Joueur"}[filterType]||filterType)+" — "+filterValue:(league?game+" · "+league:game);
-          const canDrill=!filterType; // only drill one level
+          // ── helpers ──
+          const pc=v=>v>=0?"#22C55E":"#F87171";
+          const wrc=v=>v>=55?"#22C55E":v<45?"#F87171":"#9CA3AF";
 
-          // ── Profit bar component ──
-          const ProfitBar=({wr})=>(
-            <div style={{height:3,background:"#1F2937",borderRadius:2,overflow:"hidden",marginTop:5}}>
-              <div style={{height:"100%",width:Math.min(wr,100)+"%",background:wr>=55?"#22C55E":wr<45?"#EF4444":"#9CA3AF",borderRadius:2,transition:"width .4s"}}/>
+          // Simple stat bar
+          const Bar=({wr})=>(
+            <div style={{height:2,background:"#1F2937",borderRadius:1,marginTop:6,overflow:"hidden"}}>
+              <div style={{height:"100%",width:Math.min(wr,100)+"%",background:wr>=55?"#22C55E":wr<45?"#EF4444":"#6B7280",borderRadius:1}}/>
             </div>
           );
 
-          // ── Over/Under split card ──
-          const OUCard=({overS,underS,title})=>(!(toS(overS)||toS(underS)))?null:(
-            <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-              {title&&<div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:6}}>{title}</div>}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                {[{d:"🔼 Over",s:toS(overS),c:"rgba(34,197,94,0.08)",bc:"rgba(34,197,94,0.25)"},{d:"🔽 Under",s:toS(underS),c:"rgba(59,130,246,0.08)",bc:"rgba(59,130,246,0.25)"}].map(({d,s,c,bc})=>!s?null:(
-                  <div key={d} style={{background:c,border:"1px solid "+bc,borderRadius:9,padding:"8px 10px"}}>
-                    <div style={{fontSize:10,fontWeight:700,color:"#E5E7EB",marginBottom:3}}>{d}</div>
-                    <div style={{fontSize:9,color:"#9CA3AF"}}>{s.count}p · {s.wr.toFixed(0)}%WR · @{s.avgOdds.toFixed(2)}</div>
-                    <div style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171",marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:s.roi>=0?"#22C55E":"#EF4444",fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
-                    <ProfitBar wr={s.wr}/>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-
-          // ── Clickable row ──
-          const DrillRow=({item,fType,color="#E5E7EB",showOU=false,ouOver,ouUnder})=>{
-            const s=item;
-            const clickable=canDrill&&fType;
+          // Over/Under 2-col mini cards — épuré
+          const OURow=({oS,uS,title})=>{
+            const o=toS(oS),u=toS(uS);
+            if(!o&&!u)return null;
             return(
-              <div onClick={clickable?()=>setStatsDrill({game,league,filterType:fType,filterValue:item.key}):undefined}
-                style={{padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:clickable?"pointer":"default"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize:13,fontWeight:600,color}}>{item.label}</span>
-                      {clickable&&<span style={{fontSize:9,color:"#4B5563"}}>›</span>}
+              <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #1F2937"}}>
+                {title&&<div style={{fontSize:10,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>{title}</div>}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{label:"Over",s:o},{label:"Under",s:u}].map(({label,s})=>!s?<div key={label}/>:(
+                    <div key={label} style={{background:"#0B1220",borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4}}>{label} · {s.n}p · {s.wr.toFixed(0)}%WR</div>
+                      <div style={{fontSize:15,fontWeight:800,color:pc(s.profit)}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                      <div style={{fontSize:10,color:pc(s.roi)}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
+                      <Bar wr={s.wr}/>
                     </div>
-                    <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{s.count} paris · {s.wr.toFixed(0)}% WR · @{s.avgOdds.toFixed(2)} moy.</div>
-                  </div>
-                  <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
-                    <div style={{fontSize:14,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                    <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
-                  </div>
+                  ))}
                 </div>
-                <ProfitBar wr={s.wr}/>
-                {showOU&&ouOver&&ouUnder&&<OUCard overS={ouOver} underS={ouUnder}/>}
               </div>
             );
           };
 
-          // ── Section wrapper ──
-          const Sec=({emoji,title,color="#9CA3AF",children,count})=>(
-            <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12}}>
-                <span style={{fontSize:13}}>{emoji}</span>
-                <span style={{fontSize:10,color,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase"}}>{title}</span>
-                {count&&<span style={{fontSize:9,color:"#4B5563",background:"rgba(255,255,255,0.05)",borderRadius:5,padding:"1px 6px"}}>{count}</span>}
+          // Clickable row
+          const Row=({item,fType,ouOver,ouUnder,label})=>{
+            const s=item;
+            const txt=label||item.key;
+            const clickable=canDrill&&fType;
+            return(
+              <div onClick={clickable?()=>setStatsDrill({game,league,filterType:fType,filterValue:item.key}):undefined}
+                style={{padding:"12px 0",borderBottom:"1px solid #1F2937",cursor:clickable?"pointer":"default"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB",display:"flex",alignItems:"center",gap:5}}>{txt}{clickable&&<span style={{color:"#4B5563",fontSize:11}}>›</span>}</div>
+                    <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{s.n} paris · {s.wr.toFixed(0)}% WR · @{s.avg.toFixed(2)}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                    <div style={{fontSize:14,fontWeight:800,color:pc(s.profit)}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                    <div style={{fontSize:10,color:pc(s.roi)}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div>
+                  </div>
+                </div>
+                <Bar wr={s.wr}/>
+                {(ouOver||ouUnder)&&<OURow oS={ouOver} uS={ouUnder}/>}
+              </div>
+            );
+          };
+
+          // Section block
+          const Sec=({title,children,count})=>(
+            <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"14px 16px",marginBottom:8}}>
+              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:2,display:"flex",gap:6,alignItems:"center"}}>
+                {title}{count>1&&<span style={{background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"1px 5px",fontSize:8}}>{count}</span>}
               </div>
               {children}
             </div>
@@ -5225,207 +5213,155 @@ const fetchAnalyse=useCallback(async()=>{
               <div style={{padding:"16px 14px 40px",maxWidth:500,margin:"0 auto"}}>
 
                 {/* Header */}
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
                   <button onClick={()=>filterType?setStatsDrill({game,league}):setStatsDrill(null)}
-                    style={{background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,padding:"8px 14px",color:"#A78BFA",cursor:"pointer",fontSize:16,fontWeight:700,fontFamily:"'Inter',sans-serif",flexShrink:0}}>←</button>
-                  <div style={{minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      {game&&<GameLogo game={game} size={18}/>}
-                      <span style={{fontSize:16,fontWeight:800,color:cfg.accent||"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pageTitle}</span>
+                    style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:9,padding:"8px 14px",color:"#E5E7EB",cursor:"pointer",fontSize:15,fontWeight:700,flexShrink:0}}>←</button>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:7}}>
+                      {game&&<GameLogo game={game} size={16}/>}
+                      <span style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{pageTitle}</span>
                     </div>
-                    <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{betsF.length} paris · {gWR.toFixed(0)}% WR global</div>
+                    <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{betsF.length} paris · {gWR.toFixed(0)}% WR</div>
                   </div>
                 </div>
 
-                {/* Résumé 4 cases */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6,marginBottom:12}}>
-                  {[
-                    {l:"Paris",v:betsF.length,c:"#60A5FA"},
-                    {l:"WR",v:gWR.toFixed(0)+"%",c:gWR>=55?"#22C55E":gWR<45?"#F87171":"#9CA3AF"},
-                    {l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:gROI>=0?"#22C55E":"#F87171"},
-                    {l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:totalP>=0?"#22C55E":"#F87171"},
-                  ].map(x=>(
-                    <div key={x.l} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 8px",textAlign:"center"}}>
-                      <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{x.l}</div>
-                      <div style={{fontSize:15,fontWeight:800,color:x.c}}>{x.v}</div>
+                {/* 4 stats */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+                  {[{l:"Paris",v:betsF.length,c:"#E5E7EB"},{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)}].map(x=>(
+                    <div key={x.l} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:9,padding:"9px 6px",textAlign:"center"}}>
+                      <div style={{fontSize:8,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{x.l}</div>
+                      <div style={{fontSize:14,fontWeight:800,color:x.c}}>{x.v}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Over / Under */}
                 {(toS(over)||toS(under))&&(
-                  <Sec emoji="🔼" title="Over / Under" color="#60A5FA">
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      {[{d:"🔼 Over",s:toS(over),c:"rgba(34,197,94,0.08)",bc:"rgba(34,197,94,0.2)"},{d:"🔽 Under",s:toS(under),c:"rgba(59,130,246,0.08)",bc:"rgba(59,130,246,0.2)"}].map(({d,s,c,bc})=>!s?null:(
-                        <div key={d} style={{background:c,border:"1px solid "+bc,borderRadius:10,padding:"12px 14px"}}>
-                          <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",marginBottom:6}}>{d}</div>
-                          <div style={{fontSize:10,color:"#9CA3AF"}}>{s.count} paris</div>
-                          <div style={{fontSize:10,color:"#9CA3AF"}}>{s.wr.toFixed(0)}% WR · @{s.avgOdds.toFixed(2)}</div>
-                          <div style={{fontSize:16,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171",marginTop:6}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                          <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
-                          <ProfitBar wr={s.wr}/>
+                  <Sec title="Over / Under">
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
+                      {[{label:"Over",s:toS(over)},{label:"Under",s:toS(under)}].map(({label,s})=>!s?null:(
+                        <div key={label} style={{background:"#0B1220",borderRadius:8,padding:"12px"}}>
+                          <div style={{fontSize:11,color:"#9CA3AF",marginBottom:6}}>{label} · {s.n} paris</div>
+                          <div style={{fontSize:10,color:"#6B7280"}}>{s.wr.toFixed(0)}% WR · @{s.avg.toFixed(2)}</div>
+                          <div style={{fontSize:18,fontWeight:800,color:pc(s.profit),marginTop:6}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                          <div style={{fontSize:10,color:pc(s.roi)}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
+                          <Bar wr={s.wr}/>
                         </div>
                       ))}
                     </div>
-                    {/* Over live breakdown */}
+                    {/* Live breakdown Over */}
                     {(toS(overLive)||toS(overNL))&&(
-                      <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:6}}>Over — 🔴 Live vs Non-live</div>
+                      <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1F2937"}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Over · Live vs Non-live</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                          {[{d:"🔴 Live",s:toS(overLive)},{d:"Non-live",s:toS(overNL)}].map(({d,s})=>!s?null:(
-                            <div key={d} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px 10px"}}>
-                              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:600}}>{d}</div>
-                              <div style={{fontSize:9,color:"#6B7280"}}>{s.count}p · {s.wr.toFixed(0)}%WR</div>
-                              <div style={{fontSize:12,fontWeight:700,color:s.profit>=0?"#22C55E":"#F87171",marginTop:2}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:s.roi>=0?"#22C55E":"#EF4444"}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
+                          {[{l:"🔴 Live",s:toS(overLive)},{l:"Non-live",s:toS(overNL)}].map(({l,s})=>!s?null:(
+                            <div key={l} style={{background:"#0B1220",borderRadius:7,padding:"8px 10px"}}>
+                              <div style={{fontSize:10,color:"#9CA3AF"}}>{l} · {s.n}p · {s.wr.toFixed(0)}%</div>
+                              <div style={{fontSize:13,fontWeight:700,color:pc(s.profit),marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:pc(s.roi),fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                    {/* Under live breakdown */}
+                    {/* Live breakdown Under */}
                     {(toS(underLive)||toS(underNL))&&(
-                      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:6}}>Under — 🔴 Live vs Non-live</div>
+                      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1F2937"}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Under · Live vs Non-live</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                          {[{d:"🔴 Live",s:toS(underLive)},{d:"Non-live",s:toS(underNL)}].map(({d,s})=>!s?null:(
-                            <div key={d} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px 10px"}}>
-                              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:600}}>{d}</div>
-                              <div style={{fontSize:9,color:"#6B7280"}}>{s.count}p · {s.wr.toFixed(0)}%WR</div>
-                              <div style={{fontSize:12,fontWeight:700,color:s.profit>=0?"#22C55E":"#F87171",marginTop:2}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:s.roi>=0?"#22C55E":"#EF4444"}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
+                          {[{l:"🔴 Live",s:toS(underLive)},{l:"Non-live",s:toS(underNL)}].map(({l,s})=>!s?null:(
+                            <div key={l} style={{background:"#0B1220",borderRadius:7,padding:"8px 10px"}}>
+                              <div style={{fontSize:10,color:"#9CA3AF"}}>{l} · {s.n}p · {s.wr.toFixed(0)}%</div>
+                              <div style={{fontSize:13,fontWeight:700,color:pc(s.profit),marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:pc(s.roi),fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                    {/* HS Over/Under */}
-                    {(toS(overHS)||toS(underHS))&&<OUCard overS={overHS} underS={underHS} title="💀 Headshots Over / Under"/>}
+                    {/* CS2 Headshots */}
+                    {isCS2&&(toS(overHS)||toS(underHS))&&(
+                      <OURow oS={overHS} uS={underHS} title="Headshots Over / Under"/>
+                    )}
+                    {/* LoL Live Over/Under */}
+                    {isLoL&&(toS(lolOverLive)||toS(lolUnderLive))&&(
+                      <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1F2937"}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Live — Over / Under</div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                          {[{l:"Over Live",s:toS(lolOverLive)},{l:"Under Live",s:toS(lolUnderLive)}].map(({l,s})=>!s?null:(
+                            <div key={l} style={{background:"#0B1220",borderRadius:7,padding:"8px 10px"}}>
+                              <div style={{fontSize:10,color:"#9CA3AF"}}>{l} · {s.n}p · {s.wr.toFixed(0)}%</div>
+                              <div style={{fontSize:13,fontWeight:700,color:pc(s.profit),marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:pc(s.roi),fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </Sec>
                 )}
 
-                {/* Positions — cliquables */}
+                {/* Positions */}
                 {rolesArr.length>0&&(
-                  <Sec emoji="🎮" title="Par position / rôle" color="#A78BFA" count={rolesArr.length}>
+                  <Sec title="Positions" count={rolesArr.length}>
                     {rolesArr.map(r=>(
-                      <DrillRow key={r.key} item={r} fType="role" color="#E5E7EB"
-                        showOU={true}
-                        ouOver={overByRole[r.key]}
-                        ouUnder={underByRole[r.key]}
-                      />
+                      <Row key={r.key} item={r} fType="role"
+                        ouOver={overByRole[r.key]} ouUnder={underByRole[r.key]}/>
                     ))}
                   </Sec>
                 )}
 
-                {/* Maps — cliquables */}
+                {/* Maps */}
                 {mapsArr.length>1&&(
-                  <Sec emoji="🗺" title="Par map" color="#F59E0B" count={mapsArr.length}>
+                  <Sec title="Maps" count={mapsArr.length}>
                     {mapsArr.map(r=>(
-                      <DrillRow key={r.key} item={r} fType="map" color="#F59E0B"
-                        showOU={true}
-                        ouOver={overByMap[r.key]}
-                        ouUnder={underByMap[r.key]}
-                      />
+                      <Row key={r.key} item={r} fType="map"
+                        ouOver={overByMap[r.key]} ouUnder={underByMap[r.key]}/>
                     ))}
                   </Sec>
                 )}
 
-                {/* Kills — cliquables */}
+                {/* Lignes kills */}
                 {killArr.length>0&&(
-                  <Sec emoji="💀" title="Lignes kills / HS" color="#818CF8" count={killArr.length}>
-                    {killArr.map(r=>(
-                      <DrillRow key={r.key} item={r} fType="kill" color="#818CF8"/>
-                    ))}
+                  <Sec title="Lignes kills" count={killArr.length}>
+                    {killArr.map(r=><Row key={r.key} item={r} fType="kill"/>)}
                   </Sec>
                 )}
 
-                {/* Par tranche de cote */}
+                {/* Cotes */}
                 {oddsArr.length>0&&(
-                  <Sec emoji="📈" title="Par tranche de cote" color="#34D399">
-                    {oddsArr.map(r=>(
-                      <div key={r.label} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <div>
-                            <span style={{fontSize:13,fontWeight:600,color:"#E5E7EB"}}>{r.label}</span>
-                            <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{r.count}p · {r.wr.toFixed(0)}%WR · @{r.avgOdds.toFixed(2)}</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:14,fontWeight:800,color:r.profit>=0?"#22C55E":"#F87171"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</div>
-                            <div style={{fontSize:10,color:r.roi>=0?"#22C55E":"#EF4444"}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <ProfitBar wr={r.wr}/>
-                      </div>
-                    ))}
+                  <Sec title="Tranches de cote">
+                    {oddsArr.map(r=><Row key={r.key} item={r}/>)}
                   </Sec>
                 )}
 
-                {/* Live global */}
+                {/* Live */}
                 {(toS(live)||toS(nonLive))&&(
-                  <Sec emoji="🔴" title="Live vs Non-live" color="#FF4757">
-                    {[{label:"🔴 Live",s:toS(live)},{label:"Non-live",s:toS(nonLive)}].map(({label,s})=>!s?null:(
-                      <div key={label} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                        <div style={{display:"flex",justifyContent:"space-between"}}>
-                          <div>
-                            <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
-                            <div style={{fontSize:10,color:"#6B7280"}}>{s.count}p · {s.wr.toFixed(0)}%WR · @{s.avgOdds.toFixed(2)}</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:14,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                            <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <ProfitBar wr={s.wr}/>
-                      </div>
+                  <Sec title="Live vs Non-live">
+                    {[{key:"🔴 Live",s:toS(live)},{key:"Non-live",s:toS(nonLive)}].map(({key,s})=>!s?null:(
+                      <Row key={key} item={{...s,key}}/>
                     ))}
                   </Sec>
                 )}
 
-                {/* Headshots global */}
-                {toS(hs)&&(
-                  <Sec emoji="💀" title="Headshots (CS2)" color="#818CF8">
-                    <OUCard overS={overHS} underS={underHS} title="Over / Under Headshots"/>
-                  </Sec>
-                )}
-
-                {/* Bookmakers — cliquables */}
+                {/* Bookmakers */}
                 {bkArr.length>0&&(
-                  <Sec emoji="💰" title="Par bookmaker" color="#60A5FA" count={bkArr.length}>
+                  <Sec title="Bookmakers" count={bkArr.length}>
                     {bkArr.map(r=>(
-                      <DrillRow key={r.key} item={r} fType="bk" color="#E5E7EB"
-                        showOU={true}
-                        ouOver={overByBK[r.key]}
-                        ouUnder={underByBK[r.key]}
-                      />
+                      <Row key={r.key} item={r} fType="bk"
+                        ouOver={overByBK[r.key]} ouUnder={underByBK[r.key]}/>
                     ))}
                   </Sec>
                 )}
 
-                {/* Tournois — cliquables */}
+                {/* Tournois */}
                 {tourArr.length>0&&(
-                  <Sec emoji="🏆" title="Par tournoi" color="#F59E0B" count={tourArr.length}>
-                    {tourArr.map(r=>(
-                      <DrillRow key={r.key} item={{...r,label:r.label==="Hors tournoi"?"📅 Hors tournoi":"🏆 "+r.label}} fType="tourney" color="#E5E7EB"/>
-                    ))}
+                  <Sec title="Tournois" count={tourArr.length}>
+                    {tourArr.map(r=><Row key={r.key} item={r} fType="tourney" label={r.key==="Hors tournoi"?"Sans tournoi":r.key}/>)}
                   </Sec>
                 )}
 
                 {/* Mois */}
                 {monthArr.length>0&&(
-                  <Sec emoji="📅" title="Par mois" color="#9CA3AF">
-                    {monthArr.map(r=>(
-                      <div key={r.label} style={{padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                        <div style={{display:"flex",justifyContent:"space-between"}}>
-                          <div>
-                            <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB"}}>{r.label}</div>
-                            <div style={{fontSize:10,color:"#6B7280"}}>{r.count}p · {r.wr.toFixed(0)}%WR</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:14,fontWeight:800,color:r.profit>=0?"#22C55E":"#F87171"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</div>
-                            <div style={{fontSize:10,color:r.roi>=0?"#22C55E":"#EF4444"}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</div>
-                          </div>
-                        </div>
-                        <ProfitBar wr={r.wr}/>
-                      </div>
-                    ))}
+                  <Sec title="Mois récents">
+                    {monthArr.map(r=><Row key={r.key} item={r}/>)}
                   </Sec>
                 )}
 
