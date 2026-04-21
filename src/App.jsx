@@ -2280,7 +2280,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
 
 // ── BetRow component ───────────────────────────────────────────────────────
 const EMPTY_OBJ={};
-const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPhotos=EMPTY_OBJ}){
+const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ}){
   const [open,setOpen]=useState(false);
   const [confirmDel,setConfirmDel]=useState(false);
   const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
@@ -2309,6 +2309,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPh
             {/* Ligne 1 : Joueur [Map X] — Description */}
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,flexWrap:"wrap"}}>
               <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</span>
+              {bet.splits&&bet.splits.length>0&&<span style={{fontSize:9,color:"#22C55E",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:4,padding:"1px 5px",fontWeight:700}}>{1+bet.splits.length}</span>}
               {bet.isLive&&<span style={{fontSize:9,fontWeight:800,color:"#FF4757",background:"rgba(255,71,87,0.15)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(255,71,87,0.3)",letterSpacing:.5}}>LIVE</span>}
               {bet.mapTag&&<span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"rgba(245,158,11,0.15)",padding:"2px 8px",borderRadius:5,border:"1px solid rgba(245,158,11,0.3)",flexShrink:0}}>{bet.mapTag}</span>}
               {descLine&&<span style={{fontSize:14,color:"#94A3B8",fontWeight:400}}>— {descLine}</span>}
@@ -2323,6 +2324,12 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPh
                   ? <span style={{fontSize:11,fontWeight:600,color:"#3B82F6"}}>{bet.bookmaker}</span>
                   : null
               }
+              {(bet.splits||[]).map((sp,i)=>{
+                const spLogo=BK_LOGOS[sp.bookmaker]||bkPhotos[sp.bookmaker]||null;
+                return spLogo
+                  ? <img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:2}}/>
+                  : <span key={i} style={{fontSize:11,fontWeight:600,color:"#3B82F6",marginLeft:2}}>{sp.bookmaker}</span>;
+              })}
               {bet.stake&&<><span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span><span style={{fontSize:11,fontWeight:700,color:"#A78BFA"}}>{bet.stake}€</span></>}
               {bet.league&&<><span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span>{L[bet.league]?<span style={{display:"flex",alignItems:"center",gap:3}}><img src={L[bet.league]} alt={bet.league} style={{width:13,height:13,objectFit:"contain",borderRadius:2,flexShrink:0}}/><span style={{fontSize:10,fontWeight:700,color:"#E5E7EB"}}>{bet.league}</span></span>:<span style={{fontSize:11,color:"#6B7280"}}>{bet.league}</span>}</>}
               {bet.tournament&&(bet.game==="CS2"||bet.game==="Dota2")&&<><span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span><span style={{fontSize:10,color:"#E5E7EB",fontWeight:700}}>🏆 {bet.tournament}</span></>}
@@ -2341,6 +2348,27 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPh
       {open&&(
         <div style={{padding:"8px 14px 10px",borderTop:"1px solid rgba(255,255,255,0.04)"}}>
           <div style={{fontSize:10,color:"#4B5563",marginBottom:8}}>{fmtDate(bet.datetime)}</div>
+          {bet.splits&&bet.splits.length>0&&(
+            <div style={{marginBottom:8,background:"#0B1220",borderRadius:8,padding:"8px 10px"}}>
+              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Répartition</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+                  <span style={{color:"#9CA3AF"}}>{bet.bookmaker}</span>
+                  <span style={{color:"#E5E7EB",fontWeight:600}}>{(bet.stake-(bet.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}€ @{bet.odds}</span>
+                </div>
+                {(bet.splits||[]).map((sp,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+                    <span style={{color:"#9CA3AF"}}>{sp.bookmaker}</span>
+                    <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}€ @{sp.odds}</span>
+                  </div>
+                ))}
+                <div style={{borderTop:"1px solid #1F2937",paddingTop:4,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:11}}>
+                  <span style={{color:"#6B7280"}}>Total</span>
+                  <span style={{color:"#E5E7EB",fontWeight:700}}>{bet.stake}€</span>
+                </div>
+              </div>
+            </div>
+          )}
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
             {isPending&&(
               <>
@@ -2365,12 +2393,14 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,bkPh
             <button onClick={()=>{onEdit();setOpen(false);}}
               style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✎ Modifier</button>
             <button onClick={()=>{onDuplicate(bet);setOpen(false);}}
-              style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>⧉</button>
+              style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>⧉ Dupliquer</button>
+            <button onClick={()=>{onSplit(bet);setOpen(false);}}
+              style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.1)",color:"#22C55E",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Ajouter BK</button>
             {!confirmDel
               ?<button onClick={()=>setConfirmDel(true)}
-                  style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>🗑</button>
+                  style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>🗑 Supprimer</button>
               :<>
-                <button onClick={()=>{onDelete(bet.id);}} style={{padding:"7px 14px",borderRadius:9,border:"none",background:"#EF4444",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Supprimer</button>
+                <button onClick={()=>{onDelete(bet.id);}} style={{padding:"7px 14px",borderRadius:9,border:"none",background:"#EF4444",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Confirmer</button>
                 <button onClick={()=>setConfirmDel(false)} style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#6B7280",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Annuler</button>
               </>
             }
@@ -2493,6 +2523,8 @@ export default function App(){
   const [fLeague,setFLeague]=useState("All");
   const FILTRES_PER_PAGE=30;
   const [modalBK,setModalBK]=useState(false);
+  const [splitModal,setSplitModal]=useState(null); // bet to split
+  const [splitForm,setSplitForm]=useState({bookmaker:"",stake:"",odds:""});
   const [newBK,setNewBK]=useState("");
   const [newBKPhoto,setNewBKPhoto]=useState("");
   const [bkPhotos,setBkPhotos]=useState({});
@@ -2756,12 +2788,31 @@ function toggleHideAnalyseBet(key){
   // Stats
   const bkStats=useMemo(()=>{
     const bk={};
-    settled.forEach(b=>{
-      const k=b.bookmaker||"Autre";
+    const add=(k,stake,profit,odds,won)=>{
       if(!bk[k])bk[k]={profit:0,count:0,staked:0,won:0,oddsSum:0};
-      bk[k].profit+=b.profit;bk[k].count++;bk[k].staked+=b.stake;
-      bk[k].oddsSum+=b.odds;
-      if(b.status==="won")bk[k].won++;
+      bk[k].profit+=profit;bk[k].count++;bk[k].staked+=stake;
+      bk[k].oddsSum+=odds;
+      if(won)bk[k].won++;
+    };
+    settled.forEach(b=>{
+      const totalStake=b.stake;
+      const splits=b.splits||[];
+      if(splits.length===0){
+        // No split — all goes to main bookmaker
+        add(b.bookmaker||"Autre",totalStake,b.profit,b.odds,b.status==="won");
+      } else {
+        // Split — distribute proportionally by stake
+        const splitStakeTotal=splits.reduce((s,sp)=>s+sp.stake,0);
+        const mainStake=totalStake-splitStakeTotal;
+        // Main bookmaker share
+        const ratio=mainStake/totalStake;
+        add(b.bookmaker||"Autre",mainStake,b.profit*ratio,b.odds,b.status==="won");
+        // Each split bookmaker share
+        splits.forEach(sp=>{
+          const spRatio=sp.stake/totalStake;
+          add(sp.bookmaker||"Autre",sp.stake,b.profit*spRatio,b.odds,b.status==="won");
+        });
+      }
     });
     return bk;
   },[settled]);
@@ -3180,6 +3231,11 @@ function toggleHideAnalyseBet(key){
     showToast("Pari duplique");
   },[showToast]);
 
+  const splitBet=useCallback((bet)=>{
+    setSplitForm({bookmaker:"",stake:"",odds:String(bet.odds||"")});
+    setSplitModal(bet);
+  },[]);
+
   function applyBulkStatus(status){
     const now=Date.now();
     setBets(b=>b.map((bet,i)=>selectedIds.includes(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null}:bet));
@@ -3551,7 +3607,7 @@ const fetchAnalyse=useCallback(async()=>{
                         {pending.map(b=>(
                           selectMode
                             ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                            :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
+                            :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} onSplit={splitBet} bkPhotos={bkPhotos}/>
                         ))}
                       </div>
                     </div>
@@ -3603,7 +3659,7 @@ const fetchAnalyse=useCallback(async()=>{
                                 {dayBets.map(b=>(
                                   selectMode
                                     ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
+                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} onSplit={splitBet} bkPhotos={bkPhotos}/>
                                 ))}
                               </div>
                             );
@@ -4105,7 +4161,7 @@ const fetchAnalyse=useCallback(async()=>{
             <div className="stat-bloc">
               {filteredBets.length===0&&<div style={{padding:"18px 15px",color:"#6B7280",fontSize:13}}>Aucun pari</div>}
               {filteredBets.slice(0,(filtresPage)*FILTRES_PER_PAGE).map(b=>(
-                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
+                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} onSplit={splitBet} bkPhotos={bkPhotos}/>
               ))}
             </div>
             {filteredBets.length>filtresPage*FILTRES_PER_PAGE&&(
@@ -4593,7 +4649,7 @@ const fetchAnalyse=useCallback(async()=>{
 
         {/* ── STATS ── */}
         {view==="statistiques"&&(
-          <div className="view-enter">
+          <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Statistiques</div>
               <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -5065,7 +5121,7 @@ const fetchAnalyse=useCallback(async()=>{
           const {game,league,filterType,filterValue}=statsDrill;
           const mk=()=>({cnt:0,won:0,profit:0,staked:0,oddsSum:0});
           const add=(t,b)=>{t.cnt++;t.profit+=b.profit;t.staked+=b.stake;t.oddsSum+=b.odds;if(b.status==="won")t.won++;};
-          const toS=t=>t.cnt>0?{n:t.cnt,wr:t.won/t.cnt*100,profit:t.profit,roi:t.staked>0?t.profit/t.staked*100:0,avg:t.cnt>0?t.oddsSum/t.cnt:0}:null;
+          const toS=t=>(!t||!t.cnt)?null:{n:t.cnt,wr:t.won/t.cnt*100,profit:t.profit,roi:t.staked>0?t.profit/t.staked*100:0,avg:t.oddsSum/t.cnt};
           let betsF=settled.filter(b=>(!game||b.game===game)&&(!league||b.league===league));
           if(filterType==="role")betsF=betsF.filter(b=>(b.role||"Inconnu")===filterValue);
           if(filterType==="map")betsF=betsF.filter(b=>(b.mapTag||"Sans tag")===filterValue);
@@ -5075,276 +5131,180 @@ const fetchAnalyse=useCallback(async()=>{
           if(filterType==="player")betsF=betsF.filter(b=>b.player&&b.player.toLowerCase()===filterValue.toLowerCase());
           if(!betsF.length)return null;
 
-          const isCS2=game==="CS2", isLoL=game==="LoL";
           const cfg=GAME_CFG[game]||{accent:"#A78BFA"};
+          const isCS2=game==="CS2",isLoL=game==="LoL";
           const over=mk(),under=mk(),overLive=mk(),overNL=mk(),underLive=mk(),underNL=mk();
-          const overHS=mk(),underHS=mk(),lolOverLive=mk(),lolUnderLive=mk(),lolOverNL=mk(),lolUnderNL=mk();
-          const live=mk(),nonLive=mk();
-          const byRole={},byMap={},byBK={},byTourney={},byOdds={},byKill={},byMonth={};
-          const overByRole={},underByRole={},overByMap={},underByMap={},overByBK={},underByBK={};
+          const overHS=mk(),underHS=mk();
+          const byMap={},byBK={},byOdds={},byMonth={};
           const oddsOrder=["<1.50","1.50-1.74","1.75-1.99","2.00-2.49","≥2.50"];
-          const bucket=o=>o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
+          const bk2=o=>o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
 
           betsF.forEach(b=>{
             const isO=b.overUnder==="Over",isU=b.overUnder==="Under";
-            const role=b.role||"Inconnu",map=b.mapTag||"Sans tag",bk=b.bookmaker||"Autre";
-            const tour=b.tournament||"Hors tournoi",mo=b.datetime?b.datetime.slice(0,7):"?";
-            const bkt=bucket(b.odds||1);
-            if(!byRole[role])byRole[role]=mk(); add(byRole[role],b);
+            const map=b.mapTag||"Sans tag",bk=b.bookmaker||"Autre";
+            const mo=b.datetime?b.datetime.slice(0,7):"?";
+            const bkt=bk2(b.odds||1);
             if(!byMap[map])byMap[map]=mk(); add(byMap[map],b);
             if(!byBK[bk])byBK[bk]=mk(); add(byBK[bk],b);
-            if(!byTourney[tour])byTourney[tour]=mk(); add(byTourney[tour],b);
             if(!byOdds[bkt])byOdds[bkt]=mk(); add(byOdds[bkt],b);
             if(!byMonth[mo])byMonth[mo]=mk(); add(byMonth[mo],b);
-            if(b.description){const p=b.description.split(" ");if(p.length>=3&&(p[2]==="Kills"||p[2]==="Headshots")){const k=p[1]+" "+p[2];if(!byKill[k])byKill[k]=mk();add(byKill[k],b);}}
             if(isO){add(over,b);b.isLive?add(overLive,b):add(overNL,b);}
             if(isU){add(under,b);b.isLive?add(underLive,b):add(underNL,b);}
-            if(isO){if(!overByRole[role])overByRole[role]=mk();add(overByRole[role],b);}
-            if(isU){if(!underByRole[role])underByRole[role]=mk();add(underByRole[role],b);}
-            if(isO){if(!overByMap[map])overByMap[map]=mk();add(overByMap[map],b);}
-            if(isU){if(!underByMap[map])underByMap[map]=mk();add(underByMap[map],b);}
-            if(isO){if(!overByBK[bk])overByBK[bk]=mk();add(overByBK[bk],b);}
-            if(isU){if(!underByBK[bk])underByBK[bk]=mk();add(underByBK[bk],b);}
             if(isCS2&&b.isHeadshot){isO?add(overHS,b):isU?add(underHS,b):null;}
-            if(isLoL){if(isO){b.isLive?add(lolOverLive,b):add(lolOverNL,b);}if(isU){b.isLive?add(lolUnderLive,b):add(lolUnderNL,b);}}
-            b.isLive?add(live,b):add(nonLive,b);
           });
 
-          const rolesArr=Object.entries(byRole).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const mapsArr=Object.entries(byMap).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>a.key.localeCompare(b.key));
-          const bkArr=Object.entries(byBK).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const tourArr=Object.entries(byTourney).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
-          const oddsArr=oddsOrder.map(k=>byOdds[k]?{key:k,...toS(byOdds[k])}:null).filter(Boolean);
-          const killArr=Object.entries(byKill).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>parseFloat(a.key)-parseFloat(b.key));
-          const monthArr=Object.entries(byMonth).map(([k,v])=>({key:k,...toS(v)})).sort((a,b)=>b.key.localeCompare(a.key)).slice(0,6);
+          const mapsArr=Object.entries(byMap).map(([k,v])=>({key:k,s:toS(v)})).filter(x=>x.s).sort((a,b)=>a.key.localeCompare(b.key));
+          const bkArr=Object.entries(byBK).map(([k,v])=>({key:k,s:toS(v)})).filter(x=>x.s).sort((a,b)=>b.s.profit-a.s.profit);
+          const oddsArr=oddsOrder.map(k=>byOdds[k]?{key:k,s:toS(byOdds[k])}:null).filter(Boolean);
+          const monthArr=Object.entries(byMonth).map(([k,v])=>({key:k,s:toS(v)})).filter(x=>x.s).sort((a,b)=>b.key.localeCompare(a.key)).slice(0,4);
 
           const totalP=betsF.reduce((s,b)=>s+b.profit,0);
           const totalStk=betsF.reduce((s,b)=>s+b.stake,0);
           const gWR=betsF.length>0?(betsF.filter(b=>b.status==="won").length/betsF.length*100):0;
           const gROI=totalStk>0?(totalP/totalStk*100):0;
           const pageTitle=filterType?({role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Kills",player:"Joueur"}[filterType]||filterType)+" — "+filterValue:(league?game+" · "+league:game);
-          const canDrill=!filterType;
 
-          // ── helpers ──
-          const pc=v=>v>=0?"#22C55E":"#F87171";
-          const wrc=v=>v>=55?"#22C55E":v<45?"#F87171":"#9CA3AF";
+          const pc=v=>(v||0)>=0?"#22C55E":"#F87171";
+          const wrc=v=>(v||0)>=55?"#22C55E":(v||0)<45?"#F87171":"#9CA3AF";
 
-          // Simple stat bar
-          const Bar=({wr})=>(
-            <div style={{height:2,background:"#1F2937",borderRadius:1,marginTop:6,overflow:"hidden"}}>
-              <div style={{height:"100%",width:Math.min(wr,100)+"%",background:wr>=55?"#22C55E":wr<45?"#EF4444":"#6B7280",borderRadius:1}}/>
+          // Simple table row — label | N paris | WR% | Profit
+          const TRow=({label,s,sub})=>!s?null:(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
+                {sub&&<div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{sub}</div>}
+              </div>
+              <div style={{display:"flex",gap:16,alignItems:"center",flexShrink:0}}>
+                <span style={{fontSize:11,color:"#6B7280",minWidth:32,textAlign:"right"}}>{s.n}p</span>
+                <span style={{fontSize:11,fontWeight:600,color:wrc(s.wr),minWidth:36,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
+                <span style={{fontSize:13,fontWeight:700,color:pc(s.profit),minWidth:60,textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
+              </div>
             </div>
           );
 
-          // Over/Under 2-col mini cards — épuré
-          const OURow=({oS,uS,title})=>{
-            const o=toS(oS),u=toS(uS);
-            if(!o&&!u)return null;
-            return(
-              <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #1F2937"}}>
-                {title&&<div style={{fontSize:10,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>{title}</div>}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[{label:"Over",s:o},{label:"Under",s:u}].map(({label,s})=>!s?<div key={label}/>:(
-                    <div key={label} style={{background:"#0B1220",borderRadius:8,padding:"10px 12px"}}>
-                      <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4}}>{label} · {s.n}p · {s.wr.toFixed(0)}%WR</div>
-                      <div style={{fontSize:15,fontWeight:800,color:pc(s.profit)}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                      <div style={{fontSize:10,color:pc(s.roi)}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
-                      <Bar wr={s.wr}/>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          };
-
-          // Clickable row
-          const Row=({item,fType,ouOver,ouUnder,label})=>{
-            const s=item;
-            const txt=label||item.key;
-            const clickable=canDrill&&fType;
-            return(
-              <div onClick={clickable?()=>setStatsDrill({game,league,filterType:fType,filterValue:item.key}):undefined}
-                style={{padding:"12px 0",borderBottom:"1px solid #1F2937",cursor:clickable?"pointer":"default"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB",display:"flex",alignItems:"center",gap:5}}>{txt}{clickable&&<span style={{color:"#4B5563",fontSize:11}}>›</span>}</div>
-                    <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{s.n} paris · {s.wr.toFixed(0)}% WR · @{s.avg.toFixed(2)}</div>
-                  </div>
-                  <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
-                    <div style={{fontSize:14,fontWeight:800,color:pc(s.profit)}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                    <div style={{fontSize:10,color:pc(s.roi)}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div>
-                  </div>
-                </div>
-                <Bar wr={s.wr}/>
-                {(ouOver||ouUnder)&&<OURow oS={ouOver} uS={ouUnder}/>}
-              </div>
-            );
-          };
-
-          // Section block
-          const Sec=({title,children,count})=>(
-            <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"14px 16px",marginBottom:8}}>
-              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:2,display:"flex",gap:6,alignItems:"center"}}>
-                {title}{count>1&&<span style={{background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"1px 5px",fontSize:8}}>{count}</span>}
-              </div>
+          // Section
+          const Sec=({title,children})=>(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8,paddingBottom:6,borderBottom:"1px solid #1F2937"}}>{title}</div>
               {children}
             </div>
           );
 
           return(
             <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:450,overflowY:"auto",fontFamily:"'Inter',sans-serif"}}>
-              <div style={{padding:"16px 14px 40px",maxWidth:500,margin:"0 auto"}}>
+              <div style={{padding:"16px 16px 40px",maxWidth:500,margin:"0 auto"}}>
 
                 {/* Header */}
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
                   <button onClick={()=>filterType?setStatsDrill({game,league}):setStatsDrill(null)}
                     style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:9,padding:"8px 14px",color:"#E5E7EB",cursor:"pointer",fontSize:15,fontWeight:700,flexShrink:0}}>←</button>
                   <div>
                     <div style={{display:"flex",alignItems:"center",gap:7}}>
                       {game&&<GameLogo game={game} size={16}/>}
-                      <span style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{pageTitle}</span>
+                      <span style={{fontSize:16,fontWeight:700,color:"#E5E7EB"}}>{pageTitle}</span>
                     </div>
-                    <div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{betsF.length} paris · {gWR.toFixed(0)}% WR</div>
+                    <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{betsF.length} paris</div>
                   </div>
                 </div>
 
-                {/* 4 stats */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
-                  {[{l:"Paris",v:betsF.length,c:"#E5E7EB"},{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)}].map(x=>(
-                    <div key={x.l} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:9,padding:"9px 6px",textAlign:"center"}}>
-                      <div style={{fontSize:8,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{x.l}</div>
-                      <div style={{fontSize:14,fontWeight:800,color:x.c}}>{x.v}</div>
-                    </div>
-                  ))}
-                </div>
+                {/* Global */}
+                <Sec title="Global">
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 12px"}}>
+                    {[{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)},{l:"Moy cote",v:"@"+(betsF.reduce((s,b)=>s+b.odds,0)/betsF.length).toFixed(2),c:"#9CA3AF"}].map(x=>(
+                      <div key={x.l} style={{textAlign:"center"}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{x.l}</div>
+                        <div style={{fontSize:18,fontWeight:800,color:x.c}}>{x.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Sec>
 
                 {/* Over / Under */}
                 {(toS(over)||toS(under))&&(
                   <Sec title="Over / Under">
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
-                      {[{label:"Over",s:toS(over)},{label:"Under",s:toS(under)}].map(({label,s})=>!s?null:(
-                        <div key={label} style={{background:"#0B1220",borderRadius:8,padding:"12px"}}>
-                          <div style={{fontSize:11,color:"#9CA3AF",marginBottom:6}}>{label} · {s.n} paris</div>
-                          <div style={{fontSize:10,color:"#6B7280"}}>{s.wr.toFixed(0)}% WR · @{s.avg.toFixed(2)}</div>
-                          <div style={{fontSize:18,fontWeight:800,color:pc(s.profit),marginTop:6}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                          <div style={{fontSize:10,color:pc(s.roi)}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
-                          <Bar wr={s.wr}/>
-                        </div>
-                      ))}
+                    {/* Header cols */}
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 4px"}}>
+                      <span style={{fontSize:9,color:"#4B5563",flex:1}}/>
+                      <div style={{display:"flex",gap:16,flexShrink:0}}>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:32,textAlign:"right"}}>Paris</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:36,textAlign:"right"}}>WR%</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:60,textAlign:"right"}}>Profit</span>
+                      </div>
                     </div>
-                    {/* Live breakdown Over */}
-                    {(toS(overLive)||toS(overNL))&&(
-                      <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1F2937"}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Over · Live vs Non-live</div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                          {[{l:"🔴 Live",s:toS(overLive)},{l:"Non-live",s:toS(overNL)}].map(({l,s})=>!s?null:(
-                            <div key={l} style={{background:"#0B1220",borderRadius:7,padding:"8px 10px"}}>
-                              <div style={{fontSize:10,color:"#9CA3AF"}}>{l} · {s.n}p · {s.wr.toFixed(0)}%</div>
-                              <div style={{fontSize:13,fontWeight:700,color:pc(s.profit),marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:pc(s.roi),fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {/* Live breakdown Under */}
-                    {(toS(underLive)||toS(underNL))&&(
-                      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #1F2937"}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Under · Live vs Non-live</div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                          {[{l:"🔴 Live",s:toS(underLive)},{l:"Non-live",s:toS(underNL)}].map(({l,s})=>!s?null:(
-                            <div key={l} style={{background:"#0B1220",borderRadius:7,padding:"8px 10px"}}>
-                              <div style={{fontSize:10,color:"#9CA3AF"}}>{l} · {s.n}p · {s.wr.toFixed(0)}%</div>
-                              <div style={{fontSize:13,fontWeight:700,color:pc(s.profit),marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:pc(s.roi),fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {/* CS2 Headshots */}
-                    {isCS2&&(toS(overHS)||toS(underHS))&&(
-                      <OURow oS={overHS} uS={underHS} title="Headshots Over / Under"/>
-                    )}
-                    {/* LoL Live Over/Under */}
-                    {isLoL&&(toS(lolOverLive)||toS(lolUnderLive)||toS(lolOverNL)||toS(lolUnderNL))&&(
-                      <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1F2937"}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Live — Over / Under</div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                          {[{l:"Over Live",s:toS(lolOverLive)},{l:"Under Live",s:toS(lolUnderLive)}].map(({l,s})=>!s?null:(
-                            <div key={l} style={{background:"#0B1220",borderRadius:7,padding:"8px 10px"}}>
-                              <div style={{fontSize:10,color:"#9CA3AF"}}>{l} · {s.n}p · {s.wr.toFixed(0)}%</div>
-                              <div style={{fontSize:13,fontWeight:700,color:pc(s.profit),marginTop:3}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:9,color:pc(s.roi),fontWeight:400}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </Sec>
-                )}
-
-                {/* Positions */}
-                {rolesArr.length>0&&(
-                  <Sec title="Positions" count={rolesArr.length}>
-                    {rolesArr.map(r=>(
-                      <Row key={r.key} item={r} fType="role"
-                        ouOver={overByRole[r.key]} ouUnder={underByRole[r.key]}/>
-                    ))}
+                    <TRow label="🔼 Over" s={toS(over)}/>
+                    <TRow label="🔽 Under" s={toS(under)}/>
+                    {(toS(overLive)||toS(overNL))&&<>
+                      <TRow label="Over 🔴 Live" s={toS(overLive)}/>
+                      <TRow label="Over non-live" s={toS(overNL)}/>
+                    </>}
+                    {(toS(underLive)||toS(underNL))&&<>
+                      <TRow label="Under 🔴 Live" s={toS(underLive)}/>
+                      <TRow label="Under non-live" s={toS(underNL)}/>
+                    </>}
+                    {isCS2&&(toS(overHS)||toS(underHS))&&<>
+                      <TRow label="💀 Over HS" s={toS(overHS)}/>
+                      <TRow label="💀 Under HS" s={toS(underHS)}/>
+                    </>}
                   </Sec>
                 )}
 
                 {/* Maps */}
-                {mapsArr.length>1&&(
-                  <Sec title="Maps" count={mapsArr.length}>
-                    {mapsArr.map(r=>(
-                      <Row key={r.key} item={r} fType="map"
-                        ouOver={overByMap[r.key]} ouUnder={underByMap[r.key]}/>
-                    ))}
-                  </Sec>
-                )}
-
-                {/* Lignes kills */}
-                {killArr.length>0&&(
-                  <Sec title="Lignes kills" count={killArr.length}>
-                    {killArr.map(r=><Row key={r.key} item={r} fType="kill"/>)}
-                  </Sec>
-                )}
-
-                {/* Cotes */}
-                {oddsArr.length>0&&(
-                  <Sec title="Tranches de cote">
-                    {oddsArr.map(r=><Row key={r.key} item={r}/>)}
-                  </Sec>
-                )}
-
-                {/* Live */}
-                {(toS(live)||toS(nonLive))&&(
-                  <Sec title="Live vs Non-live">
-                    {[{key:"🔴 Live",s:toS(live)},{key:"Non-live",s:toS(nonLive)}].map(({key,s})=>!s?null:(
-                      <Row key={key} item={{...s,key}}/>
-                    ))}
+                {mapsArr.length>0&&(
+                  <Sec title="Maps">
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 4px"}}>
+                      <span style={{fontSize:9,color:"#4B5563",flex:1}}/>
+                      <div style={{display:"flex",gap:16,flexShrink:0}}>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:32,textAlign:"right"}}>Paris</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:36,textAlign:"right"}}>WR%</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:60,textAlign:"right"}}>Profit</span>
+                      </div>
+                    </div>
+                    {mapsArr.map(({key,s})=><TRow key={key} label={key} s={s}/>)}
                   </Sec>
                 )}
 
                 {/* Bookmakers */}
                 {bkArr.length>0&&(
-                  <Sec title="Bookmakers" count={bkArr.length}>
-                    {bkArr.map(r=>(
-                      <Row key={r.key} item={r} fType="bk"
-                        ouOver={overByBK[r.key]} ouUnder={underByBK[r.key]}/>
-                    ))}
+                  <Sec title="Bookmakers">
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 4px"}}>
+                      <span style={{fontSize:9,color:"#4B5563",flex:1}}/>
+                      <div style={{display:"flex",gap:16,flexShrink:0}}>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:32,textAlign:"right"}}>Paris</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:36,textAlign:"right"}}>WR%</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:60,textAlign:"right"}}>Profit</span>
+                      </div>
+                    </div>
+                    {bkArr.map(({key,s})=><TRow key={key} label={key} s={s}/>)}
                   </Sec>
                 )}
 
-                {/* Tournois */}
-                {tourArr.length>0&&(
-                  <Sec title="Tournois" count={tourArr.length}>
-                    {tourArr.map(r=><Row key={r.key} item={r} fType="tourney" label={r.key==="Hors tournoi"?"Sans tournoi":r.key}/>)}
+                {/* Tranches de cote */}
+                {oddsArr.length>0&&(
+                  <Sec title="Tranches de cote">
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 4px"}}>
+                      <span style={{fontSize:9,color:"#4B5563",flex:1}}/>
+                      <div style={{display:"flex",gap:16,flexShrink:0}}>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:32,textAlign:"right"}}>Paris</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:36,textAlign:"right"}}>WR%</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:60,textAlign:"right"}}>Profit</span>
+                      </div>
+                    </div>
+                    {oddsArr.map(({key,s})=><TRow key={key} label={key} s={s}/>)}
                   </Sec>
                 )}
 
-                {/* Mois */}
+                {/* Mois récents */}
                 {monthArr.length>0&&(
                   <Sec title="Mois récents">
-                    {monthArr.map(r=><Row key={r.key} item={r}/>)}
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 4px"}}>
+                      <span style={{fontSize:9,color:"#4B5563",flex:1}}/>
+                      <div style={{display:"flex",gap:16,flexShrink:0}}>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:32,textAlign:"right"}}>Paris</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:36,textAlign:"right"}}>WR%</span>
+                        <span style={{fontSize:9,color:"#4B5563",minWidth:60,textAlign:"right"}}>Profit</span>
+                      </div>
+                    </div>
+                    {monthArr.map(({key,s})=><TRow key={key} label={key} s={s}/>)}
                   </Sec>
                 )}
 
@@ -5352,7 +5312,6 @@ const fetchAnalyse=useCallback(async()=>{
             </div>
           );
         })()}
-
 
         {/* ── JOUEURS ── */}
         {view==="analyse"&&(()=>{
@@ -6268,6 +6227,124 @@ const fetchAnalyse=useCallback(async()=>{
                   showToast((newKey!==key?key+" → "+newKey+" ":newKey+" ")+"mis à jour ✓");
                 }} style={{padding:"12px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
                   Sauvegarder
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL SPLIT BET ── */}
+        {splitModal&&(
+          <div className="moverlay" onClick={()=>setSplitModal(null)}>
+            <div className="modal" onClick={e=>e.stopPropagation()}>
+              <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",marginBottom:4}}>Ajouter un bookmaker</div>
+              <div style={{fontSize:11,color:"#6B7280",marginBottom:14}}>La mise s'additionne au pari existant</div>
+
+              {/* Pari source */}
+              <div style={{background:"#0B1220",borderRadius:10,padding:"10px 14px",marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <GameLogo game={splitModal.game} size={14}/>
+                  <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{splitModal.player}</span>
+                  <span style={{fontSize:11,color:"#9CA3AF"}}>{splitModal.description}</span>
+                </div>
+                {/* Existing splits */}
+                <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:3}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+                    <span style={{color:"#9CA3AF"}}>{splitModal.bookmaker}</span>
+                    <span style={{color:"#E5E7EB",fontWeight:600}}>{(splitModal.stake-(splitModal.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}€ @{splitModal.odds}</span>
+                  </div>
+                  {(splitModal.splits||[]).map((sp,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+                      <span style={{color:"#9CA3AF"}}>{sp.bookmaker}</span>
+                      <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}€ @{sp.odds}</span>
+                    </div>
+                  ))}
+                  <div style={{borderTop:"1px solid #1F2937",paddingTop:4,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700}}>
+                    <span style={{color:"#6B7280"}}>Total actuel</span>
+                    <span style={{color:"#E5E7EB"}}>{splitModal.stake}€</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nouveau bookmaker */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Bookmaker</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {bookmakers.filter(bk=>bk!==splitModal.bookmaker&&!(splitModal.splits||[]).some(s=>s.bookmaker===bk)).map(bk=>{
+                    const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                    const isOn=splitForm.bookmaker===bk;
+                    return(
+                      <button key={bk} onClick={()=>setSplitForm(f=>({...f,bookmaker:bk}))}
+                        title={bk}
+                        style={{width:44,height:44,borderRadius:10,border:"2px solid "+(isOn?"#22C55E":"#1F2937"),background:isOn?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",boxShadow:isOn?"0 0 8px rgba(34,197,94,0.3)":"none"}}>
+                        {logo
+                          ? <img src={logo} alt={bk} style={{width:28,height:28,borderRadius:6,objectFit:"cover"}}/>
+                          : <span style={{fontSize:10,fontWeight:700,color:isOn?"#22C55E":"#6B7280"}}>{bk.slice(0,3)}</span>
+                        }
+                      </button>
+                    );
+                  })}
+                </div>
+                {splitForm.bookmaker&&<div style={{fontSize:11,color:"#22C55E",fontWeight:600,marginTop:6}}>✓ {splitForm.bookmaker}</div>}
+              </div>
+
+              {/* Cote */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Cote</div>
+                <input className="ifield" type="number" step="0.01" placeholder={"Ex: "+splitModal.odds}
+                  value={splitForm.odds} onChange={e=>setSplitForm(f=>({...f,odds:e.target.value}))}
+                  style={{marginBottom:0}}/>
+              </div>
+
+              {/* Mise */}
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Mise à ajouter (€)</div>
+                <input className="ifield" type="number" step="1" placeholder="Ex: 30"
+                  value={splitForm.stake} onChange={e=>setSplitForm(f=>({...f,stake:e.target.value}))}
+                  style={{marginBottom:8}}/>
+                {(()=>{
+                  // Smart shortcuts: complements to reach unit thresholds
+                  const UNITS=[50,62,75,87,100];
+                  const currentStake=splitModal.stake; // mise déjà placée
+                  const valid=UNITS
+                    .map(u=>({unit:u,add:Math.round(u-currentStake)}))
+                    .filter(x=>x.add>0);
+                  return(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {valid.map(({unit,add})=>(
+                        <button key={unit} onClick={()=>setSplitForm(f=>({...f,stake:String(add)}))}
+                          style={{flex:"1 1 auto",padding:"7px 4px",borderRadius:8,border:"1px solid "+(splitForm.stake===String(add)?"#22C55E":"#1F2937"),background:splitForm.stake===String(add)?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.03)",color:splitForm.stake===String(add)?"#22C55E":"#9CA3AF",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,textAlign:"center",lineHeight:1.3}}>
+                          <div>{add}€</div>
+                          <div style={{fontSize:9,color:splitForm.stake===String(add)?"#22C55E":"#4B5563",marginTop:1}}>→{unit}€</div>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {splitForm.stake&&<div style={{marginTop:8,fontSize:11,color:"#6B7280"}}>
+                  Total → <span style={{color:"#E5E7EB",fontWeight:700}}>{(splitModal.stake+parseFloat(splitForm.stake||0)).toFixed(0)}€</span>
+                </div>}
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <button onClick={()=>setSplitModal(null)}
+                  style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#9CA3AF",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Annuler</button>
+                <button disabled={!splitForm.bookmaker||!splitForm.stake}
+                  onClick={()=>{
+                    if(!splitForm.bookmaker||!splitForm.stake)return;
+                    const addStake=parseFloat(splitForm.stake);
+                    const addOdds=parseFloat(splitForm.odds)||splitModal.odds;
+                    const newSplit={bookmaker:splitForm.bookmaker,stake:addStake,odds:addOdds};
+                    const newSplits=[...(splitModal.splits||[]),newSplit];
+                    const newTotalStake=splitModal.stake+addStake;
+                    // Recalculate profit with total stake (use original odds for simplicity)
+                    const newProfit=calcProfit(splitModal.status,newTotalStake,splitModal.odds);
+                    setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit}:bet));
+                    showToast(splitForm.bookmaker+" "+addStake+"€ ajouté · Total "+newTotalStake.toFixed(0)+"€","#22C55E");
+                    setSplitModal(null);
+                  }}
+                  style={{padding:"12px",background:splitForm.bookmaker&&splitForm.stake?"linear-gradient(135deg,#22C55E,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:splitForm.bookmaker&&splitForm.stake?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                  Ajouter
                 </button>
               </div>
             </div>
