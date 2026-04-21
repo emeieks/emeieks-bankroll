@@ -4728,8 +4728,7 @@ const fetchAnalyse=useCallback(async()=>{
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}€</span>
-                        <span onClick={e=>{e.stopPropagation();drillGame();}} style={{fontSize:10,color:"#A78BFA",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:6,padding:"2px 7px",cursor:"pointer",fontWeight:700,flexShrink:0}}>🔍</span>
-                        <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
+<span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
                       </div>
                     </div>
                     {/* Stats row */}
@@ -4769,11 +4768,14 @@ const fetchAnalyse=useCallback(async()=>{
                         <>
                           <div style={{fontSize:11,color:"#A78BFA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"14px 14px 6px",borderBottom:"1px solid rgba(124,58,237,0.2)",fontFamily:"'Inter',sans-serif"}}>Top joueurs</div>
                           {gs.topP.map((p,i)=>(
-                            <div key={p.player} className="stat-row">
+                            <div key={p.player} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"player",filterValue:p.player})} style={{cursor:"pointer"}}>
                               <div style={{display:"flex",alignItems:"center",gap:9}}>
                                 <span style={{fontSize:11,color:"#6B7280",fontWeight:700,width:14}}>{i+1}</span>
                                 <div>
-                                  <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
+                                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                    <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
+                                    <span style={{fontSize:10,color:"#4B5563"}}>›</span>
+                                  </div>
                                   <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {p.count>0?(p.won/p.count*100).toFixed(0):0}% WR</div>
                                 </div>
                               </div>
@@ -4791,9 +4793,12 @@ const fetchAnalyse=useCallback(async()=>{
                             const wr=m.count>0?(m.won/m.count*100):0;
                             const roi=m.staked>0?(m.profit/m.staked*100):0;
                             return(
-                              <div key={m.tag} className="stat-row">
+                              <div key={m.tag} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"map",filterValue:m.tag})} style={{cursor:"pointer"}}>
                                 <div>
-                                  <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB"}}>{m.tag}</div>
+                                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                    <div style={{fontWeight:600,fontSize:13,color:"#F59E0B"}}>{m.tag}</div>
+                                    <span style={{fontSize:10,color:"#4B5563"}}>›</span>
+                                  </div>
                                   <div style={{fontSize:10,color:"#6B7280"}}>{m.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
@@ -4814,9 +4819,12 @@ const fetchAnalyse=useCallback(async()=>{
                             const wr=r.count>0?(r.won/r.count*100):0;
                             const roi=r.staked>0?(r.profit/r.staked*100):0;
                             return(
-                              <div key={r.role} className="stat-row">
+                              <div key={r.role} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"role",filterValue:r.role})} style={{cursor:"pointer"}}>
                                 <div>
-                                  <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB"}}>{r.role}</div>
+                                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                    <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB"}}>{r.role}</div>
+                                    <span style={{fontSize:10,color:"#4B5563"}}>›</span>
+                                  </div>
                                   <div style={{fontSize:10,color:"#6B7280"}}>{r.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
@@ -4860,11 +4868,14 @@ const fetchAnalyse=useCallback(async()=>{
                             const wr=t.count>0?(t.won/t.count*100):0;
                             const roi=t.staked>0?(t.profit/t.staked*100):0;
                             return(
-                              <div key={t.name} className="stat-row">
+                              <div key={t.name} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"tourney",filterValue:t.name})} style={{cursor:"pointer"}}>
                                 <div style={{display:"flex",alignItems:"center",gap:7}}>
                                   <span style={{fontSize:12}}>{t.name==="Hors tournoi"?"📅":"🏆"}</span>
                                   <div>
-                                    <div style={{fontWeight:600,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
+                                    <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                      <div style={{fontWeight:600,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
+                                      <span style={{fontSize:10,color:"#4B5563"}}>›</span>
+                                    </div>
                                     <div style={{fontSize:10,color:"#6B7280"}}>{t.count} paris · {wr.toFixed(0)}% WR</div>
                                   </div>
                                 </div>
@@ -4890,8 +4901,8 @@ const fetchAnalyse=useCallback(async()=>{
                             <span/>
                           </div>
                           {gs.kills.map((r,i)=>(
-                            <div key={r.line} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 64px 16px",gap:2,padding:"6px 14px",borderTop:"1px solid #1F2937",alignItems:"center"}}>
-                              <span style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{r.line}</span>
+                            <div key={r.line} onClick={()=>setStatsDrill({game,league:null,filterType:"kill",filterValue:r.line.replace(" K"," Kills").replace(" HS"," Headshots")})} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 64px 16px",gap:2,padding:"6px 14px",borderTop:"1px solid #1F2937",alignItems:"center",cursor:"pointer"}}>
+                              <span style={{fontSize:12,fontWeight:600,color:"#818CF8",display:"flex",alignItems:"center",gap:4}}>{r.line} <span style={{fontSize:9,color:"#4B5563"}}>›</span></span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
@@ -5080,6 +5091,7 @@ const fetchAnalyse=useCallback(async()=>{
           if(filterType==="tourney")betsF=betsF.filter(b=>(b.tournament||"Hors tournoi")===filterValue);
           if(filterType==="bk")betsF=betsF.filter(b=>(b.bookmaker||"Autre")===filterValue);
           if(filterType==="kill")betsF=betsF.filter(b=>b.description&&b.description.includes(filterValue));
+          if(filterType==="player")betsF=betsF.filter(b=>b.player&&b.player.toLowerCase()===filterValue.toLowerCase());
           if(!betsF.length)return null;
           const cfg=GAME_CFG[game]||{accent:"#A78BFA"};
           const oddsOrder=["<1.50","1.50-1.74","1.75-1.99","2.00-2.49","≥2.50"];
@@ -5143,7 +5155,7 @@ const fetchAnalyse=useCallback(async()=>{
           const gROI=totalStk>0?(totalP/totalStk*100):0;
 
           // Label for header
-          const pageTitle=filterType?{role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Ligne kills"}[filterType]+" — "+filterValue:(league?game+" · "+league:game);
+          const pageTitle=filterType?({role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Ligne kills",player:"Joueur"}[filterType]||filterType)+" — "+filterValue:(league?game+" · "+league:game);
           const canDrill=!filterType; // only drill one level
 
           // ── Profit bar component ──
