@@ -4684,25 +4684,7 @@ const fetchAnalyse=useCallback(async()=>{
                     );
                   })}
                 </div>
-                {/* Over / Under Headshots */}
-                {(globalOverUnderStats.overHSS||globalOverUnderStats.underHSS)&&(
-                  <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1F2937"}}>
-                    <div style={{fontSize:10,color:"#818CF8",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>💀 Over / Under Headshots (CS2)</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      {[{label:"🔼 Over HS",s:globalOverUnderStats.overHSS,c:"#818CF8"},{label:"🔽 Under HS",s:globalOverUnderStats.underHSS,c:"#818CF8"}].map(({label,s})=>s&&(
-                        <div key={label} style={{background:"rgba(129,140,248,0.06)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(129,140,248,0.2)"}}>
-                          <div style={{fontSize:11,fontWeight:700,color:"#818CF8",marginBottom:4}}>{label}</div>
-                          <div style={{fontSize:10,color:"#9CA3AF"}}>{s.count} paris · {s.wr.toFixed(0)}% WR</div>
-                          <div style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171",marginTop:4}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                          <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
-                          <div style={{marginTop:6,height:3,background:"#1F2937",borderRadius:2,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:s.wr+"%",background:s.wr>=55?"linear-gradient(90deg,#818CF8,#A5B4FC)":s.wr<45?"linear-gradient(90deg,#EF4444,#F87171)":"linear-gradient(90deg,#6B7280,#9CA3AF)",borderRadius:2}}/>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </div>
             )}
 
@@ -5077,8 +5059,9 @@ const fetchAnalyse=useCallback(async()=>{
         )}
 
 
+
         {/* ── STATS DRILL-DOWN ── */}
-        {statsDrill&&(()=>{
+        {statsDrill&&view==="statistiques"&&(()=>{
           const {game,league,filterType,filterValue}=statsDrill;
           const mk=()=>({cnt:0,won:0,profit:0,staked:0,oddsSum:0});
           const add=(t,b)=>{t.cnt++;t.profit+=b.profit;t.staked+=b.stake;t.oddsSum+=b.odds;if(b.status==="won")t.won++;};
@@ -5282,7 +5265,7 @@ const fetchAnalyse=useCallback(async()=>{
                       <OURow oS={overHS} uS={underHS} title="Headshots Over / Under"/>
                     )}
                     {/* LoL Live Over/Under */}
-                    {isLoL&&(toS(lolOverLive)||toS(lolUnderLive))&&(
+                    {isLoL&&(toS(lolOverLive)||toS(lolUnderLive)||toS(lolOverNL)||toS(lolUnderNL))&&(
                       <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #1F2937"}}>
                         <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Live — Over / Under</div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
@@ -5369,6 +5352,7 @@ const fetchAnalyse=useCallback(async()=>{
             </div>
           );
         })()}
+
 
         {/* ── JOUEURS ── */}
         {view==="analyse"&&(()=>{
