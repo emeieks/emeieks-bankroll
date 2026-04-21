@@ -2511,6 +2511,7 @@ export default function App(){
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
+  const [statsDrill,setStatsDrill]=useState(null); // {game, league} or null
 const [analyseBets,setAnalyseBets]=useState([]);
 const [analyseLoading,setAnalyseLoading]=useState(false);
 const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
@@ -4791,6 +4792,7 @@ const fetchAnalyse=useCallback(async()=>{
               const cfg=GAME_CFG[game]||{accent:"#9CA3AF"};
               const isOpen=!!statsGameOpen[game];
               const toggle=()=>setStatsGameOpen(s=>({...s,[game]:!s[game]}));
+              const drillGame=()=>setStatsDrill({game,league:null});
               return(
                 <div key={game} style={{marginBottom:10}}>
                   {/* Accordéon header */}
@@ -4804,6 +4806,7 @@ const fetchAnalyse=useCallback(async()=>{
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}€</span>
+                        <span onClick={e=>{e.stopPropagation();drillGame();}} style={{fontSize:10,color:"#A78BFA",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:6,padding:"2px 7px",cursor:"pointer",fontWeight:700,flexShrink:0}}>🔍</span>
                         <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
                       </div>
                     </div>
@@ -4912,7 +4915,7 @@ const fetchAnalyse=useCallback(async()=>{
                             const wr=l.count>0?(l.won/l.count*100):0;
                             const roi=l.staked>0?(l.profit/l.staked*100):0;
                             return(
-                              <div key={l.league} className="stat-row">
+                              <div key={l.league} className="stat-row" onClick={()=>setStatsDrill({game,league:l.league})} style={{cursor:"pointer"}}>
                                 <div>
                                   <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB"}}>{l.league}</div>
                                   <div style={{fontSize:10,color:"#6B7280"}}>{l.count} paris · {wr.toFixed(0)}% WR</div>
@@ -5139,6 +5142,266 @@ const fetchAnalyse=useCallback(async()=>{
             )}
           </div>
         )}
+
+
+        {/* ── STATS DRILL-DOWN ── */}
+        {statsDrill&&(()=>{
+          const {game,league}=statsDrill;
+          const label=league?game+" · "+league:game;
+          const betsF=settled.filter(b=>b.game===game&&(!league||b.league===league));
+          if(!betsF.length)return null;
+          const mk=()=>({cnt:0,won:0,profit:0,staked:0,oddsSum:0});
+          const toS=t=>t.cnt>0?{count:t.cnt,won:t.won,profit:t.profit,staked:t.staked,wr:t.won/t.cnt*100,roi:t.staked>0?t.profit/t.staked*100:0,avgOdds:t.staked>0?t.oddsSum/t.cnt:0}:null;
+          // Compute all breakdowns in one pass
+          const byRole={},byMap={},byBK={},byTourney={},byOdds={};
+          const over=mk(),under=mk(),overLive=mk(),underLive=mk(),overNL=mk(),underNL=mk();
+          const overByRole={},underByRole={};
+          const live=mk(),nonLive=mk(),hs=mk();
+          const byMonth={};
+          betsF.forEach(b=>{
+            const isO=b.overUnder==="Over",isU=b.overUnder==="Under";
+            const role=b.role||"Inconnu";
+            const map=b.mapTag||"Sans tag";
+            const bk=b.bookmaker||"Autre";
+            const tour=b.tournament||"Hors tournoi";
+            const mo=b.datetime?b.datetime.slice(0,7):"?";
+            const o=b.odds||1;
+            const bucket=o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
+            // Role
+            if(!byRole[role])byRole[role]=mk();
+            const r=byRole[role];r.cnt++;r.profit+=b.profit;r.staked+=b.stake;r.oddsSum+=b.odds;if(b.status==="won")r.won++;
+            // Map
+            if(!byMap[map])byMap[map]=mk();
+            const m=byMap[map];m.cnt++;m.profit+=b.profit;m.staked+=b.stake;m.oddsSum+=b.odds;if(b.status==="won")m.won++;
+            // BK
+            if(!byBK[bk])byBK[bk]=mk();
+            const bkd=byBK[bk];bkd.cnt++;bkd.profit+=b.profit;bkd.staked+=b.stake;bkd.oddsSum+=b.odds;if(b.status==="won")bkd.won++;
+            // Tourney
+            if(!byTourney[tour])byTourney[tour]=mk();
+            const td=byTourney[tour];td.cnt++;td.profit+=b.profit;td.staked+=b.stake;td.oddsSum+=b.odds;if(b.status==="won")td.won++;
+            // Odds range
+            if(!byOdds[bucket])byOdds[bucket]=mk();
+            const od=byOdds[bucket];od.cnt++;od.profit+=b.profit;od.staked+=b.stake;od.oddsSum+=b.odds;if(b.status==="won")od.won++;
+            // Month
+            if(!byMonth[mo])byMonth[mo]=mk();
+            const mnd=byMonth[mo];mnd.cnt++;mnd.profit+=b.profit;mnd.staked+=b.stake;mnd.oddsSum+=b.odds;if(b.status==="won")mnd.won++;
+            // Over/Under global
+            if(isO){over.cnt++;over.profit+=b.profit;over.staked+=b.stake;over.oddsSum+=b.odds;if(b.status==="won")over.won++;}
+            if(isU){under.cnt++;under.profit+=b.profit;under.staked+=b.stake;under.oddsSum+=b.odds;if(b.status==="won")under.won++;}
+            // Over/Under Live
+            if(isO&&b.isLive){overLive.cnt++;overLive.profit+=b.profit;overLive.staked+=b.stake;if(b.status==="won")overLive.won++;}
+            if(isO&&!b.isLive){overNL.cnt++;overNL.profit+=b.profit;overNL.staked+=b.stake;if(b.status==="won")overNL.won++;}
+            if(isU&&b.isLive){underLive.cnt++;underLive.profit+=b.profit;underLive.staked+=b.stake;if(b.status==="won")underLive.won++;}
+            if(isU&&!b.isLive){underNL.cnt++;underNL.profit+=b.profit;underNL.staked+=b.stake;if(b.status==="won")underNL.won++;}
+            // Over/Under by role
+            if(isO){if(!overByRole[role])overByRole[role]=mk();const x=overByRole[role];x.cnt++;x.profit+=b.profit;x.staked+=b.stake;if(b.status==="won")x.won++;}
+            if(isU){if(!underByRole[role])underByRole[role]=mk();const x=underByRole[role];x.cnt++;x.profit+=b.profit;x.staked+=b.stake;if(b.status==="won")x.won++;}
+            // Live/Non-live global
+            if(b.isLive){live.cnt++;live.profit+=b.profit;live.staked+=b.stake;live.oddsSum+=b.odds;if(b.status==="won")live.won++;}
+            else{nonLive.cnt++;nonLive.profit+=b.profit;nonLive.staked+=b.stake;nonLive.oddsSum+=b.odds;if(b.status==="won")nonLive.won++;}
+            // HS
+            if(b.isHeadshot){hs.cnt++;hs.profit+=b.profit;hs.staked+=b.stake;hs.oddsSum+=b.odds;if(b.status==="won")hs.won++;}
+          });
+          const rolesArr=Object.entries(byRole).map(([k,v])=>({role:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const mapsArr=Object.entries(byMap).map(([k,v])=>({map:k,...toS(v)})).sort((a,b)=>a.map.localeCompare(b.map));
+          const bkArr=Object.entries(byBK).map(([k,v])=>({bk:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const tourArr=Object.entries(byTourney).map(([k,v])=>({tour:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const oddsOrder=["<1.50","1.50-1.74","1.75-1.99","2.00-2.49","≥2.50"];
+          const oddsArr=oddsOrder.map(k=>byOdds[k]?{label:k,...toS(byOdds[k])}:null).filter(Boolean);
+          const monthArr=Object.entries(byMonth).map(([k,v])=>({mo:k,...toS(v)})).sort((a,b)=>b.mo.localeCompare(a.mo)).slice(0,6);
+          const overByRoleArr=Object.entries(overByRole).map(([k,v])=>({role:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const underByRoleArr=Object.entries(underByRole).map(([k,v])=>({role:k,...toS(v)})).sort((a,b)=>b.profit-a.profit);
+          const totalP=betsF.reduce((s,b)=>s+b.profit,0);
+          const totalStk=betsF.reduce((s,b)=>s+b.stake,0);
+          const totalWon=betsF.filter(b=>b.status==="won").length;
+          const globalWR=betsF.length>0?(totalWon/betsF.length*100):0;
+          const globalROI=totalStk>0?(totalP/totalStk*100):0;
+          const cfg=GAME_CFG[game]||{accent:"#A78BFA"};
+          // Mini stat row helper
+          const StatRow=({label,s,accent})=>!s?null:(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
+                <div style={{fontSize:10,color:"#6B7280"}}>{s.count} paris · {s.wr.toFixed(0)}% WR · @{s.avgOdds.toFixed(2)}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div>
+              </div>
+            </div>
+          );
+          const Section=({title,color="#9CA3AF",children})=>(
+            <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+              <div style={{fontSize:10,color,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>{title}</div>
+              {children}
+            </div>
+          );
+          return(
+            <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:450,overflowY:"auto",fontFamily:"'Inter',sans-serif"}}>
+              <div style={{padding:"16px 14px 32px",maxWidth:500,margin:"0 auto"}}>
+                {/* Header */}
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+                  <button onClick={()=>setStatsDrill(null)} style={{background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,padding:"8px 14px",color:"#A78BFA",cursor:"pointer",fontSize:16,fontWeight:700,fontFamily:"'Inter',sans-serif"}}>←</button>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <GameLogo game={game} size={20}/>
+                      <span style={{fontSize:18,fontWeight:800,color:cfg.accent||"#E5E7EB"}}>{label}</span>
+                    </div>
+                    <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>{betsF.length} paris analysés</div>
+                  </div>
+                </div>
+
+                {/* Résumé global */}
+                <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:16,padding:"16px 18px",marginBottom:12}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,textAlign:"center"}}>
+                    {[
+                      {l:"Paris",v:betsF.length,c:"#60A5FA"},
+                      {l:"WR",v:globalWR.toFixed(0)+"%",c:globalWR>=55?"#22C55E":globalWR<45?"#F87171":"#9CA3AF"},
+                      {l:"ROI",v:(globalROI>=0?"+":"")+globalROI.toFixed(1)+"%",c:globalROI>=0?"#22C55E":"#F87171"},
+                      {l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:totalP>=0?"#22C55E":"#F87171"},
+                    ].map(x=>(
+                      <div key={x.l}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{x.l}</div>
+                        <div style={{fontSize:14,fontWeight:800,color:x.c}}>{x.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Over / Under global */}
+                {(toS(over)||toS(under))&&(
+                  <Section title="🔼🔽 Over / Under" color="#60A5FA">
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                      {[{label:"🔼 Over",s:toS(over)},{label:"🔽 Under",s:toS(under)}].map(({label,s})=>s&&(
+                        <div key={label} style={{background:s.profit>=0?"rgba(34,197,94,0.06)":"rgba(239,68,68,0.06)",borderRadius:10,padding:"10px 12px",border:"1px solid "+(s.profit>=0?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.2)")}}>
+                          <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",marginBottom:4}}>{label}</div>
+                          <div style={{fontSize:10,color:"#9CA3AF"}}>{s.count} paris · {s.wr.toFixed(0)}% WR</div>
+                          <div style={{fontSize:14,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171",marginTop:4}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                          <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Over Live vs Non-live */}
+                    {(toS(overLive)||toS(overNL))&&(
+                      <div style={{borderTop:"1px solid #1F2937",paddingTop:8,marginTop:4}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Over — Live vs Non-live</div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                          {[{label:"🔴 Live",s:toS(overLive)},{label:"Non-live",s:toS(overNL)}].map(({label,s})=>s&&(
+                            <div key={label} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px 10px"}}>
+                              <div style={{fontSize:10,fontWeight:600,color:"#9CA3AF"}}>{label}</div>
+                              <div style={{fontSize:10,color:"#6B7280"}}>{s.count} paris · {s.wr.toFixed(0)}% WR</div>
+                              <div style={{fontSize:12,fontWeight:700,color:s.profit>=0?"#22C55E":"#F87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:10,fontWeight:400,color:s.roi>=0?"#22C55E":"#EF4444"}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Under Live vs Non-live */}
+                    {(toS(underLive)||toS(underNL))&&(
+                      <div style={{borderTop:"1px solid #1F2937",paddingTop:8,marginTop:8}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Under — Live vs Non-live</div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                          {[{label:"🔴 Live",s:toS(underLive)},{label:"Non-live",s:toS(underNL)}].map(({label,s})=>s&&(
+                            <div key={label} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"8px 10px"}}>
+                              <div style={{fontSize:10,fontWeight:600,color:"#9CA3AF"}}>{label}</div>
+                              <div style={{fontSize:10,color:"#6B7280"}}>{s.count} paris · {s.wr.toFixed(0)}% WR</div>
+                              <div style={{fontSize:12,fontWeight:700,color:s.profit>=0?"#22C55E":"#F87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€ <span style={{fontSize:10,fontWeight:400,color:s.roi>=0?"#22C55E":"#EF4444"}}>({s.roi>=0?"+":""}{s.roi.toFixed(1)}%)</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </Section>
+                )}
+
+                {/* Par position/rôle */}
+                {rolesArr.length>0&&(
+                  <Section title="🎮 Par position / rôle" color="#A78BFA">
+                    {rolesArr.map(r=><StatRow key={r.role} label={r.role} s={r}/>)}
+                    {/* Over/Under par rôle */}
+                    {overByRoleArr.length>0&&(
+                      <div style={{marginTop:12,borderTop:"1px solid #1F2937",paddingTop:10}}>
+                        <div style={{fontSize:9,color:"#60A5FA",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Over par position</div>
+                        {overByRoleArr.map(r=>(
+                          <div key={r.role} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                            <span style={{fontSize:11,color:"#9CA3AF"}}>{r.role}</span>
+                            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                              <span style={{fontSize:10,color:"#6B7280"}}>{r.count}p · {r.wr.toFixed(0)}%WR</span>
+                              <span style={{fontSize:12,fontWeight:700,color:r.profit>=0?"#22C55E":"#F87171"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {underByRoleArr.length>0&&(
+                      <div style={{marginTop:10,borderTop:"1px solid #1F2937",paddingTop:10}}>
+                        <div style={{fontSize:9,color:"#F87171",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Under par position</div>
+                        {underByRoleArr.map(r=>(
+                          <div key={r.role} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                            <span style={{fontSize:11,color:"#9CA3AF"}}>{r.role}</span>
+                            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                              <span style={{fontSize:10,color:"#6B7280"}}>{r.count}p · {r.wr.toFixed(0)}%WR</span>
+                              <span style={{fontSize:12,fontWeight:700,color:r.profit>=0?"#22C55E":"#F87171"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Section>
+                )}
+
+                {/* Par map */}
+                {mapsArr.length>1&&(
+                  <Section title="🗺 Par map" color="#F59E0B">
+                    {mapsArr.map(r=><StatRow key={r.map} label={r.map} s={r}/>)}
+                  </Section>
+                )}
+
+                {/* Par tranche de cote */}
+                {oddsArr.length>0&&(
+                  <Section title="📈 Par tranche de cote" color="#34D399">
+                    {oddsArr.map(r=><StatRow key={r.label} label={r.label} s={r}/>)}
+                  </Section>
+                )}
+
+                {/* Live vs Non-live global */}
+                {(toS(live)||toS(nonLive))&&(
+                  <Section title="🔴 Live vs Non-live" color="#FF4757">
+                    {[{label:"🔴 Live",s:toS(live)},{label:"Non-live",s:toS(nonLive)}].map(({label,s})=>s&&<StatRow key={label} label={label} s={s}/>)}
+                  </Section>
+                )}
+
+                {/* Headshots */}
+                {toS(hs)&&(
+                  <Section title="💀 Headshots" color="#818CF8">
+                    <StatRow label="Over Headshots" s={toS(hs)}/>
+                  </Section>
+                )}
+
+                {/* Par bookmaker */}
+                {bkArr.length>0&&(
+                  <Section title="💰 Par bookmaker" color="#60A5FA">
+                    {bkArr.map(r=><StatRow key={r.bk} label={r.bk} s={r}/>)}
+                  </Section>
+                )}
+
+                {/* Par tournoi */}
+                {tourArr.length>0&&(
+                  <Section title="🏆 Par tournoi" color="#F59E0B">
+                    {tourArr.map(r=><StatRow key={r.tour} label={r.tour==="Hors tournoi"?"📅 Hors tournoi":"🏆 "+r.tour} s={r}/>)}
+                  </Section>
+                )}
+
+                {/* Par mois (6 derniers) */}
+                {monthArr.length>0&&(
+                  <Section title="📅 Par mois (récents)" color="#9CA3AF">
+                    {monthArr.map(r=><StatRow key={r.mo} label={r.mo} s={r}/>)}
+                  </Section>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── JOUEURS ── */}
         {view==="analyse"&&(()=>{
