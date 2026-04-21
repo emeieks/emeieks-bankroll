@@ -5169,23 +5169,30 @@ const fetchAnalyse=useCallback(async()=>{
 
           // Simple table row — label | N paris | WR% | Profit
           const TRow=({label,s,sub})=>!s?null:(
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+            <div style={{display:"flex",alignItems:"center",padding:"9px 12px",borderBottom:"1px solid #1A2235",background:"transparent"}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
                 {sub&&<div style={{fontSize:10,color:"#6B7280",marginTop:1}}>{sub}</div>}
               </div>
-              <div style={{display:"flex",gap:16,alignItems:"center",flexShrink:0}}>
-                <span style={{fontSize:11,color:"#6B7280",minWidth:32,textAlign:"right"}}>{s.n}p</span>
-                <span style={{fontSize:11,fontWeight:600,color:wrc(s.wr),minWidth:36,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
-                <span style={{fontSize:13,fontWeight:700,color:pc(s.profit),minWidth:60,textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
-              </div>
+              <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{s.n}p</span>
+              <span style={{fontSize:12,fontWeight:700,color:wrc(s.wr),minWidth:44,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
+              <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
             </div>
           );
 
           // Section
+          const ColHeader=()=>(
+            <div style={{display:"flex",alignItems:"center",padding:"6px 12px",background:"#0D1626",borderBottom:"1px solid #1A2235"}}>
+              <div style={{flex:1}}/>
+              <span style={{fontSize:9,color:"#4B5563",fontWeight:700,minWidth:36,textAlign:"right",textTransform:"uppercase",letterSpacing:.5}}>Paris</span>
+              <span style={{fontSize:9,color:"#4B5563",fontWeight:700,minWidth:44,textAlign:"right",textTransform:"uppercase",letterSpacing:.5}}>WR</span>
+              <span style={{fontSize:9,color:"#4B5563",fontWeight:700,minWidth:66,textAlign:"right",textTransform:"uppercase",letterSpacing:.5}}>Profit</span>
+            </div>
+          );
           const Sec=({title,children})=>(
-            <div style={{marginBottom:16}}>
-              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8,paddingBottom:6,borderBottom:"1px solid #1F2937"}}>{title}</div>
+            <div style={{marginBottom:16,borderRadius:12,overflow:"hidden",border:"1px solid #1A2235"}}>
+              <div style={{fontSize:9,color:"#9CA3AF",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",padding:"10px 12px",background:"#0D1626",borderBottom:"1px solid #1A2235"}}>{title}</div>
+              <ColHeader/>
               {children}
             </div>
           );
@@ -5208,8 +5215,9 @@ const fetchAnalyse=useCallback(async()=>{
                 </div>
 
                 {/* Global */}
-                <Sec title="Global">
-                  <div style={{display:"flex",justifyContent:"space-between",padding:"0 0 12px"}}>
+                <div style={{marginBottom:16,borderRadius:12,overflow:"hidden",border:"1px solid #1A2235"}}>
+                  <div style={{fontSize:9,color:"#9CA3AF",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",padding:"10px 12px",background:"#0D1626",borderBottom:"1px solid #1A2235"}}>Global</div>
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"14px 12px"}}>
                     {[{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)},{l:"Moy cote",v:"@"+(betsF.reduce((s,b)=>s+b.odds,0)/betsF.length).toFixed(2),c:"#9CA3AF"}].map(x=>(
                       <div key={x.l} style={{textAlign:"center"}}>
                         <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{x.l}</div>
@@ -5217,7 +5225,7 @@ const fetchAnalyse=useCallback(async()=>{
                       </div>
                     ))}
                   </div>
-                </Sec>
+                </div>
 
                 {/* Over / Under */}
                 {(toS(over)||toS(under))&&(
