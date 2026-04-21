@@ -2703,15 +2703,53 @@ function toggleHideAnalyseBet(key){
   const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
 
   const globalOverUnderStats=useMemo(()=>{
-    let overCnt=0,overWon=0,overProfit=0,overStaked=0;
-    let underCnt=0,underWon=0,underProfit=0,underStaked=0;
+    const mk=()=>({cnt:0,won:0,profit:0,staked:0});
+    const over=mk(),under=mk();
+    const overLive=mk(),underLive=mk(),overNonLive=mk(),underNonLive=mk();
+    const overHS=mk(),underHS=mk();
+    const overByMap={},underByMap={};
+    const overByOdds={};
+    const overByBK={},underByBK={};
     settled.forEach(b=>{
-      if(b.overUnder==="Over"){overCnt++;overProfit+=b.profit;overStaked+=b.stake;if(b.status==="won")overWon++;}
-      else if(b.overUnder==="Under"){underCnt++;underProfit+=b.profit;underStaked+=b.stake;if(b.status==="won")underWon++;}
+      const isOver=b.overUnder==="Over",isUnder=b.overUnder==="Under";
+      if(!isOver&&!isUnder)return;
+      const t=isOver?over:under;
+      t.cnt++;t.profit+=b.profit;t.staked+=b.stake;if(b.status==="won")t.won++;
+      if(b.isLive){
+        const tl=isOver?overLive:underLive;
+        tl.cnt++;tl.profit+=b.profit;tl.staked+=b.stake;if(b.status==="won")tl.won++;
+      } else {
+        const tn=isOver?overNonLive:underNonLive;
+        tn.cnt++;tn.profit+=b.profit;tn.staked+=b.stake;if(b.status==="won")tn.won++;
+      }
+      if(b.isHeadshot){
+        const th=isOver?overHS:underHS;
+        th.cnt++;th.profit+=b.profit;th.staked+=b.stake;if(b.status==="won")th.won++;
+      }
+      const mapKey=b.mapTag||"Sans tag";
+      if(isOver){if(!overByMap[mapKey])overByMap[mapKey]=mk();const m=overByMap[mapKey];m.cnt++;m.profit+=b.profit;m.staked+=b.stake;if(b.status==="won")m.won++;}
+      if(isUnder){if(!underByMap[mapKey])underByMap[mapKey]=mk();const m=underByMap[mapKey];m.cnt++;m.profit+=b.profit;m.staked+=b.stake;if(b.status==="won")m.won++;}
+      if(isOver){
+        const o=b.odds||1;
+        const bucket=o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
+        if(!overByOdds[bucket])overByOdds[bucket]={...mk()};
+        const ob=overByOdds[bucket];ob.cnt++;ob.profit+=b.profit;ob.staked+=b.stake;if(b.status==="won")ob.won++;
+      }
+      const bk=b.bookmaker||"Autre";
+      if(isOver){if(!overByBK[bk])overByBK[bk]={...mk()};const ob=overByBK[bk];ob.cnt++;ob.profit+=b.profit;ob.staked+=b.stake;if(b.status==="won")ob.won++;}
+      if(isUnder){if(!underByBK[bk])underByBK[bk]={...mk()};const ob=underByBK[bk];ob.cnt++;ob.profit+=b.profit;ob.staked+=b.stake;if(b.status==="won")ob.won++;}
     });
-    const overS=overCnt>0?{count:overCnt,won:overWon,profit:overProfit,staked:overStaked,wr:overWon/overCnt*100,roi:overStaked>0?overProfit/overStaked*100:0}:null;
-    const underS=underCnt>0?{count:underCnt,won:underWon,profit:underProfit,staked:underStaked,wr:underWon/underCnt*100,roi:underStaked>0?underProfit/underStaked*100:0}:null;
-    return{overS,underS};
+    const toS=t=>t.cnt>0?{count:t.cnt,won:t.won,profit:t.profit,staked:t.staked,wr:t.won/t.cnt*100,roi:t.staked>0?t.profit/t.staked*100:0}:null;
+    const oddsOrder=["<1.50","1.50-1.74","1.75-1.99","2.00-2.49","≥2.50"];
+    return{
+      overS:toS(over),underS:toS(under),
+      overLiveS:toS(overLive),underLiveS:toS(underLive),
+      overNonLiveS:toS(overNonLive),underNonLiveS:toS(underNonLive),
+      overHSS:toS(overHS),underHSS:toS(underHS),
+      overByMap:Object.entries(overByMap).map(([k,v])=>({map:k,...toS(v)})).sort((a,b)=>a.map.localeCompare(b.map)),
+      overByOdds:oddsOrder.map(k=>overByOdds[k]?{label:k,...toS(overByOdds[k])}:null).filter(Boolean),
+      overByBK:Object.entries(overByBK).map(([k,v])=>({label:k,...toS(v)})).sort((a,b)=>a.profit-b.profit),
+    };
   },[settled]);
 
   // Stats
@@ -4645,6 +4683,104 @@ const fetchAnalyse=useCallback(async()=>{
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ── ANALYSE OVER DÉTAILLÉE ── */}
+            {globalOverUnderStats.overS&&(
+              <div className="card" style={{padding:"12px 14px",marginBottom:16}}>
+                <div style={{fontSize:11,color:"#F87171",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>🔍 Analyse Over — où perds-tu ?</div>
+
+                {/* Live vs Non-live */}
+                {(globalOverUnderStats.overLiveS||globalOverUnderStats.overNonLiveS)&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>🔴 Live vs Non-live</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      {[{label:"🔴 Live",s:globalOverUnderStats.overLiveS},{label:"Non-live",s:globalOverUnderStats.overNonLiveS}].map(({label,s})=>s&&(
+                        <div key={label} style={{background:"rgba(255,255,255,0.03)",borderRadius:10,padding:"10px 12px",border:"1px solid "+(s.roi>=0?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.2)")}}>
+                          <div style={{fontSize:11,fontWeight:700,color:"#E5E7EB",marginBottom:6}}>{label}</div>
+                          <div style={{fontSize:10,color:"#9CA3AF"}}>{s.count} paris · {s.wr.toFixed(0)}% WR</div>
+                          <div style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#F87171",marginTop:4}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                          <div style={{fontSize:10,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Headshot Over */}
+                {globalOverUnderStats.overHSS&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>💀 Headshots Over</div>
+                    <div style={{background:"rgba(129,140,248,0.06)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(129,140,248,0.2)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:11,color:"#818CF8",fontWeight:700}}>Over Headshots</div>
+                        <div style={{fontSize:10,color:"#9CA3AF"}}>{globalOverUnderStats.overHSS.count} paris · {globalOverUnderStats.overHSS.wr.toFixed(0)}% WR</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:14,fontWeight:800,color:globalOverUnderStats.overHSS.profit>=0?"#22C55E":"#F87171"}}>{globalOverUnderStats.overHSS.profit>=0?"+":""}{globalOverUnderStats.overHSS.profit.toFixed(0)}€</div>
+                        <div style={{fontSize:10,color:globalOverUnderStats.overHSS.roi>=0?"#22C55E":"#EF4444"}}>{globalOverUnderStats.overHSS.roi>=0?"+":""}{globalOverUnderStats.overHSS.roi.toFixed(1)}% ROI</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Par tranche de cote */}
+                {globalOverUnderStats.overByOdds.length>0&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>📈 Par tranche de cote (Over)</div>
+                    <div style={{borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 60px",gap:2,padding:"5px 12px",background:"#0B1220"}}>
+                        <span style={{fontSize:9,color:"#4B5563",fontWeight:700}}>Cote</span>
+                        <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"center"}}>N</span>
+                        <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"center"}}>WR%</span>
+                        <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"right"}}>Profit</span>
+                      </div>
+                      {globalOverUnderStats.overByOdds.map(r=>(
+                        <div key={r.label} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 60px",gap:2,padding:"7px 12px",borderTop:"1px solid #1F2937",alignItems:"center",background:r.profit<0?"rgba(239,68,68,0.03)":"transparent"}}>
+                          <span style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{r.label}</span>
+                          <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
+                          <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
+                          <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#F87171",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Par map */}
+                {globalOverUnderStats.overByMap.length>1&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>🗺 Par map (Over)</div>
+                    <div style={{borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
+                      {globalOverUnderStats.overByMap.map(r=>(
+                        <div key={r.map} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 60px",gap:2,padding:"7px 12px",borderTop:"1px solid #1F2937",alignItems:"center",background:r.profit<0?"rgba(239,68,68,0.03)":"transparent"}}>
+                          <span style={{fontSize:12,fontWeight:600,color:"#F59E0B"}}>{r.map}</span>
+                          <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
+                          <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
+                          <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#F87171",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Par bookmaker */}
+                {globalOverUnderStats.overByBK.length>1&&(
+                  <div>
+                    <div style={{fontSize:10,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>💰 Par bookmaker (Over)</div>
+                    <div style={{borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
+                      {globalOverUnderStats.overByBK.map(r=>(
+                        <div key={r.label} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 60px",gap:2,padding:"7px 12px",borderTop:"1px solid #1F2937",alignItems:"center",background:r.profit<0?"rgba(239,68,68,0.03)":"transparent"}}>
+                          <span style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{r.label}</span>
+                          <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
+                          <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
+                          <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#F87171",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
