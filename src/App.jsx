@@ -53,20 +53,24 @@ async function supaPullBets() {
   let all = [];
   let offset = 0;
   while(true) {
-    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament&order=datetime.desc&limit=${limit}&offset=${offset}`);
+    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits&order=datetime.desc&limit=${limit}&offset=${offset}`);
     if(!batch || batch.length === 0) break;
     all = [...all, ...batch];
     if(batch.length < limit) break;
     offset += limit;
   }
-  return all;
+  return all.map(b=>({
+    ...b,
+    splits:b.splits?JSON.parse(b.splits):undefined
+  }));
 }
 
 async function supaPushBets(bets) {
   const rows = bets.map(({id,player,description,overUnder,odds,stake,bookmaker,
-    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament})=>
+    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits})=>
     ({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,
-      team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament}));
+      team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
+      splits:splits&&splits.length>0?JSON.stringify(splits):null}));
   // Chunk en 500
   for(let i=0;i<rows.length;i+=500){
     await supaFetch("/rest/v1/bets",{
