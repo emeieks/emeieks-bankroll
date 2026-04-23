@@ -2299,7 +2299,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const descLine=bet.description||"";
 
   return(
-    <div style={{borderBottom:"1px solid #1F2937",WebkitTapHighlightColor:"transparent"}}>
+    <div style={{borderBottom:"1px solid #1F2937",WebkitTapHighlightColor:"transparent",contain:"layout style"}}>
       <div onClick={()=>setOpen(v=>!v)} style={{padding:"9px 14px",cursor:"pointer",userSelect:"none"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
 
@@ -2394,7 +2394,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               <button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
                 style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.06)",color:"#22C55E",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✓ Gagné</button>
             )}
-            <button onClick={()=>{onEdit();setOpen(false);}}
+            <button onClick={()=>{onEdit(bet);setOpen(false);}}
               style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✎ Modifier</button>
             <button onClick={()=>{onDuplicate(bet);setOpen(false);}}
               style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>⧉ Dupliquer</button>
@@ -2632,12 +2632,12 @@ function toggleHideAnalyseBet(key){
         const data=JSON.stringify(bets);
         // Warn if approaching localStorage limits (~5MB typical)
         if(data.length>4000000){
-          console.warn("Bankroll: localStorage near limit ("+Math.round(data.length/1024)+"kb). Consider exporting a backup.");
+          // localStorage near limit
         }
         localStorage.setItem("v7_bets",data);
       }catch(e){
         // QuotaExceededError - localStorage full
-        console.warn("Bankroll: localStorage full, bets not saved. Export a backup!");
+        // localStorage full
       }
     },delay);
     return()=>clearTimeout(t);
@@ -3527,21 +3527,41 @@ const fetchAnalyse=useCallback(async()=>{
             {(()=>{
               const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0)+(fOverUnder!=="All"?1:0)+(fRole!=="All"?1:0)+(fLeague!=="All"?1:0)+(fDateFrom?1:0)+(fDateTo?1:0);
               return(
-                <div style={{display:"flex",gap:5,marginBottom:10,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
-                  <button onClick={()=>setView("filtres")}
-                    style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"#1F2937"),background:activeFilters>0?"rgba(124,58,237,0.1)":"#111827",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                    🔍 Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:2}}>{activeFilters}</span>}
-                  </button>
-                  <button onClick={()=>setView("statistiques")}
-                    style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1px solid #1F2937",background:"#111827",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                    📊 Stats
-                  </button>
-                  {activeFilters>0&&(
-                    <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
-                      style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      × Effacer tout
+                <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+                  {/* Ligne 1 : Filtres + Stats + Effacer */}
+                  <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
+                    <button onClick={()=>setView("filtres")}
+                      style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"#1F2937"),background:activeFilters>0?"rgba(124,58,237,0.1)":"#111827",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      🔍 Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:2}}>{activeFilters}</span>}
                     </button>
-                  )}
+                    <button onClick={()=>setView("statistiques")}
+                      style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1px solid #1F2937",background:"#111827",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      📊 Stats
+                    </button>
+                    {activeFilters>0&&(
+                      <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
+                        style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                        × Effacer tout
+                      </button>
+                    )}
+                  </div>
+                  {/* Ligne 2 : Logos bookmakers */}
+                  <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
+                    {bookmakers.map(bk=>{
+                      const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                      const isOn=fBKs.includes(bk);
+                      return(
+                        <button key={bk} onClick={()=>toggleArr(fBKs,setFBKs,bk)}
+                          title={bk}
+                          style={{width:30,height:30,borderRadius:8,border:"1.5px solid "+(isOn?"#A78BFA":"#1F2937"),background:isOn?"rgba(124,58,237,0.15)":"#111827",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",boxShadow:isOn?"0 0 0 1px #7C3AED":"none"}}>
+                          {logo
+                            ? <img src={logo} alt={bk} style={{width:20,height:20,borderRadius:4,objectFit:"cover"}}/>
+                            : <span style={{fontSize:8,fontWeight:700,color:isOn?"#A78BFA":"#6B7280"}}>{bk.slice(0,3)}</span>
+                          }
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })()}
@@ -3611,7 +3631,7 @@ const fetchAnalyse=useCallback(async()=>{
                         {pending.map(b=>(
                           selectMode
                             ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                            :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                            :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
                         ))}
                       </div>
                     </div>
@@ -3663,7 +3683,7 @@ const fetchAnalyse=useCallback(async()=>{
                                 {dayBets.map(b=>(
                                   selectMode
                                     ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
                                 ))}
                               </div>
                             );
@@ -4165,7 +4185,7 @@ const fetchAnalyse=useCallback(async()=>{
             <div className="stat-bloc">
               {filteredBets.length===0&&<div style={{padding:"18px 15px",color:"#6B7280",fontSize:13}}>Aucun pari</div>}
               {filteredBets.slice(0,(filtresPage)*FILTRES_PER_PAGE).map(b=>(
-                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={()=>openEdit(b)} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
               ))}
             </div>
             {filteredBets.length>filtresPage*FILTRES_PER_PAGE&&(
@@ -5893,7 +5913,7 @@ const fetchAnalyse=useCallback(async()=>{
 
         {/* ── BOTTOM NAV ── */}
         {(()=>{
-          const pendingCount=bets.filter(b=>b.status==="pending").length;
+          const pendingCount=useMemo(()=>bets.filter(b=>b.status==="pending").length,[bets]);
           return(
             <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0D1526",borderTop:"1px solid #1F2937",display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 4px 12px",zIndex:50,backdropFilter:"blur(12px)"}}>
               {(()=>{
