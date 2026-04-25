@@ -2547,7 +2547,8 @@ export default function App(){
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
-  const [statsPeriod,setStatsPeriod]=useState(null); // null=all, 3/7/14/30=days
+  const [statsPeriod,setStatsPeriod]=useState(null);
+  const [homePeriod,setHomePeriod]=useState(null); // null=all, 3/7/14/30 // null=all, 3/7/14/30=days
   const [statsDrill,setStatsDrill]=useState(null); // {game, league} or null
   const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
 const [analyseBets,setAnalyseBets]=useState([]);
@@ -3118,8 +3119,14 @@ function toggleHideAnalyseBet(key){
     return{allSortedBets:sorted,byDay:bd,dayKeys:dk,byMonth:bm,monthKeys:Object.keys(bm).sort((a,z)=>z.localeCompare(a))};
   },[bets]);
 
-  const totalProfit=useMemo(()=>settled.reduce((s,b)=>s+b.profit,0),[settled]);
-  const totalStaked=useMemo(()=>settled.reduce((s,b)=>s+b.stake,0),[settled]);
+  const homeSettled=useMemo(()=>{
+    if(!homePeriod)return settled;
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
+    const cutStr=cutoff.toISOString().slice(0,10);
+    return settled.filter(b=>b.datetime&&b.datetime.slice(0,10)>=cutStr);
+  },[settled,homePeriod]);
+  const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+b.profit,0),[homeSettled]);
+  const totalStaked=useMemo(()=>homeSettled.reduce((s,b)=>s+b.stake,0),[homeSettled]);
   const roi=useMemo(()=>totalStaked>0?(totalProfit/totalStaked)*100:0,[totalProfit,totalStaked]);
   const progression=useMemo(()=>bankroll>0?(totalProfit/bankroll)*100:0,[totalProfit,bankroll]);
   const chartPoints=useMemo(()=>{
@@ -3450,6 +3457,15 @@ const fetchAnalyse=useCallback(async()=>{
                 </div>
               </div>
               <div style={{padding:"4px 8px 12px"}}>
+                {/* Période filter */}
+                <div style={{display:"flex",gap:5,padding:"8px 14px 4px"}}>
+                  {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
+                    <button key={l} onClick={()=>setHomePeriod(d)}
+                      style={{flex:1,padding:"5px 0",borderRadius:7,border:"1.5px solid "+(homePeriod===d?"#4ADE80":"rgba(255,255,255,0.08)"),background:homePeriod===d?"rgba(74,222,128,0.1)":"transparent",color:homePeriod===d?"#4ADE80":"rgba(255,255,255,0.3)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
                 <BankrollChart points={chartPoints} h={200}/>
               </div>
             </div>
@@ -3469,7 +3485,7 @@ const fetchAnalyse=useCallback(async()=>{
             {/* 4 stats cards — style Bet Analytix 2×2 */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               {[
-                {label:"PARIS",val:bets.length,col:"#60A5FA",sub:bets.filter(b=>b.status==="pending").length+" en cours"},
+                {label:"PARIS",val:homeSettled.length+(homePeriod?0:bets.filter(b=>b.status==="pending").length),col:"#60A5FA",sub:homePeriod?homePeriod+"j":bets.filter(b=>b.status==="pending").length+" en cours"},
                 {label:"BÉNÉFICE",val:(totalProfit>=0?"+":"")+totalProfit.toFixed(0)+"€",col:totalProfit>=0?"#4ADE80":"#F87171",sub:"profit net"},
                 {label:"ROI",val:(roi>=0?"+":"")+roi.toFixed(2)+"%",col:roi>=0?"#4ADE80":"#F87171",sub:"retour sur invest."},
                 {label:"PROGRESSION",val:(progression>=0?"+":"")+progression.toFixed(2)+"%",col:progression>=0?"#4ADE80":"#F87171",sub:"BK: "+bankroll.toFixed(0)+"€"},
@@ -4747,129 +4763,6 @@ const fetchAnalyse=useCallback(async()=>{
               ))}
             </div>
 
-            {/* ── MES ANGLES — Multi-variable ── */}
-            {(()=>{
-              if(!settled.length)return null;
-              // Compute all combinations: game × overUnder × isLive × role × map × oddsRange
-              const combos={};
-              const bk2=o=>o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":"≥2.00";
-              settled.forEach(b=>{
-                const dims=[
-                  b.game||"?",
-                  b.overUnder||"?",
-                  b.isLive?"Live":"Non-live",
-                  b.role||"?",
-                  b.mapTag||"?",
-                  bk2(b.odds||1),
-                ];
-                // Store single-dim and multi-dim combos
-                // For "angles" we want game+OU+live combos with enough sample
-                const key=[b.game,b.overUnder,b.isLive?"Live":"Non-live",b.role||"Tous"].filter(Boolean).join(" · ");
-                if(!combos[key])combos[key]={n:0,won:0,profit:0,staked:0,game:b.game,ou:b.overUnder,live:b.isLive,role:b.role||null};
-                const c=combos[key];c.n++;c.profit+=b.profit;c.staked+=b.stake;if(b.status==="won")c.won++;
-              });
-              const entries=Object.entries(combos)
-                .map(([k,v])=>({label:k,...v,wr:v.n>0?v.won/v.n*100:0,roi:v.staked>0?v.profit/v.staked*100:0}))
-                .filter(v=>v.n>=10);
-              const winners=entries.filter(v=>v.roi>5).sort((a,b)=>b.profit-a.profit).slice(0,6);
-              const losers=entries.filter(v=>v.roi<-5).sort((a,b)=>a.profit-b.profit).slice(0,6);
-              if(!winners.length&&!losers.length)return null;
-
-              const AngleRow=({v,isWin})=>(
-                <div style={{padding:"9px 14px",borderBottom:"1px solid #1F2937",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{flex:1,minWidth:0,paddingRight:8}}>
-                    <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",lineHeight:1.3}}>{v.label}</div>
-                    <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{v.n} paris · {v.wr.toFixed(0)}% WR · {v.roi>=0?"+":""}{v.roi.toFixed(1)}% ROI</div>
-                  </div>
-                  <div style={{fontSize:14,fontWeight:800,color:isWin?"#22C55E":"#F87171",flexShrink:0}}>{v.profit>=0?"+":""}{v.profit.toFixed(0)}€</div>
-                </div>
-              );
-
-              return(
-                <div style={{marginBottom:18}}>
-                  {winners.length>0&&(
-                    <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden",marginBottom:10}}>
-                      <div style={{padding:"10px 14px",background:"rgba(34,197,94,0.06)",borderBottom:"1px solid rgba(34,197,94,0.15)",display:"flex",alignItems:"center",gap:6}}>
-                        <span style={{fontSize:13}}>✅</span>
-                        <span style={{fontSize:10,color:"#22C55E",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase"}}>Mes meilleurs angles</span>
-                      </div>
-                      {winners.map((v,i)=><AngleRow key={i} v={v} isWin/>)}
-                    </div>
-                  )}
-                  {losers.length>0&&(
-                    <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden"}}>
-                      <div style={{padding:"10px 14px",background:"rgba(239,68,68,0.06)",borderBottom:"1px solid rgba(239,68,68,0.15)",display:"flex",alignItems:"center",gap:6}}>
-                        <span style={{fontSize:13}}>⚠️</span>
-                        <span style={{fontSize:10,color:"#F87171",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase"}}>Angles à éviter</span>
-                      </div>
-                      {losers.map((v,i)=><AngleRow key={i} v={v} isWin={false}/>)}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* ── COTE vs RÉSULTAT — edge par tranche ── */}
-            {(()=>{
-              if(!settled.length)return null;
-              // For each game × overUnder × oddsRange: compute actual WR vs implied WR
-              const buckets={};
-              settled.forEach(b=>{
-                if(!b.overUnder)return;
-                const o=b.odds||1;
-                const bucket=o<1.5?"<1.50":o<1.75?"1.50-1.74":o<2.0?"1.75-1.99":o<2.5?"2.00-2.49":"≥2.50";
-                const key=b.game+"·"+b.overUnder+"·"+bucket;
-                if(!buckets[key])buckets[key]={game:b.game,ou:b.overUnder,bucket,n:0,won:0,oddsSum:0};
-                const c=buckets[key];c.n++;c.oddsSum+=o;if(b.status==="won")c.won++;
-              });
-              // Find significant edges: actualWR vs impliedWR (1/avgOdds)
-              const edges=Object.values(buckets)
-                .filter(v=>v.n>=15)
-                .map(v=>{
-                  const actualWR=v.won/v.n*100;
-                  const avgOdds=v.oddsSum/v.n;
-                  const impliedWR=(1/avgOdds)*100;
-                  const edge=actualWR-impliedWR;
-                  return{...v,actualWR,avgOdds,impliedWR,edge};
-                })
-                .filter(v=>Math.abs(v.edge)>5)
-                .sort((a,b)=>b.edge-a.edge);
-              if(!edges.length)return null;
-              const positives=edges.filter(v=>v.edge>0).slice(0,5);
-              const negatives=edges.filter(v=>v.edge<0).slice(0,5);
-              if(!positives.length&&!negatives.length)return null;
-              return(
-                <div style={{marginBottom:18}}>
-                  <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden"}}>
-                    <div style={{padding:"10px 14px",background:"#0D1626",borderBottom:"1px solid #1F2937",display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize:13}}>📈</span>
-                      <span style={{fontSize:10,color:"#60A5FA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase"}}>Cote vs résultat — ton edge réel</span>
-                    </div>
-                    <div style={{padding:"8px 14px 2px",background:"rgba(255,255,255,0.01)"}}>
-                      <div style={{fontSize:9,color:"#4B5563",marginBottom:6}}>WR réel vs WR implicite des cotes — écart {">"} 5% = edge significatif</div>
-                    </div>
-                    {/* Header */}
-                    <div style={{display:"flex",padding:"4px 14px",borderBottom:"1px solid #1F2937"}}>
-                      <div style={{flex:1,fontSize:9,color:"#4B5563",fontWeight:700}}>Angle</div>
-                      <span style={{fontSize:9,color:"#4B5563",fontWeight:700,minWidth:44,textAlign:"right"}}>WR réel</span>
-                      <span style={{fontSize:9,color:"#4B5563",fontWeight:700,minWidth:44,textAlign:"right"}}>Implicite</span>
-                      <span style={{fontSize:9,color:"#4B5563",fontWeight:700,minWidth:44,textAlign:"right"}}>Edge</span>
-                    </div>
-                    {[...positives,...negatives].map((v,i)=>(
-                      <div key={i} style={{display:"flex",alignItems:"center",padding:"8px 14px",borderBottom:"1px solid #1F2937",background:v.edge>0?"rgba(34,197,94,0.02)":"rgba(239,68,68,0.02)"}}>
-                        <div style={{flex:1,minWidth:0,paddingRight:6}}>
-                          <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB"}}>{v.game} · {v.ou} · {v.bucket}</div>
-                          <div style={{fontSize:9,color:"#6B7280"}}>{v.n} paris · @{v.avgOdds.toFixed(2)} moy.</div>
-                        </div>
-                        <span style={{fontSize:11,fontWeight:700,color:v.actualWR>=50?"#22C55E":"#F87171",minWidth:44,textAlign:"right"}}>{v.actualWR.toFixed(0)}%</span>
-                        <span style={{fontSize:11,color:"#6B7280",minWidth:44,textAlign:"right"}}>{v.impliedWR.toFixed(0)}%</span>
-                        <span style={{fontSize:12,fontWeight:800,color:v.edge>0?"#22C55E":"#F87171",minWidth:44,textAlign:"right"}}>{v.edge>0?"+":""}{v.edge.toFixed(0)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* ── COMPARATEUR GLOBAL OVER/UNDER ── */}
             {(globalOverUnderStats.overS||globalOverUnderStats.underS)&&(
@@ -6634,26 +6527,32 @@ const fetchAnalyse=useCallback(async()=>{
                 </div>
               </div>
 
-              {/* Nouveau bookmaker */}
+              {/* Bookmaker — tous affichés, déjà utilisés en mode édition */}
               <div style={{marginBottom:12}}>
                 <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Bookmaker</div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {bookmakers.filter(bk=>bk!==splitModal.bookmaker&&!(splitModal.splits||[]).some(s=>s.bookmaker===bk)).map(bk=>{
+                  {bookmakers.filter(bk=>bk!==splitModal.bookmaker).map(bk=>{
                     const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
                     const isOn=splitForm.bookmaker===bk;
+                    const alreadySplit=(splitModal.splits||[]).find(s=>s.bookmaker===bk);
                     return(
-                      <button key={bk} onClick={()=>setSplitForm(f=>({...f,bookmaker:bk}))}
-                        title={bk}
-                        style={{width:44,height:44,borderRadius:10,border:"2px solid "+(isOn?"#22C55E":"#1F2937"),background:isOn?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",boxShadow:isOn?"0 0 8px rgba(34,197,94,0.3)":"none"}}>
-                        {logo
-                          ? <img src={logo} alt={bk} style={{width:28,height:28,borderRadius:6,objectFit:"cover"}}/>
-                          : <span style={{fontSize:10,fontWeight:700,color:isOn?"#22C55E":"#6B7280"}}>{bk.slice(0,3)}</span>
-                        }
-                      </button>
+                      <div key={bk} style={{position:"relative"}}>
+                        <button onClick={()=>setSplitForm(f=>({...f,bookmaker:bk,stake:alreadySplit?String(alreadySplit.stake):f.stake,odds:alreadySplit?String(alreadySplit.odds):f.odds}))}
+                          title={bk+(alreadySplit?" (modifier)":"")}
+                          style={{width:44,height:44,borderRadius:10,border:"2px solid "+(isOn?"#22C55E":alreadySplit?"rgba(251,191,36,0.5)":"#1F2937"),background:isOn?"rgba(34,197,94,0.1)":alreadySplit?"rgba(251,191,36,0.06)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",boxShadow:isOn?"0 0 8px rgba(34,197,94,0.3)":"none"}}>
+                          {logo
+                            ? <img src={logo} alt={bk} style={{width:28,height:28,borderRadius:6,objectFit:"cover",opacity:1}}/>
+                            : <span style={{fontSize:10,fontWeight:700,color:isOn?"#22C55E":alreadySplit?"#FBbf24":"#6B7280"}}>{bk.slice(0,3)}</span>
+                          }
+                        </button>
+                        {alreadySplit&&<div style={{position:"absolute",top:-4,right:-4,background:"#F59E0B",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          <span style={{fontSize:7,color:"#000",fontWeight:800}}>✎</span>
+                        </div>}
+                      </div>
                     );
                   })}
                 </div>
-                {splitForm.bookmaker&&<div style={{fontSize:11,color:"#22C55E",fontWeight:600,marginTop:6}}>✓ {splitForm.bookmaker}</div>}
+                {splitForm.bookmaker&&<div style={{fontSize:11,color:"#22C55E",fontWeight:600,marginTop:6}}>✓ {splitForm.bookmaker}{(splitModal.splits||[]).find(s=>s.bookmaker===splitForm.bookmaker)?" — modification du split existant":""}</div>}
               </div>
 
               {/* Cote */}
@@ -6703,8 +6602,17 @@ const fetchAnalyse=useCallback(async()=>{
                     const addStake=parseFloat(splitForm.stake);
                     const addOdds=parseFloat(splitForm.odds)||splitModal.odds;
                     const newSplit={bookmaker:splitForm.bookmaker,stake:addStake,odds:addOdds};
-                    const newSplits=[...(splitModal.splits||[]),newSplit];
-                    const newTotalStake=splitModal.stake+addStake;
+                    const existingIdx=(splitModal.splits||[]).findIndex(s=>s.bookmaker===splitForm.bookmaker);
+                    let newSplits,newTotalStake;
+                    if(existingIdx>=0){
+                      // Modifier split existant
+                      const oldStake=(splitModal.splits||[])[existingIdx].stake;
+                      newSplits=(splitModal.splits||[]).map((s,i)=>i===existingIdx?newSplit:s);
+                      newTotalStake=splitModal.stake-oldStake+addStake;
+                    } else {
+                      newSplits=[...(splitModal.splits||[]),newSplit];
+                      newTotalStake=splitModal.stake+addStake;
+                    }
                     // Recalculate profit with total stake (use original odds for simplicity)
                     const newProfit=calcProfit(splitModal.status,newTotalStake,splitModal.odds);
                     setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit}:bet));
