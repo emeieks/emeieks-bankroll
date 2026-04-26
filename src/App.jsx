@@ -195,6 +195,7 @@ function ProfitChart({points,h=110}){
 
 // ── Data ──────────────────────────────────────────────────────────────────
 const STATIC_PLAYERS={
+viper:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Bilibili Gaming"},
 faker:{game:"LoL",league:"LCK",role:"Mid Laner",team:"T1"},
 doran:{game:"LoL",league:"LCK",role:"Top Laner",team:"T1"},
 oner:{game:"LoL",league:"LCK",role:"Jungler",team:"T1"},
@@ -350,7 +351,6 @@ kael:{game:"LoL",league:"LPL",role:"Support",team:"Anyone's Legend"},
 bin:{game:"LoL",league:"LPL",role:"Top Laner",team:"Bilibili Gaming"},
 xun:{game:"LoL",league:"LPL",role:"Jungler",team:"Bilibili Gaming"},
 knight:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Bilibili Gaming"},
-blgviper:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Bilibili Gaming"},
 on:{game:"LoL",league:"LPL",role:"Support",team:"Bilibili Gaming"},
 breathe_ig:{game:"LoL",league:"LPL",role:"Top Laner",team:"Invictus Gaming"},
 igwei:{game:"LoL",league:"LPL",role:"Jungler",team:"Invictus Gaming"},
@@ -1494,35 +1494,20 @@ zexy:{game:"Valorant",league:"Pacific",role:"Sentinel",team:"VARREL"},
   // ═══════════════════════════════════════════════
   // T1 (Worlds 2025 champs — Gumayusi → Peyz)
   // faker, oner, peyz déjà dans la base — ajout des manquants
-  zeus_t1:{game:"LoL",league:"LCK",role:"Top Laner",team:"T1"},
-  keria:{game:"LoL",league:"LCK",role:"Support",team:"T1"},
-  // Gen.G (déjà chovy, ruler)
-  doran_geng:{game:"LoL",league:"LCK",role:"Top Laner",team:"Gen.G"},
-  peanut:{game:"LoL",league:"LCK",role:"Jungler",team:"Gen.G"},
-  canyon:{game:"LoL",league:"LCK",role:"Jungler",team:"Gen.G"},
-  lehends:{game:"LoL",league:"LCK",role:"Support",team:"Gen.G"},
+    // Gen.G (déjà chovy, ruler)
+    peanut:{game:"LoL",league:"LCK",role:"Jungler",team:"Gen.G"},
+    lehends:{game:"LoL",league:"LCK",role:"Support",team:"Gen.G"},
   // HLE (Zeus, Kanavi, Zeka, Gumayusi, Delight)
-  kanavi:{game:"LoL",league:"LCK",role:"Jungler",team:"HLE"},
-  zeka:{game:"LoL",league:"LCK",role:"Mid Laner",team:"HLE"},
-  delight:{game:"LoL",league:"LCK",role:"Support",team:"HLE"},
-  // gumayusi déjà dans la base
-  zeus_hle:{game:"LoL",league:"LCK",role:"Top Laner",team:"HLE"},
+        // gumayusi déjà dans la base
   // KT Rolster (Aiming, Ghost-rôle swap support, Cuzz, Pollu, nouveau mid)
-  aiming:{game:"LoL",league:"LCK",role:"Bot Laner",team:"KT Rolster"},
-  ghost_kt:{game:"LoL",league:"LCK",role:"Support",team:"KT Rolster"},
-  cuzz:{game:"LoL",league:"LCK",role:"Jungler",team:"KT Rolster"},
-  bdd:{game:"LoL",league:"LCK",role:"Mid Laner",team:"KT Rolster"},
-  kiin:{game:"LoL",league:"LCK",role:"Top Laner",team:"KT Rolster"},
+    ghost_kt:{game:"LoL",league:"LCK",role:"Support",team:"KT Rolster"},
+      kiin:{game:"LoL",league:"LCK",role:"Top Laner",team:"KT Rolster"},
   // Dplus KIA (ShowMaker, Lucid, Siwoo, Smash, Career)
-  showmaker:{game:"LoL",league:"LCK",role:"Mid Laner",team:"Dplus KIA"},
-  lucid:{game:"LoL",league:"LCK",role:"Jungler",team:"Dplus KIA"},
-  siwoo:{game:"LoL",league:"LCK",role:"Top Laner",team:"Dplus KIA"},
-  smash_dp:{game:"LoL",league:"LCK",role:"Bot Laner",team:"Dplus KIA"},
+        smash_dp:{game:"LoL",league:"LCK",role:"Bot Laner",team:"Dplus KIA"},
   career_dp:{game:"LoL",league:"LCK",role:"Support",team:"Dplus KIA"},
   // DRX (Willer, ucal + nouveaux)
   willer_drx:{game:"LoL",league:"LCK",role:"Jungler",team:"DRX"},
-  ucal:{game:"LoL",league:"LCK",role:"Mid Laner",team:"DRX"},
-  // FEARX — ajout Daystar déjà fait, joueurs de base
+    // FEARX — ajout Daystar déjà fait, joueurs de base
   // BNK FearX LoL déjà complet dans la base
   // Nongshim RedForce (Scout, Sponge, Taeyoon)
   scout_ns:{game:"LoL",league:"LCK",role:"Mid Laner",team:"Nongshim RedForce"},
@@ -1539,27 +1524,16 @@ zexy:{game:"Valorant",league:"Pacific",role:"Sentinel",team:"VARREL"},
   // ═══════════════════════════════════════════════
   // BLG (Xun, Viper revenu + Knight, Bin, ON)
   xun_blg:{game:"LoL",league:"LPL",role:"Jungler",team:"BLG"},
-  viper_blg:{game:"LoL",league:"LPL",role:"Bot Laner",team:"BLG"},
-  bin_blg:{game:"LoL",league:"LPL",role:"Top Laner",team:"BLG"},
+    bin_blg:{game:"LoL",league:"LPL",role:"Top Laner",team:"BLG"},
   on_blg:{game:"LoL",league:"LPL",role:"Support",team:"BLG"},
   // JDG (GALA, Vampire, Xiaoxu, JunJia, HongQ)
-  gala:{game:"LoL",league:"LPL",role:"Bot Laner",team:"JD Gaming"},
-  vampire_jdg:{game:"LoL",league:"LPL",role:"Support",team:"JD Gaming"},
-  xiaoxu:{game:"LoL",league:"LPL",role:"Top Laner",team:"JD Gaming"},
-  junjia:{game:"LoL",league:"LPL",role:"Jungler",team:"JD Gaming"},
-  hongq:{game:"LoL",league:"LPL",role:"Mid Laner",team:"JD Gaming"},
-  // Weibo Gaming (Elk, jiejie, Zika/Breathe, Crisp/Erha)
-  elk:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Weibo Gaming"},
-  jiejie:{game:"LoL",league:"LPL",role:"Jungler",team:"Weibo Gaming"},
-  zika:{game:"LoL",league:"LPL",role:"Top Laner",team:"Weibo Gaming"},
-  xiaohu:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Weibo Gaming"},
-  crisp:{game:"LoL",league:"LPL",role:"Support",team:"Weibo Gaming"},
-  // TES (naiyou remplace Kanavi, reste)
+    vampire_jdg:{game:"LoL",league:"LPL",role:"Support",team:"JD Gaming"},
+        // Weibo Gaming (Elk, jiejie, Zika/Breathe, Crisp/Erha)
+            // TES (naiyou remplace Kanavi, reste)
   "369":{game:"LoL",league:"LPL",role:"Top Laner",team:"Top Esports"},
   naiyou:{game:"LoL",league:"LPL",role:"Jungler",team:"Top Esports"},
   rookie:{game:"LoL",league:"LPL",role:"Mid Laner",team:"Top Esports"},
-  jackeylove:{game:"LoL",league:"LPL",role:"Bot Laner",team:"Top Esports"},
-  mark_tes:{game:"LoL",league:"LPL",role:"Support",team:"Top Esports"},
+    mark_tes:{game:"LoL",league:"LPL",role:"Support",team:"Top Esports"},
   // EDG (Zdz, Xiaohao, Angel, Leave, Parukia)
   zdz:{game:"LoL",league:"LPL",role:"Top Laner",team:"EDward Gaming LPL"},
   xiaohao:{game:"LoL",league:"LPL",role:"Jungler",team:"EDward Gaming LPL"},
@@ -1751,99 +1725,99 @@ zexy:{game:"Valorant",league:"Pacific",role:"Sentinel",team:"VARREL"},
   // DOTA 2 — ROSTERS COMPLETS (ESL One Birmingham 2026)
   // ═══════════════════════════════════════════════
   // Team Yandex (champions ESL One Birmingham 2026)
-  "watson_d2":{game:"Dota2",league:"",role:"Pos 1",team:"Team Yandex"},
-  "CHIRA_JUNIOR":{game:"Dota2",league:"",role:"Pos 2",team:"Team Yandex"},
-  "Noticed":{game:"Dota2",league:"",role:"Pos 3",team:"Team Yandex"},
-  "Saksa":{game:"Dota2",league:"",role:"Pos 4",team:"Team Yandex"},
-  "Malady":{game:"Dota2",league:"",role:"Pos 5",team:"Team Yandex"},
+  "watson_d2":{game:"Dota2",league:"",role:"Carry",team:"Team Yandex"},
+  "CHIRA_JUNIOR":{game:"Dota2",league:"",role:"Mid",team:"Team Yandex"},
+  "Noticed":{game:"Dota2",league:"",role:"Offlane",team:"Team Yandex"},
+  "Saksa":{game:"Dota2",league:"",role:"Soft Support",team:"Team Yandex"},
+  "Malady":{game:"Dota2",league:"",role:"Hard Support",team:"Team Yandex"},
   // Tundra (champion Birmingham — Malr1ne, Skiter, ATF, Cr1t, Sneyking)
-  "Malr1ne":{game:"Dota2",league:"",role:"Pos 1",team:"Tundra Esports"},
-  "Skiter":{game:"Dota2",league:"",role:"Pos 2",team:"Tundra Esports"},
-  "ATF":{game:"Dota2",league:"",role:"Pos 3",team:"Tundra Esports"},
-  "Cr1t":{game:"Dota2",league:"",role:"Pos 4",team:"Tundra Esports"},
-  "Sneyking":{game:"Dota2",league:"",role:"Pos 5",team:"Tundra Esports"},
+  "Malr1ne":{game:"Dota2",league:"",role:"Carry",team:"Tundra Esports"},
+  "Skiter":{game:"Dota2",league:"",role:"Mid",team:"Tundra Esports"},
+  "ATF":{game:"Dota2",league:"",role:"Offlane",team:"Tundra Esports"},
+  "Cr1t":{game:"Dota2",league:"",role:"Soft Support",team:"Tundra Esports"},
+  "Sneyking":{game:"Dota2",league:"",role:"Hard Support",team:"Tundra Esports"},
   // Xtreme Gaming (finaliste Birmingham)
-  "ame_xg":{game:"Dota2",league:"",role:"Pos 1",team:"Xtreme Gaming"},
-  "NothingToSay":{game:"Dota2",league:"",role:"Pos 2",team:"Xtreme Gaming"},
-  "fy_xg":{game:"Dota2",league:"",role:"Pos 5",team:"Xtreme Gaming"},
-  "Xxs":{game:"Dota2",league:"",role:"Pos 3",team:"Xtreme Gaming"},
-  "xNova":{game:"Dota2",league:"",role:"Pos 4",team:"Xtreme Gaming"},
+  "ame_xg":{game:"Dota2",league:"",role:"Carry",team:"Xtreme Gaming"},
+  "NothingToSay":{game:"Dota2",league:"",role:"Mid",team:"Xtreme Gaming"},
+  "fy_xg":{game:"Dota2",league:"",role:"Hard Support",team:"Xtreme Gaming"},
+  "Xxs":{game:"Dota2",league:"",role:"Offlane",team:"Xtreme Gaming"},
+  "xNova":{game:"Dota2",league:"",role:"Soft Support",team:"Xtreme Gaming"},
   // Team Spirit (Yatoro déjà là + reste)
   // yatoro déjà dans la base
-  "Collapse":{game:"Dota2",league:"",role:"Pos 3",team:"Team Spirit"},
-  "mira_spirit":{game:"Dota2",league:"",role:"Pos 2",team:"Team Spirit"},
-  "Tobi_spirit":{game:"Dota2",league:"",role:"Pos 4",team:"Team Spirit"},
-  "miposhka":{game:"Dota2",league:"",role:"Pos 5",team:"Team Spirit"},
+  "Collapse":{game:"Dota2",league:"",role:"Offlane",team:"Team Spirit"},
+  "mira_spirit":{game:"Dota2",league:"",role:"Mid",team:"Team Spirit"},
+  "Tobi_spirit":{game:"Dota2",league:"",role:"Soft Support",team:"Team Spirit"},
+  "miposhka":{game:"Dota2",league:"",role:"Hard Support",team:"Team Spirit"},
   // PARIVISION (Satanic + 4)
-  "Satanic":{game:"Dota2",league:"",role:"Pos 1",team:"PARIVISION Dota2"},
-  "Palantimos":{game:"Dota2",league:"",role:"Pos 2",team:"PARIVISION Dota2"},
-  "bzm":{game:"Dota2",league:"",role:"Pos 3",team:"PARIVISION Dota2"},
-  "Save_d2":{game:"Dota2",league:"",role:"Pos 4",team:"PARIVISION Dota2"},
-  "illidan_d2":{game:"Dota2",league:"",role:"Pos 5",team:"PARIVISION Dota2"},
+  "Satanic":{game:"Dota2",league:"",role:"Carry",team:"PARIVISION Dota2"},
+  "Palantimos":{game:"Dota2",league:"",role:"Mid",team:"PARIVISION Dota2"},
+  "bzm":{game:"Dota2",league:"",role:"Offlane",team:"PARIVISION Dota2"},
+  "Save_d2":{game:"Dota2",league:"",role:"Soft Support",team:"PARIVISION Dota2"},
+  "illidan_d2":{game:"Dota2",league:"",role:"Hard Support",team:"PARIVISION Dota2"},
   // MOUZ Dota2 (Crystallis déjà là)
   // crystallis déjà dans la base
-  "Seleri":{game:"Dota2",league:"",role:"Pos 2",team:"MOUZ Dota2"},
-  "MidOne":{game:"Dota2",league:"",role:"Pos 2",team:"MOUZ Dota2"},
-  "ImmortalFaith":{game:"Dota2",league:"",role:"Pos 4",team:"MOUZ Dota2"},
-  "Quinn_d2":{game:"Dota2",league:"",role:"Pos 5",team:"MOUZ Dota2"},
+  "Seleri":{game:"Dota2",league:"",role:"Mid",team:"MOUZ Dota2"},
+  "MidOne":{game:"Dota2",league:"",role:"Mid",team:"MOUZ Dota2"},
+  "ImmortalFaith":{game:"Dota2",league:"",role:"Soft Support",team:"MOUZ Dota2"},
+  "Quinn_d2":{game:"Dota2",league:"",role:"Hard Support",team:"MOUZ Dota2"},
   // Team Falcons Dota2
-  "Arteezy":{game:"Dota2",league:"",role:"Pos 1",team:"Falcons Dota2"},
-  "Abed":{game:"Dota2",league:"",role:"Pos 2",team:"Falcons Dota2"},
-  "GH_d2":{game:"Dota2",league:"",role:"Pos 4",team:"Falcons Dota2"},
-  "DJ_d2":{game:"Dota2",league:"",role:"Pos 5",team:"Falcons Dota2"},
-  "Resolut1on":{game:"Dota2",league:"",role:"Pos 3",team:"Falcons Dota2"},
+  "Arteezy":{game:"Dota2",league:"",role:"Carry",team:"Falcons Dota2"},
+  "Abed":{game:"Dota2",league:"",role:"Mid",team:"Falcons Dota2"},
+  "GH_d2":{game:"Dota2",league:"",role:"Soft Support",team:"Falcons Dota2"},
+  "DJ_d2":{game:"Dota2",league:"",role:"Hard Support",team:"Falcons Dota2"},
+  "Resolut1on":{game:"Dota2",league:"",role:"Offlane",team:"Falcons Dota2"},
   // Aurora Gaming Dota2
-  "Torontotokyo":{game:"Dota2",league:"",role:"Pos 1",team:"Aurora Dota2"},
-  "Larl":{game:"Dota2",league:"",role:"Pos 2",team:"Aurora Dota2"},
-  "Pure_aur":{game:"Dota2",league:"",role:"Pos 3",team:"Aurora Dota2"},
-  "Fishman":{game:"Dota2",league:"",role:"Pos 4",team:"Aurora Dota2"},
-  "BokerN1":{game:"Dota2",league:"",role:"Pos 5",team:"Aurora Dota2"},
+  "Torontotokyo":{game:"Dota2",league:"",role:"Carry",team:"Aurora Dota2"},
+  "Larl":{game:"Dota2",league:"",role:"Mid",team:"Aurora Dota2"},
+  "Pure_aur":{game:"Dota2",league:"",role:"Offlane",team:"Aurora Dota2"},
+  "Fishman":{game:"Dota2",league:"",role:"Soft Support",team:"Aurora Dota2"},
+  "BokerN1":{game:"Dota2",league:"",role:"Hard Support",team:"Aurora Dota2"},
   // BetBoom Dota2
-  "RAMZES666":{game:"Dota2",league:"",role:"Pos 1",team:"BetBoom Dota2"},
-  "gpk":{game:"Dota2",league:"",role:"Pos 2",team:"BetBoom Dota2"},
-  "Zayac":{game:"Dota2",league:"",role:"Pos 4",team:"BetBoom Dota2"},
-  "SoNNeikO":{game:"Dota2",league:"",role:"Pos 5",team:"BetBoom Dota2"},
-  "sayuw":{game:"Dota2",league:"",role:"Pos 3",team:"BetBoom Dota2"},
+  "RAMZES666":{game:"Dota2",league:"",role:"Carry",team:"BetBoom Dota2"},
+  "gpk":{game:"Dota2",league:"",role:"Mid",team:"BetBoom Dota2"},
+  "Zayac":{game:"Dota2",league:"",role:"Soft Support",team:"BetBoom Dota2"},
+  "SoNNeikO":{game:"Dota2",league:"",role:"Hard Support",team:"BetBoom Dota2"},
+  "sayuw":{game:"Dota2",league:"",role:"Offlane",team:"BetBoom Dota2"},
   // paiN Gaming Dota2
-  "hFn_d2":{game:"Dota2",league:"",role:"Pos 1",team:"paiN Dota2"},
-  "4dr":{game:"Dota2",league:"",role:"Pos 2",team:"paiN Dota2"},
-  "KJ_d2":{game:"Dota2",league:"",role:"Pos 3",team:"paiN Dota2"},
-  "Lelis":{game:"Dota2",league:"",role:"Pos 4",team:"paiN Dota2"},
-  "VoiD_d2":{game:"Dota2",league:"",role:"Pos 5",team:"paiN Dota2"},
+  "hFn_d2":{game:"Dota2",league:"",role:"Carry",team:"paiN Dota2"},
+  "4dr":{game:"Dota2",league:"",role:"Mid",team:"paiN Dota2"},
+  "KJ_d2":{game:"Dota2",league:"",role:"Offlane",team:"paiN Dota2"},
+  "Lelis":{game:"Dota2",league:"",role:"Soft Support",team:"paiN Dota2"},
+  "VoiD_d2":{game:"Dota2",league:"",role:"Hard Support",team:"paiN Dota2"},
   // Virtus.pro Dota2
-  "Nightfall":{game:"Dota2",league:"",role:"Pos 3",team:"Virtus.pro Dota2"},
-  "solo_vp":{game:"Dota2",league:"",role:"Pos 5",team:"Virtus.pro Dota2"},
-  "Shad0wfall":{game:"Dota2",league:"",role:"Pos 1",team:"Virtus.pro Dota2"},
-  "qojqva":{game:"Dota2",league:"",role:"Pos 2",team:"Virtus.pro Dota2"},
-  "Antimage_vp":{game:"Dota2",league:"",role:"Pos 4",team:"Virtus.pro Dota2"},
+  "Nightfall":{game:"Dota2",league:"",role:"Offlane",team:"Virtus.pro Dota2"},
+  "solo_vp":{game:"Dota2",league:"",role:"Hard Support",team:"Virtus.pro Dota2"},
+  "Shad0wfall":{game:"Dota2",league:"",role:"Carry",team:"Virtus.pro Dota2"},
+  "qojqva":{game:"Dota2",league:"",role:"Mid",team:"Virtus.pro Dota2"},
+  "Antimage_vp":{game:"Dota2",league:"",role:"Soft Support",team:"Virtus.pro Dota2"},
   // GamerLegion Dota2
-  "tOfu":{game:"Dota2",league:"",role:"Pos 5",team:"GamerLegion Dota2"},
-  "Ace_d2":{game:"Dota2",league:"",role:"Pos 3",team:"GamerLegion Dota2"},
-  "miCKe":{game:"Dota2",league:"",role:"Pos 1",team:"GamerLegion Dota2"},
-  "iNSaNiA":{game:"Dota2",league:"",role:"Pos 4",team:"GamerLegion Dota2"},
-  "Nisha_d2":{game:"Dota2",league:"",role:"Pos 2",team:"GamerLegion Dota2"},
+  "tOfu":{game:"Dota2",league:"",role:"Hard Support",team:"GamerLegion Dota2"},
+  "Ace_d2":{game:"Dota2",league:"",role:"Offlane",team:"GamerLegion Dota2"},
+  "miCKe":{game:"Dota2",league:"",role:"Carry",team:"GamerLegion Dota2"},
+  "iNSaNiA":{game:"Dota2",league:"",role:"Soft Support",team:"GamerLegion Dota2"},
+  "Nisha_d2":{game:"Dota2",league:"",role:"Mid",team:"GamerLegion Dota2"},
   // OG Dota2
-  "Bzm_og":{game:"Dota2",league:"",role:"Pos 1",team:"OG Dota2"},
-  "inYourdreaM":{game:"Dota2",league:"",role:"Pos 2",team:"OG Dota2"},
-  "ATF_og":{game:"Dota2",league:"",role:"Pos 3",team:"OG Dota2"},
-  "Chu":{game:"Dota2",league:"",role:"Pos 4",team:"OG Dota2"},
-  "ana_og":{game:"Dota2",league:"",role:"Pos 1",team:"OG Dota2"},
+  "Bzm_og":{game:"Dota2",league:"",role:"Carry",team:"OG Dota2"},
+  "inYourdreaM":{game:"Dota2",league:"",role:"Mid",team:"OG Dota2"},
+  "ATF_og":{game:"Dota2",league:"",role:"Offlane",team:"OG Dota2"},
+  "Chu":{game:"Dota2",league:"",role:"Soft Support",team:"OG Dota2"},
+  "ana_og":{game:"Dota2",league:"",role:"Carry",team:"OG Dota2"},
   // Nigma Galaxy Dota2
-  "w33":{game:"Dota2",league:"",role:"Pos 2",team:"Nigma Galaxy"},
-  "iLTW":{game:"Dota2",league:"",role:"Pos 1",team:"Nigma Galaxy"},
-  "KuroKy":{game:"Dota2",league:"",role:"Pos 5",team:"Nigma Galaxy"},
-  "NobodyXD":{game:"Dota2",league:"",role:"Pos 4",team:"Nigma Galaxy"},
-  "Davai_Lama":{game:"Dota2",league:"",role:"Pos 3",team:"Nigma Galaxy"},
+  "w33":{game:"Dota2",league:"",role:"Mid",team:"Nigma Galaxy"},
+  "iLTW":{game:"Dota2",league:"",role:"Carry",team:"Nigma Galaxy"},
+  "KuroKy":{game:"Dota2",league:"",role:"Hard Support",team:"Nigma Galaxy"},
+  "NobodyXD":{game:"Dota2",league:"",role:"Soft Support",team:"Nigma Galaxy"},
+  "Davai_Lama":{game:"Dota2",league:"",role:"Offlane",team:"Nigma Galaxy"},
   // Team Liquid Dota2
-  "Nisha_tl":{game:"Dota2",league:"",role:"Pos 2",team:"Team Liquid Dota2"},
-  "zai":{game:"Dota2",league:"",role:"Pos 4",team:"Team Liquid Dota2"},
-  "m1CKe_tl":{game:"Dota2",league:"",role:"Pos 1",team:"Team Liquid Dota2"},
-  "MiCkEy":{game:"Dota2",league:"",role:"Pos 3",team:"Team Liquid Dota2"},
-  "insania":{game:"Dota2",league:"",role:"Pos 5",team:"Team Liquid Dota2"},
+  "Nisha_tl":{game:"Dota2",league:"",role:"Mid",team:"Team Liquid Dota2"},
+  "zai":{game:"Dota2",league:"",role:"Soft Support",team:"Team Liquid Dota2"},
+  "m1CKe_tl":{game:"Dota2",league:"",role:"Carry",team:"Team Liquid Dota2"},
+  "MiCkEy":{game:"Dota2",league:"",role:"Offlane",team:"Team Liquid Dota2"},
+  "insania":{game:"Dota2",league:"",role:"Hard Support",team:"Team Liquid Dota2"},
 };
 
 const STATIC_PLAYERS_COUNT=Object.keys(STATIC_PLAYERS).length;
-const DEFAULT_BK=["Stake","Roobet","Rainbet","BCGame","Duelbits","Duel","Thunderpick"];
+const DEFAULT_BK=["Stake","Roobet","Rainbet","BCGame","Duelbits","Duel","Thunderpick","Winna"];
 
 const BK_LOGOS={
 "Stake":"data:image/png;base64,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",
@@ -1852,6 +1826,7 @@ const BK_LOGOS={
 "BCGame":"data:image/png;base64,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",
 "Duel":"data:image/png;base64,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",
 "Thunderpick":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4RT4RXhpZgAATU0AKgAAAAgABQEaAAUAAAABAAAASgEbAAUAAAABAAAAUgEoAAMAAAABAAIAAAITAAMAAAABAAEAAIdpAAQAAAABAAAAWgAAALQAAABIAAAAAQAAAEgAAAABAAeQAAAHAAAABDAyMjGRAQAHAAAABAECAwCgAAAHAAAABDAxMDCgAQADAAAAAQABAACgAgAEAAAAAQAAAOGgAwAEAAAAAQAAAOGkBgADAAAAAQAAAAAAAAAAAAYBAwADAAAAAQAGAAABGgAFAAAAAQAAAQIBGwAFAAAAAQAAAQoBKAADAAAAAQACAAACAQAEAAAAAQAAARICAgAEAAAAAQAAE9wAAAAAAAAASAAAAAEAAABIAAAAAf/Y/9sAhAABAQEBAQECAQECAwICAgMEAwMDAwQFBAQEBAQFBgUFBQUFBQYGBgYGBgYGBwcHBwcHCAgICAgJCQkJCQkJCQkJAQEBAQICAgQCAgQJBgUGCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQn/3QAEAAr/wAARCACgAKADASIAAhEBAxEB/8QBogAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoLEAACAQMDAgQDBQUEBAAAAX0BAgMABBEFEiExQQYTUWEHInEUMoGRoQgjQrHBFVLR8CQzYnKCCQoWFxgZGiUmJygpKjQ1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4eLj5OXm5+jp6vHy8/T19vf4+foBAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKCxEAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD+G+iiivsDzwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//0P4b6KKK+wPPCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//R/hvooor7A88KKKKACiiigAooooAKKKKACikyKMjpQhxV1dC0UmRSbh0oRKelx1FFFAwooooAKKKKAP/S/hvooor7A88KKKVPvj/IoASiv7KP+CCf/BFv/gmj/wAFIP2E9V+O37Rv/CQxeLfC/iHUdL1eTT9Wa0tkt4oorq3l8oIwRRBLgnuUNfXV9/wSX/4NTPszSWXx5tNwHGfHVuf6VwrHw9o6fY0VM/gdor+3TxF/wS9/4NmLTcNG+NlpLjpjxtbn/wBlNczo/wDwTJ/4Ns7iXbqXxotI1zj/AJHSAcf984r0oU7xuczqrY/ixor+2X4o/wDBP/8A4NW/gn8J9W+KXiH4r33iVtMg3x6R4e8VpqGpXkv8EFvbwoSWc8bmKog5ZgK/kY1fwlpv7QXx6uvDn7KXgm+0nT9Xudmj6JLeNqVzbwjgG5umVQxx80r7UjXtgAVGFpzrVlh6UbyeyXUnEYmnSpOtVkoxW7eiXr2PB7CxvNUvoNN0+Jpp7h1jjjjBZnZuFVQOpJwAK/UHwn/wR9/bA8TeHrTXrz+xdIe7QSfY727dLmEHoJUWJgrYwdueO+DxX7K/sJ/8E3/An7L9jbeN/HIg1rx1Kg33rYa2sCedlmrDO4dGnPzdlCr1+jf2qv2yPg3+yf4VOs/EK887WJ1LWmj28gF1c9gdp4iTI+aV+AOgJr+suE/AHB4fLHmnFtVwW/Kpcriuz8/JH+b3ib9NHNMfn1Ph7wywscRUvaU5Rcot/wB1Jr3f7z0P54/F3/BIP9pbwH4Wu/HHjTW/C2l6RYxmSa6uNQkjjRAP9qDknGFAGSeADX5c3tutpcyWsUqTqjELLH9x16ArkA4PbIHFfaf7QX7Vvxx/br+Jljo/iW/ttJ0uW5WLT9Ne7W00yyDkfvJ5bgquQB88spyB/d4Ff0Bfsnf8EqP+CHOm/Dm2H7YP7R+geIfF11tluW0TxJbabY2oKj9xEDueXac5lbbu7Ig4r+e+L6uU1K9sijL2a6yd7+nkf3D4cYfiOngIy4qnB4h7xpx5Yw0+Hd3t30P5Il6cUtf3q6N/wSb/AODVWa2V9U+PForY7eOrcf8AstY//BRf/ghN/wAEbP2cf+CXvj39vL9nXUtd8QrYaOs/hrUF8Q/a9Purq6uEtLdl2xhZUEr9Aedpr4SpjUp8tj9JpwvG5/CFRTQpVimcgcA+uOKdXXF3VyQooopgf//T/hvooor7A88KKKKAP7PP+DNr9o7TPD/7QXxa/ZA8RyKbfxtotvr9lBJ92WbTHNtcoAeCWguASB1WM/3a/mJ/4KMfs0Tfsjft3fFn9nKe2S1h8M+Jr2KyATyy1hO/2iyZQD9w20kWK7X/AIJaftbN+w5/wUC+F37S9zIyaboWtxW+qqvfTL9GtL0ng8JDKzY9VGK/om/4PBf2TIPDn7RHw7/bs8ExCfRPiDpI0TU7qAAxm/09fOtJCw/57WcmF9RD7CvKlFU8Rr1N/sn8azwI+MqvHHIzTRb26fO6KAO+0Vbxjg17R+z/AODfhT43+J1lo/xs8Vx+DvDCgvd37RSzOQAD5UaxK5V35AYjavevewlCdapGjBb/AHHl42pGhRliJJtRXSLb9El17HT/ALMH7J3xX/ap8e/8Il8OLVUt7Yq19qEw22tpE3G6R+5I+6i/M2OOMkf1vfsqfse/CT9kjwfD4Z8EwLPqk6AanqsqL9ou5B2yP9XEP4Y1OO7bjXzp8Jv22v8Agmd8C/A1p8O/hR4usNI0mzUACOyvvMlcYzLM/wBn3PI2AS5+gwMCvoH4a/tw/sqfGHxAPBPws8VHXdVmG4W9npt/IwUcZY/Z9qD/AGnKqO5r+6/B/g3hjIoqpVxdOpiZf3lp5JPY/wAgfpReJPiFxVGpg8vyqvQy+C1vTcZSt1lb8trHzd+21+298SfhaLv4c/s1+C9W17xDt2TavHpd3Jp9ix7RssZW5lH+z+7X1b7tfzV+OPhx+1T8Q/FN1428d+G/FOs6vfvvuLy6068klkPoWMWcDoB90DAAGK/uV3M7bFd8josalcD3HP6V8xftC/tmfAP9mKy8z4o6/CNQ2Ew6VbAz30zfwr5Y/wBUpIxvk2r6ZxXV4p+GEMzbx2dZlyUo/DFpWj8k9/kfPfRu+khPJlTyPhDh32laSUZNT5qlRrf7Oi/8lXY/i38VfDn4heCoYp/G/h/U9HjuWZY3v7Sa2EhXBIUzIoYgEZA6VxYggHVQfTI/wxX33+3T+3T4k/bO8R6YJtMi0PQdAE/9m2gdpbhjOy75J34QsVQBQihQOBmvgmv4Z4goYOljJ0cvqOdOOie1/Rdj/YXhDE5licso4jOcOqNeS96Cd1HXa9lfTe2l9Db8IeCdZ+Ini7Sfh54Ttln1XX7y30yyTn57m7kWCFfoXdc+gr+8b/g6A8TaB+xX/wAEsPgD/wAE0vAckcAvJbNJ44gBusfDVoqlmT0lvZo5c92Svwv/AODZD9jo/tWf8FSPDfjHXLcy+HfhJA/iy94+U3UTCHToz65uHEmO6xGoP+Dmv9rqH9qX/gql4n8MaBeC78O/Cy0g8I6eVOVNxbjztRb/AHvtUrRk9xEvpXylV89dRjsj6ykvcZ/PqAFAVegGB9KKQADpS16SVtDIKKKKYH//1P4b6KKK+wPPCiiigBjoJB5bDKnjFf6F37DGueH/APgvL/wb7a7+xl4qvIZfil8LrWLR7ae5cGRL7TF8zQr1v4ljnhUWsjY5xIORiv8APTIzX6bf8Elf+Cj3jb/gmJ+15pPxz0lJdQ8Lagi6V4p0iM4+26XI4ZjGOn2iB/30JP8AECvCsayq0U7NCp6XPzj8SeGvEHgrX73wh4usZtN1XSriWzvLSdSssE9u5jlidWwQ0bqVOe4qz4M8D+LfiB4ktvCvgjTbnVtRuWCx2tnE8srcZyFQZwO54A7kV/aR/wAFr/8Agld4K/b28JW//BU7/gm1PB4sn8QWEd9rOmaaP+QzAg2/brVB92+iUeXc27AO+3OPMUh/5TPgH+3F8eP2X9AuPDPwjOlWa3Upknmn023mun7bHnkXzCi4+WMnavYV6uWRwzqqOLk40+rS1+R5Oc4jGxw8v7NpxnVtopNxj87flY/Sz9mD/gjJ4m1aaHxZ+1RenTLNsMNF01lN047edP8A6qIdMrHvb3Wv3l+Fnwc+FvwS8Mr4S+E+g2mg2AA3xwx5MpHG6RzlmJ9WZsdiOlfzr/BL/goF/wAFOv2iPFK+FPhBBp+sXPSaVdLtYreBf708j4SID/aIz2r+gP4E+GvjzpHhj7V+0N4ps9e1l4tzxaZYpZ2Vt9JQN8pXuxKp/s1/d3gnLh2L5sowM9N601a3z/yP8cvpe0OOrW4oziik/hw1KU0/L3Eve0/n+Rt/Fn4f+KPiJ4ZHhnw14wv/AAYhVg1zpUULXQDcbY5ZVbyh7phvcV+Wuo/8ETPgtrupS69qnj3xLe3N3KBNNKtu8js38TMy5Y+pJr7H+O//AAUL/ZY/Z7D6b4h8Rx6rrMRZTpmkFby4yv8AC7IfJh/7aOPYdq/Ez49f8FmPjv8AERZtJ+DenW3gyyZWT7RgXWoBTkH964WKM7em2LcvOGwa38VuK+CFNvHtVqq2Sd7fdsL6M3APjA8LCnkK+pYVtXqTpQTa73a55Pt0Py7+Lnhjw34I+KHiLwZ4KvJL7R9K1O5tbSeYKJZooHMSyPs+X5sZ+XjGK83lOxDJ0C/5/wAipHcPI1xKx+dtzseTyck1/VD/AMELP+CKt18V/Emm/twftt2C6J8OfDTf2ppOlap/o41U2485L26Eu3y9OixvXfjzyO0YO7+AayUpSnTVld2XY/2bwtOVKjGNR3aSTfd21fzP2M/4J9eGdF/4IHf8EIfGH7ZHxZto9P8Aix8SbZdQtbScBbj7deQtD4f04q3P7hHNzOuPl3SZHy1/nw6xrOs+JNZuvEniG4e81DUJpbq7uJTukmuJ3Mksrt3Z3JY/Wv32/wCC/wB/wVrP/BRv9oKy+GfwivXPwk+HUs8GjkAp/auoMCk+qPHx8m0eXaggEREtx5mB/P1Xn0cOk3I676BRRRXSIKKKKAP/1f4b6KKK+wPPCiiigApj/dp9dV4ItPCN74ssbbx7f3Ol6OX/ANLubOBbm4jiA58qFnjVnP3RlgBnPbFVCN3y3sZ1ZKMW3t5K/wByX5I9w+EH7Sn7X3hD4ban+y98D/F3iS08OeLLxJbrw/pM8qpdXGNpwkY8wbxjzFjK7wo3g4GP0V+BP/BKSx8M6NB8XP26PEFt4P0GL95/ZbXMcU0o6nz5ywEXH8EZeRumV4r550X9uzwx+zn4fn8IfsS+C7fw1JKnlXPiXWwmoa1PxzjgQW49EQMB718J/EL4rfEv4ua9/wAJF8TdfvdbvWP+tu5Wm2BuoRTkIPZQB+FfoOT1sny1qtVh9ZqrZbQXqt36XR+RcQ5dxNnEnhcJVWDobOWkqz/wrWFP580vQ/oH8af8FVf2Sf2bvDKfDP8AZB8KR6xbWhIhlhibTtOLA43ksvn3DerYBPdq/Iv4+f8ABQL9qT9oS4ms/FPiOWw0h9yjTNMJtLQIexCfvJPrI7V+3X/BF7/gjz/wTS/4Ki/BHxD4b134w6/pvxrtrV2Og+Ta2sOnYP7u7hgbzG1O2IIEhWSIpnlYzsJ/HD/gob/wTY/ah/4Jo/GZvhR+0fpJjtLsyPo+u2mZdO1W3jON9vLxiVVwZIH2yRnjBGGPJxJ4r5tmC+rOryUltCHuxX+fzOXgr6PfDGRVXjMPh/a13vVqv2lRvveV7fJLQ+AQDk7R8x546/pWlpekax4g1O00Tw9by6hf6hItvbWtqjSzTyudqxxxoCzuxOFUDJPAFe9fsp/sk/tDftr/ABi0/wCA/wCzZ4an8S+I9RbPkx/JBbwBtrXN3M2Et7dP4pHxjoMthT/d78Cf2K/+CcH/AAbRfs+J+1X+2HrVt4z+Nup2xhsFt41kuftAXL2fh6zm+aNdxAmvpsHGMmNSIz+fPEqH7tLXqftKg93/AF/kfmv/AME+/wDghd8M/wBkb4c/8N0/8FZJtO0eDQ4EvrXw1qUg+zaeMgxy6qeVluM4EdmgYA/f3v8AIPzW/wCCtH/Bbv4g/tvJdfs+/AQXXhb4R28nlzRt+5vdbKcB7lVP7q2BwY7YEjoZSSNg+Rf+Clv/AAVb/aQ/4Ka/Ej+3fibKuh+D9Nlc6J4WsXP2OzXoskx4+03RXhpmAx0jVF4r8xWLO+9yScAc+grsjUajYTgm7gJJCoJ44Ax6e1JRRUFhRRRQAUUUUAf/1v4b6KKK+wPPCiiigAooooAOSApPA6UmBS0UlFLRCtpY7T4c/EXx98I/HmkfEz4V6zdeHfEWhTrc6fqVhK0FzbSp0eKRCCOfvDowJUgg4r+63/gnn/wXZ/ZN/wCCp/web/gnf/wWV0fR01nW0WztdevES10nVpfuRs8o2/2ZqQbGyWMrEzfdKE+XX8Dpz2qJot/DYNYV8LGorbB7Rx0SP9FL9qX/AIKMf8E0f+Ddj4KX37IX/BO7w7p/iv4rXaB79WmF39nuCvyXOvagnzzSJkeXZxkEDtEuTX8GP7TP7Unx9/bF+MGp/HX9pHxNdeKfEuqN89zcHakcY+7DbwrhIIE/giQBR16814AzSyytPOdzudzMepJ6knvz/OgZ71nh8Ko+9Lc1lUurWF4HSiiiuwzCiiigAooooAKKKKAP/9f+G+iiivsDzwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//0P4b6KKK+wPPCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//ZAAD/2wCEAAkGBwgHEhUQBxMWFRUWFRcWFhUSFxcYGhcTFhMXFxgZGBMbHighGB0lHRMVITIjJSkrLi4uHh81PTUsNyguLisBCgoKDg0OGxAQGzcfICUtLS03LjcvNTUxMCstLS0tLTAtNSsrNTAvLS0tLS0tLS03NS0tLy0rLSstNS0tKy0tLf/AABEIAOEA4QMBIgACEQEDEQH/xAAcAAEAAgIDAQAAAAAAAAAAAAAABgcFCAEDBAL/xABDEAACAQEFBAUGDAQHAQAAAAAAAQIDBAUGESEHEjFBIlFhcYETMkJSk9EUI1NicoKRkqGxwdIVFheDCCRDc6LC8FT/xAAaAQEAAgMBAAAAAAAAAAAAAAAAAQQCAwUG/8QAKhEBAAEEAQMBBwUAAAAAAAAAAAECAwQRIQUSUTEyQWFxobHBExQiI/D/2gAMAwEAAhEDEQA/AKaABtYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABKMM4Qq3olVt+9ClyS0lPuzWi7TO3bquT20w1Xr1FmjvrnUIuCy/5Dujrrfej+w6rZgu4LFB1LZUqQiuLc4/Z5ur7EWZwbsRudKFPV8eudU7mfkrkHrvOVgc3/DFNQXB1Gm325JLLuPIVJjU6dOJ3GwAEJAAAAAAAAAAAAAAAADiWeWhyANiLo2U4JvKhRr06dTKrShUWVap6cFLr7T2PY3g35Kr7ap7z72M2+N73RTp1Xm6W/Ql9FN7v/CUTXy+f4hdVorWepWq50qs6es567k2k+PNJM1xvaV7VtkOEYcKVX2tT3niq7KsKx4UqvtZlE/DrY+NWp7SfvOPhtr+Vqffl7zZDGV609leFpcaVT2sz2UdkeEpcaVX2tQ1++GWv5Wp9+XvOfh1sX+rU+/P3iZFr7QLg2eYPhuRpVKtpkujRVep0V61Rp9GPZxfLrVRJObygtW9Eut8lzZ3WWz2q8JqFBSnOT72+1t/myy8M4VoXPlO0ZTretxjDsh29pvx8aq7PHoqZebbxqd1evhisK4OVLKtfEc5cY0uS7Z9b+b9vUTjJrxOHkuf/u8heJMbQoZ0rmylLnV4qP0F6T7eHedeP0sWj/bl5mf3HUbnw+kM7iDEFhuRfG9KbWcaaer7ZP0YlZX1fNsvie/a3ovNhHSMV2L9WeGrUnWk5Vm5Sbzbk8232vmfK04HKv5Vd2fEPR4fT7eNG45q8p/gjZrbL63a18b1Kho1HLKpUXZ6ke16vlloyxaOyXCc+NKr7WoUD8MtfylT78vec/DbYv8AVqffn7ytwvNi6exzB0uNKr7ap7z6/o3g35Kr7ap7zXP4fbflqntJ+82Q2NWWpYLqp1rbKTdVzruU23lDhHV8t2CfizCYZQozaPdd23LeFazXNFxp0lCOUpOT33BSl0n9JEaPbfd4yve01rTPP42rOpryUptxXgskeIyhAACQAAAAAAAAAAAAAW9/h3vfyNe0WOo9KkFWh9Km92Xi1OL+qYfbvc7u68vLwXRtNNT/ALkEoT/BQfiRLBt9PD1ts9qXCFRb/wDty6M/+Mm/AvTbhcsb4u34RZlvSs8lWTXOlLoz8MmpfVMJ4lLXIAGaAyFy3NbL5nuWRcPOm/Niutv9OLPPd9OzVakVbpuFPPpSis2l2JFj2DEmGLtgqVhqbsV1U6mr6293VljHtU1z/OdQp5l+5ap/romqfsydxXHY7khu2dZyaW9N+dJ/ouz8+Jk83xRgP5yuD5Z+zqftO+x4mui3y8nY5znLqjSqP7Xu5JdrO1Rds0x20zDyl7Hy65muumXViK57wvheTp11Spc4KDbl9KW8s12cO8j39PKnK0R9m/3E90559zGi7PAxrxbdc91X3Ta6lkW6Yoo1ER8IQH+ndb/6F7N/uMViPC0ripxqVKynvT3VFQcfRbbzzfDJfaS++sZXfd2cbK/LVOqL6C758/DMgF833br5kpW2Wiz3YRWUY59S597Odkxj0RMUcy72DVnXKoqu8U/LmfoxwAKDsO+wWOteNWnQs3n1Zxpx+lOSivzNldpFso4VuapTsnR+KjZaSWmW8lT07oqT8Cq9hFxfxO3u01VnCzQ3v7s84w+xb78EZb/ENfir1qFhovSlF1qi+fPow8VFTf1jCeZTCoFocgGaAAAAAAAAAAAAAAAAA2S2QX5SxLdis9tylOinZ6kX6VLLKm33w0z60zW0lmzHFX8qW2NSu/iavxdZdUG+jP6r17t7rImCGKxdcVXDdsrWSrnlCXQb9KlLWEs+ejS70zEGwW2PCX8w0I2u7VvVqMW0o6+VoPVxWXFrzl16rma+LUkDtoUKtokoWeLlJ8FFZt+CM1h+4rJeC8peFpp0oZ+ZvxVR5dkn0V26k+uyeH7rju2GpQj1tVYbz75N5stWcabnMzqFDKz4s8U0zVKM3LgOpUynfEt1fJwacvrS4LuWZNrBYbLd0dyxQUY/N0z7W+Lfedf8Vuz5ej7SHvO+harPac/g04zy47klLLvyZ1rFmzb9n1eZy8rKve3uI8e59VXUjF+QjvPkm8te2WTyIhfdz4rvfONadKNPlThOSX1nu5y8SZcRknzNl2zFziZacbKmxzTTEz5lWawFfXDOl99/tI1XpOhKUJZNxk4trVZxeTyfVoW9fl92O6oydecVUUXuQzzk5ZadFapZ5asp7NvicbLtW7cxFD1PTsi/fpmq7Go9wcZ5cTkn2yLCEr/tKtNsj/l6Ek9eFSstYw7UtG/Bcyo6S29mlzUcF3X5S8uhKUZWm0OXo9HPdf0YJLLrzNdsRXvWv601rXafOqzcsvVjwjHwikvAt/btixUKcbssUulUyqV2uVLPOEO+TWbXUl1lIGMQAAMgAAAAAAAAAAAAAAAAAAFwbJcfwjGF231LLLo2erJ8uVKTfB+q/Dks+javgSz0FO8LrcafGVak2oqT5yp/OfOPPlrxqVpPie28b1vG9NxXjWqVdyKjBVJNqKXUuvt4hDxM7LPQq2mShZ4uUnwUVm34EiuPBtuvHKdrzpU+uS6Uvox5d7/Em1KnceFYcYU81q5POpLv9J93AtWsSqqO6riFDI6hRbnsojvq8R+UduLAmeU76l/ah/2muHcvtJtRpWeww3aUY04RXBZJJELvTH61jdVP69X9Kaf5vwIheN7W+83nbqkp9jeUV3QWiLMZFixGrcbny59WFl5c7v1dseFiXrjW67DnGzt1pdVPSPjN/omQ+9cYXtb9KcvJQ9Wlo/GfF+GRHwVbmXdues6h0cfpuPY5inc+ZG29WDh6cSyMBbNK96btpv8Ai4UeMKb0nVXJy9SH4v8AOsvsJgbBFsxRNTqZ07PF5Tqc5ZcY01zfJvgvwLgxDiK6dntkjTscY7+640KC5v1pfNzebb4vTizGYvxnd2D6aoXfGMqyilTox0jTjlo55easuEVq+ziUhel5Wy9qsq94zc6knrJ9XJJcorkiZR6vm8Lbabyqzr22TnUqScpyfNv9OS7DzgEJAAAAAAAAAAAAAAAAAAAAAGTua4bffD/yscoLzqk9IrLjrz7kSWhPDGGNd74TXXOKTUX81+bHv1ZE7RelvtMI0q1WThFKMYZ5RSXYss/E8ZuouU0ezHKtcs1XeK51HiPzKTXrje9LZpZcqMfmayf13w8MjA2azW29Km7ZYVK1SXKKlOT7eb8Tzmcwliq88KVvLXY008lUpy8ypFcnzT10a1XdoYV3Kq+ap22WrNu1GqI089+YcvnD7ir5oTpb6zjvZNNdkotrNc48V1GLNn7ivzDW0yySo1oqWi8rZ6mk4P1k1rlnwnH8HoU9tD2Z3hhVyr2DerWXjv8AGdLsqJcvnLTryNW23SAnbZbNXtk407JFznJ5RhBNyk+pJcTJ4WwzemKa3kbohvPRzm9IU4v0py5d3F8jYPCuD7g2d0JWi1Tj5RR+NtNXJaerBehHPks29OOgmdGkb2fbKKN0qNqxMlUr+dGjpKFJ8nLlUmvFLt4ng2ibT6VlcrNhqSnU1U661jB81T5Tl28F2kf2j7UbViLes1yb1GzcJS4VKy7ctYQfq8Xz6ityYH1VqTqtyqtyk225SbbbfFtvVs+QCQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAem7rwtl11I17uqSp1IPOM4PJr3rsejL82d7U7HiJKy3/u0rQ+im9KdfPTJZ+bJ+q+PLqWvRwRMbNtp79vvDWzqz6QhT3nKUKFFJSqTb1ajyWfpPRadxr5jTGl7Ywqb14S3acX8XQg3uQ7X68vnPwyMDarVaLZLftc5TlklvTk5PKKySzbzySOoiITsABkgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//Z",
+"Winna":"data:image/webp;base64,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",
 "Duelbits":"data:image/png;base64,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",
 };
 
@@ -1870,7 +1845,7 @@ const GAME_CFG={
 };
 const STATUS_CFG={
   pending:{label:"En attente",color:"#3B82F6",bg:"rgba(96,165,250,0.1)"},
-  won:{label:"Gagne",color:"#4ADE80",bg:"rgba(34,197,94,0.1)"},
+  won:{label:"Gagné",color:"#4ADE80",bg:"rgba(34,197,94,0.1)"},
   lost:{label:"Perdu",color:"#F87171",bg:"rgba(248,113,113,0.1)"},
 };
 const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false};
@@ -2225,7 +2200,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
         </div>
 
         {/* Cote + Mise */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
           <div>
             <span style={labelStyle}>Cote</span>
             <NumPad value={ebOdds} onChange={v=>setEbOdds(v)} placeholder="1.75" step="0.01"/>
@@ -2284,6 +2259,20 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
 
 // ── BetRow component ───────────────────────────────────────────────────────
 const EMPTY_OBJ={};
+const APP_ICON="data:image/png;base64,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";
+// Set PWA icon
+(()=>{
+  const existing=document.querySelector('link[rel="apple-touch-icon"]');
+  if(existing)existing.remove();
+  const link=document.createElement('link');
+  link.rel='apple-touch-icon';
+  link.href=APP_ICON;
+  document.head.appendChild(link);
+  // Also set favicon
+  const fav=document.querySelector('link[rel="icon"]')||document.createElement('link');
+  fav.rel='icon';fav.href=APP_ICON;
+  document.head.appendChild(fav);
+})();
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ}){
   const [open,setOpen]=useState(false);
   const [confirmDel,setConfirmDel]=useState(false);
@@ -2299,7 +2288,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const descLine=bet.description||"";
 
   return(
-    <div style={{borderBottom:"1px solid #1F2937",WebkitTapHighlightColor:"transparent",contain:"layout style"}}>
+    <div style={{borderBottom:"1px solid #1F2937",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"3px solid "+(isPending?"#3B82F6":isWon?"#22C55E":"#EF4444"),transition:"border-color .2s"}}>
       <div onClick={()=>setOpen(v=>!v)} style={{padding:"9px 14px",cursor:"pointer",userSelect:"none"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
 
@@ -2315,13 +2304,13 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</span>
               {bet.splits&&bet.splits.length>0&&<span style={{fontSize:9,color:"#22C55E",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:4,padding:"1px 5px",fontWeight:700}}>{1+bet.splits.length}</span>}
               {bet.isLive&&<span style={{fontSize:9,fontWeight:800,color:"#FF4757",background:"rgba(255,71,87,0.15)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(255,71,87,0.3)",letterSpacing:.5}}>LIVE</span>}
-              {bet.mapTag&&<span style={{fontSize:11,fontWeight:700,color:"#F59E0B",background:"rgba(245,158,11,0.15)",padding:"2px 8px",borderRadius:5,border:"1px solid rgba(245,158,11,0.3)",flexShrink:0}}>{bet.mapTag}</span>}
+              {bet.mapTag&&<span style={{fontSize:10,fontWeight:700,color:"#F59E0B",background:"rgba(245,158,11,0.12)",padding:"1px 6px",borderRadius:4,border:"1px solid rgba(245,158,11,0.25)",flexShrink:0}}>{bet.mapTag}</span>}
               {descLine&&<span style={{fontSize:14,color:"#94A3B8",fontWeight:400}}>— {descLine}</span>}
             </div>
             {/* Ligne 2 : @cote · BKlogo/nom · Mise€ · Ligue */}
             <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap"}}>
               <span style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>@{bet.odds}</span>
-              {bet.bookmaker&&<span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span>}
+              {bet.bookmaker&&<span style={{color:"#E5E7EB",margin:"0 4px",fontSize:18,lineHeight:1,opacity:0.6}}>•</span>}
               {bkLogo
                 ? <img src={bkLogo} alt={bet.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0}}/>
                 : bet.bookmaker
@@ -2334,16 +2323,16 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                   ? <img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:2}}/>
                   : <span key={i} style={{fontSize:11,fontWeight:600,color:"#3B82F6",marginLeft:2}}>{sp.bookmaker}</span>;
               })}
-              {bet.stake&&<><span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span><span style={{fontSize:11,fontWeight:700,color:"#A78BFA"}}>{bet.stake}€</span></>}
-              {bet.league&&<><span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span>{L[bet.league]?<span style={{display:"flex",alignItems:"center",gap:3}}><img src={L[bet.league]} alt={bet.league} style={{width:13,height:13,objectFit:"contain",borderRadius:2,flexShrink:0}}/><span style={{fontSize:10,fontWeight:700,color:"#E5E7EB"}}>{bet.league}</span></span>:<span style={{fontSize:11,color:"#6B7280"}}>{bet.league}</span>}</>}
-              {bet.tournament&&(bet.game==="CS2"||bet.game==="Dota2")&&<><span style={{color:"#E5E7EB",margin:"0 5px",fontSize:16,lineHeight:1}}>•</span><span style={{fontSize:10,color:"#E5E7EB",fontWeight:700}}>🏆 {bet.tournament}</span></>}
+              {bet.stake&&<><span style={{color:"#E5E7EB",margin:"0 4px",fontSize:18,lineHeight:1,opacity:0.6}}>•</span><span style={{fontSize:11,fontWeight:700,color:"#A78BFA"}}>{bet.stake}€</span></>}
+              {bet.league&&<><span style={{color:"#E5E7EB",margin:"0 4px",fontSize:18,lineHeight:1,opacity:0.6}}>•</span>{L[bet.league]?<span style={{display:"flex",alignItems:"center",gap:3}}><img src={L[bet.league]} alt={bet.league} style={{width:15,height:15,objectFit:"contain",borderRadius:2,flexShrink:0}}/><span style={{fontSize:10,fontWeight:700,color:"#9CA3AF"}}>{bet.league}</span></span>:<span style={{fontSize:11,color:"#6B7280"}}>{bet.league}</span>}</>}
+              {bet.tournament&&(bet.game==="CS2"||bet.game==="Dota2")&&<><span style={{color:"#E5E7EB",margin:"0 4px",fontSize:18,lineHeight:1,opacity:0.6}}>•</span><span style={{fontSize:10,color:"#E5E7EB",fontWeight:700}}>🏆 {bet.tournament}</span></>}
             </div>
           </div>
 
           {/* Droite : profit + statut + chevron */}
           <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
-            <div style={{fontWeight:800,fontSize:13,color:profitColor}}>{profitTxt}</div>
-            <span style={{color:"#374151",fontSize:10,marginTop:2,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
+            <div style={{fontWeight:800,fontSize:14,color:profitColor,fontFamily:"Inter,-apple-system,sans-serif"}}>{profitTxt}</div>
+            <span style={{color:"#6B7280",fontSize:13,marginTop:2,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
           </div>
         </div>
       </div>
@@ -2351,7 +2340,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
       {/* ── Actions déployées ── */}
       {open&&(
         <div style={{padding:"8px 14px 10px",borderTop:"1px solid rgba(255,255,255,0.04)"}}>
-          <div style={{fontSize:10,color:"#4B5563",marginBottom:8}}>{fmtDate(bet.datetime)}</div>
+          <div style={{fontSize:10,color:"#4B5563",marginBottom:8}}>{bet.datetime?bet.datetime.slice(8,10)+" "+["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][parseInt(bet.datetime.slice(5,7))-1]+" · "+bet.datetime.slice(11,16):""}</div>
           {bet.splits&&bet.splits.length>0&&(
             <div style={{marginBottom:8,background:"#0B1220",borderRadius:8,padding:"8px 10px"}}>
               <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Répartition</div>
@@ -2373,41 +2362,40 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               </div>
             </div>
           )}
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {/* Statut */}
             {isPending&&(
-              <>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
-                  style={{flex:1,padding:"8px",borderRadius:9,border:"1.5px solid rgba(34,197,94,0.4)",background:"rgba(34,197,94,0.1)",color:"#22C55E",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✓ Gagné</button>
+                  style={{padding:"11px",borderRadius:11,border:"none",background:"#22C55E",color:"#000",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:"0.2px"}}>✓ Gagné</button>
                 <button onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}}
-                  style={{flex:1,padding:"8px",borderRadius:9,border:"1.5px solid rgba(248,113,113,0.4)",background:"rgba(248,113,113,0.1)",color:"#F87171",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✗ Perdu</button>
-              </>
+                  style={{padding:"11px",borderRadius:11,border:"none",background:"#F87171",color:"#000",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:"0.2px"}}>✗ Perdu</button>
+              </div>
             )}
             {(isWon||isLost)&&(
-              <button onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}}
-                style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#6B7280",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>↩ Attente</button>
+              <div style={{display:"grid",gridTemplateColumns:isWon?"1fr 1fr":"1fr 1fr",gap:8}}>
+                {isLost&&<button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
+                  style={{padding:"9px",borderRadius:10,border:"none",background:"rgba(34,197,94,0.15)",color:"#22C55E",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✓ Gagné</button>}
+                {isWon&&<button onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}}
+                  style={{padding:"9px",borderRadius:10,border:"none",background:"rgba(248,113,113,0.15)",color:"#F87171",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✗ Perdu</button>}
+                <button onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}}
+                  style={{padding:"9px",borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#6B7280",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>↩ Attente</button>
+              </div>
             )}
-            {isWon&&(
-              <button onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}}
-                style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(248,113,113,0.3)",background:"rgba(248,113,113,0.06)",color:"#F87171",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✗ Perdu</button>
-            )}
-            {isLost&&(
-              <button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
-                style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.06)",color:"#22C55E",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✓ Gagné</button>
-            )}
-            <button onClick={()=>{onEdit(bet);setOpen(false);}}
-              style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✎ Modifier</button>
-            <button onClick={()=>{onDuplicate(bet);setOpen(false);}}
-              style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>⧉ Dupliquer</button>
-            <button onClick={()=>{onSplit(bet);setOpen(false);}}
-              style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(34,197,94,0.3)",background:"rgba(34,197,94,0.1)",color:"#22C55E",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Ajouter BK</button>
-            {!confirmDel
-              ?<button onClick={()=>setConfirmDel(true)}
-                  style={{padding:"7px 12px",borderRadius:9,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>🗑 Supprimer</button>
-              :<>
-                <button onClick={()=>{onDelete(bet.id);}} style={{padding:"7px 14px",borderRadius:9,border:"none",background:"#EF4444",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Confirmer</button>
-                <button onClick={()=>setConfirmDel(false)} style={{padding:"7px 12px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#6B7280",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Annuler</button>
-              </>
-            }
+            {/* Actions secondaires */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button onClick={()=>{onEdit(bet);setOpen(false);}}
+                style={{padding:"9px",borderRadius:10,border:"1px solid #1F2937",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✎ Modifier</button>
+              <button onClick={()=>{onDuplicate(bet);setOpen(false);}}
+                style={{padding:"9px",borderRadius:10,border:"1px solid #1F2937",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>⧉ Dupliquer</button>
+              <button onClick={()=>{onSplit(bet);setOpen(false);}}
+                style={{padding:"9px",borderRadius:10,border:"1.5px solid rgba(124,58,237,0.4)",background:"rgba(124,58,237,0.12)",color:"#A78BFA",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+ Ajouter BK</button>
+              {!confirmDel
+                ?<button onClick={()=>setConfirmDel(true)}
+                    style={{padding:"9px",borderRadius:10,border:"1.5px solid rgba(249,115,22,0.35)",background:"rgba(249,115,22,0.1)",color:"#FB923C",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>🗑 Supprimer</button>
+                :<button onClick={()=>{onDelete(bet.id);}} style={{padding:"9px",borderRadius:10,border:"none",background:"#EF4444",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Confirmer ✕</button>
+              }
+            </div>
           </div>
         </div>
       )}
@@ -2546,9 +2534,13 @@ export default function App(){
   });
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
+  const [suiviOpen,setSuiviOpen]=useState({tournois:true,bookmakers:false});
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
   const [statsPeriod,setStatsPeriod]=useState(null);
-  const [homePeriod,setHomePeriod]=useState(null); // null=all, 3/7/14/30 // null=all, 3/7/14/30=days
+  const [betGroupMode,setBetGroupMode]=useState("jour"); // jour | semaine
+  const [homePeriod,setHomePeriod]=useState(null);
+  const [homeChartModal,setHomeChartModal]=useState(false);
+  const [homeChartFilters,setHomeChartFilters]=useState({games:[],overUnder:"All",live:"All",bookmakers:[],dateFrom:"",dateTo:""});
   const [statsDrill,setStatsDrill]=useState(null); // {game, league} or null
   const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
 const [analyseBets,setAnalyseBets]=useState([]);
@@ -2563,6 +2555,18 @@ const [expandedAnalyseBet,setExpandedAnalyseBet]=useState(null);
 const [analyseFHeure,setAnalyseFHeure]=useState(""); // filtre heure ex: "12:00"
 const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
 const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
+const [showSimulation,setShowSimulation]=useState(false);
+const [simRules,setSimRules]=useState([]);
+const [simManual,setSimManual]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_sim_manual")||"{}");}catch{return {};}});
+function setSimResult(uid,result){
+  setSimManual(prev=>{
+    const n={...prev};
+    if(result===null)delete n[uid];
+    else n[uid]=result;
+    localStorage.setItem("v7_sim_manual",JSON.stringify(n));
+    return n;
+  });
+}
 const [collapsedMonths,setCollapsedMonths]=useState(new Set());
 function toggleMonth(mk){setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});}
 function toggleHideAnalyseBet(key){
@@ -3120,11 +3124,26 @@ function toggleHideAnalyseBet(key){
   },[bets]);
 
   const homeSettled=useMemo(()=>{
-    if(!homePeriod)return settled;
-    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
-    const cutStr=cutoff.toISOString().slice(0,10);
-    return settled.filter(b=>b.datetime&&b.datetime.slice(0,10)>=cutStr);
-  },[settled,homePeriod]);
+    let s=settled;
+    // Period filter
+    if(homePeriod){
+      const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
+      const cutStr=cutoff.toISOString().slice(0,10);
+      s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)>=cutStr);
+    }
+    // Chart filters
+    const {games,overUnder,live,bookmakers}=homeChartFilters;
+    if(games.length>0)s=s.filter(b=>games.includes(b.game));
+    if(overUnder!=="All")s=s.filter(b=>b.overUnder===overUnder);
+    if(live==="Live")s=s.filter(b=>b.isLive);
+    if(live==="Non-live")s=s.filter(b=>!b.isLive);
+    if(live==="Headshot")s=s.filter(b=>b.isHeadshot);
+    if(live==="Duel")s=s.filter(b=>b.description&&b.description.toLowerCase().includes("duel"));
+    if(bookmakers.length>0)s=s.filter(b=>bookmakers.includes(b.bookmaker)||(b.splits||[]).some(sp=>bookmakers.includes(sp.bookmaker)));
+    if(homeChartFilters.dateFrom)s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)>=homeChartFilters.dateFrom);
+    if(homeChartFilters.dateTo)s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)<=homeChartFilters.dateTo);
+    return s;
+  },[settled,homePeriod,homeChartFilters]);
   const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+b.profit,0),[homeSettled]);
   const totalStaked=useMemo(()=>homeSettled.reduce((s,b)=>s+b.stake,0),[homeSettled]);
   const roi=useMemo(()=>totalStaked>0?(totalProfit/totalStaked)*100:0,[totalProfit,totalStaked]);
@@ -3136,6 +3155,15 @@ function toggleHideAnalyseBet(key){
     sorted.forEach(b=>{running+=b.profit;pts.push({v:running,dt:toDateKey(b.datetime)});});
     return pts;
   },[settled,bankroll]);
+  const chartPointsFiltered=useMemo(()=>{
+    // Rebuild chart from homeSettled (already filtered by period + filters)
+    const sorted=[...homeSettled].sort((a,b2)=>(a.datetime||"").localeCompare(b2.datetime||""));
+    if(!sorted.length)return chartPoints.slice(0,1);
+    const pts=[{v:bankroll,dt:""}];
+    let running=bankroll;
+    sorted.forEach(b=>{running+=b.profit;pts.push({v:running,dt:toDateKey(b.datetime)});});
+    return pts;
+  },[homeSettled,bankroll,chartPoints]);
 
   const formGame=useMemo(()=>{
     if(form.autoInfo&&form.autoInfo.game)return form.autoInfo.game;
@@ -3365,7 +3393,7 @@ const fetchAnalyse=useCallback(async()=>{
         .tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600;}
         .ifield{width:100%;background:#111827;border:1px solid #1F2937;border-radius:10px;padding:11px 14px;color:#E5E7EB;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s ease,box-shadow .2s ease;}
         .ifield:focus{border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,237,0.12);}
-        .add-card{background:#111827;border:1px solid #1F2937;border-radius:16px;padding:16px 18px;margin-bottom:12px;transition:border-color .2s ease;}
+        .add-card{background:#111827;border:1px solid #1F2937;border-radius:14px;padding:8px 12px;margin-bottom:8px;transition:border-color .2s ease;}
         .add-label{font-size:11px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;display:block;font-weight:600;}
         .add-ifield{width:100%;background:rgba(255,255,255,0.04);border:1.5px solid #1F2937;border-radius:12px;padding:12px 16px;color:#E5E7EB;font-size:15px;font-family:'Inter',sans-serif;outline:none;transition:border-color .25s ease,box-shadow .25s ease;}
         .add-ifield:focus{border-color:rgba(124,58,237,0.6);box-shadow:0 0 0 3px rgba(124,58,237,0.12);}
@@ -3435,65 +3463,73 @@ const fetchAnalyse=useCallback(async()=>{
           <div className="view-enter" style={{paddingBottom:8}}>
             {/* Header logo + cloud */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,paddingTop:4}}>
-              <svg width="140" height="38" viewBox="0 0 140 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#3B82F6"/></linearGradient></defs>
-                <text x="0" y="24" fontFamily="Inter,-apple-system,sans-serif" fontWeight="900" fontSize="24" fill="url(#logoGrad)" letterSpacing="-1">EMEIEKS</text>
-                <text x="1" y="36" fontFamily="Inter,-apple-system,sans-serif" fontWeight="600" fontSize="7" fill="#4B5563" letterSpacing="5">BANKROLL</text>
-              </svg>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M3 14L7 8L10 11L13 6L15 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="15" cy="9" r="1.5" fill="white"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{fontSize:16,fontWeight:900,color:"#E5E7EB",letterSpacing:"-0.5px",lineHeight:1,fontFamily:"Inter,-apple-system,sans-serif"}}>EMEIEKS</div>
+                  <div style={{fontSize:8,color:"#4B5563",letterSpacing:"3px",fontWeight:600,fontFamily:"Inter,sans-serif"}}>BANKROLL</div>
+                </div>
+              </div>
               <button onClick={()=>setSupaModal(true)}
-                style={{display:"flex",alignItems:"center",gap:5,background:supaOk?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:8,padding:"5px 12px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaOk?"#22C55E":"#A78BFA",fontSize:11,fontWeight:700}}>
-                {syncing?"☁️ Sync…":supaOk?"☁️ Sync ✓":"☁️ Cloud"}
-                {supaOk&&!syncing&&<span style={{width:5,height:5,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 4px rgba(34,197,94,0.8)"}}/>}
+                style={{display:"flex",alignItems:"center",gap:6,background:supaOk?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaOk?"#22C55E":"#A78BFA",fontSize:11,fontWeight:700}}>
+                <span style={{fontSize:12}}>☁️</span>
+                <span>{syncing?"Sync…":supaOk?"Sync ✓":"Cloud"}</span>
+                {supaOk&&!syncing&&<span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px rgba(34,197,94,0.9)",flexShrink:0}}/>}
               </button>
             </div>
 
             {/* Graphique grand — style Bet Analytix */}
             <div style={{borderRadius:20,overflow:"hidden",marginBottom:14,background:"linear-gradient(160deg,#0d2518 0%,#061810 100%)",border:"1px solid rgba(34,197,94,0.2)"}}>
-              <div style={{padding:"14px 16px 4px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                <div>
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",fontWeight:500,marginBottom:4}}>Profit net</div>
-                  <div style={{fontSize:32,fontWeight:800,color:totalProfit>=0?"#4ADE80":"#F87171",letterSpacing:-1,fontFamily:"'Bebas Neue',sans-serif",lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:6}}>Bankroll: {(bankroll+totalProfit).toFixed(0)}€</div>
-                </div>
+              <div style={{padding:"16px 16px 0"}}>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontWeight:500,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4,fontFamily:"Inter,sans-serif"}}>Profit net</div>
+                <div style={{fontSize:28,fontWeight:800,color:totalProfit>=0?"#4ADE80":"#F87171",letterSpacing:-1,fontFamily:"Inter,-apple-system,sans-serif",lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}<span style={{fontSize:24}}>€</span></div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.25)",marginTop:5,fontFamily:"Inter,sans-serif"}}>Bankroll: {(bankroll+totalProfit).toFixed(0)}€</div>
               </div>
-              <div style={{padding:"4px 8px 12px"}}>
-                {/* Période filter */}
-                <div style={{display:"flex",gap:5,padding:"8px 14px 4px"}}>
-                  {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
-                    <button key={l} onClick={()=>setHomePeriod(d)}
-                      style={{flex:1,padding:"5px 0",borderRadius:7,border:"1.5px solid "+(homePeriod===d?"#4ADE80":"rgba(255,255,255,0.08)"),background:homePeriod===d?"rgba(74,222,128,0.1)":"transparent",color:homePeriod===d?"#4ADE80":"rgba(255,255,255,0.3)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-                <BankrollChart points={chartPoints} h={200}/>
+              <div style={{padding:"8px 8px 4px"}}>
+                <BankrollChart points={chartPointsFiltered} h={180}/>
+              </div>
+              <div style={{display:"flex",gap:5,padding:"0 12px 14px"}}>
+                {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
+                  <button key={l} onClick={()=>setHomePeriod(d)}
+                    style={{flex:1,padding:"6px 0",borderRadius:7,border:"1.5px solid "+(homePeriod===d?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.08)"),background:homePeriod===d?"rgba(255,255,255,0.1)":"transparent",color:homePeriod===d?"#FFFFFF":"rgba(255,255,255,0.3)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .15s"}}>
+                    {l}
+                  </button>
+                ))}
+                <button onClick={()=>setHomeChartModal(true)}
+                  style={{padding:"6px 10px",borderRadius:7,border:"1.5px solid "+((homeChartFilters.games.length>0||homeChartFilters.overUnder!=="All"||homeChartFilters.live!=="All"||homeChartFilters.bookmakers.length>0||homeChartFilters.dateFrom||homeChartFilters.dateTo)?"rgba(167,139,250,0.6)":"rgba(255,255,255,0.08)"),background:(homeChartFilters.games.length>0||homeChartFilters.overUnder!=="All"||homeChartFilters.live!=="All"||homeChartFilters.bookmakers.length>0||homeChartFilters.dateFrom||homeChartFilters.dateTo)?"rgba(124,58,237,0.2)":"transparent",color:(homeChartFilters.games.length>0||homeChartFilters.overUnder!=="All"||homeChartFilters.live!=="All"||homeChartFilters.bookmakers.length>0||homeChartFilters.dateFrom||homeChartFilters.dateTo)?"#A78BFA":"rgba(255,255,255,0.3)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
+                  ⚙️
+                </button>
               </div>
             </div>
 
-            {/* Stats + Calendrier — entre graphique et stats */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            {/* Stats + Calendrier */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
               <button onClick={()=>setView("statistiques")}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:14}}>
-                📊 Stats
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"linear-gradient(135deg,rgba(96,165,250,0.12),rgba(96,165,250,0.04))",border:"1px solid rgba(96,165,250,0.2)",borderRadius:14,color:"#60A5FA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:13}}>
+                <span style={{fontSize:16}}>📊</span> Stats
               </button>
               <button onClick={()=>setView("calendrier")}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:14}}>
-                📅 Calendrier
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"linear-gradient(135deg,rgba(167,139,250,0.12),rgba(167,139,250,0.04))",border:"1px solid rgba(167,139,250,0.2)",borderRadius:14,color:"#A78BFA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:13}}>
+                <span style={{fontSize:16}}>📅</span> Calendrier
               </button>
             </div>
 
             {/* 4 stats cards — style Bet Analytix 2×2 */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
               {[
-                {label:"PARIS",val:homeSettled.length+(homePeriod?0:bets.filter(b=>b.status==="pending").length),col:"#60A5FA",sub:homePeriod?homePeriod+"j":bets.filter(b=>b.status==="pending").length+" en cours"},
-                {label:"BÉNÉFICE",val:(totalProfit>=0?"+":"")+totalProfit.toFixed(0)+"€",col:totalProfit>=0?"#4ADE80":"#F87171",sub:"profit net"},
-                {label:"ROI",val:(roi>=0?"+":"")+roi.toFixed(2)+"%",col:roi>=0?"#4ADE80":"#F87171",sub:"retour sur invest."},
-                {label:"PROGRESSION",val:(progression>=0?"+":"")+progression.toFixed(2)+"%",col:progression>=0?"#4ADE80":"#F87171",sub:"BK: "+bankroll.toFixed(0)+"€"},
+                {label:"PARIS",val:String(homeSettled.length+(homePeriod?0:bets.filter(b=>b.status==="pending").length)),col:"#60A5FA"},
+                {label:"BÉNÉFICE",val:(totalProfit>=0?"+":"")+totalProfit.toFixed(0)+"€",col:totalProfit>=0?"#4ADE80":"#F87171"},
+                {label:"ROI",val:(roi>=0?"+":"")+roi.toFixed(2)+"%",col:roi>=0?"#4ADE80":"#F87171"},
+                {label:"PROGRESSION",val:(progression>=0?"+":"")+progression.toFixed(2)+"%",col:progression>=0?"#4ADE80":"#F87171"},
               ].map(k=>(
-                <div key={k.label} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"20px 18px",position:"relative"}}>
-                  <div style={{fontSize:9,color:"#fff",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8,textDecoration:"underline",textUnderlineOffset:3,textDecorationThickness:1}}>{k.label}</div>
-                  <div style={{fontSize:22,fontWeight:800,color:k.col,letterSpacing:-.5}}>{k.val}</div>
-                  <div style={{fontSize:10,color:"#4B5563",marginTop:4}}>{k.sub}</div>
+                <div key={k.label} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"18px 16px"}}>
+                  <div style={{fontSize:11,color:"#E5E7EB",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10,textDecoration:"underline",textUnderlineOffset:4,textDecorationThickness:1,fontFamily:"Inter,sans-serif"}}>{k.label}</div>
+                  <div style={{fontSize:24,fontWeight:800,color:k.col,letterSpacing:-.5,fontFamily:"Inter,-apple-system,sans-serif"}}>{k.val}</div>
                 </div>
               ))}
             </div>
@@ -3501,12 +3537,161 @@ const fetchAnalyse=useCallback(async()=>{
 
           </div>
         )}
+        {/* ── HOME CHART FILTER MODAL ── */}
+        {homeChartModal&&(
+          <div className="moverlay" onClick={()=>setHomeChartModal(false)}>
+            <div className="modal" style={{padding:0,overflow:"hidden",borderRadius:24,display:"flex",flexDirection:"column"}} onClick={e=>e.stopPropagation()}>
+
+              {/* Header */}
+              <div style={{padding:"16px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:"-0.5px"}}>Filtres</div>
+                <button onClick={()=>setHomeChartModal(false)}
+                  style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#9CA3AF",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+              </div>
+
+              <div style={{padding:"0 16px 18px",display:"flex",flexDirection:"column",gap:14}}>
+
+                {/* Jeux */}
+                <div>
+                  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Jeux</div>
+                  <div style={{display:"flex",gap:6}}>
+                    {["LoL","CS2","Dota2","Valorant"].map(g=>{
+                      const on=homeChartFilters.games.includes(g);
+                      const cfg=GAME_CFG[g]||{accent:"#A78BFA"};
+                      const acc=cfg.accent||"#A78BFA";
+                      return(
+                        <button key={g} onClick={()=>setHomeChartFilters(f=>({...f,games:on?f.games.filter(x=>x!==g):[...f.games,g]}))}
+                          style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"8px 4px",borderRadius:12,border:"1.5px solid "+(on?acc:"#1F2937"),background:on?`rgba(${acc==="#F1B700"?"241,183,0":acc==="#E84057"?"232,64,87":acc==="#7B8CDE"?"123,140,222":"124,58,237"},0.12)`:"rgba(255,255,255,0.02)",cursor:"pointer",transition:"all .15s"}}>
+                          <GameLogo game={g} size={18}/>
+                          <span style={{fontSize:10,fontWeight:600,color:on?acc:"#6B7280",fontFamily:"Inter,sans-serif"}}>{g}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Séparateur */}
+                <div style={{height:"1px",background:"#1F2937"}}/>
+
+                {/* Type */}
+                <div>
+                  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Type</div>
+                  <div style={{display:"flex",gap:6}}>
+                    {[{v:"All",l:"Tous"},{v:"Over",l:"🔼 Over"},{v:"Under",l:"🔽 Under"}].map(({v,l})=>{
+                      const on=homeChartFilters.overUnder===v;
+                      return(
+                        <button key={v} onClick={()=>setHomeChartFilters(f=>({...f,overUnder:v}))}
+                          style={{flex:1,padding:"9px 0",borderRadius:10,border:"1.5px solid "+(on?"#60A5FA":"#1F2937"),background:on?"rgba(96,165,250,0.12)":"rgba(255,255,255,0.02)",color:on?"#60A5FA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .15s"}}>
+                          {l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Mode */}
+                {(()=>{
+                  const games=homeChartFilters.games;
+                  const hasLoL=games.length===0||games.includes("LoL");
+                  const hasCS2=games.length===0||games.includes("CS2");
+                  const hasDota=games.length===0||games.includes("Dota2");
+                  const modes=[];
+                  modes.push({v:"All",l:"Tous",col:"#9CA3AF"});
+                  if(hasLoL||hasDota)modes.push({v:"Live",l:"🔴 Live",col:"#F87171"});
+                  modes.push({v:"Non-live",l:"Non-live",col:"#60A5FA"});
+                  if(hasCS2)modes.push({v:"Headshot",l:"💀 HS",col:"#818CF8"});
+                  modes.push({v:"Duel",l:"⚔️ Duel",col:"#F59E0B"});
+                  return(
+                    <div>
+                      <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Mode</div>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                        {modes.map(({v,l,col})=>{
+                          const on=homeChartFilters.live===v;
+                          const rgba={
+                            "#F87171":"248,113,113","#60A5FA":"96,165,250",
+                            "#818CF8":"129,140,248","#F59E0B":"245,158,11","#9CA3AF":"156,163,175"
+                          }[col]||"156,163,175";
+                          return(
+                            <button key={v} onClick={()=>setHomeChartFilters(f=>({...f,live:v}))}
+                              style={{padding:"7px 14px",borderRadius:20,border:"1.5px solid "+(on?col:"#1F2937"),background:on?`rgba(${rgba},0.15)`:"rgba(255,255,255,0.02)",color:on?col:"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap",transition:"all .15s"}}>
+                              {l}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Séparateur */}
+                <div style={{height:"1px",background:"#1F2937"}}/>
+
+                {/* Période */}
+                <div>
+                  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Période</div>
+                  <div style={{display:"flex",gap:5,marginBottom:7}}>
+                    {[{l:"Cette sem.",fn:()=>{const d=new Date();const mon=new Date(d);mon.setDate(d.getDate()-d.getDay()+1);setHomeChartFilters(f=>({...f,dateFrom:mon.toISOString().slice(0,10),dateTo:d.toISOString().slice(0,10)}));}},{l:"Ce mois",fn:()=>{const d=new Date();setHomeChartFilters(f=>({...f,dateFrom:d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0")+"-01",dateTo:d.toISOString().slice(0,10)}));}},{l:"Mois passé",fn:()=>{const d=new Date();const pm=new Date(d.getFullYear(),d.getMonth()-1,1);const pme=new Date(d.getFullYear(),d.getMonth(),0);setHomeChartFilters(f=>({...f,dateFrom:pm.toISOString().slice(0,10),dateTo:pme.toISOString().slice(0,10)}));}}].map(({l,fn})=>(
+                      <button key={l} onClick={fn}
+                        style={{flex:1,padding:"7px 0",borderRadius:8,border:"1px solid #1F2937",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+                    {[{label:"Du",key:"dateFrom"},{label:"Au",key:"dateTo"}].map(({label,key})=>(
+                      <div key={key} style={{background:"rgba(255,255,255,0.03)",border:"1px solid "+(homeChartFilters[key]?"rgba(96,165,250,0.3)":"#1F2937"),borderRadius:10,padding:"8px 12px",transition:"border .15s"}}>
+                        <div style={{fontSize:9,color:homeChartFilters[key]?"#60A5FA":"#4B5563",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{label}</div>
+                        <input type="date" value={homeChartFilters[key]||""}
+                          onChange={e=>setHomeChartFilters(f=>({...f,[key]:e.target.value}))}
+                          style={{width:"100%",background:"transparent",border:"none",color:homeChartFilters[key]?"#E5E7EB":"#4B5563",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",padding:0}}/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Séparateur */}
+                <div style={{height:"1px",background:"#1F2937"}}/>
+
+                {/* Bookmakers */}
+                <div>
+                  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Bookmakers</div>
+                  <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                    {bookmakers.map(bk=>{
+                      const on=homeChartFilters.bookmakers.includes(bk);
+                      const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                      return(
+                        <button key={bk} onClick={()=>setHomeChartFilters(f=>({...f,bookmakers:on?f.bookmakers.filter(x=>x!==bk):[...f.bookmakers,bk]}))}
+                          title={bk}
+                          style={{width:42,height:42,borderRadius:11,border:"1.5px solid "+(on?"#22C55E":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all .15s"}}>
+                          {logo?<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:9,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,3)}</span>}
+                          {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Boutons action */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:8,paddingTop:2}}>
+                  <button onClick={()=>{setHomeChartFilters({games:[],overUnder:"All",live:"All",bookmakers:[],dateFrom:"",dateTo:""});setHomePeriod(null);}}
+                    style={{padding:"13px",background:"rgba(255,255,255,0.05)",border:"1px solid #1F2937",borderRadius:12,color:"#6B7280",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:12}}>
+                    Réinit.
+                  </button>
+                  <button onClick={()=>setHomeChartModal(false)}
+                    style={{padding:"13px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,letterSpacing:"0.2px",boxShadow:"0 4px 20px rgba(124,58,237,0.35)"}}>
+                    Appliquer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── MES PARIS ── */}
         {view==="mesparis"&&(
           <div className="view-enter">
             {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:"#E5E7EB"}}>Mes Paris</div>
+            <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",marginBottom:6}}>
               <div style={{display:"flex",gap:6}}>
                 {selectMode&&selectedIds.length>0&&(
                   <>
@@ -3540,10 +3725,7 @@ const fetchAnalyse=useCallback(async()=>{
                     </button>
                   </>
                 )}
-                <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
-                  style={{background:selectMode?"rgba(34,197,94,0.08)":"transparent",border:"1px solid "+(selectMode?"#22C55E":"#1F2937"),borderRadius:7,padding:"5px 10px",color:selectMode?"#22C55E":"#9CA3AF",fontWeight:600,fontSize:11,fontFamily:"Inter,sans-serif",cursor:"pointer"}}>
-                  {selectMode?"Annuler":"Sél."}
-                </button>
+
               </div>
             </div>
 
@@ -3552,8 +3734,12 @@ const fetchAnalyse=useCallback(async()=>{
               const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0)+(fOverUnder!=="All"?1:0)+(fRole!=="All"?1:0)+(fLeague!=="All"?1:0)+(fDateFrom?1:0)+(fDateTo?1:0);
               return(
                 <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                  {/* Ligne 1 : Filtres + Stats + Effacer */}
-                  <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
+                  {/* Ligne 1 : Filtres + Stats + Sél + Effacer */}
+                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                    <button onClick={()=>setBetGroupMode(m=>m==="jour"?"semaine":"jour")}
+                      style={{display:"flex",alignItems:"center",gap:4,padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(betGroupMode==="semaine"?"#F59E0B":"#1F2937"),background:betGroupMode==="semaine"?"rgba(245,158,11,0.1)":"#111827",color:betGroupMode==="semaine"?"#F59E0B":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      {betGroupMode==="semaine"?"📅 Semaine":"📅 Jour"}
+                    </button>
                     <button onClick={()=>setView("filtres")}
                       style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"#1F2937"),background:activeFilters>0?"rgba(124,58,237,0.1)":"#111827",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
                       🔍 Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:2}}>{activeFilters}</span>}
@@ -3565,27 +3751,16 @@ const fetchAnalyse=useCallback(async()=>{
                     {activeFilters>0&&(
                       <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
                         style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#F87171",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                        × Effacer tout
+                        × Effacer
                       </button>
                     )}
+                    <div style={{flex:1}}/>
+                    <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
+                      style={{padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(selectMode?"#22C55E":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#22C55E":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      {selectMode?"✕ Annuler":"Sél."}
+                    </button>
                   </div>
-                  {/* Ligne 2 : Logos bookmakers */}
-                  <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
-                    {bookmakers.map(bk=>{
-                      const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
-                      const isOn=fBKs.includes(bk);
-                      return(
-                        <button key={bk} onClick={()=>toggleArr(fBKs,setFBKs,bk)}
-                          title={bk}
-                          style={{width:30,height:30,borderRadius:8,border:"1.5px solid "+(isOn?"#A78BFA":"#1F2937"),background:isOn?"rgba(124,58,237,0.15)":"#111827",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",boxShadow:isOn?"0 0 0 1px #7C3AED":"none"}}>
-                          {logo
-                            ? <img src={logo} alt={bk} style={{width:20,height:20,borderRadius:4,objectFit:"cover"}}/>
-                            : <span style={{fontSize:8,fontWeight:700,color:isOn?"#A78BFA":"#6B7280"}}>{bk.slice(0,3)}</span>
-                          }
-                        </button>
-                      );
-                    })}
-                  </div>
+
                 </div>
               );
             })()}
@@ -3629,6 +3804,14 @@ const fetchAnalyse=useCallback(async()=>{
                 settledByDay[sk].push(b);
               });
 
+              // Get ISO week key for a date
+              const getWeekKey=dk=>{
+                const d=new Date(dk+"T12:00:00");
+                const day=d.getDay()||7;
+                d.setDate(d.getDate()-day+1);
+                return d.toISOString().slice(0,10);
+              };
+
               // Group settle days by month
               const settledByMonth={};
               const settledMonthKeys=[];
@@ -3638,6 +3821,15 @@ const fetchAnalyse=useCallback(async()=>{
                 settledByMonth[mk].push(dk);
               });
 
+              // Group settle days by week
+              const settledByWeek={};
+              const settledWeekKeys=[];
+              settledDayKeys.forEach(dk=>{
+                const wk=getWeekKey(dk);
+                if(!settledByWeek[wk]){settledByWeek[wk]=[];settledWeekKeys.push(wk);}
+                settledByWeek[wk].push(dk);
+              });
+
               const allPendingSelected=pending.length>0&&pending.every(b=>selectedIds.includes(b.id));
 
               return(
@@ -3645,13 +3837,16 @@ const fetchAnalyse=useCallback(async()=>{
                   {/* ── PENDING SECTION ── */}
                   {pending.length>0&&(
                     <div style={{marginBottom:12}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 2px",marginBottom:6}}>
-                        {selectMode&&<button onClick={()=>setSelectedIds(ids=>allPendingSelected?ids.filter(id=>!pending.map(b=>b.id).includes(id)):[...new Set([...ids,...pending.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"2px solid "+(allPendingSelected?"#22C55E":"#374151"),background:allPendingSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
-                        <div style={{width:3,height:14,borderRadius:2,background:"#3B82F6"}}/>
-                        <span style={{fontSize:11,fontWeight:700,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
-                        <span style={{fontSize:10,color:"#374151",fontWeight:600,background:"rgba(59,130,246,0.08)",padding:"1px 7px",borderRadius:10}}>{pending.length}</span>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 2px",marginBottom:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          {selectMode&&<button onClick={()=>setSelectedIds(ids=>allPendingSelected?ids.filter(id=>!pending.map(b=>b.id).includes(id)):[...new Set([...ids,...pending.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"2px solid "+(allPendingSelected?"#22C55E":"#374151"),background:allPendingSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
+                          <div style={{width:3,height:16,borderRadius:2,background:"linear-gradient(180deg,#3B82F6,#7C3AED)"}}/>
+                          <span style={{fontSize:12,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
+                          <span style={{fontSize:11,color:"#fff",fontWeight:700,background:"#3B82F6",padding:"2px 8px",borderRadius:8}}>{pending.length}</span>
+                        </div>
+                        <span style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>{pending.reduce((s,b)=>s+b.stake,0).toFixed(0)}€ en jeu</span>
                       </div>
-                      <div style={{borderRadius:14,overflow:"hidden",border:"1px solid rgba(59,130,246,0.15)",background:"#0D1117"}}>
+                      <div style={{borderRadius:14,overflow:"hidden",border:"1px solid rgba(59,130,246,0.2)",background:"rgba(59,130,246,0.03)"}}>
                         {pending.map(b=>(
                           selectMode
                             ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
@@ -3662,7 +3857,52 @@ const fetchAnalyse=useCallback(async()=>{
                   )}
 
                   {/* ── SETTLED — groupés par mois puis par jour de settlement ── */}
-                  {settledMonthKeys.map(mk=>{
+                  {betGroupMode==="semaine"?settledWeekKeys.map(wk=>{
+                    const weekDays=settledByWeek[wk];
+                    const weekBets=weekDays.flatMap(dk=>settledByDay[dk]);
+                    const weekP=weekBets.reduce((s,b)=>s+b.profit,0);
+                    const weekStaked=weekBets.reduce((s,b)=>s+b.stake,0);
+                    const weekROI=weekStaked>0?(weekP/weekStaked*100):0;
+                    const wkEnd=new Date(wk+"T12:00:00");wkEnd.setDate(wkEnd.getDate()+6);
+                    const wkLabel="Sem. du "+new Date(wk+"T12:00:00").getDate()+" "+FR_MONTHS[new Date(wk+"T12:00:00").getMonth()]+" → "+wkEnd.getDate()+" "+FR_MONTHS[wkEnd.getMonth()];
+                    return(
+                      <div key={wk} style={{marginBottom:10}}>
+                        <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"12px 18px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div>
+                            <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>{wkLabel}</span>
+                            <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{weekBets.length} paris</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:16,fontWeight:800,color:weekP>=0?"#22C55E":"#F87171"}}>{weekP>=0?"+":""}{weekP.toFixed(0)}€</div>
+                            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:2}}>
+                              <span style={{fontSize:10,color:weekROI>=0?"#22C55E":"#F87171"}}>{weekROI>=0?"+":""}{weekROI.toFixed(1)}%</span>
+                              <span style={{fontSize:10,color:(weekBets.filter(b=>b.status==="won").length/(weekBets.filter(b=>b.status!=="pending").length||1)*100)>=55?"#22C55E":"#9CA3AF"}}>{weekBets.filter(b=>b.status!=="pending").length>0?(weekBets.filter(b=>b.status==="won").length/weekBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
+                          {weekDays.map((dk,di)=>{
+                            const dayBets=settledByDay[dk];
+                            const dayP=dayBets.reduce((s,b)=>s+b.profit,0);
+                            const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
+                            return(
+                              <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
+                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px 6px",background:"#0B1220"}}>
+                                  <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB",borderBottom:"2px solid rgba(255,255,255,0.2)",paddingBottom:1}}>{dayLabel}</span>
+                                  <span style={{fontSize:13,fontWeight:700,color:dayP>=0?"#22C55E":"#F87171"}}>{dayP>=0?"+":""}{dayP.toFixed(0)}€</span>
+                                </div>
+                                {dayBets.map(b=>(
+                                  selectMode
+                                    ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
+                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }):settledMonthKeys.map(mk=>{
                     const monthDays=settledByMonth[mk];
                     const monthBets=monthDays.flatMap(dk=>settledByDay[dk]);
                     const monthP=monthBets.reduce((s,b)=>s+b.profit,0);
@@ -3681,7 +3921,10 @@ const fetchAnalyse=useCallback(async()=>{
                           <div style={{display:"flex",alignItems:"center",gap:12}}>
                             <div style={{textAlign:"right"}}>
                               <div style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#F87171"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}€</div>
-                              <div style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#F87171"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}% ROI</div>
+                              <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:2}}>
+                                <span style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#F87171"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}%</span>
+                                <span style={{fontSize:10,fontWeight:600,color:(monthBets.filter(b=>b.status==="won").length/monthBets.filter(b=>b.status!=="pending").length*100||0)>=55?"#22C55E":"#9CA3AF"}}>{monthBets.filter(b=>b.status!=="pending").length>0?(monthBets.filter(b=>b.status==="won").length/monthBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
+                              </div>
                             </div>
                             <span style={{fontSize:14,color:"#4B5563"}}>{collapsedMonths.has(mk)?"▶":"▼"}</span>
                           </div>
@@ -3696,7 +3939,7 @@ const fetchAnalyse=useCallback(async()=>{
                             const allDaySelected=dayBets.every(b=>selectedIds.includes(b.id));
                             const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
                             return(
-                              <div key={dk} style={{borderTop:di>0?"1px solid #0A0F1A":"none"}}>
+                              <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
                                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px 7px",background:"#0B1220"}}>
                                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                                     {selectMode&&<button onClick={()=>setSelectedIds(ids=>allDaySelected?ids.filter(id=>!dayBets.map(b=>b.id).includes(id)):[...new Set([...ids,...dayBets.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(allDaySelected?"#22C55E":"#6B7280"),background:allDaySelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
@@ -3886,10 +4129,16 @@ const fetchAnalyse=useCallback(async()=>{
           <div className="view-enter">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>🔍 Filtres</div>
-              <button onClick={()=>setView("mesparis")}
-                style={{padding:"7px 16px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                Appliquer →
-              </button>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{setFGames([]);setFBKs([]);setFPlayer("");setFStatus("All");setFOverUnder("All");setFLive(false);setFHeadshot(false);setFDuel(false);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFRole("All");setFLeague("All");setFTourneys(new Set());setFiltresPage(1);}}
+                  style={{padding:"7px 14px",background:"rgba(255,255,255,0.05)",border:"1px solid #1F2937",borderRadius:9,color:"#6B7280",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                  Réinit.
+                </button>
+                <button onClick={()=>setView("mesparis")}
+                  style={{padding:"7px 16px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                  Appliquer →
+                </button>
+              </div>
             </div>
 
             {/* Période */}
@@ -3938,9 +4187,21 @@ const fetchAnalyse=useCallback(async()=>{
             <div className="add-card">
               <span className="add-label">Bookmaker</span>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                {bookmakers.map(bk=>(
-                  <button key={bk} className={"fchip "+(fBKs.includes(bk)?"on":"")} onClick={()=>toggleArr(fBKs,setFBKs,bk)}>{bk}</button>
-                ))}
+                {bookmakers.map(bk=>{
+                  const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                  const isOn=fBKs.includes(bk);
+                  return(
+                    <button key={bk} onClick={()=>toggleArr(fBKs,setFBKs,bk)}
+                      title={bk}
+                      style={{width:40,height:40,borderRadius:10,border:"1.5px solid "+(isOn?"#A78BFA":"#1F2937"),background:isOn?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",position:"relative"}}>
+                      {logo
+                        ? <img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>
+                        : <span style={{fontSize:9,fontWeight:700,color:isOn?"#A78BFA":"#6B7280"}}>{bk.slice(0,3)}</span>
+                      }
+                      {isOn&&<div style={{position:"absolute",top:-3,right:-3,background:"#A78BFA",borderRadius:"50%",width:10,height:10,border:"2px solid #0B1220"}}/>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="add-card">
@@ -4080,7 +4341,7 @@ const fetchAnalyse=useCallback(async()=>{
             {/* ── Filtre Mise min/max ── */}
             <div className="add-card">
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                <span className="add-label">Mise ($)</span>
+                <span className="add-label">Mise (€)</span>
                 {(fMinStake||fMaxStake)&&(
                   <button onClick={()=>{setFMinStake("");setFMaxStake("");}}
                     style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>× Effacer</button>
@@ -4235,13 +4496,13 @@ const fetchAnalyse=useCallback(async()=>{
                 </button>
               </div>
             )}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 16px 12px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px 8px"}}>
               <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",letterSpacing:-.2}}>
                 {duelMode?"Duel ⚔️":sessionMode?"Session multi-map":editingBet?"✎ Modifier pari":"Ajouter pari"}
               </div>
               <div style={{display:"flex",gap:7}}>
                 <button onClick={()=>setForm(f=>({...f,isLive:!f.isLive}))}
-                  style={{padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(form.isLive?"#EF4444":"rgba(255,255,255,0.1)"),background:form.isLive?"rgba(239,68,68,0.15)":"transparent",color:form.isLive?"#EF4444":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease"}}>
+                  style={{padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(form.isLive?"#EF4444":"rgba(255,255,255,0.1)"),background:form.isLive?"#EF4444":"transparent",color:form.isLive?"#fff":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease"}}>
                   {form.isLive?"🔴 LIVE":"LIVE"}
                 </button>
                 <button onClick={()=>{setDuelMode(v=>!v);setSessionMode(false);}}
@@ -4255,7 +4516,7 @@ const fetchAnalyse=useCallback(async()=>{
               </div>
             </div>
 
-            <div style={{padding:"10px 12px 16px"}}>
+            <div style={{padding:"6px 12px 16px"}}>
 
             {/* ── DUEL MODE ── */}
             {duelMode&&(
@@ -4335,7 +4596,7 @@ const fetchAnalyse=useCallback(async()=>{
 
                   {/* Mise */}
                   <div style={{marginBottom:12}}>
-                    <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Mise ($)</div>
+                    <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Mise (€)</div>
                     <div style={{background:"#0D0F1E",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
                       <NumPad value={duelForm.stake} onChange={v=>setDuelForm(f=>({...f,stake:v}))} placeholder="50" step="1"/>
                     </div>
@@ -4343,7 +4604,7 @@ const fetchAnalyse=useCallback(async()=>{
                       {[50,62,75,87,100].map(s=>(
                         <button key={s} onClick={()=>setDuelForm(f=>({...f,stake:String(s)}))}
                           style={{padding:"6px 12px",borderRadius:8,border:"1px solid "+(duelForm.stake===String(s)?"#F59E0B":"#1F2937"),background:duelForm.stake===String(s)?"rgba(245,158,11,0.12)":"#111827",color:duelForm.stake===String(s)?"#F59E0B":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                          {s}$
+                          {s}€
                         </button>
                       ))}
                     </div>
@@ -4399,39 +4660,41 @@ const fetchAnalyse=useCallback(async()=>{
             {!duelMode&&(()=>{
               const logo=BK_LOGOS[form.bookmaker]||bkPhotos[form.bookmaker];
               return(
-                <div style={{background:"#131525",borderRadius:14,border:"1px solid rgba(124,58,237,0.15)",padding:"10px 14px",marginBottom:8,position:"relative"}}>
+                <div style={{background:"#131525",borderRadius:12,border:"1px solid rgba(124,58,237,0.12)",padding:"8px 12px",marginBottom:6,position:"relative"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                    <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500,letterSpacing:.2}}>Bookmaker</span>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,background:"#A78BFA",color:"#000",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>1</span><span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Bookmaker</span></div>
                     <div style={{display:"flex",gap:6}}>
-                      <button onClick={()=>setStickyBK(v=>!v)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:10,border:"1.5px solid "+(stickyBK?"#7C3AED":"rgba(255,255,255,0.1)"),background:stickyBK?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.03)",color:stickyBK?"#A78BFA":"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:700,transition:"all .15s"}}>
-                        <span style={{fontSize:12}}>{stickyBK?"📌":"📎"}</span>
-                        {stickyBK?"BK fixé":"Garder BK"}
+                      <button onClick={()=>setStickyBK(v=>!v)} style={{display:"flex",alignItems:"center",gap:3,padding:"4px 10px",borderRadius:8,border:"1px solid "+(stickyBK?"#7C3AED":"rgba(255,255,255,0.08)"),background:stickyBK?"rgba(124,58,237,0.12)":"transparent",color:stickyBK?"#A78BFA":"#6B7280",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                        {stickyBK?"📌 Fixé":"📎 Garder"}
                       </button>
-                      <button onClick={()=>setModalBK(true)} style={{padding:"3px 10px",borderRadius:10,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#6B7280",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
-                        + Nouveau
-                      </button>
+                      <button onClick={()=>setModalBK(true)} style={{padding:"4px 8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#6B7280",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>+</button>
                     </div>
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:12,padding:"12px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
-                    {logo&&<img src={logo} alt="" style={{width:28,height:28,borderRadius:7,objectFit:"cover",flexShrink:0}}/>}
-                    <select value={form.bookmaker} onChange={e=>setForm(f=>({...f,bookmaker:e.target.value}))}
-                      style={{flex:1,background:"transparent",border:"none",color:form.bookmaker?"#E5E7EB":"#6B7280",fontSize:16,fontFamily:"'Inter',sans-serif",fontWeight:form.bookmaker?600:400,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
-                      <option value="" style={{color:"#6B7280",background:"#131525"}}>Sélectionner...</option>
-                      {bookmakers.map(bk=><option key={bk} value={bk} style={{color:"#E5E7EB",background:"#131525"}}>{bk}</option>)}
-                    </select>
-                    <span style={{color:"#6B7280",fontSize:16,flexShrink:0}}>⌄</span>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {bookmakers.map(bk=>{
+                      const bkLogo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                      const isOn=form.bookmaker===bk;
+                      return(
+                        <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
+                          title={bk}
+                          style={{width:40,height:40,borderRadius:10,border:"2px solid "+(isOn?"#A78BFA":"rgba(255,255,255,0.06)"),background:isOn?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",boxShadow:isOn?"0 0 12px rgba(124,58,237,0.3)":"none"}}>
+                          {bkLogo?<img src={bkLogo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10,fontWeight:700,color:isOn?"#A78BFA":"#6B7280"}}>{bk.slice(0,3)}</span>}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {form.bookmaker&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:8}}>✓ {form.bookmaker}</div>}
                 </div>
               );
             })()}
 
             {!duelMode&&<>
             {/* ── 2. JOUEUR (Sélection 1) ── */}
-            <div style={{background:"#131525",borderRadius:14,border:"1px solid rgba(124,58,237,0.15)",padding:"10px 14px",marginBottom:8}}>
+            <div style={{background:"#131525",borderRadius:12,border:"1px solid rgba(124,58,237,0.12)",padding:"8px 12px",marginBottom:6}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Joueur</span>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,background:"#A78BFA",color:"#000",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>2</span><span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Joueur</span></div>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:12,padding:"4px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:10,padding:"2px 10px",border:"1px solid rgba(255,255,255,0.06)"}}>
                 <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
               </div>
               {form.autoInfo&&(
@@ -4462,16 +4725,16 @@ const fetchAnalyse=useCallback(async()=>{
 
 
             {/* ── 3. DESCRIPTION + OVER/UNDER ── */}
-            <div style={{background:"#131525",borderRadius:14,border:"1px solid rgba(124,58,237,0.15)",padding:"10px 14px",marginBottom:8}}>
-              <span style={{fontSize:11,color:"#9CA3AF",fontWeight:500,display:"block",marginBottom:8}}>Intitulé du pari</span>
+            <div style={{background:"#131525",borderRadius:12,border:"1px solid rgba(124,58,237,0.12)",padding:"8px 12px",marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:9,background:"#A78BFA",color:"#000",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>3</span><span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Type</span></div>
               {/* Over / Under pill selector */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                 <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
-                  style={{padding:"9px 0",borderRadius:10,border:"1.5px solid "+(form.overUnder==="Over"?"#22C55E":"rgba(255,255,255,0.08)"),background:form.overUnder==="Over"?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",color:form.overUnder==="Over"?"#22C55E":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease",boxShadow:form.overUnder==="Over"?"0 0 16px rgba(74,222,128,0.15)":"none"}}>
+                  style={{padding:"9px 0",borderRadius:10,border:"1.5px solid "+(form.overUnder==="Over"?"#22C55E":"rgba(34,197,94,0.25)"),background:form.overUnder==="Over"?"#22C55E":"rgba(34,197,94,0.05)",color:form.overUnder==="Over"?"#000":"#4ADE80",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease",boxShadow:form.overUnder==="Over"?"0 0 16px rgba(74,222,128,0.15)":"none"}}>
                   Over
                 </button>
                 <button onClick={()=>setForm(f=>({...f,overUnder:"Under"}))}
-                  style={{padding:"9px 0",borderRadius:10,border:"1.5px solid "+(form.overUnder==="Under"?"#EF4444":"rgba(255,255,255,0.08)"),background:form.overUnder==="Under"?"rgba(239,68,68,0.1)":"rgba(255,255,255,0.02)",color:form.overUnder==="Under"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease",boxShadow:form.overUnder==="Under"?"0 0 16px rgba(239,68,68,0.12)":"none"}}>
+                  style={{padding:"9px 0",borderRadius:10,border:"1.5px solid "+(form.overUnder==="Under"?"#3B82F6":"rgba(59,130,246,0.25)"),background:form.overUnder==="Under"?"#3B82F6":"rgba(59,130,246,0.05)",color:form.overUnder==="Under"?"#fff":"#60A5FA",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .2s ease",boxShadow:form.overUnder==="Under"?"0 0 16px rgba(239,68,68,0.12)":"none"}}>
                   Under
                 </button>
               </div>
@@ -4517,16 +4780,16 @@ const fetchAnalyse=useCallback(async()=>{
 
             {/* ── 4. COTE + MISE ── */}
             {!sessionMode&&(
-              <div style={{background:"#131525",borderRadius:14,border:"1px solid rgba(124,58,237,0.15)",padding:"10px 14px",marginBottom:8}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div style={{background:"#131525",borderRadius:12,border:"1px solid rgba(124,58,237,0.12)",padding:"8px 12px",marginBottom:6}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                   <div>
-                    <span style={{fontSize:11,color:"#9CA3AF",fontWeight:500,display:"block",marginBottom:8}}>Cote</span>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:9,background:"#A78BFA",color:"#000",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>4</span><span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Cote</span></div>
                     <div style={{background:"#0D0F1E",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
                       <NumPad id="odds-input-field" value={form.odds} onChange={v=>setForm(f=>({...f,odds:v}))} placeholder="Ex: 1.50" step="0.01"/>
                     </div>
                   </div>
                   <div>
-                    <span style={{fontSize:11,color:"#9CA3AF",fontWeight:500,display:"block",marginBottom:8}}>Mise ($)</span>
+                    <span style={{fontSize:11,color:"#9CA3AF",fontWeight:600,display:"block",marginBottom:8}}>Mise (€)</span>
                     <div style={{background:"#0D0F1E",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
                       <NumPad value={form.stake} onChange={v=>setForm(f=>({...f,stake:v}))} placeholder="Ex: 50" step="1"/>
                     </div>
@@ -4536,8 +4799,8 @@ const fetchAnalyse=useCallback(async()=>{
                 <div style={{display:"flex",gap:7,marginBottom:form.odds&&form.stake?12:0}}>
                   {QUICK_STAKES.map(s=>(
                     <button key={s} onClick={()=>setForm(f=>({...f,stake:String(s)}))}
-                      style={{flex:1,padding:"7px 0",borderRadius:9,border:"1px solid "+(parseFloat(form.stake)===s?"#7C3AED":"rgba(255,255,255,0.08)"),background:parseFloat(form.stake)===s?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.03)",color:parseFloat(form.stake)===s?"#A78BFA":"#9CA3AF",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,transition:"all .2s ease"}}>
-                      {s}$
+                      style={{flex:1,padding:"6px 0",borderRadius:8,border:"1px solid "+(parseFloat(form.stake)===s?"#7C3AED":"rgba(255,255,255,0.08)"),background:parseFloat(form.stake)===s?"rgba(124,58,237,0.15)":"rgba(255,255,255,0.03)",color:parseFloat(form.stake)===s?"#A78BFA":"#9CA3AF",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,transition:"all .2s ease"}}>
+                      {s}€
                     </button>
                   ))}
                 </div>
@@ -4552,7 +4815,7 @@ const fetchAnalyse=useCallback(async()=>{
 
             {/* ── SESSION MAPS ── */}
             {sessionMode&&(
-              <div style={{background:"#131525",borderRadius:14,border:"1px solid rgba(124,58,237,0.15)",padding:"10px 14px",marginBottom:8}}>
+              <div style={{background:"#131525",borderRadius:12,border:"1px solid rgba(124,58,237,0.12)",padding:"8px 12px",marginBottom:6}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                   <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Maps · Mise défaut</span>
                   <div style={{display:"flex",gap:5}}>
@@ -4597,9 +4860,9 @@ const fetchAnalyse=useCallback(async()=>{
             )}
 
             {/* ── 5. MAP TAG ── */}
-            <div style={{background:"#131525",borderRadius:14,border:"1px solid rgba(124,58,237,0.15)",padding:"10px 14px",marginBottom:8}}>
+            <div style={{background:"#131525",borderRadius:12,border:"1px solid rgba(124,58,237,0.12)",padding:"8px 12px",marginBottom:6}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                <span style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Map</span>
+                <span style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,background:"#A78BFA",color:"#000",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>5</span><span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Map</span></span>
                 {form.mapTag&&(
                   <button onClick={()=>setForm(f=>({...f,mapLocked:!f.mapLocked}))}
                     title={form.mapLocked?"Déverrouiller la map":"Verrouiller la map"}
@@ -5711,6 +5974,7 @@ const fetchAnalyse=useCallback(async()=>{
         </div>
       )}
 
+
       {/* Tableau OddsJam style */}
       {filtered.length>0&&(
         <div style={{background:"#0B1220",borderRadius:10,border:"1px solid #1F2937",overflow:"hidden"}}>
@@ -5836,74 +6100,96 @@ const fetchAnalyse=useCallback(async()=>{
 })()}
         {view==="players"&&(
           <div className="view-enter">
+            {/* Header */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div>
-                <div style={{fontSize:16,fontWeight:700,color:"#E5E7EB",letterSpacing:.3}}>Suivi</div>
-                <div style={{fontSize:11,color:"#9CA3AF",marginTop:2}}>{Object.keys(allPlayers).length} joueurs · {customCount} modifiés</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:-0.3}}>Suivi</div>
+                <div style={{display:"flex",gap:10,marginTop:3}}>
+                  <span style={{fontSize:11,color:"#6B7280"}}>{Object.keys(allPlayers).length} joueurs</span>
+                  {customCount>0&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:600}}>✎ {customCount} modifiés</span>}
+                </div>
               </div>
               <button onClick={()=>{setPform({name:"",game:"LoL",league:"",role:"",team:""});setModalPlayer(true);}}
-                style={{background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,padding:"9px 16px",color:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Inter',sans-serif",cursor:"pointer",boxShadow:"0 4px 14px rgba(124,58,237,0.35)"}}>
+                style={{background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,padding:"10px 18px",color:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Inter',sans-serif",cursor:"pointer",boxShadow:"0 4px 14px rgba(124,58,237,0.35)"}}>
                 + Ajouter
               </button>
             </div>
 
             {/* ── TOURNOIS ACTIFS ── */}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600}}>Tournois actifs</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{marginBottom:8}}>
+              <button onClick={()=>setSuiviOpen(s=>({...s,tournois:!s.tournois}))}
+                style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:suiviOpen.tournois?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"border-radius .2s"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:14}}>🏆</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Tournois actifs</span>
+                  {Object.values(activeTourneys).filter(t=>t&&!(t.end&&new Date(t.end)<new Date())).length>0&&(
+                    <span style={{background:"#22C55E",color:"#000",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:8}}>
+                      {Object.values(activeTourneys).filter(t=>t&&!(t.end&&new Date(t.end)<new Date())).length} ACTIF
+                    </span>
+                  )}
+                </div>
+                <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:suiviOpen.tournois?"rotate(180deg)":"none"}}>▼</span>
+              </button>
+              {suiviOpen.tournois&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"10px 12px",display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
                 {["CS2","Dota2","LoL","Valorant"].map(game=>{
                   const t=activeTourneys[game];
                   const cfg=GAME_CFG[game]||{};
                   const isExpired=t&&t.end&&new Date(t.end)<new Date();
                   const saved=savedTourneys[game]||[];
+                  const hasActive=t&&!isExpired;
                   return(
-                    <div key={game} style={{background:"#111827",border:"1px solid "+(t&&!isExpired?"rgba(124,58,237,0.35)":"#1F2937"),borderRadius:12,padding:"10px 14px",transition:"border-color .2s"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:t&&!isExpired?8:0}}>
-                        <GameLogo game={game} size={16}/>
-                        <span style={{fontSize:12,fontWeight:700,color:cfg.accent||"#A78BFA",minWidth:60}}>{game}</span>
-                        {/* Dropdown select */}
-                        <select
-                          value={t&&!isExpired?t.name:""}
-                          onChange={e=>{
-                            const name=e.target.value;
-                            if(!name){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}
-                            else{setActiveTourneys(prev=>({...prev,[game]:{name,end:""}}));}
-                          }}
-                          style={{flex:1,background:"#0B1220",border:"1px solid #374151",borderRadius:8,padding:"6px 10px",color:t&&!isExpired?"#E5E7EB":"#6B7280",fontSize:12,fontFamily:"'Inter',sans-serif",fontWeight:600,outline:"none",cursor:"pointer"}}>
-                          <option value="" style={{background:"#111827",color:"#6B7280"}}>Aucun tournoi actif</option>
-                          {saved.map(s=><option key={s} value={s} style={{background:"#111827",color:"#E5E7EB"}}>{s}</option>)}
-                        </select>
-                        {/* Bouton ajouter un tournoi à la liste */}
+                    <div key={game} style={{background:"#111827",border:"1px solid "+(hasActive?"rgba(124,58,237,0.3)":"#1F2937"),borderRadius:13,overflow:"hidden",transition:"border-color .2s"}}>
+                      {/* Game row */}
+                      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px"}}>
+                        <GameLogo game={game} size={18}/>
+                        <span style={{fontSize:13,fontWeight:700,color:cfg.accent||"#A78BFA",width:64,flexShrink:0}}>{game}</span>
+                        <div style={{flex:1,background:"#0B1220",borderRadius:8,border:"1px solid #1F2937",padding:"6px 10px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}
+                          onClick={()=>{
+                            if(saved.length===0){setModalTourney(game);return;}
+                            const current=t&&!isExpired?t.name:"";
+                            const opts=["", ...saved];
+                            const idx=opts.indexOf(current);
+                            const next=opts[(idx+1)%opts.length];
+                            if(!next){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}
+                            else{setActiveTourneys(prev=>({...prev,[game]:{name:next,end:""}}));}
+                          }}>
+                          <span style={{fontSize:12,color:hasActive?"#E5E7EB":"#4B5563",fontWeight:hasActive?600:400}}>
+                            {hasActive?"🏆 "+t.name:"Aucun tournoi actif"}
+                          </span>
+                          <span style={{fontSize:10,color:"#374151"}}>⌄</span>
+                        </div>
                         <button onClick={()=>setModalTourney(game)}
-                          style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:8,padding:"5px 10px",color:"#A78BFA",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600,flexShrink:0,transition:"all .2s ease"}}>
-                          + Ajouter
+                          style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:8,padding:"6px 10px",color:"#A78BFA",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:700,flexShrink:0}}>
+                          +
                         </button>
                       </div>
-                      {t&&!isExpired&&(
-                        <div style={{display:"flex",alignItems:"center",gap:8,paddingTop:6,borderTop:"1px solid rgba(124,58,237,0.15)"}}>
-                          <span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 5px rgba(34,197,94,0.6)",flexShrink:0}}/>
-                          <span style={{fontSize:11,fontWeight:700,color:"#22C55E"}}>ACTIF</span>
-                          <span style={{fontSize:11,color:"#A78BFA",flex:1}}>🏆 {t.name}</span>
-                          {t.end&&<span style={{fontSize:10,color:"#6B7280"}}>fin {new Date(t.end).toLocaleDateString("fr-CA",{day:"numeric",month:"short"})}</span>}
+                      {/* Active indicator */}
+                      {hasActive&&(
+                        <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px 8px",borderTop:"1px solid rgba(124,58,237,0.12)",background:"rgba(124,58,237,0.04)"}}>
+                          <span style={{width:5,height:5,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 5px rgba(34,197,94,0.7)",flexShrink:0}}/>
+                          <span style={{fontSize:10,fontWeight:700,color:"#22C55E"}}>ACTIF</span>
+                          {t.end&&<span style={{fontSize:10,color:"#6B7280",flex:1}}>fin {new Date(t.end).toLocaleDateString("fr-CA",{day:"numeric",month:"short"})}</span>}
                           <button onClick={()=>setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;})}
-                            style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,padding:"2px 8px",color:"#EF4444",cursor:"pointer",fontSize:10,fontFamily:"'Inter',sans-serif"}}>
+                            style={{background:"transparent",border:"none",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600,padding:"0 4px"}}>
                             Retirer
                           </button>
                         </div>
                       )}
                       {isExpired&&(
-                        <div style={{paddingTop:6,borderTop:"1px solid #1F2937",fontSize:10,color:"#EF4444",fontWeight:600}}>EXPIRÉ — sélectionne un autre tournoi</div>
+                        <div style={{padding:"5px 14px 7px",borderTop:"1px solid #1F2937",fontSize:10,color:"#EF4444",fontWeight:600}}>⚠ EXPIRÉ</div>
                       )}
                     </div>
                   );
                 })}
               </div>
+            </div>}
             </div>
 
             <PlayerSearchPanel allPlayers={allPlayers} custom={custom} setCustom={setCustom} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist}/>
             {customCount>0&&(
               <>
-                <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600}}>Mes modifications</div>
+                <div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10,fontWeight:700}}>Mes modifications</div>
                 <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden",marginBottom:14}}>
                   {customEntries.map(([key,p])=>(
                     <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderBottom:"1px solid #1F2937"}}>
@@ -5932,6 +6218,262 @@ const fetchAnalyse=useCallback(async()=>{
             <div style={{fontSize:11,color:"#6B7280",textAlign:"center",padding:12}}>
               Recherche un joueur pour l'éditer (équipe, rôle, ligue)
             </div>
+
+                  {/* ── SIMULATION ── */}
+            {(
+              <div style={{marginBottom:10}}>
+                <button onClick={()=>setShowSimulation(v=>!v)}
+                  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid "+(showSimulation?"rgba(245,158,11,0.3)":"#1F2937"),borderRadius:showSimulation?"12px 12px 0 0":"12px",padding:"11px 16px",cursor:"pointer",transition:"all .2s"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:14}}>🧮</span>
+                    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Simulation</span>
+                    <span style={{fontSize:10,color:"#6B7280"}}>Si j'avais parié sur tous les bets</span>
+                  </div>
+                  <span style={{fontSize:12,color:"#6B7280",transform:showSimulation?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+                </button>
+                {showSimulation&&(()=>{
+                  // Règles exactes du bot par sport/stat
+                  const getStake=(b)=>{
+                    const sport=b.sport||"";const stat=b.stat||"";
+                    const diff=parseFloat(b.diff||0);const odds=parseFloat(b.odds||0);
+                    const ppLine=parseFloat(b.pp_line_per_map||0);
+                    const bookLine=parseFloat(b.book_line||0);
+                    const isCS2=sport.includes("CS")||sport==="CS2";
+                    const isValo=sport.includes("Valor");
+                    const isDota=sport.includes("Dota");
+                    const isLoL=sport.includes("Legend")||sport==="League of Legends"||sport==="LoL";
+                    const isKill=stat==="kills";const isHS=stat==="headshots";
+                    if(isCS2&&isKill){
+                      if(diff>=2.0&&odds>=1.58)return 100;
+                      if(diff>=1.5&&odds>=1.60)return 87;
+                      if(diff>=1.25&&odds>=1.65)return 75;
+                    }
+                    if(isCS2&&isHS){
+                      if(diff>=2.0&&odds>=1.58)return 87;
+                      if(diff>=1.25&&odds>=1.60)return 75;
+                      if(diff>=1.0&&odds>=1.75)return 62;
+                    }
+                    if(isValo&&isKill){
+                      if(diff>=2.0&&odds>=1.58)return 100;
+                      if(diff>=1.5&&odds>=1.60)return 87;
+                      if(diff>=1.25&&odds>=1.65)return 75;
+                    }
+                    if(isDota){
+                      if(diff>=2.0&&odds>=1.60)return 87;
+                      if(diff>=1.5&&odds>=1.65)return 75;
+                      if(ppLine<8&&diff>=1.0&&odds>=1.59)return 75;
+                    }
+                    if(isLoL){
+                      if(diff>=1.0&&odds>=1.58)return 75;
+                      if(diff>=0.75&&odds>=1.60&&bookLine>=4.5)return 62;
+                      if(diff===0&&ppLine===0.5&&odds>=1.85)return 62;
+                      if(diff===0&&ppLine===0.75&&odds>=1.50)return 62;
+                    }
+                    return 0;
+                  };
+                  const simBets=analyseBets.filter(b=>b.diff!=null&&b.odds);
+                  // Get result for each bet: manual override > auto-match from real bets
+                  const getBetResult=(b)=>{
+                    const uid=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
+                    if(simManual[uid])return simManual[uid]; // manual override
+                    // Auto-match: find a real bet with same player + similar line + direction
+                    const dir=b.direction==="OVER"?"Over":"Under";
+                    const matched=settled.find(rb=>{
+                      if(!rb.player||!b.player)return false;
+                      if(rb.player.toLowerCase()!==b.player.toLowerCase())return false;
+                      if(rb.overUnder!==dir)return false;
+                      if(rb.mapTag&&b.map&&rb.mapTag!=="Map "+b.map)return false;
+                      return true;
+                    });
+                    if(matched)return matched.status==="won"?"won":matched.status==="lost"?"lost":null;
+                    return null;
+                  };
+                  // Enrich bets with uid and result
+                  const enriched=simBets.map(b=>({
+                    ...b,
+                    uid:`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`,
+                    result:getBetResult(b),
+                    stake:getStake(b),
+                  })).filter(b=>b.stake>0);
+                  // Group by sport/stat category
+                  const categories=[
+                    {label:"CS2 — Kills",filter:b=>(b.sport?.includes("CS")||b.sport==="CS2")&&b.stat==="kills"},
+                    {label:"CS2 — Headshots",filter:b=>(b.sport?.includes("CS")||b.sport==="CS2")&&b.stat==="headshots"},
+                    {label:"Valorant",filter:b=>b.sport?.includes("Valor")},
+                    {label:"Dota 2",filter:b=>b.sport?.includes("Dota")},
+                    {label:"LoL",filter:b=>b.sport?.includes("Legend")||b.sport==="LoL"},
+                  ];
+                  const results=categories.map(cat=>{
+                    const bets=enriched.filter(cat.filter);
+                    const won=bets.filter(b=>b.result==="won");
+                    const lost=bets.filter(b=>b.result==="lost");
+                    const pending=bets.filter(b=>!b.result);
+                    const profit=won.reduce((s,b)=>s+b.stake*(parseFloat(b.odds)-1),0)
+                                -lost.reduce((s,b)=>s+b.stake,0);
+                    const totalStaked=[...won,...lost].reduce((s,b)=>s+b.stake,0);
+                    const roi=totalStaked>0?(profit/totalStaked*100):0;
+                    return{label:cat.label,bets,matching:bets.length,won:won.length,lost:lost.length,pending:pending.length,profit,roi,totalStaked};
+                  }).filter(r=>r.matching>0);
+                  const totalSimProfit=results.reduce((s,r)=>s+r.profit,0);
+                  const totalSimStaked=results.reduce((s,r)=>s+r.totalStaked,0);
+                  return(
+                    <div style={{background:"#0B1220",border:"1px solid rgba(245,158,11,0.2)",borderTop:"none",borderRadius:"0 0 12px 12px",padding:"14px 16px"}}>
+                      {/* Règles affichées */}
+                      <div style={{marginBottom:14,background:"rgba(255,255,255,0.02)",borderRadius:10,padding:"10px 12px",border:"1px solid #1F2937"}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Règles du bot</div>
+                        {[
+                          {sport:"CS2 Kills",rules:["≥2.0 diff @1.58 → 100€","≥1.5 diff @1.60 → 87€","≥1.25 diff @1.65 → 75€"]},
+                          {sport:"CS2 HS",rules:["≥2.0 diff @1.58 → 87€","≥1.25 diff @1.60 → 75€","≥1.0 diff @1.75 → 62€"]},
+                          {sport:"Valorant",rules:["≥2.0 diff @1.58 → 100€","≥1.5 diff @1.60 → 87€","≥1.25 diff @1.65 → 75€"]},
+                          {sport:"Dota 2",rules:["≥2.0 diff @1.60 → 87€","≥1.5 diff @1.65 → 75€","PP<8 ≥1.0 @1.59 → 75€"]},
+                          {sport:"LoL",rules:["≥1.0 diff @1.58 → 75€","≥0.75 @1.60 line≥4.5 → 62€","UNDER spécial → 62€"]},
+                        ].map(({sport,rules})=>(
+                          <div key={sport} style={{marginBottom:6}}>
+                            <span style={{fontSize:10,fontWeight:700,color:"#A78BFA"}}>{sport}: </span>
+                            <span style={{fontSize:10,color:"#6B7280"}}>{rules.join(" · ")}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Résultats */}
+                      <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Résultats simulés</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+                        {results.map((r,idx)=>(
+                          <div key={idx} style={{background:"rgba(255,255,255,0.03)",borderRadius:10,padding:"10px 12px",border:"1px solid "+(r.profit>=0?"rgba(34,197,94,0.2)":"rgba(248,113,113,0.2)")}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                              <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>Diff ≥ {r.minDiff} → {r.stake}€</span>
+                              <span style={{fontSize:14,fontWeight:800,color:r.profit>=0?"#4ADE80":"#F87171"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                            </div>
+                            <div style={{display:"flex",gap:10}}>
+                              <span style={{fontSize:10,color:"#6B7280"}}>{r.matching} bets</span>
+                              {r.won>0&&<span style={{fontSize:10,color:"#4ADE80"}}>✓ {r.won}W</span>}
+                              {r.lost>0&&<span style={{fontSize:10,color:"#F87171"}}>✗ {r.lost}L</span>}
+                              {r.pending>0&&<span style={{fontSize:10,color:"#6B7280"}}>⏳ {r.pending}</span>}
+                              {r.totalStaked>0&&<span style={{fontSize:10,color:r.roi>=0?"#4ADE80":"#F87171",marginLeft:"auto"}}>ROI {r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Total */}
+                      {totalSimStaked>0&&(
+                        <div style={{background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(59,130,246,0.15))",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div>
+                            <div style={{fontSize:11,color:"#9CA3AF"}}>Total simulé</div>
+                            <div style={{fontSize:11,color:"#6B7280"}}>{totalSimStaked.toFixed(0)}€ misés</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <div style={{fontSize:20,fontWeight:800,color:totalSimProfit>=0?"#4ADE80":"#F87171"}}>{totalSimProfit>=0?"+":""}{totalSimProfit.toFixed(0)}€</div>
+                            <div style={{fontSize:10,color:totalSimProfit>=0?"#4ADE80":"#F87171"}}>{totalSimStaked>0?(totalSimProfit/totalSimStaked*100).toFixed(1):"0"}% ROI</div>
+                          </div>
+                        </div>
+                      )}
+                      {totalSimStaked===0&&(
+                        <div style={{textAlign:"center",padding:"12px",color:"#4B5563",fontSize:12}}>
+                          Marque les résultats ci-dessous pour voir les stats
+                        </div>
+                      )}
+
+                      {/* ── STATS DÉTAILLÉES ── */}
+                      {enriched.filter(b=>b.result).length>0&&(()=>{
+                        const done=enriched.filter(b=>b.result);
+                        const toS=arr=>({
+                          count:arr.length,
+                          won:arr.filter(b=>b.result==="won").length,
+                          profit:arr.filter(b=>b.result==="won").reduce((s,b)=>s+b.stake*(b.odds-1),0)
+                                 -arr.filter(b=>b.result==="lost").reduce((s,b)=>s+b.stake,0),
+                          staked:arr.reduce((s,b)=>s+b.stake,0),
+                        });
+                        const Row=({label,bets})=>{
+                          const s=toS(bets);
+                          const w=s.count>0?(s.won/s.count*100):0;
+                          const r=s.staked>0?(s.profit/s.staked*100):0;
+                          return(
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                              <div>
+                                <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
+                                <div style={{fontSize:10,color:"#6B7280"}}>{s.count}p · {w.toFixed(0)}%WR</div>
+                              </div>
+                              <div style={{textAlign:"right"}}>
+                                <div style={{fontSize:13,fontWeight:700,color:s.profit>=0?"#4ADE80":"#F87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                                <div style={{fontSize:9,color:r>=0?"#4ADE80":"#F87171"}}>{r>=0?"+":""}{r.toFixed(1)}%</div>
+                              </div>
+                            </div>
+                          );
+                        };
+                        const bySport={};done.forEach(b=>{const s=b.sport?.includes("CS")?"CS2":b.sport?.includes("Valor")?"Valorant":b.sport?.includes("Dota")?"Dota 2":"LoL";if(!bySport[s])bySport[s]=[];bySport[s].push(b);});
+                        const byMap={};done.forEach(b=>{const k="Map "+(b.map||"?");if(!byMap[k])byMap[k]=[];byMap[k].push(b);});
+                        const byDir={OVER:done.filter(b=>b.direction==="OVER"),UNDER:done.filter(b=>b.direction==="UNDER")};
+                        const byPlayer={};done.forEach(b=>{if(!b.player)return;if(!byPlayer[b.player])byPlayer[b.player]=[];byPlayer[b.player].push(b);});
+                        const topP=Object.entries(byPlayer).map(([p,b])=>({player:p,...toS(b),wr:toS(b).count>0?toS(b).won/toS(b).count*100:0})).sort((a,b2)=>b2.profit-a.profit).slice(0,8);
+                        return(
+                          <div style={{marginTop:12}}>
+                            <div style={{fontSize:9,color:"#A78BFA",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Stats détaillées</div>
+                            {/* Over/Under */}
+                            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
+                              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Over / Under</div>
+                              {byDir.OVER.length>0&&<Row label="🔼 Over" bets={byDir.OVER}/>}
+                              {byDir.UNDER.length>0&&<Row label="🔽 Under" bets={byDir.UNDER}/>}
+                            </div>
+                            {/* Par jeu */}
+                            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
+                              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Par jeu</div>
+                              {Object.entries(bySport).map(([s,b])=><Row key={s} label={s} bets={b}/>)}
+                            </div>
+                            {/* Par map */}
+                            {Object.keys(byMap).length>1&&(
+                              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
+                                <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Par map</div>
+                                {Object.entries(byMap).sort((a,b2)=>a[0].localeCompare(b2[0])).map(([m,b])=><Row key={m} label={m} bets={b}/>)}
+                              </div>
+                            )}
+                            {/* Top joueurs */}
+                            {topP.length>0&&(
+                              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
+                                <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Top joueurs</div>
+                                {topP.map(p=>(
+                                  <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                                    <div>
+                                      <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
+                                      <div style={{fontSize:10,color:"#6B7280"}}>{p.count}p · {p.wr.toFixed(0)}%WR</div>
+                                    </div>
+                                    <span style={{fontSize:13,fontWeight:700,color:p.profit>=0?"#4ADE80":"#F87171"}}>{p.profit>=0?"+":""}{p.profit.toFixed(0)}€</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Bets à marquer */}
+                      <div style={{marginTop:12}}>
+                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Marquer les résultats</div>
+                        {enriched.map((b,i)=>{
+                          const res=b.result;
+                          return(
+                            <div key={b.uid+i} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.02)",borderRadius:9,padding:"8px 10px",border:"1px solid "+(res==="won"?"rgba(34,197,94,0.2)":res==="lost"?"rgba(248,113,113,0.2)":"#1F2937"),marginBottom:5}}>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB",textTransform:"capitalize"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400}}>Map {b.map}</span></div>
+                                <div style={{fontSize:10,color:"#6B7280"}}>{b.direction} · @{b.odds} · {b.stake}€ · {b.sport?.slice(0,4)}</div>
+                              </div>
+                              {res&&<span style={{fontSize:10,fontWeight:700,color:res==="won"?"#4ADE80":"#F87171"}}>{res==="won"?"+":"−"}{res==="won"?(b.stake*(b.odds-1)).toFixed(0):b.stake}€</span>}
+                              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                                <button onClick={()=>setSimResult(b.uid,res==="won"?null:"won")}
+                                  style={{width:28,height:28,borderRadius:7,border:"1.5px solid "+(res==="won"?"#22C55E":"#1F2937"),background:res==="won"?"#22C55E":"rgba(34,197,94,0.06)",color:res==="won"?"#000":"#22C55E",cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
+                                <button onClick={()=>setSimResult(b.uid,res==="lost"?null:"lost")}
+                                  style={{width:28,height:28,borderRadius:7,border:"1.5px solid "+(res==="lost"?"#F87171":"#1F2937"),background:res==="lost"?"#F87171":"rgba(248,113,113,0.06)",color:res==="lost"?"#000":"#F87171",cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>✗</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
 
             {/* ── JOUEURS MASQUÉS ── */}
             {blacklist.size>0&&(
@@ -5967,15 +6509,24 @@ const fetchAnalyse=useCallback(async()=>{
             )}
             {/* ── BOOKMAKERS ── */}
             <div style={{marginBottom:20}}>
-              <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600}}>
-                💰 Bookmakers
-              </div>
-              <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden",marginBottom:8}}>
+              <button onClick={()=>setSuiviOpen(s=>({...s,bookmakers:!s.bookmakers}))}
+                style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:suiviOpen.bookmakers?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"border-radius .2s"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:14}}>💰</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Bookmakers</span>
+                  <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:8}}>{bookmakers.length}</span>
+                </div>
+                <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:suiviOpen.bookmakers?"rotate(180deg)":"none"}}>▼</span>
+              </button>
+              {suiviOpen.bookmakers&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",overflow:"hidden",marginBottom:8}}>
+              <div style={{background:"#111827",borderRadius:0,overflow:"hidden"}}>
                 {bookmakers.map((bk,idx)=>{
                   const logo=BK_LOGOS[bk]||bkPhotos[bk];
                   return(
-                    <div key={bk} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:idx<bookmakers.length-1?"1px solid #1F2937":"none"}}>
-                      {logo&&<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:6,objectFit:"cover",flexShrink:0}}/>}
+                    <div key={bk} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:idx<bookmakers.length-1?"1px solid #1F2937":"none"}}>
+                      <div style={{width:34,height:34,borderRadius:9,overflow:"hidden",flexShrink:0,background:"#0B1220",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {logo?<img src={logo} alt={bk} style={{width:34,height:34,objectFit:"cover"}}/>:<span style={{fontSize:11,fontWeight:700,color:"#6B7280"}}>{bk.slice(0,2)}</span>}
+                      </div>
                       <span style={{flex:1,fontWeight:600,fontSize:14,color:"#E5E7EB"}}>{bk}</span>
                       <button onClick={()=>{
                         const newName=prompt("Nouveau nom pour "+bk+":",bk);
@@ -5983,20 +6534,20 @@ const fetchAnalyse=useCallback(async()=>{
                         setBookmakers(b=>b.map(x=>x===bk?newName.trim():x));
                         setBets(b=>b.map(bet=>bet.bookmaker===bk?{...bet,bookmaker:newName.trim()}:bet));
                         showToast(bk+" → "+newName.trim());
-                      }} style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:7,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                      }} style={{width:32,height:32,background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,color:"#3B82F6",cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
                         ✎
                       </button>
                       <button onClick={()=>{
                         if(!window.confirm("Supprimer "+bk+" ?"))return;
                         setBookmakers(b=>b.filter(x=>x!==bk));
                         showToast(bk+" supprimé","#EF4444");
-                      }} style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif"}}>
+                      }} style={{width:32,height:32,background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.18)",borderRadius:8,color:"#EF4444",cursor:"pointer",fontSize:15,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
                         ×
                       </button>
                     </div>
                   );
                 })}
-              </div>
+              </div></div>}
               <button onClick={()=>setModalBK(true)}
                 style={{width:"100%",padding:"11px",background:"rgba(124,58,237,0.08)",border:"1px dashed rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
                 + Ajouter un bookmaker
@@ -6497,131 +7048,133 @@ const fetchAnalyse=useCallback(async()=>{
         {/* ── MODAL SPLIT BET ── */}
         {splitModal&&(
           <div className="moverlay" onClick={()=>setSplitModal(null)}>
-            <div className="modal" onClick={e=>e.stopPropagation()}>
-              <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",marginBottom:4}}>Ajouter un bookmaker</div>
-              <div style={{fontSize:11,color:"#6B7280",marginBottom:14}}>La mise s'additionne au pari existant</div>
+            <div className="modal" style={{padding:0,overflow:"hidden",borderRadius:24}} onClick={e=>e.stopPropagation()}>
 
-              {/* Pari source */}
-              <div style={{background:"#0B1220",borderRadius:10,padding:"10px 14px",marginBottom:14}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <GameLogo game={splitModal.game} size={14}/>
-                  <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{splitModal.player}</span>
-                  <span style={{fontSize:11,color:"#9CA3AF"}}>{splitModal.description}</span>
-                </div>
-                {/* Existing splits */}
-                <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:3}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
-                    <span style={{color:"#9CA3AF"}}>{splitModal.bookmaker}</span>
-                    <span style={{color:"#E5E7EB",fontWeight:600}}>{(splitModal.stake-(splitModal.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}€ @{splitModal.odds}</span>
+              {/* Header */}
+              <div style={{padding:"18px 20px 14px",background:"linear-gradient(135deg,#111827,#0D1626)",borderBottom:"1px solid #1F2937"}}>
+                <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:"-0.3px"}}>+ Bookmaker</div>
+                <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>La mise s'additionne au pari existant</div>
+              </div>
+
+              <div style={{padding:"16px 20px 20px",display:"flex",flexDirection:"column",gap:14}}>
+
+                {/* Pari source — compact card */}
+                <div style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"12px 14px",border:"1px solid #1F2937"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <GameLogo game={splitModal.game} size={16}/>
+                    <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{splitModal.player}</span>
+                    <span style={{fontSize:12,color:"#6B7280"}}>{splitModal.description}</span>
                   </div>
-                  {(splitModal.splits||[]).map((sp,i)=>(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
-                      <span style={{color:"#9CA3AF"}}>{sp.bookmaker}</span>
-                      <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}€ @{sp.odds}</span>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
+                      <span style={{color:"#9CA3AF"}}>{splitModal.bookmaker}</span>
+                      <span style={{color:"#E5E7EB",fontWeight:600}}>{(splitModal.stake-(splitModal.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}€ <span style={{color:"#6B7280"}}>@{splitModal.odds}</span></span>
                     </div>
-                  ))}
-                  <div style={{borderTop:"1px solid #1F2937",paddingTop:4,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700}}>
-                    <span style={{color:"#6B7280"}}>Total actuel</span>
-                    <span style={{color:"#E5E7EB"}}>{splitModal.stake}€</span>
+                    {(splitModal.splits||[]).map((sp,i)=>(
+                      <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
+                        <span style={{color:"#9CA3AF"}}>{sp.bookmaker}</span>
+                        <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}€ <span style={{color:"#6B7280"}}>@{sp.odds}</span></span>
+                      </div>
+                    ))}
+                    <div style={{borderTop:"1px solid #1F2937",paddingTop:6,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700}}>
+                      <span style={{color:"#6B7280"}}>Total</span>
+                      <span style={{color:"#A78BFA"}}>{splitModal.stake}€</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Bookmaker — tous affichés, déjà utilisés en mode édition */}
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Bookmaker</div>
-                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {bookmakers.filter(bk=>bk!==splitModal.bookmaker).map(bk=>{
-                    const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
-                    const isOn=splitForm.bookmaker===bk;
-                    const alreadySplit=(splitModal.splits||[]).find(s=>s.bookmaker===bk);
-                    return(
-                      <div key={bk} style={{position:"relative"}}>
-                        <button onClick={()=>setSplitForm(f=>({...f,bookmaker:bk,stake:alreadySplit?String(alreadySplit.stake):f.stake,odds:alreadySplit?String(alreadySplit.odds):f.odds}))}
-                          title={bk+(alreadySplit?" (modifier)":"")}
-                          style={{width:44,height:44,borderRadius:10,border:"2px solid "+(isOn?"#22C55E":alreadySplit?"rgba(251,191,36,0.5)":"#1F2937"),background:isOn?"rgba(34,197,94,0.1)":alreadySplit?"rgba(251,191,36,0.06)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",boxShadow:isOn?"0 0 8px rgba(34,197,94,0.3)":"none"}}>
-                          {logo
-                            ? <img src={logo} alt={bk} style={{width:28,height:28,borderRadius:6,objectFit:"cover",opacity:1}}/>
-                            : <span style={{fontSize:10,fontWeight:700,color:isOn?"#22C55E":alreadySplit?"#FBbf24":"#6B7280"}}>{bk.slice(0,3)}</span>
-                          }
-                        </button>
-                        {alreadySplit&&<div style={{position:"absolute",top:-4,right:-4,background:"#F59E0B",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                          <span style={{fontSize:7,color:"#000",fontWeight:800}}>✎</span>
-                        </div>}
-                      </div>
-                    );
-                  })}
+                {/* Bookmakers */}
+                <div>
+                  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Bookmaker</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {bookmakers.filter(bk=>bk!==splitModal.bookmaker).map(bk=>{
+                      const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                      const isOn=splitForm.bookmaker===bk;
+                      const alreadySplit=(splitModal.splits||[]).find(s=>s.bookmaker===bk);
+                      return(
+                        <div key={bk} style={{position:"relative"}}>
+                          <button onClick={()=>setSplitForm(f=>({...f,bookmaker:bk,stake:alreadySplit?String(alreadySplit.stake):f.stake,odds:alreadySplit?String(alreadySplit.odds):f.odds}))}
+                            style={{width:48,height:48,borderRadius:12,border:"2px solid "+(isOn?"#A78BFA":alreadySplit?"rgba(251,191,36,0.4)":"#1F2937"),background:isOn?"rgba(124,58,237,0.15)":alreadySplit?"rgba(251,191,36,0.06)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",boxShadow:isOn?"0 0 12px rgba(124,58,237,0.3)":"none"}}>
+                            {logo?<img src={logo} alt={bk} style={{width:30,height:30,borderRadius:7,objectFit:"cover"}}/>:<span style={{fontSize:11,fontWeight:700,color:isOn?"#A78BFA":alreadySplit?"#F59E0B":"#6B7280"}}>{bk.slice(0,3)}</span>}
+                          </button>
+                          {alreadySplit&&<div style={{position:"absolute",top:-3,right:-3,background:"#F59E0B",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✎</span></div>}
+                          {isOn&&<div style={{position:"absolute",top:-3,right:-3,background:"#A78BFA",borderRadius:"50%",width:12,height:12,border:"2px solid #0B1220"}}/>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {splitForm.bookmaker&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:8}}>✓ {splitForm.bookmaker}{(splitModal.splits||[]).find(s=>s.bookmaker===splitForm.bookmaker)?" — modifier le split":""}</div>}
                 </div>
-                {splitForm.bookmaker&&<div style={{fontSize:11,color:"#22C55E",fontWeight:600,marginTop:6}}>✓ {splitForm.bookmaker}{(splitModal.splits||[]).find(s=>s.bookmaker===splitForm.bookmaker)?" — modification du split existant":""}</div>}
-              </div>
 
-              {/* Cote */}
-              <div style={{marginBottom:12}}>
-                <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Cote</div>
-                <input className="ifield" type="number" step="0.01" placeholder={"Ex: "+splitModal.odds}
-                  value={splitForm.odds} onChange={e=>setSplitForm(f=>({...f,odds:e.target.value}))}
-                  style={{marginBottom:0}}/>
-              </div>
+                {/* Cote + Mise côte à côte */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <div>
+                    <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Cote</div>
+                    <input className="ifield" type="number" step="0.01" placeholder={"@"+splitModal.odds}
+                      value={splitForm.odds} onChange={e=>setSplitForm(f=>({...f,odds:e.target.value}))}
+                      style={{marginBottom:0}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Mise (€)</div>
+                    <input className="ifield" type="number" step="1" placeholder="Ex: 30"
+                      value={splitForm.stake} onChange={e=>setSplitForm(f=>({...f,stake:e.target.value}))}
+                      style={{marginBottom:0}}/>
+                  </div>
+                </div>
 
-              {/* Mise */}
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Mise à ajouter (€)</div>
-                <input className="ifield" type="number" step="1" placeholder="Ex: 30"
-                  value={splitForm.stake} onChange={e=>setSplitForm(f=>({...f,stake:e.target.value}))}
-                  style={{marginBottom:8}}/>
+                {/* Raccourcis mise intelligents */}
                 {(()=>{
-                  // Smart shortcuts: complements to reach unit thresholds
                   const UNITS=[50,62,75,87,100];
-                  const currentStake=splitModal.stake; // mise déjà placée
-                  const valid=UNITS
-                    .map(u=>({unit:u,add:Math.round(u-currentStake)}))
-                    .filter(x=>x.add>0);
+                  const valid=UNITS.map(u=>({unit:u,add:Math.round(u-splitModal.stake)})).filter(x=>x.add>0);
+                  if(!valid.length)return null;
                   return(
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",gap:6}}>
                       {valid.map(({unit,add})=>(
                         <button key={unit} onClick={()=>setSplitForm(f=>({...f,stake:String(add)}))}
-                          style={{flex:"1 1 auto",padding:"7px 4px",borderRadius:8,border:"1px solid "+(splitForm.stake===String(add)?"#22C55E":"#1F2937"),background:splitForm.stake===String(add)?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.03)",color:splitForm.stake===String(add)?"#22C55E":"#9CA3AF",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,textAlign:"center",lineHeight:1.3}}>
-                          <div>{add}€</div>
-                          <div style={{fontSize:9,color:splitForm.stake===String(add)?"#22C55E":"#4B5563",marginTop:1}}>→{unit}€</div>
+                          style={{flex:"1 1 auto",padding:"8px 4px",borderRadius:10,border:"1.5px solid "+(splitForm.stake===String(add)?"#A78BFA":"#1F2937"),background:splitForm.stake===String(add)?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",transition:"all .15s"}}>
+                          <div style={{fontSize:12,fontWeight:700,color:splitForm.stake===String(add)?"#A78BFA":"#E5E7EB"}}>{add}€</div>
+                          <div style={{fontSize:9,color:"#6B7280",marginTop:1}}>→{unit}€</div>
                         </button>
                       ))}
                     </div>
                   );
                 })()}
-                {splitForm.stake&&<div style={{marginTop:8,fontSize:11,color:"#6B7280"}}>
-                  Total → <span style={{color:"#E5E7EB",fontWeight:700}}>{(splitModal.stake+parseFloat(splitForm.stake||0)).toFixed(0)}€</span>
-                </div>}
-              </div>
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <button onClick={()=>setSplitModal(null)}
-                  style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#9CA3AF",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Annuler</button>
-                <button disabled={!splitForm.bookmaker||!splitForm.stake}
-                  onClick={()=>{
-                    if(!splitForm.bookmaker||!splitForm.stake)return;
-                    const addStake=parseFloat(splitForm.stake);
-                    const addOdds=parseFloat(splitForm.odds)||splitModal.odds;
-                    const newSplit={bookmaker:splitForm.bookmaker,stake:addStake,odds:addOdds};
-                    const existingIdx=(splitModal.splits||[]).findIndex(s=>s.bookmaker===splitForm.bookmaker);
-                    let newSplits,newTotalStake;
-                    if(existingIdx>=0){
-                      // Modifier split existant
-                      const oldStake=(splitModal.splits||[])[existingIdx].stake;
-                      newSplits=(splitModal.splits||[]).map((s,i)=>i===existingIdx?newSplit:s);
-                      newTotalStake=splitModal.stake-oldStake+addStake;
-                    } else {
-                      newSplits=[...(splitModal.splits||[]),newSplit];
-                      newTotalStake=splitModal.stake+addStake;
-                    }
-                    // Recalculate profit with total stake (use original odds for simplicity)
-                    const newProfit=calcProfit(splitModal.status,newTotalStake,splitModal.odds);
-                    setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit}:bet));
-                    showToast(splitForm.bookmaker+" "+addStake+"€ ajouté · Total "+newTotalStake.toFixed(0)+"€","#22C55E");
-                    setSplitModal(null);
-                  }}
-                  style={{padding:"12px",background:splitForm.bookmaker&&splitForm.stake?"linear-gradient(135deg,#22C55E,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:splitForm.bookmaker&&splitForm.stake?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                  Ajouter
-                </button>
+                {splitForm.stake&&<div style={{fontSize:12,color:"#6B7280",textAlign:"center"}}>
+                  Total → <span style={{color:"#A78BFA",fontWeight:800,fontSize:14}}>{(splitModal.stake+parseFloat(splitForm.stake||0)).toFixed(0)}€</span>
+                </div>}
+
+                {/* Boutons */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:8}}>
+                  <button onClick={()=>setSplitModal(null)}
+                    style={{padding:"13px",background:"rgba(255,255,255,0.05)",border:"1px solid #1F2937",borderRadius:12,color:"#6B7280",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13}}>
+                    Annuler
+                  </button>
+                  <button disabled={!splitForm.bookmaker||!splitForm.stake}
+                    onClick={()=>{
+                      if(!splitForm.bookmaker||!splitForm.stake)return;
+                      const addStake=parseFloat(splitForm.stake);
+                      const addOdds=parseFloat(splitForm.odds)||splitModal.odds;
+                      const newSplit={bookmaker:splitForm.bookmaker,stake:addStake,odds:addOdds};
+                      const existingIdx=(splitModal.splits||[]).findIndex(s=>s.bookmaker===splitForm.bookmaker);
+                      let newSplits,newTotalStake;
+                      if(existingIdx>=0){
+                        const oldStake=(splitModal.splits||[])[existingIdx].stake;
+                        newSplits=(splitModal.splits||[]).map((s,i)=>i===existingIdx?newSplit:s);
+                        newTotalStake=splitModal.stake-oldStake+addStake;
+                      } else {
+                        newSplits=[...(splitModal.splits||[]),newSplit];
+                        newTotalStake=splitModal.stake+addStake;
+                      }
+                      const newProfit=calcProfit(splitModal.status,newTotalStake,splitModal.odds);
+                      setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit}:bet));
+                      showToast(splitForm.bookmaker+" "+addStake+"€ · Total "+newTotalStake.toFixed(0)+"€","#A78BFA");
+                      setSplitModal(null);
+                    }}
+                    style={{padding:"13px",background:splitForm.bookmaker&&splitForm.stake?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:12,color:splitForm.bookmaker&&splitForm.stake?"#fff":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,boxShadow:splitForm.bookmaker&&splitForm.stake?"0 4px 20px rgba(124,58,237,0.35)":"none",transition:"all .15s"}}>
+                    + Ajouter
+                  </button>
+                </div>
               </div>
             </div>
           </div>
