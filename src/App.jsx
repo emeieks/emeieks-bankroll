@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 
 
 // ── Supabase — sync sans login ────────────────────────────────────────────
@@ -1859,8 +1859,11 @@ const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 
 function toDateKey(dt){return dt?dt.slice(0,10):"";}
 function nowDT(){
-  const n=new Date(),p=v=>String(v).padStart(2,"0");
-  return n.getFullYear()+"-"+p(n.getMonth()+1)+"-"+p(n.getDate())+"T"+p(n.getHours())+":"+p(n.getMinutes());
+  // Toujours utiliser l'heure de Montréal (America/Toronto)
+  const p=v=>String(v).padStart(2,"0");
+  const now=new Date();
+  const mtl=new Date(now.toLocaleString("en-CA",{timeZone:"America/Toronto"}));
+  return mtl.getFullYear()+"-"+p(mtl.getMonth()+1)+"-"+p(mtl.getDate())+"T"+p(mtl.getHours())+":"+p(mtl.getMinutes());
 }
 function calcProfit(status,stake,odds){
   if(status==="won")return stake*(odds-1);
@@ -1946,13 +1949,14 @@ function addRecentPlayer(key){
   }catch{}
 }
 
-function PlayerAC({value,onChange,allPlayers,onConfirm,activeTourneys={},betFreq={}}){
+const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm,activeTourneys={},betFreq={}},fwdRef){
   const [open,setOpen]=useState(false);
   const [inputVal,setInputVal]=useState(value);
   const ref=useRef(null);
   const inputRef=useRef(null);
   const debounceRef=useRef(null);
   const [recents,setRecents]=useState(()=>getRecentPlayers());
+  useImperativeHandle(fwdRef,()=>({focus:()=>{if(inputRef.current){inputRef.current.focus();setOpen(true);}}}));
 
   useEffect(()=>{setInputVal(value);},[value]);
 
@@ -2032,16 +2036,22 @@ function PlayerAC({value,onChange,allPlayers,onConfirm,activeTourneys={},betFreq
                 {tag==="recent"&&<span style={{fontSize:10,color:"#6B7280"}}>🕐</span>}
                 {tag==="freq"&&freq>0&&<span style={{fontSize:9,color:"#A78BFA",background:"rgba(124,58,237,0.1)",padding:"1px 5px",borderRadius:4,fontWeight:700,flexShrink:0}}>{freq}</span>}
                 <GameLogo game={p.game} size={16}/>
-                {(()=>{const t=activeTourneys[p.game];const hasTourney=t&&(!t.end||new Date(t.end)>=new Date());return hasTourney?<span style={{fontSize:12,flexShrink:0}} title={t.name}>🏆</span>:null;})()}
                 <div style={{flex:1}}>
                   <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{key}</span>
                   <span style={{fontSize:11,color:"#9CA3AF",marginLeft:7}}>{p.team}</span>
                 </div>
-                <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                  {p.league&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
-                  <span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>
-                  {isSelected&&<span style={{color:"#22C55E",fontSize:14,fontWeight:700,marginLeft:2}}>✓</span>}
-                </div>
+                {(()=>{
+                  const t=activeTourneys[p.game];
+                  const hasTourney=t&&(!t.end||new Date(t.end)>=new Date());
+                  return(
+                    <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                      {p.league&&!hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
+                      {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4}}>{t.name}</span>}
+                      <span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>
+                      {isSelected&&<span style={{color:"#22C55E",fontSize:14,fontWeight:700,marginLeft:2}}>✓</span>}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -2049,7 +2059,7 @@ function PlayerAC({value,onChange,allPlayers,onConfirm,activeTourneys={},betFreq
       )}
     </div>
   );
-}
+});
 
 
 // ── PlayerSearchPanel ──────────────────────────────────────────────────────
@@ -2698,6 +2708,7 @@ function toggleHideAnalyseBet(key){
 
   // ── Reouvrir clavier iPhone au retour sur l'app ──────────────────────────
   const lastFocusedRef = useRef(null);
+  const playerACRef = useRef(null);
   useEffect(()=>{
     function onFocusIn(e){
       if(e.target&&(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT")){
@@ -3363,12 +3374,57 @@ function toggleHideAnalyseBet(key){
     setter(a=>a.includes(val)?a.filter(x=>x!==val):[...a,val]);
   }
 
+  // ── SVG icons for nav ────────────────────────────────────────────────────
+  const NavIcon={
+    home:({active})=>(
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12L12 3l9 9"/>
+        <path d="M9 21V12h6v9"/>
+        <rect x="3" y="12" width="18" height="9" rx="1" fill={active?"rgba(167,139,250,0.12)":"none"} stroke="none"/>
+        <path d="M3 12L12 3l9 9v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke={active?"#A78BFA":"#6B7280"} fill={active?"rgba(167,139,250,0.1)":"none"}/>
+        <polyline points="9,21 9,12 15,12 15,21"/>
+      </svg>
+    ),
+    mesparis:({active,count})=>(
+      <div style={{position:"relative",display:"inline-flex"}}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="2" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+          <line x1="8" y1="7" x2="16" y2="7"/>
+          <line x1="8" y1="11" x2="16" y2="11"/>
+          <line x1="8" y1="15" x2="12" y2="15"/>
+          <circle cx="17" cy="17" r="3" fill={active?"#A78BFA":"#6B7280"} stroke="none" opacity={active?1:0.5}/>
+          <polyline points="15.5,17 16.5,18 18.5,16" stroke="#0B1220" strokeWidth="1.5" fill="none"/>
+        </svg>
+        {count>0&&<span style={{position:"absolute",top:-4,right:-6,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:8,fontWeight:800,padding:"1px 4px",minWidth:14,textAlign:"center",lineHeight:"13px",border:"1.5px solid #0D1526"}}>{count}</span>}
+      </div>
+    ),
+    analyse:({active})=>(
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="10" cy="10" r="6" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+        <line x1="14.5" y1="14.5" x2="20" y2="20"/>
+        <line x1="8" y1="10" x2="12" y2="10"/>
+        <line x1="10" y1="8" x2="10" y2="12"/>
+      </svg>
+    ),
+    suivi:({active})=>(
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="3" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+        <circle cx="5" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
+        <circle cx="19" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
+        <path d="M12 11c-4 0-6 2-6 4"/>
+        <path d="M12 11c4 0 6 2 6 4"/>
+        <line x1="5" y1="17" x2="5" y2="17.01"/>
+        <line x1="19" y1="17" x2="19" y2="17.01"/>
+      </svg>
+    ),
+  };
+
   const NAV=[
-    {id:"home",icon:"🏠",label:"Accueil"},
-    {id:"mesparis",icon:"📋",label:"Mes Paris"},
-    {id:"add",icon:"➕",label:"Pari"},
-    {id:"analyse",icon:"🔍",label:"Analyse"},
-    {id:"players",icon:"⚙️",label:"Suivi"},
+    {id:"home",label:"Accueil"},
+    {id:"mesparis",label:"Mes Paris"},
+    {id:"add",label:"Pari"},
+    {id:"analyse",label:"Analyse"},
+    {id:"players",label:"Suivi"},
   ];
 
 const fetchAnalyse=useCallback(async()=>{
@@ -3407,9 +3463,10 @@ const fetchAnalyse=useCallback(async()=>{
         .ou-btn:active{transform:scale(.97);}
         .ou-btn.over.on{border-color:#22C55E;background:rgba(34,197,94,0.1);color:#22C55E;box-shadow:0 0 16px rgba(74,222,128,0.15);}
         .ou-btn.under.on{border-color:#EF4444;background:rgba(239,68,68,0.1);color:#EF4444;box-shadow:0 0 16px rgba(239,68,68,0.12);}
-        .navitem{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;padding:8px 6px;border-radius:10px;transition:color .2s ease,transform .15s ease;font-family:'Inter',sans-serif;color:#6B7280;min-width:56px;will-change:transform,color;}
+        .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 6px;border-radius:10px;transition:color .2s ease,transform .15s ease;font-family:'Inter',sans-serif;color:#6B7280;min-width:56px;will-change:transform,color;}
         .navitem:active{transform:scale(.92);}
         .navitem.on{color:#A78BFA;}
+        .navitem.on svg{filter:drop-shadow(0 0 6px rgba(167,139,250,0.45));}
         .navitem .lbl{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;transition:color .2s ease;}
         .stat-bloc{background:#111827;border:1px solid #1F2937;border-radius:14px;overflow:hidden;}
         .stat-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1F2937;transition:background .15s ease;}
@@ -3509,7 +3566,7 @@ const fetchAnalyse=useCallback(async()=>{
                 ))}
                 <button onClick={()=>setHomeChartModal(true)}
                   style={{padding:"6px 10px",borderRadius:7,border:"1.5px solid "+((homeChartFilters.games.length>0||homeChartFilters.overUnder!=="All"||homeChartFilters.live!=="All"||homeChartFilters.bookmakers.length>0||homeChartFilters.dateFrom||homeChartFilters.dateTo)?"rgba(167,139,250,0.6)":"rgba(255,255,255,0.08)"),background:(homeChartFilters.games.length>0||homeChartFilters.overUnder!=="All"||homeChartFilters.live!=="All"||homeChartFilters.bookmakers.length>0||homeChartFilters.dateFrom||homeChartFilters.dateTo)?"rgba(124,58,237,0.2)":"transparent",color:(homeChartFilters.games.length>0||homeChartFilters.overUnder!=="All"||homeChartFilters.live!=="All"||homeChartFilters.bookmakers.length>0||homeChartFilters.dateFrom||homeChartFilters.dateTo)?"#A78BFA":"rgba(255,255,255,0.3)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
-                  ⚙️
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 </button>
               </div>
             </div>
@@ -3536,12 +3593,21 @@ const fetchAnalyse=useCallback(async()=>{
             {/* Boutons Calendrier + Filtres */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
               <button onClick={()=>setView("calendrier")}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"16px 8px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:15}}>
-                📅 Calendrier
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"16px 8px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:14}}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" fill="rgba(167,139,250,0.08)"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                  <rect x="7" y="14" width="3" height="3" rx="0.5" fill="#A78BFA" stroke="none"/>
+                </svg>
+                Calendrier
               </button>
               <button onClick={()=>setView("filtres")}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"16px 8px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:15}}>
-                🔍 Filtres
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"16px 8px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:14}}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="4,4 20,4 14,12 14,20 10,20 10,12" fill="rgba(96,165,250,0.1)"/>
+                </svg>
+                Filtres
               </button>
             </div>
 
@@ -3779,17 +3845,15 @@ const fetchAnalyse=useCallback(async()=>{
                 <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
                   {/* Ligne 1 : Filtres + Stats + Sél + Effacer */}
                   <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                    <button onClick={()=>setBetGroupMode(m=>m==="jour"?"semaine":"jour")}
-                      style={{display:"flex",alignItems:"center",gap:4,padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(betGroupMode==="semaine"?"#F59E0B":"#1F2937"),background:betGroupMode==="semaine"?"rgba(245,158,11,0.1)":"#111827",color:betGroupMode==="semaine"?"#F59E0B":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      {betGroupMode==="semaine"?"📅 Semaine":"📅 Jour"}
-                    </button>
                     <button onClick={()=>setView("filtres")}
-                      style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"#1F2937"),background:activeFilters>0?"rgba(124,58,237,0.1)":"#111827",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      🔍 Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:2}}>{activeFilters}</span>}
+                      style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"rgba(255,255,255,0.08)"),background:activeFilters>0?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+                      Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:1}}>{activeFilters}</span>}
                     </button>
                     <button onClick={()=>setView("statistiques")}
-                      style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:9,border:"1px solid #1F2937",background:"#111827",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      📊 Stats
+                      style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                      Stats
                     </button>
                     {activeFilters>0&&(
                       <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
@@ -3798,11 +3862,33 @@ const fetchAnalyse=useCallback(async()=>{
                       </button>
                     )}
                     <div style={{flex:1}}/>
+                    <button onClick={()=>setBetGroupMode(m=>m==="jour"?"semaine":"jour")}
+                      style={{padding:"7px 10px",borderRadius:9,border:"1.5px solid "+(betGroupMode==="semaine"?"#F59E0B":"rgba(255,255,255,0.08)"),background:betGroupMode==="semaine"?"rgba(245,158,11,0.08)":"rgba(255,255,255,0.03)",color:betGroupMode==="semaine"?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
+                      {betGroupMode==="semaine"?"Sem.":"Jour"}
+                    </button>
                     <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
                       style={{padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(selectMode?"#22C55E":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#22C55E":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
                       {selectMode?"✕ Annuler":"Sél."}
                     </button>
                   </div>
+
+                  {/* Ligne 2 : Logos bookmakers pour filtrage rapide */}
+                  {bookmakers.length>0&&(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",paddingTop:2}}>
+                      {bookmakers.map(bk=>{
+                        const on=fBKs.includes(bk);
+                        const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+                        return(
+                          <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])}
+                            title={bk}
+                            style={{width:38,height:38,borderRadius:10,border:"1.5px solid "+(on?"#22C55E":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all .15s",flexShrink:0}}>
+                            {logo?<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:5,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700,textAlign:"center",lineHeight:1,padding:"0 2px"}}>{bk.slice(0,4)}</span>}
+                            {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:11,height:11,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
                 </div>
               );
@@ -3838,11 +3924,12 @@ const fetchAnalyse=useCallback(async()=>{
               const pending=filtered.filter(b=>b.status==="pending");
               const settled=filtered.filter(b=>b.status!=="pending");
 
-              // Group settled by settle date (settledAt → date), fallback to datetime date
+              // Group settled by the date the bet was PLACED (datetime), not the settle date
+              // Ainsi un pari placé dimanche et validé lundi apparaît sous dimanche
               const settledByDay={};
               const settledDayKeys=[];
               settled.forEach(b=>{
-                const sk=b.settledAt?new Date(b.settledAt).toISOString().slice(0,10):toDateKey(b.datetime)||"?";
+                const sk=toDateKey(b.datetime)||"?";
                 if(!settledByDay[sk]){settledByDay[sk]=[];settledDayKeys.push(sk);}
                 settledByDay[sk].push(b);
               });
@@ -4171,7 +4258,10 @@ const fetchAnalyse=useCallback(async()=>{
         {view==="filtres"&&(
           <div className="view-enter">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>🔍 Filtres</div>
+              <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1,display:"flex",alignItems:"center",gap:7}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="4,4 20,4 14,12 14,20 10,20 10,12" fill="rgba(167,139,250,0.15)"/></svg>
+                Filtres
+              </div>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>{setFGames([]);setFBKs([]);setFPlayer("");setFStatus("All");setFOverUnder("All");setFLive(false);setFHeadshot(false);setFDuel(false);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFRole("All");setFLeague("All");setFTourneys(new Set());setFiltresPage(1);}}
                   style={{padding:"7px 14px",background:"rgba(255,255,255,0.05)",border:"1px solid #1F2937",borderRadius:9,color:"#6B7280",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
@@ -4738,7 +4828,7 @@ const fetchAnalyse=useCallback(async()=>{
                 <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,background:"#A78BFA",color:"#000",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>2</span><span style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Joueur</span></div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,background:"#0D0F1E",borderRadius:10,padding:"2px 10px",border:"1px solid rgba(255,255,255,0.06)"}}>
-                <PlayerAC value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
+                <PlayerAC ref={playerACRef} value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
               </div>
               {form.autoInfo&&(
                 <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.04)",border:"1.5px solid rgba(255,255,255,0.18)",borderRadius:10,padding:"7px 12px",flexWrap:"wrap"}}>
@@ -6008,7 +6098,9 @@ const fetchAnalyse=useCallback(async()=>{
 
       {!analyseLoading&&analyseBets.length===0&&(
         <div style={{textAlign:"center",padding:"40px 20px",color:"#4B5563"}}>
-          <div style={{fontSize:32,marginBottom:12}}>🔍</div>
+          <div style={{fontSize:32,marginBottom:12,display:"flex",justifyContent:"center"}}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7"/><line x1="15.5" y1="15.5" x2="21" y2="21"/><line x1="7" y1="10" x2="13" y2="10"/><line x1="10" y1="7" x2="10" y2="13"/></svg>
+          </div>
           <div style={{fontSize:14,fontWeight:600,color:"#6B7280",marginBottom:6}}>Aucun bet comparé</div>
           <div style={{fontSize:12,color:"#4B5563",marginBottom:16}}>Lance le pipeline pour analyser les props</div>
           <button onClick={fetchAnalyse} style={{padding:"10px 20px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
@@ -6230,293 +6322,26 @@ const fetchAnalyse=useCallback(async()=>{
             </div>
 
             <PlayerSearchPanel allPlayers={allPlayers} custom={custom} setCustom={setCustom} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist}/>
-            {customCount>0&&(
-              <>
-                <div style={{fontSize:9,color:"#6B7280",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10,fontWeight:700}}>Mes modifications</div>
-                <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden",marginBottom:14}}>
-                  {customEntries.map(([key,p])=>(
-                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderBottom:"1px solid #1F2937"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:9}}>
-                        <GameLogo game={p.game} size={18}/>
-                        <div>
-                          <div style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{key}</div>
-                          <div style={{fontSize:10,color:"#9CA3AF"}}>{p.team} · {p.role}{p.league?" · "+p.league:""}</div>
-                        </div>
-                      </div>
-                      <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>setEditingPlayer({key,data:{...p,name:key}})}
-                          style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
-                          ✎ Éd.
-                        </button>
-                        <button onClick={()=>{supaDeleteCustomPlayer(key).catch(()=>{});setCustom(c=>{const n={...c};delete n[key];return n;});}}
-                          style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif"}}>
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
             <div style={{fontSize:11,color:"#6B7280",textAlign:"center",padding:12}}>
               Recherche un joueur pour l'éditer (équipe, rôle, ligue)
             </div>
 
-                  {/* ── SIMULATION ── */}
-            {(
-              <div style={{marginBottom:10}}>
-                <button onClick={()=>setShowSimulation(v=>!v)}
-                  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid "+(showSimulation?"rgba(245,158,11,0.3)":"#1F2937"),borderRadius:showSimulation?"12px 12px 0 0":"12px",padding:"11px 16px",cursor:"pointer",transition:"all .2s"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:14}}>🧮</span>
-                    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Simulation</span>
-                    <span style={{fontSize:10,color:"#6B7280"}}>Si j'avais parié sur tous les bets</span>
-                  </div>
-                  <span style={{fontSize:12,color:"#6B7280",transform:showSimulation?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
-                </button>
-                {showSimulation&&(()=>{
-                  // Règles exactes du bot par sport/stat
-                  const getStake=(b)=>{
-                    const sport=b.sport||"";const stat=b.stat||"";
-                    const diff=parseFloat(b.diff||0);const odds=parseFloat(b.odds||0);
-                    const ppLine=parseFloat(b.pp_line_per_map||0);
-                    const bookLine=parseFloat(b.book_line||0);
-                    const isCS2=sport.includes("CS")||sport==="CS2";
-                    const isValo=sport.includes("Valor");
-                    const isDota=sport.includes("Dota");
-                    const isLoL=sport.includes("Legend")||sport==="League of Legends"||sport==="LoL";
-                    const isKill=stat==="kills";const isHS=stat==="headshots";
-                    if(isCS2&&isKill){
-                      if(diff>=2.0&&odds>=1.58)return 100;
-                      if(diff>=1.5&&odds>=1.60)return 87;
-                      if(diff>=1.25&&odds>=1.65)return 75;
-                    }
-                    if(isCS2&&isHS){
-                      if(diff>=2.0&&odds>=1.58)return 87;
-                      if(diff>=1.25&&odds>=1.60)return 75;
-                      if(diff>=1.0&&odds>=1.75)return 62;
-                    }
-                    if(isValo&&isKill){
-                      if(diff>=2.0&&odds>=1.58)return 100;
-                      if(diff>=1.5&&odds>=1.60)return 87;
-                      if(diff>=1.25&&odds>=1.65)return 75;
-                    }
-                    if(isDota){
-                      if(diff>=2.0&&odds>=1.60)return 87;
-                      if(diff>=1.5&&odds>=1.65)return 75;
-                      if(ppLine<8&&diff>=1.0&&odds>=1.59)return 75;
-                    }
-                    if(isLoL){
-                      if(diff>=1.0&&odds>=1.58)return 75;
-                      if(diff>=0.75&&odds>=1.60&&bookLine>=4.5)return 62;
-                      if(diff===0&&ppLine===0.5&&odds>=1.85)return 62;
-                      if(diff===0&&ppLine===0.75&&odds>=1.50)return 62;
-                    }
-                    return 0;
-                  };
-                  const simBets=analyseBets.filter(b=>b.diff!=null&&b.odds);
-                  // Get result for each bet: manual override > auto-match from real bets
-                  const getBetResult=(b)=>{
-                    const uid=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
-                    if(simManual[uid])return simManual[uid]; // manual override
-                    // Auto-match: find a real bet with same player + similar line + direction
-                    const dir=b.direction==="OVER"?"Over":"Under";
-                    const matched=settled.find(rb=>{
-                      if(!rb.player||!b.player)return false;
-                      if(rb.player.toLowerCase()!==b.player.toLowerCase())return false;
-                      if(rb.overUnder!==dir)return false;
-                      if(rb.mapTag&&b.map&&rb.mapTag!=="Map "+b.map)return false;
-                      return true;
-                    });
-                    if(matched)return matched.status==="won"?"won":matched.status==="lost"?"lost":null;
-                    return null;
-                  };
-                  // Enrich bets with uid and result
-                  const enriched=simBets.map(b=>({
-                    ...b,
-                    uid:`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`,
-                    result:getBetResult(b),
-                    stake:getStake(b),
-                  })).filter(b=>b.stake>0);
-                  // Group by sport/stat category
-                  const categories=[
-                    {label:"CS2 — Kills",filter:b=>(b.sport?.includes("CS")||b.sport==="CS2")&&b.stat==="kills"},
-                    {label:"CS2 — Headshots",filter:b=>(b.sport?.includes("CS")||b.sport==="CS2")&&b.stat==="headshots"},
-                    {label:"Valorant",filter:b=>b.sport?.includes("Valor")},
-                    {label:"Dota 2",filter:b=>b.sport?.includes("Dota")},
-                    {label:"LoL",filter:b=>b.sport?.includes("Legend")||b.sport==="LoL"},
-                  ];
-                  const results=categories.map(cat=>{
-                    const bets=enriched.filter(cat.filter);
-                    const won=bets.filter(b=>b.result==="won");
-                    const lost=bets.filter(b=>b.result==="lost");
-                    const pending=bets.filter(b=>!b.result);
-                    const profit=won.reduce((s,b)=>s+b.stake*(parseFloat(b.odds)-1),0)
-                                -lost.reduce((s,b)=>s+b.stake,0);
-                    const totalStaked=[...won,...lost].reduce((s,b)=>s+b.stake,0);
-                    const roi=totalStaked>0?(profit/totalStaked*100):0;
-                    return{label:cat.label,bets,matching:bets.length,won:won.length,lost:lost.length,pending:pending.length,profit,roi,totalStaked};
-                  }).filter(r=>r.matching>0);
-                  const totalSimProfit=results.reduce((s,r)=>s+r.profit,0);
-                  const totalSimStaked=results.reduce((s,r)=>s+r.totalStaked,0);
-                  return(
-                    <div style={{background:"#0B1220",border:"1px solid rgba(245,158,11,0.2)",borderTop:"none",borderRadius:"0 0 12px 12px",padding:"14px 16px"}}>
-                      {/* Règles affichées */}
-                      <div style={{marginBottom:14,background:"rgba(255,255,255,0.02)",borderRadius:10,padding:"10px 12px",border:"1px solid #1F2937"}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Règles du bot</div>
-                        {[
-                          {sport:"CS2 Kills",rules:["≥2.0 diff @1.58 → 100€","≥1.5 diff @1.60 → 87€","≥1.25 diff @1.65 → 75€"]},
-                          {sport:"CS2 HS",rules:["≥2.0 diff @1.58 → 87€","≥1.25 diff @1.60 → 75€","≥1.0 diff @1.75 → 62€"]},
-                          {sport:"Valorant",rules:["≥2.0 diff @1.58 → 100€","≥1.5 diff @1.60 → 87€","≥1.25 diff @1.65 → 75€"]},
-                          {sport:"Dota 2",rules:["≥2.0 diff @1.60 → 87€","≥1.5 diff @1.65 → 75€","PP<8 ≥1.0 @1.59 → 75€"]},
-                          {sport:"LoL",rules:["≥1.0 diff @1.58 → 75€","≥0.75 @1.60 line≥4.5 → 62€","UNDER spécial → 62€"]},
-                        ].map(({sport,rules})=>(
-                          <div key={sport} style={{marginBottom:6}}>
-                            <span style={{fontSize:10,fontWeight:700,color:"#A78BFA"}}>{sport}: </span>
-                            <span style={{fontSize:10,color:"#6B7280"}}>{rules.join(" · ")}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Résultats */}
-                      <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Résultats simulés</div>
-                      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
-                        {results.map((r,idx)=>(
-                          <div key={idx} style={{background:"rgba(255,255,255,0.03)",borderRadius:10,padding:"10px 12px",border:"1px solid "+(r.profit>=0?"rgba(34,197,94,0.2)":"rgba(248,113,113,0.2)")}}>
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                              <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>Diff ≥ {r.minDiff} → {r.stake}€</span>
-                              <span style={{fontSize:14,fontWeight:800,color:r.profit>=0?"#22C55E":"#EF4444"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
-                            </div>
-                            <div style={{display:"flex",gap:10}}>
-                              <span style={{fontSize:10,color:"#6B7280"}}>{r.matching} bets</span>
-                              {r.won>0&&<span style={{fontSize:10,color:"#22C55E"}}>✓ {r.won}W</span>}
-                              {r.lost>0&&<span style={{fontSize:10,color:"#EF4444"}}>✗ {r.lost}L</span>}
-                              {r.pending>0&&<span style={{fontSize:10,color:"#6B7280"}}>⏳ {r.pending}</span>}
-                              {r.totalStaked>0&&<span style={{fontSize:10,color:r.roi>=0?"#22C55E":"#EF4444",marginLeft:"auto"}}>ROI {r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Total */}
-                      {totalSimStaked>0&&(
-                        <div style={{background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(59,130,246,0.15))",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <div>
-                            <div style={{fontSize:11,color:"#9CA3AF"}}>Total simulé</div>
-                            <div style={{fontSize:11,color:"#6B7280"}}>{totalSimStaked.toFixed(0)}€ misés</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:20,fontWeight:800,color:totalSimProfit>=0?"#22C55E":"#EF4444"}}>{totalSimProfit>=0?"+":""}{totalSimProfit.toFixed(0)}€</div>
-                            <div style={{fontSize:10,color:totalSimProfit>=0?"#22C55E":"#EF4444"}}>{totalSimStaked>0?(totalSimProfit/totalSimStaked*100).toFixed(1):"0"}% ROI</div>
-                          </div>
-                        </div>
-                      )}
-                      {totalSimStaked===0&&(
-                        <div style={{textAlign:"center",padding:"12px",color:"#4B5563",fontSize:12}}>
-                          Marque les résultats ci-dessous pour voir les stats
-                        </div>
-                      )}
-
-                      {/* ── STATS DÉTAILLÉES ── */}
-                      {enriched.filter(b=>b.result).length>0&&(()=>{
-                        const done=enriched.filter(b=>b.result);
-                        const toS=arr=>({
-                          count:arr.length,
-                          won:arr.filter(b=>b.result==="won").length,
-                          profit:arr.filter(b=>b.result==="won").reduce((s,b)=>s+b.stake*(b.odds-1),0)
-                                 -arr.filter(b=>b.result==="lost").reduce((s,b)=>s+b.stake,0),
-                          staked:arr.reduce((s,b)=>s+b.stake,0),
-                        });
-                        const Row=({label,bets})=>{
-                          const s=toS(bets);
-                          const w=s.count>0?(s.won/s.count*100):0;
-                          const r=s.staked>0?(s.profit/s.staked*100):0;
-                          return(
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                              <div>
-                                <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
-                                <div style={{fontSize:10,color:"#6B7280"}}>{s.count}p · {w.toFixed(0)}%WR</div>
-                              </div>
-                              <div style={{textAlign:"right"}}>
-                                <div style={{fontSize:13,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
-                                <div style={{fontSize:9,color:r>=0?"#22C55E":"#EF4444"}}>{r>=0?"+":""}{r.toFixed(1)}%</div>
-                              </div>
-                            </div>
-                          );
-                        };
-                        const bySport={};done.forEach(b=>{const s=b.sport?.includes("CS")?"CS2":b.sport?.includes("Valor")?"Valorant":b.sport?.includes("Dota")?"Dota 2":"LoL";if(!bySport[s])bySport[s]=[];bySport[s].push(b);});
-                        const byMap={};done.forEach(b=>{const k="Map "+(b.map||"?");if(!byMap[k])byMap[k]=[];byMap[k].push(b);});
-                        const byDir={OVER:done.filter(b=>b.direction==="OVER"),UNDER:done.filter(b=>b.direction==="UNDER")};
-                        const byPlayer={};done.forEach(b=>{if(!b.player)return;if(!byPlayer[b.player])byPlayer[b.player]=[];byPlayer[b.player].push(b);});
-                        const topP=Object.entries(byPlayer).map(([p,b])=>({player:p,...toS(b),wr:toS(b).count>0?toS(b).won/toS(b).count*100:0})).sort((a,b2)=>b2.profit-a.profit).slice(0,8);
-                        return(
-                          <div style={{marginTop:12}}>
-                            <div style={{fontSize:9,color:"#A78BFA",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Stats détaillées</div>
-                            {/* Over/Under */}
-                            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
-                              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Over / Under</div>
-                              {byDir.OVER.length>0&&<Row label="🔼 Over" bets={byDir.OVER}/>}
-                              {byDir.UNDER.length>0&&<Row label="🔽 Under" bets={byDir.UNDER}/>}
-                            </div>
-                            {/* Par jeu */}
-                            <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
-                              <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Par jeu</div>
-                              {Object.entries(bySport).map(([s,b])=><Row key={s} label={s} bets={b}/>)}
-                            </div>
-                            {/* Par map */}
-                            {Object.keys(byMap).length>1&&(
-                              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
-                                <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Par map</div>
-                                {Object.entries(byMap).sort((a,b2)=>a[0].localeCompare(b2[0])).map(([m,b])=><Row key={m} label={m} bets={b}/>)}
-                              </div>
-                            )}
-                            {/* Top joueurs */}
-                            {topP.length>0&&(
-                              <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid #1F2937",borderRadius:11,padding:"10px 14px",marginBottom:8}}>
-                                <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Top joueurs</div>
-                                {topP.map(p=>(
-                                  <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-                                    <div>
-                                      <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
-                                      <div style={{fontSize:10,color:"#6B7280"}}>{p.count}p · {p.wr.toFixed(0)}%WR</div>
-                                    </div>
-                                    <span style={{fontSize:13,fontWeight:700,color:p.profit>=0?"#22C55E":"#EF4444"}}>{p.profit>=0?"+":""}{p.profit.toFixed(0)}€</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* Bets à marquer */}
-                      <div style={{marginTop:12}}>
-                        <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Marquer les résultats</div>
-                        {enriched.map((b,i)=>{
-                          const res=b.result;
-                          return(
-                            <div key={b.uid+i} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.02)",borderRadius:9,padding:"8px 10px",border:"1px solid "+(res==="won"?"rgba(34,197,94,0.2)":res==="lost"?"rgba(248,113,113,0.2)":"#1F2937"),marginBottom:5}}>
-                              <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:12,fontWeight:600,color:"#E5E7EB",textTransform:"capitalize"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400}}>Map {b.map}</span></div>
-                                <div style={{fontSize:10,color:"#6B7280"}}>{b.direction} · @{b.odds} · {b.stake}€ · {b.sport?.slice(0,4)}</div>
-                              </div>
-                              {res&&<span style={{fontSize:10,fontWeight:700,color:res==="won"?"#22C55E":"#EF4444"}}>{res==="won"?"+":"−"}{res==="won"?(b.stake*(b.odds-1)).toFixed(0):b.stake}€</span>}
-                              <div style={{display:"flex",gap:4,flexShrink:0}}>
-                                <button onClick={()=>setSimResult(b.uid,res==="won"?null:"won")}
-                                  style={{width:28,height:28,borderRadius:7,border:"1.5px solid "+(res==="won"?"#22C55E":"#1F2937"),background:res==="won"?"#22C55E":"rgba(34,197,94,0.06)",color:res==="won"?"#000":"#22C55E",cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
-                                <button onClick={()=>setSimResult(b.uid,res==="lost"?null:"lost")}
-                                  style={{width:28,height:28,borderRadius:7,border:"1.5px solid "+(res==="lost"?"#EF4444":"#1F2937"),background:res==="lost"?"#EF4444":"rgba(248,113,113,0.06)",color:res==="lost"?"#000":"#EF4444",cursor:"pointer",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>✗</button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
+            {/* ── GROS CARRÉ STATS ── */}
+            <button onClick={()=>setView("statistiques")}
+              style={{width:"100%",marginBottom:10,background:"linear-gradient(135deg,rgba(124,58,237,0.18),rgba(59,130,246,0.12))",border:"1.5px solid rgba(124,58,237,0.35)",borderRadius:18,padding:"22px 20px",cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:18,textAlign:"left",transition:"all .15s"}}>
+              <div style={{width:52,height:52,borderRadius:14,background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 16px rgba(124,58,237,0.4)"}}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/>
+                  <line x1="12" y1="20" x2="12" y2="4"/>
+                  <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
               </div>
-            )}
-
+              <div>
+                <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",marginBottom:3,letterSpacing:-0.3}}>Statistiques</div>
+                <div style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Performances · ROI · Par jeu</div>
+              </div>
+              <svg style={{marginLeft:"auto",flexShrink:0}} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
 
             {/* ── JOUEURS MASQUÉS ── */}
             {blacklist.size>0&&(
@@ -6736,27 +6561,27 @@ const fetchAnalyse=useCallback(async()=>{
 
         {/* ── BOTTOM NAV ── */}
         {(()=>{
-          const pendingCount=useMemo(()=>bets.filter(b=>b.status==="pending").length,[bets]);
+          const pendingCount=bets.filter(b=>b.status==="pending").length;
           return(
             <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0D1526",borderTop:"1px solid #1F2937",display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 4px 12px",zIndex:50,backdropFilter:"blur(12px)"}}>
               {(()=>{
                 const navItems=NAV.filter(n=>n.id!=="add");
                 const mid=Math.floor(navItems.length/2);
+                const pendingCount=bets.filter(b=>b.status==="pending").length;
                 const items=[];
                 navItems.forEach((n,idx)=>{
                   if(idx===mid){
-                    items.push(<button key="add-fab" onClick={()=>setView("add")}
+                    items.push(<button key="add-fab" onClick={()=>{setView("add");setTimeout(()=>playerACRef.current?.focus(),80);}}
                       style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,0.55)",flexShrink:0,transform:view==="add"?"scale(0.93)":"scale(1)",transition:"transform .15s ease",marginBottom:4}}>
                       <span style={{fontSize:30,color:"#fff",lineHeight:1,marginTop:-1}}>+</span>
                     </button>);
                   }
-                  items.push(<button key={n.id} className={"navitem "+(view===n.id?"on":"")} onClick={()=>setView(n.id)} style={{position:"relative"}}>
-                    <span style={{fontSize:18,filter:view===n.id?"drop-shadow(0 0 6px rgba(167,139,250,0.6))":"none"}}>{n.icon}</span>
-                    {n.id==="mesparis"&&pendingCount>0&&(
-                      <span style={{position:"absolute",top:2,right:8,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 5px",minWidth:16,textAlign:"center",lineHeight:"14px",border:"1.5px solid #0D1526"}}>
-                        {pendingCount}
-                      </span>
-                    )}
+                  const active=view===n.id;
+                  items.push(<button key={n.id} className={"navitem "+(active?"on":"")} onClick={()=>setView(n.id)} style={{position:"relative"}}>
+                    {n.id==="home"&&<NavIcon.home active={active}/>}
+                    {n.id==="mesparis"&&<NavIcon.mesparis active={active} count={pendingCount}/>}
+                    {n.id==="analyse"&&<NavIcon.analyse active={active}/>}
+                    {n.id==="players"&&<NavIcon.suivi active={active}/>}
                     <span className="lbl">{n.label}</span>
                   </button>);
                 });
