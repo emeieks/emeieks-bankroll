@@ -3461,39 +3461,40 @@ const fetchAnalyse=useCallback(async()=>{
         {/* ── HOME ── */}
         {view==="home"&&(
           <div className="view-enter" style={{paddingBottom:8}}>
-            {/* Header logo + cloud */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,paddingTop:4}}>
+
+            {/* Row 1: Logo gauche + Cloud droite */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,paddingTop:4}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <svg width="20" height="20" viewBox="0 0 18 18" fill="none">
                     <path d="M3 14L7 8L10 11L13 6L15 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <circle cx="15" cy="9" r="1.5" fill="white"/>
                   </svg>
                 </div>
                 <div>
-                  <div style={{fontSize:16,fontWeight:900,color:"#E5E7EB",letterSpacing:"-0.5px",lineHeight:1,fontFamily:"Inter,-apple-system,sans-serif"}}>EMEIEKS</div>
+                  <div style={{fontSize:17,fontWeight:900,color:"#E5E7EB",letterSpacing:"-0.5px",lineHeight:1,fontFamily:"Inter,-apple-system,sans-serif"}}>EMEIEKS</div>
                   <div style={{fontSize:8,color:"#4B5563",letterSpacing:"3px",fontWeight:600,fontFamily:"Inter,sans-serif"}}>BANKROLL</div>
                 </div>
               </div>
-              <button onClick={()=>setSupaModal(true)}
-                style={{display:"flex",alignItems:"center",gap:6,background:supaOk?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:10,padding:"7px 14px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaOk?"#22C55E":"#A78BFA",fontSize:11,fontWeight:700}}>
-                <span style={{fontSize:12}}>☁️</span>
-                <span>{syncing?"Sync…":supaOk?"Sync ✓":"Cloud"}</span>
-                {supaOk&&!syncing&&<span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px rgba(34,197,94,0.9)",flexShrink:0}}/>}
-              </button>
+              <div style={{display:"flex",alignItems:"flex-end",flexDirection:"column",gap:2}}>
+                <button onClick={()=>setSupaModal(true)}
+                  style={{display:"flex",alignItems:"center",gap:6,background:supaOk?"rgba(34,197,94,0.08)":"rgba(124,58,237,0.08)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.25)":"rgba(124,58,237,0.25)"),borderRadius:10,padding:"6px 14px",cursor:"pointer",fontFamily:"'Inter',sans-serif",color:supaOk?"#22C55E":"#A78BFA",fontSize:11,fontWeight:700}}>
+                  <span style={{fontSize:12}}>☁️</span>
+                  <span>{syncing?"Sync…":supaOk?"Sync ✓":"Cloud"}</span>
+                  {supaOk&&!syncing&&<span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px rgba(34,197,94,0.9)",flexShrink:0}}/>}
+                </button>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:9,color:"#6B7280",fontFamily:"Inter,sans-serif",letterSpacing:0.5}}>Profit Net</div>
+                  <div style={{fontSize:20,fontWeight:800,color:totalProfit>=0?"#4ADE80":"#F87171",fontFamily:"Inter,sans-serif",lineHeight:1.1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                  <div style={{fontSize:10,color:"#4B5563",fontFamily:"Inter,sans-serif"}}>Bankroll: {(bankroll+totalProfit).toFixed(0)}€</div>
+                </div>
+              </div>
             </div>
 
-            {/* Graphique grand — style Bet Analytix */}
-            <div style={{borderRadius:20,overflow:"hidden",marginBottom:14,background:"linear-gradient(160deg,#0d2518 0%,#061810 100%)",border:"1px solid rgba(34,197,94,0.2)"}}>
-              <div style={{padding:"16px 16px 0"}}>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",fontWeight:500,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4,fontFamily:"Inter,sans-serif"}}>Profit net</div>
-                <div style={{fontSize:28,fontWeight:800,color:totalProfit>=0?"#4ADE80":"#F87171",letterSpacing:-1,fontFamily:"Inter,-apple-system,sans-serif",lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}<span style={{fontSize:24}}>€</span></div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.25)",marginTop:5,fontFamily:"Inter,sans-serif"}}>Bankroll: {(bankroll+totalProfit).toFixed(0)}€</div>
-              </div>
-              <div style={{padding:"8px 8px 4px"}}>
-                <BankrollChart points={chartPointsFiltered} h={180}/>
-              </div>
-              <div style={{display:"flex",gap:5,padding:"0 12px 14px"}}>
+            {/* Graphique plein — sans card verte */}
+            <div style={{borderRadius:16,overflow:"hidden",marginBottom:12,background:"#0B1117",border:"1px solid #1F2937"}}>
+              <BankrollChart points={chartPointsFiltered} h={200}/>
+              <div style={{display:"flex",gap:5,padding:"8px 12px 12px"}}>
                 {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
                   <button key={l} onClick={()=>setHomePeriod(d)}
                     style={{flex:1,padding:"6px 0",borderRadius:7,border:"1.5px solid "+(homePeriod===d?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.08)"),background:homePeriod===d?"rgba(255,255,255,0.1)":"transparent",color:homePeriod===d?"#FFFFFF":"rgba(255,255,255,0.3)",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .15s"}}>
@@ -3507,33 +3508,69 @@ const fetchAnalyse=useCallback(async()=>{
               </div>
             </div>
 
-            {/* Stats + Calendrier */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              <button onClick={()=>setView("statistiques")}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"linear-gradient(135deg,rgba(96,165,250,0.12),rgba(96,165,250,0.04))",border:"1px solid rgba(96,165,250,0.2)",borderRadius:14,color:"#60A5FA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:13}}>
-                <span style={{fontSize:16}}>📊</span> Stats
-              </button>
+            {/* 3 cartes — Paris / Progression / Profit Net */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+              <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 12px"}}>
+                <div style={{fontSize:9,color:"#9CA3AF",fontWeight:600,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>PARIS</div>
+                <div style={{fontSize:26,fontWeight:800,color:"#60A5FA",fontFamily:"Inter,sans-serif",lineHeight:1}}>{homeSettled.length+(homePeriod?0:bets.filter(b=>b.status==="pending").length)}</div>
+                <div style={{fontSize:10,color:"#4B5563",marginTop:4}}>{bets.filter(b=>b.status==="pending").length} en cours</div>
+              </div>
+              <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 12px"}}>
+                <div style={{fontSize:9,color:"#9CA3AF",fontWeight:600,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>PROGRESSION</div>
+                <div style={{fontSize:26,fontWeight:800,color:progression>=0?"#4ADE80":"#F87171",fontFamily:"Inter,sans-serif",lineHeight:1}}>{progression>=0?"+":""}{progression.toFixed(1)}%</div>
+                <div style={{fontSize:10,color:"#4B5563",marginTop:4}}>BK: {bankroll.toFixed(0)}€</div>
+              </div>
+              <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 12px"}}>
+                <div style={{fontSize:9,color:"#9CA3AF",fontWeight:600,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>PROFIT NET</div>
+                <div style={{fontSize:26,fontWeight:800,color:totalProfit>=0?"#4ADE80":"#F87171",fontFamily:"Inter,sans-serif",lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                <div style={{fontSize:10,color:"#4B5563",marginTop:4}}>ROI {roi>=0?"+":""}{roi.toFixed(1)}%</div>
+              </div>
+            </div>
+
+            {/* Boutons Calendrier + Filtres */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
               <button onClick={()=>setView("calendrier")}
-                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"linear-gradient(135deg,rgba(167,139,250,0.12),rgba(167,139,250,0.04))",border:"1px solid rgba(167,139,250,0.2)",borderRadius:14,color:"#A78BFA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:13}}>
-                <span style={{fontSize:16}}>📅</span> Calendrier
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"16px 8px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:15}}>
+                📅 Calendrier
+              </button>
+              <button onClick={()=>setView("filtres")}
+                style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"16px 8px",background:"#111827",border:"1px solid #1F2937",borderRadius:14,color:"#E5E7EB",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:15}}>
+                🔍 Filtres
               </button>
             </div>
 
-            {/* 4 stats cards — style Bet Analytix 2×2 */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              {[
-                {label:"PARIS",val:String(homeSettled.length+(homePeriod?0:bets.filter(b=>b.status==="pending").length)),col:"#60A5FA"},
-                {label:"BÉNÉFICE",val:(totalProfit>=0?"+":"")+totalProfit.toFixed(0)+"€",col:totalProfit>=0?"#4ADE80":"#F87171"},
-                {label:"ROI",val:(roi>=0?"+":"")+roi.toFixed(2)+"%",col:roi>=0?"#4ADE80":"#F87171"},
-                {label:"PROGRESSION",val:(progression>=0?"+":"")+progression.toFixed(2)+"%",col:progression>=0?"#4ADE80":"#F87171"},
-              ].map(k=>(
-                <div key={k.label} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"18px 16px"}}>
-                  <div style={{fontSize:11,color:"#E5E7EB",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10,textDecoration:"underline",textUnderlineOffset:4,textDecorationThickness:1,fontFamily:"Inter,sans-serif"}}>{k.label}</div>
-                  <div style={{fontSize:24,fontWeight:800,color:k.col,letterSpacing:-.5,fontFamily:"Inter,-apple-system,sans-serif"}}>{k.val}</div>
-                </div>
-              ))}
+            {/* Paris récents */}
+            <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,overflow:"hidden"}}>
+              <div style={{padding:"12px 16px",borderBottom:"1px solid #1F2937"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1}}>Paris récents</div>
+              </div>
+              {[...bets].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||"")).slice(0,6).map(b=>{
+                const isPending=b.status==="pending";
+                const dateStr=b.datetime?b.datetime.slice(0,10):"";
+                return(
+                  <div key={b.id} style={{display:"flex",alignItems:"center",gap:10,padding:"13px 16px",borderBottom:"1px solid #0D1117"}}>
+                    <div style={{width:38,height:38,borderRadius:10,flexShrink:0,background:"#0B1220",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      <GameLogo game={b.game} size={22}/>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.player}</div>
+                      <div style={{fontSize:11,color:"#6B7280"}}>{b.overUnder} {b.description} · @{b.odds}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      {isPending
+                        ?<div style={{fontSize:15,fontWeight:700,color:"#60A5FA"}}>@{b.odds}</div>
+                        :<div style={{fontSize:15,fontWeight:700,color:b.profit>=0?"#4ADE80":"#F87171"}}>{b.profit>=0?"+":""}{b.profit.toFixed(2)}€</div>
+                      }
+                      <div style={{fontSize:10,color:"#4B5563",marginTop:2}}>{dateStr}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <button onClick={()=>setView("mesparis")}
+                style={{width:"100%",padding:"12px",background:"transparent",border:"none",color:"#A78BFA",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center"}}>
+                Voir tous ({bets.length})
+              </button>
             </div>
-
 
           </div>
         )}
