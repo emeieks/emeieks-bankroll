@@ -3471,7 +3471,7 @@ export default function App(){
     {id:"players",label:"Suivi"},
   ];
 
-const fetchAnalyse=useCallback(async()=>{
+  const fetchAnalyse=useCallback(async()=>{
     setAnalyseLoading(true);
     try{
       const r=await fetch(SUPA_URL+"/rest/v1/bets_comparaison?select=*&order=diff.desc",{
@@ -5266,7 +5266,7 @@ const fetchAnalyse=useCallback(async()=>{
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}€</span>
-<span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
+  <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
                       </div>
                     </div>
                     {/* Stats row */}
@@ -6276,7 +6276,7 @@ const fetchAnalyse=useCallback(async()=>{
       )}
     </div>
   );
-})()}
+  })()}
         {view==="players"&&(
           <div className="view-enter">
             {/* Header */}
