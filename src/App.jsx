@@ -2603,22 +2603,22 @@ export default function App(){
   const [homeChartFilters,setHomeChartFilters]=useState({games:[],overUnder:"All",live:"All",bookmakers:[],dateFrom:"",dateTo:""});
   const [statsDrill,setStatsDrill]=useState(null); // {game, league} or null
   const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
-const [analyseBets,setAnalyseBets]=useState([]);
-const [analyseLoading,setAnalyseLoading]=useState(false);
-const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
-const [analyseFSport,setAnalyseFSport]=useState("all");
-const [analyseFSource,setAnalyseFSource]=useState("all");
-const [analyseFDir,setAnalyseFDir]=useState("All");
-const [analyseSort,setAnalyseSort]=useState("diff"); // "diff" ou "time"
-const [showAllRecents,setShowAllRecents]=useState(false);
-const [expandedAnalyseBet,setExpandedAnalyseBet]=useState(null);
-const [analyseFHeure,setAnalyseFHeure]=useState(""); // filtre heure ex: "12:00"
-const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
-const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
-const [showSimulation,setShowSimulation]=useState(false);
-const [simRules,setSimRules]=useState([]);
-const [simManual,setSimManual]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_sim_manual")||"{}");}catch{return {};}});
-function setSimResult(uid,result){
+  const [analyseBets,setAnalyseBets]=useState([]);
+  const [analyseLoading,setAnalyseLoading]=useState(false);
+  const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
+  const [analyseFSport,setAnalyseFSport]=useState("all");
+  const [analyseFSource,setAnalyseFSource]=useState("all");
+  const [analyseFDir,setAnalyseFDir]=useState("All");
+  const [analyseSort,setAnalyseSort]=useState("diff"); // "diff" ou "time"
+  const [showAllRecents,setShowAllRecents]=useState(false);
+  const [expandedAnalyseBet,setExpandedAnalyseBet]=useState(null);
+  const [analyseFHeure,setAnalyseFHeure]=useState(""); // filtre heure ex: "12:00"
+  const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch{return new Set();}});
+  const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
+  const [showSimulation,setShowSimulation]=useState(false);
+  const [simRules,setSimRules]=useState([]);
+  const [simManual,setSimManual]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_sim_manual")||"{}");}catch{return {};}});
+  function setSimResult(uid,result){
   setSimManual(prev=>{
     const n={...prev};
     if(result===null)delete n[uid];
@@ -2627,9 +2627,9 @@ function setSimResult(uid,result){
     return n;
   });
 }
-const [collapsedMonths,setCollapsedMonths]=useState(new Set());
-function toggleMonth(mk){setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});}
-function toggleHideAnalyseBet(key){
+  const [collapsedMonths,setCollapsedMonths]=useState(new Set());
+  function toggleMonth(mk){setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});}
+  function toggleHideAnalyseBet(key){
   setHiddenAnalyseBets(prev=>{
     const n=new Set(prev);
     if(n.has(key))n.delete(key);else n.add(key);
