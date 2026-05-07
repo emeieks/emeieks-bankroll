@@ -2497,6 +2497,44 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
 });
 
 // ── Main App ───────────────────────────────────────────────────────────────
+// ── Nav Icons (outside App to avoid recreating on every render) ─────────────
+function NavIconHome({active}){
+  const c=active?"#A78BFA":"#6B7280";
+  return(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12L12 3l9 9v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+    <polyline points="9,21 9,12 15,12 15,21"/>
+  </svg>);
+}
+function NavIconParis({active,count}){
+  const c=active?"#A78BFA":"#6B7280";
+  return(<div style={{position:"relative",display:"inline-flex"}}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+      <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/>
+      <circle cx="17" cy="17" r="3" fill={active?"#A78BFA":"#6B7280"} stroke="none" opacity={active?1:0.5}/>
+      <polyline points="15.5,17 16.5,18 18.5,16" stroke="#0B1220" strokeWidth="1.5" fill="none"/>
+    </svg>
+    {count>0&&<span style={{position:"absolute",top:-4,right:-6,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:8,fontWeight:800,padding:"1px 4px",minWidth:14,textAlign:"center",lineHeight:"13px",border:"1.5px solid #0D1526"}}>{count}</span>}
+  </div>);
+}
+function NavIconAnalyse({active}){
+  const c=active?"#A78BFA":"#6B7280";
+  return(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="10" cy="10" r="6" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+    <line x1="14.5" y1="14.5" x2="20" y2="20"/>
+    <line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/>
+  </svg>);
+}
+function NavIconSuivi({active}){
+  const c=active?"#A78BFA":"#6B7280";
+  return(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="3" fill={active?"rgba(167,139,250,0.1)":"none"}/>
+    <circle cx="5" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
+    <circle cx="19" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
+    <path d="M12 11c-4 0-6 2-6 4"/><path d="M12 11c4 0 6 2 6 4"/>
+  </svg>);
+}
+
 export default function App(){
   const [bets,setBets]=useState([]);
   const [bankroll,setBankroll]=useState(7500);
@@ -3419,49 +3457,7 @@ export default function App(){
   }
 
   // ── SVG icons for nav ────────────────────────────────────────────────────
-  const NavIcon={
-    home:({active})=>(
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 12L12 3l9 9"/>
-        <path d="M9 21V12h6v9"/>
-        <rect x="3" y="12" width="18" height="9" rx="1" fill={active?"rgba(167,139,250,0.12)":"none"} stroke="none"/>
-        <path d="M3 12L12 3l9 9v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" stroke={active?"#A78BFA":"#6B7280"} fill={active?"rgba(167,139,250,0.1)":"none"}/>
-        <polyline points="9,21 9,12 15,12 15,21"/>
-      </svg>
-    ),
-    mesparis:({active,count})=>(
-      <div style={{position:"relative",display:"inline-flex"}}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="4" y="2" width="16" height="20" rx="2" fill={active?"rgba(167,139,250,0.1)":"none"}/>
-          <line x1="8" y1="7" x2="16" y2="7"/>
-          <line x1="8" y1="11" x2="16" y2="11"/>
-          <line x1="8" y1="15" x2="12" y2="15"/>
-          <circle cx="17" cy="17" r="3" fill={active?"#A78BFA":"#6B7280"} stroke="none" opacity={active?1:0.5}/>
-          <polyline points="15.5,17 16.5,18 18.5,16" stroke="#0B1220" strokeWidth="1.5" fill="none"/>
-        </svg>
-        {count>0&&<span style={{position:"absolute",top:-4,right:-6,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:8,fontWeight:800,padding:"1px 4px",minWidth:14,textAlign:"center",lineHeight:"13px",border:"1.5px solid #0D1526"}}>{count}</span>}
-      </div>
-    ),
-    analyse:({active})=>(
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="10" cy="10" r="6" fill={active?"rgba(167,139,250,0.1)":"none"}/>
-        <line x1="14.5" y1="14.5" x2="20" y2="20"/>
-        <line x1="8" y1="10" x2="12" y2="10"/>
-        <line x1="10" y1="8" x2="10" y2="12"/>
-      </svg>
-    ),
-    suivi:({active})=>(
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active?"#A78BFA":"#6B7280"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="8" r="3" fill={active?"rgba(167,139,250,0.1)":"none"}/>
-        <circle cx="5" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
-        <circle cx="19" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
-        <path d="M12 11c-4 0-6 2-6 4"/>
-        <path d="M12 11c4 0 6 2 6 4"/>
-        <line x1="5" y1="17" x2="5" y2="17.01"/>
-        <line x1="19" y1="17" x2="19" y2="17.01"/>
-      </svg>
-    ),
-  };
+
 
   const NAV=[
     {id:"home",label:"Accueil"},
@@ -6622,10 +6618,10 @@ export default function App(){
                   }
                   const active=view===n.id;
                   items.push(<button key={n.id} className={"navitem "+(active?"on":"")} onClick={()=>setView(n.id)} style={{position:"relative"}}>
-                    {n.id==="home"&&<NavIcon.home active={active}/>}
-                    {n.id==="mesparis"&&<NavIcon.mesparis active={active} count={pendingCount}/>}
-                    {n.id==="analyse"&&<NavIcon.analyse active={active}/>}
-                    {n.id==="players"&&<NavIcon.suivi active={active}/>}
+                    {n.id==="home"&&<NavIconHome active={active}/>}
+                    {n.id==="mesparis"&&<NavIconParis active={active} count={pendingCount}/>}
+                    {n.id==="analyse"&&<NavIconAnalyse active={active}/>}
+                    {n.id==="players"&&<NavIconSuivi active={active}/>}
                     <span className="lbl">{n.label}</span>
                   </button>);
                 });
