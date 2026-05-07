@@ -2341,7 +2341,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const isWon=bet.status==="won";
   const isLost=bet.status==="lost";
   const profitColor=isPending?"#60A5FA":isWon?"#22C55E":"#EF4444";
-  const profitTxt=isPending?"@"+bet.odds:(bet.profit>=0?"+":"")+bet.profit.toFixed(2)+"€";
+  const profitTxt=isPending?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"€";
   const borderCol=isPending?"rgba(255,255,255,0.06)":isWon?"rgba(34,197,94,0.35)":"rgba(248,113,113,0.35)";
   const bkLogo=BK_LOGOS[bet.bookmaker]||bkPhotos[bet.bookmaker]||null;
   // Fix double Over/Under : bet.description contient déjà "Over X Kills" — on affiche seulement description
@@ -2484,7 +2484,7 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
               <div style={{fontWeight:700,fontSize:13,color:bet.status==="pending"?"#3B82F6":bet.profit>=0?"#22C55E":"#EF4444"}}>
-                {bet.status==="pending"?"@"+bet.odds:(bet.profit>=0?"+":"")+bet.profit.toFixed(2)+"€"}
+                {bet.status==="pending"?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"€"}
               </div>
               <div style={{fontSize:10,color:sc.color}}>{sc.label}</div>
             </div>
@@ -3056,7 +3056,7 @@ function toggleHideAnalyseBet(key){
     const sorted=[...bets].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
     const rows=sorted.map(b=>[
       b.datetime?b.datetime.slice(0,16):"",b.player,b.game,b.team||"",b.role||"",
-      b.overUnder,b.description||"",b.odds,b.stake,b.bookmaker||"",b.status,b.profit.toFixed(2),
+      b.overUnder,b.description||"",b.odds,b.stake,b.bookmaker||"",b.status,(b.profit||0).toFixed(2),
       b.isLive?"Oui":"Non",b.isHeadshot?"Oui":"Non"
     ].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(","));
     const csv=[hdr,...rows].join("\n");
@@ -3205,8 +3205,8 @@ function toggleHideAnalyseBet(key){
     if(homeChartFilters.dateTo)s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)<=homeChartFilters.dateTo);
     return s;
   },[settled,homePeriod,homeChartFilters]);
-  const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+b.profit,0),[homeSettled]);
-  const totalStaked=useMemo(()=>homeSettled.reduce((s,b)=>s+b.stake,0),[homeSettled]);
+  const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.profit||0),0),[homeSettled]);
+  const totalStaked=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.stake||0),0),[homeSettled]);
   const roi=useMemo(()=>totalStaked>0?(totalProfit/totalStaked)*100:0,[totalProfit,totalStaked]);
   const progression=useMemo(()=>bankroll>0?(totalProfit/bankroll)*100:0,[totalProfit,bankroll]);
   const chartPoints=useMemo(()=>{
@@ -3675,7 +3675,7 @@ const fetchAnalyse=useCallback(async()=>{
                     <div style={{textAlign:"right",flexShrink:0}}>
                       {isPending
                         ?<div style={{fontSize:15,fontWeight:700,color:"#60A5FA"}}>@{b.odds}</div>
-                        :<div style={{fontSize:15,fontWeight:700,color:b.profit>=0?"#22C55E":"#EF4444"}}>{b.profit>=0?"+":""}{b.profit.toFixed(2)}€</div>
+                        :<div style={{fontSize:15,fontWeight:700,color:b.profit>=0?"#22C55E":"#EF4444"}}>{b.profit>=0?"+":""}{(b.profit||0).toFixed(2)}€</div>
                       }
                       <div style={{fontSize:10,color:"#4B5563",marginTop:2}}>{dateStr}</div>
                     </div>
@@ -4018,7 +4018,7 @@ const fetchAnalyse=useCallback(async()=>{
                           <span style={{fontSize:12,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
                           <span style={{fontSize:11,color:"#fff",fontWeight:700,background:"#3B82F6",padding:"2px 8px",borderRadius:8}}>{pending.length}</span>
                         </div>
-                        <span style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>{pending.reduce((s,b)=>s+b.stake,0).toFixed(0)}€ en jeu</span>
+                        <span style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}€ en jeu</span>
                       </div>
                       <div style={{borderRadius:14,overflow:"hidden",border:"1px solid rgba(59,130,246,0.2)",background:"rgba(59,130,246,0.03)"}}>
                         {pending.map(b=>(
@@ -4265,7 +4265,7 @@ const fetchAnalyse=useCallback(async()=>{
                         </div>
                         <div style={{textAlign:"right"}}>
                           <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#22C55E":b.status==="lost"?"#EF4444":"#3B82F6"}}>
-                            {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+b.profit.toFixed(2)+"€"}
+                            {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"€"}
                           </div>
                           <div style={{fontSize:10,color:STATUS_CFG[b.status]?STATUS_CFG[b.status].color:"#9CA3AF"}}>{STATUS_CFG[b.status]?STATUS_CFG[b.status].label:b.status}</div>
                         </div>
@@ -4486,8 +4486,8 @@ const fetchAnalyse=useCallback(async()=>{
               {/* Stats live pour la plage sélectionnée */}
               {(fMinOdds||fMaxOdds)&&(()=>{
                 const inRange=filteredBets.filter(b=>b.status!=="pending");
-                const profit=inRange.reduce((s,b)=>s+b.profit,0);
-                const staked=inRange.reduce((s,b)=>s+b.stake,0);
+                const profit=inRange.reduce((s,b)=>s+(b.profit||0),0);
+                const staked=inRange.reduce((s,b)=>s+(b.stake||0),0);
                 const won=inRange.filter(b=>b.status==="won").length;
                 const wr=inRange.length>0?(won/inRange.length*100).toFixed(0):0;
                 const roi=staked>0?(profit/staked*100).toFixed(1):0;
@@ -4630,7 +4630,7 @@ const fetchAnalyse=useCallback(async()=>{
             {(()=>{
               const fs=filteredBets;
               const fw=fs.filter(b=>b.status==="won").length;
-              const fp=fs.filter(b=>b.status!=="pending").reduce((s,b)=>s+b.profit,0);
+              const fp=fs.filter(b=>b.status!=="pending").reduce((s,b)=>s+(b.profit||0),0);
               return(
                 <div style={{display:"flex",gap:9,marginBottom:14}}>
                   <div className="card" style={{flex:1,padding:"10px 12px"}}>
@@ -5718,8 +5718,8 @@ const fetchAnalyse=useCallback(async()=>{
           const killRoleArr=Object.entries(byKillRole).map(([k,v])=>({key:k,s:toS(v)})).filter(x=>x.s).sort((a,b)=>a.s.profit-b.s.profit);
           const monthArr=Object.entries(byMonth).map(([k,v])=>({key:k,s:toS(v)})).filter(x=>x.s).sort((a,b)=>b.key.localeCompare(a.key)).slice(0,4);
 
-          const totalP=betsF.reduce((s,b)=>s+b.profit,0);
-          const totalStk=betsF.reduce((s,b)=>s+b.stake,0);
+          const totalP=betsF.reduce((s,b)=>s+(b.profit||0),0);
+          const totalStk=betsF.reduce((s,b)=>s+(b.stake||0),0);
           const gWR=betsF.length>0?(betsF.filter(b=>b.status==="won").length/betsF.length*100):0;
           const gROI=totalStk>0?(totalP/totalStk*100):0;
           const pageTitle=filterType?({role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Kills",player:"Joueur"}[filterType]||filterType)+" — "+filterValue:(league?game+" · "+league:game);
@@ -5803,7 +5803,7 @@ const fetchAnalyse=useCallback(async()=>{
                 <div style={{marginBottom:12,borderRadius:12,overflow:"hidden",border:"1px solid #1A2235"}}>
                   <div style={{fontSize:9,color:"#9CA3AF",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",padding:"9px 12px",background:"#0D1626",borderBottom:"1px solid #1A2235"}}>Global</div>
                   <div style={{display:"flex",justifyContent:"space-around",padding:"14px 12px"}}>
-                    {[{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)},{l:"Cote moy.",v:"@"+(betsF.reduce((s,b)=>s+b.odds,0)/betsF.length).toFixed(2),c:"#9CA3AF"}].map(x=>(
+                    {[{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)},{l:"Cote moy.",v:"@"+(betsF.reduce((s,b)=>s+(b.odds||0),0)/betsF.length).toFixed(2),c:"#9CA3AF"}].map(x=>(
                       <div key={x.l} style={{textAlign:"center"}}>
                         <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{x.l}</div>
                         <div style={{fontSize:17,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -5949,9 +5949,9 @@ const fetchAnalyse=useCallback(async()=>{
                   const ps=periodBets&&periodBets.length>0?{
                     n:periodBets.length,
                     wr:periodBets.length>0?(periodBets.filter(b=>b.status==="won").length/periodBets.length*100):0,
-                    profit:periodBets.reduce((s,b)=>s+b.profit,0),
-                    roi:periodBets.reduce((s,b)=>s+b.stake,0)>0?(periodBets.reduce((s,b)=>s+b.profit,0)/periodBets.reduce((s,b)=>s+b.stake,0)*100):0,
-                    avg:periodBets.length>0?(periodBets.reduce((s,b)=>s+b.odds,0)/periodBets.length):0,
+                    profit:periodBets.reduce((s,b)=>s+(b.profit||0),0),
+                    roi:periodBets.reduce((s,b)=>s+(b.stake||0),0)>0?(periodBets.reduce((s,b)=>s+(b.profit||0),0)/periodBets.reduce((s,b)=>s+(b.stake||0),0)*100):0,
+                    avg:periodBets.length>0?(periodBets.reduce((s,b)=>s+(b.odds||0),0)/periodBets.length):0,
                   }:null;
                   return(
                     <div style={{marginBottom:12,borderRadius:12,overflow:"hidden",border:"1px solid #1A2235"}}>
@@ -6705,7 +6705,7 @@ const fetchAnalyse=useCallback(async()=>{
                           </div>
                           <div style={{textAlign:"right"}}>
                             <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#22C55E":b.status==="lost"?"#EF4444":"#3B82F6"}}>
-                              {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+b.profit.toFixed(2)+"€"}
+                              {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"€"}
                             </div>
                             <div style={{fontSize:10,color:STATUS_CFG[b.status]?STATUS_CFG[b.status].color:"#9CA3AF"}}>{STATUS_CFG[b.status]?STATUS_CFG[b.status].label:b.status}</div>
                           </div>
