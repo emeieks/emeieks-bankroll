@@ -2117,7 +2117,7 @@ function PlayerSearchPanel({allPlayers,custom,setCustom,setEditingPlayer,blackli
 }
 
 // ── EditBetModal component ─────────────────────────────────────────────────
-const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,calcProfit,allPlayers}){
+const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,calcProfit,allPlayers,activeTourneys={},savedTourneys={}}){
   const ebGame=bet.game||"CS2";
   const ebIsHS=bet.isHeadshot;
   // Build kills options
@@ -2140,6 +2140,17 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
   const [ebStake,setEbStake]=useState(String(bet.stake||""));
   const [ebMap,setEbMap]=useState(bet.mapTag||"Map 1");
   const [ebLive,setEbLive]=useState(!!bet.isLive);
+  const [ebTournament,setEbTournament]=useState(bet.tournament||"");
+
+  // Tournois disponibles pour ce jeu
+  const ebTourneyOptions=useMemo(()=>{
+    const active=activeTourneys[ebGame];
+    const saved=savedTourneys[ebGame]||[];
+    const all=new Set(saved);
+    if(active&&active.name)all.add(active.name);
+    if(bet.tournament)all.add(bet.tournament);
+    return [...all];
+  },[ebGame,activeTourneys,savedTourneys,bet.tournament]);
 
   const labelStyle={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5,display:"block"};
   const fieldStyle={width:"100%",background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 12px",color:"#E5E7EB",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:600,outline:"none",boxSizing:"border-box"};
@@ -2156,6 +2167,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
       odds,stake,
       mapTag:ebMap,
       isLive:ebLive,
+      tournament:ebTournament||undefined,
       profit:calcProfit(bet.status,stake,odds),
     });
   }
@@ -2246,6 +2258,38 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Tournoi */}
+        <div style={{marginBottom:12}}>
+          <span style={labelStyle}>Tournoi</span>
+          {ebTourneyOptions.length>0?(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:ebTourneyOptions.length>0?6:0}}>
+              <button onClick={()=>setEbTournament("")}
+                style={{padding:"6px 11px",borderRadius:8,border:"1.5px solid "+(ebTournament===""?"#6B7280":"#1F2937"),background:ebTournament===""?"rgba(107,114,128,0.15)":"transparent",color:ebTournament===""?"#9CA3AF":"#4B5563",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                Aucun
+              </button>
+              {ebTourneyOptions.map(t=>{
+                const isActive=activeTourneys[ebGame]?.name===t&&(!activeTourneys[ebGame].end||new Date(activeTourneys[ebGame].end)>=new Date());
+                return(
+                  <button key={t} onClick={()=>setEbTournament(t)}
+                    style={{padding:"6px 11px",borderRadius:8,border:"1.5px solid "+(ebTournament===t?"#F59E0B":"#1F2937"),background:ebTournament===t?"rgba(245,158,11,0.12)":"transparent",color:ebTournament===t?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>
+                    {isActive&&<span style={{width:5,height:5,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 4px rgba(34,197,94,0.7)",flexShrink:0}}/>}
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          ):(
+            <input value={ebTournament} onChange={e=>setEbTournament(e.target.value)}
+              placeholder="ex: PGL Astana 2026"
+              style={{...fieldStyle,fontSize:13}}/>
+          )}
+          {ebTourneyOptions.length>0&&(
+            <input value={ebTournament} onChange={e=>setEbTournament(e.target.value)}
+              placeholder="Ou saisir manuellement..."
+              style={{...fieldStyle,fontSize:12,padding:"8px 12px",marginTop:4}}/>
+          )}
         </div>
 
         {/* Live toggle */}
@@ -3989,9 +4033,9 @@ const fetchAnalyse=useCallback(async()=>{
                   {/* ── SETTLED — groupés par mois puis par jour de settlement ── */}
                   {betGroupMode==="semaine"?settledWeekKeys.map(wk=>{
                     const weekDays=settledByWeek[wk];
-                    const weekBets=weekDays.flatMap(dk=>settledByDay[dk]);
-                    const weekP=weekBets.reduce((s,b)=>s+b.profit,0);
-                    const weekStaked=weekBets.reduce((s,b)=>s+b.stake,0);
+                    const weekBets=weekDays.flatMap(dk=>settledByDay[dk]||[]);
+                    const weekP=weekBets.reduce((s,b)=>s+(b.profit||0),0);
+                    const weekStaked=weekBets.reduce((s,b)=>s+(b.stake||0),0);
                     const weekROI=weekStaked>0?(weekP/weekStaked*100):0;
                     const wkEnd=new Date(wk+"T12:00:00");wkEnd.setDate(wkEnd.getDate()+6);
                     const wkLabel="Sem. du "+new Date(wk+"T12:00:00").getDate()+" "+FR_MONTHS[new Date(wk+"T12:00:00").getMonth()]+" → "+wkEnd.getDate()+" "+FR_MONTHS[wkEnd.getMonth()];
@@ -4006,14 +4050,14 @@ const fetchAnalyse=useCallback(async()=>{
                             <div style={{fontSize:16,fontWeight:800,color:weekP>=0?"#22C55E":"#EF4444"}}>{weekP>=0?"+":""}{weekP.toFixed(0)}€</div>
                             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:2}}>
                               <span style={{fontSize:10,color:weekROI>=0?"#22C55E":"#EF4444"}}>{weekROI>=0?"+":""}{weekROI.toFixed(1)}%</span>
-                              <span style={{fontSize:10,color:(weekBets.filter(b=>b.status==="won").length/(weekBets.filter(b=>b.status!=="pending").length||1)*100)>=55?"#22C55E":"#9CA3AF"}}>{weekBets.filter(b=>b.status!=="pending").length>0?(weekBets.filter(b=>b.status==="won").length/weekBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
+                              <span style={{fontSize:10,color:((weekBets.filter(b=>b.status==="won").length/(weekBets.filter(b=>b.status!=="pending").length||1)*100)||0)>=55?"#22C55E":"#9CA3AF"}}>{weekBets.filter(b=>b.status!=="pending").length>0?(weekBets.filter(b=>b.status==="won").length/weekBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
                             </div>
                           </div>
                         </div>
                         <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
                           {weekDays.map((dk,di)=>{
-                            const dayBets=settledByDay[dk];
-                            const dayP=dayBets.reduce((s,b)=>s+b.profit,0);
+                            const dayBets=settledByDay[dk]||[];
+                            const dayP=dayBets.reduce((s,b)=>s+(b.profit||0),0);
                             const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
                             return(
                               <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
@@ -4034,9 +4078,9 @@ const fetchAnalyse=useCallback(async()=>{
                     );
                   }):settledMonthKeys.map(mk=>{
                     const monthDays=settledByMonth[mk];
-                    const monthBets=monthDays.flatMap(dk=>settledByDay[dk]);
-                    const monthP=monthBets.reduce((s,b)=>s+b.profit,0);
-                    const monthStaked=monthBets.reduce((s,b)=>s+b.stake,0);
+                    const monthBets=monthDays.flatMap(dk=>settledByDay[dk]||[]);
+                    const monthP=monthBets.reduce((s,b)=>s+(b.profit||0),0);
+                    const monthStaked=monthBets.reduce((s,b)=>s+(b.stake||0),0);
                     const monthROI=monthStaked>0?((monthP/monthStaked)*100):0;
                     const allMonthSelected=monthBets.every(b=>selectedIds.includes(b.id));
                     return(
@@ -4053,7 +4097,7 @@ const fetchAnalyse=useCallback(async()=>{
                               <div style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#EF4444"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}€</div>
                               <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:2}}>
                                 <span style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#EF4444"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}%</span>
-                                <span style={{fontSize:10,fontWeight:600,color:(monthBets.filter(b=>b.status==="won").length/monthBets.filter(b=>b.status!=="pending").length*100||0)>=55?"#22C55E":"#9CA3AF"}}>{monthBets.filter(b=>b.status!=="pending").length>0?(monthBets.filter(b=>b.status==="won").length/monthBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
+                                <span style={{fontSize:10,fontWeight:600,color:((monthBets.filter(b=>b.status==="won").length/(monthBets.filter(b=>b.status!=="pending").length||1)*100)||0)>=55?"#22C55E":"#9CA3AF"}}>{monthBets.filter(b=>b.status!=="pending").length>0?(monthBets.filter(b=>b.status==="won").length/monthBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
                               </div>
                             </div>
                             <span style={{fontSize:14,color:"#4B5563"}}>{collapsedMonths.has(mk)?"▶":"▼"}</span>
@@ -4064,8 +4108,8 @@ const fetchAnalyse=useCallback(async()=>{
                         {!collapsedMonths.has(mk)&&(
                         <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
                           {monthDays.map((dk,di)=>{
-                            const dayBets=settledByDay[dk];
-                            const dayP=dayBets.reduce((s,b)=>s+b.profit,0);
+                            const dayBets=settledByDay[dk]||[];
+                            const dayP=dayBets.reduce((s,b)=>s+(b.profit||0),0);
                             const allDaySelected=dayBets.every(b=>selectedIds.includes(b.id));
                             const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
                             return(
@@ -6772,6 +6816,8 @@ const fetchAnalyse=useCallback(async()=>{
             bookmakers={bookmakers}
             calcProfit={calcProfit}
             allPlayers={allPlayers}
+            activeTourneys={activeTourneys}
+            savedTourneys={savedTourneys}
             onClose={()=>setEditingBet(null)}
             onSave={(updated)=>{
               setBets(b=>b.map(bet=>bet.id===updated.id?updated:bet));
