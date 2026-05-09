@@ -2597,6 +2597,82 @@ function NavIconSuivi({active}){
   </svg>);
 }
 
+// ── SelectableRow — mémoïsé pour éviter re-render de toute la liste ──────────
+const SelectableRow=memo(function SelectableRow({bet,isSelected,onToggle,selectMode,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,bkPhotos}){
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:6,paddingLeft:selectMode?8:0}}>
+      {selectMode&&(
+        <button onClick={()=>onToggle(bet.id)}
+          style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(isSelected?"#22C55E":"#6B7280"),background:isSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>
+      )}
+      <div style={{flex:1}}>
+        <BetRow bet={bet} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+      </div>
+    </div>
+  );
+},
+(prev,next)=>
+  prev.isSelected===next.isSelected &&
+  prev.selectMode===next.selectMode &&
+  prev.bet===next.bet
+);
+
+// ── Selection store using useRef — zero re-renders on checkbox toggle ─────────
+function useSelectionStore(){
+  const subsRef=useRef(new Map());
+  const selRef=useRef(new Set());
+  const [count,setCount]=useState(0);
+  const subscribe=useCallback((id,fn)=>{
+    if(!subsRef.current.has(id))subsRef.current.set(id,new Set());
+    subsRef.current.get(id).add(fn);
+    return()=>subsRef.current.get(id)?.delete(fn);
+  },[]);
+  const toggle=useCallback((id)=>{
+    const s=selRef.current;
+    s.has(id)?s.delete(id):s.add(id);
+    subsRef.current.get(id)?.forEach(fn=>fn(s.has(id)));
+    setCount(s.size);
+  },[]);
+  const toggleAll=useCallback((ids,forceOn)=>{
+    const s=selRef.current;
+    ids.forEach(id=>{forceOn?s.add(id):s.delete(id);subsRef.current.get(id)?.forEach(fn=>fn(forceOn));});
+    setCount(s.size);
+  },[]);
+  const clear=useCallback(()=>{
+    selRef.current.forEach(id=>subsRef.current.get(id)?.forEach(fn=>fn(false)));
+    selRef.current.clear();setCount(0);
+  },[]);
+  const getSelected=useCallback(()=>new Set(selRef.current),[]);
+  const isSelected=useCallback((id)=>selRef.current.has(id),[]);
+  const allIn=useCallback((ids)=>ids.length>0&&ids.every(id=>selRef.current.has(id)),[]);
+  const someIn=useCallback((ids)=>ids.some(id=>selRef.current.has(id)),[]);
+  return{toggle,toggleAll,clear,getSelected,isSelected,allIn,someIn,count,subscribe};
+}
+
+const SelectCheckbox=memo(function SelectCheckbox({id,store,size=16}){
+  const [checked,setChecked]=useState(()=>store.isSelected(id));
+  useEffect(()=>store.subscribe(id,setChecked),[id]);
+  return(
+    <button onClick={()=>store.toggle(id)} style={{width:size,height:size,borderRadius:4,border:"1.5px solid "+(checked?"#22C55E":"#6B7280"),background:checked?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      {checked&&<span style={{fontSize:size*0.65,color:"#22C55E",fontWeight:900,lineHeight:1}}>✓</span>}
+    </button>
+  );
+});
+
+const DayCheckbox=memo(function DayCheckbox({dayIds,store}){
+  const [st,setSt]=useState(()=>({all:store.allIn(dayIds),some:store.someIn(dayIds)}));
+  useEffect(()=>{
+    const u=dayIds.map(id=>store.subscribe(id,()=>setSt({all:store.allIn(dayIds),some:store.someIn(dayIds)})));
+    return()=>u.forEach(f=>f());
+  },[dayIds]);
+  return(
+    <button onClick={()=>store.toggleAll(dayIds,!st.all)} style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(st.all?"#22C55E":st.some?"#A78BFA":"#374151"),background:st.all?"rgba(34,197,94,0.15)":st.some?"rgba(167,139,250,0.1)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      {st.all&&<span style={{fontSize:10,color:"#22C55E",fontWeight:900}}>✓</span>}
+      {st.some&&!st.all&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>–</span>}
+    </button>
+  );
+});
+
 // ── MesParisView ─────────────────────────────────────────────────────────────
 function MesParisView({
   bets,setBets,bookmakers,bkPhotos,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
@@ -2608,7 +2684,7 @@ function MesParisView({
   calcProfit,
 }){
   const [selectMode,setSelectMode]=useState(false);
-  const [selectedIds,setSelectedIds]=useState(()=>new Set());
+  const store=useSelectionStore();
   const [confirmDelete,setConfirmDelete]=useState(false);
   // Collapse all months by default except the most recent one
   const [collapsedMonths,setCollapsedMonths]=useState(()=>{
@@ -2707,14 +2783,14 @@ function MesParisView({
   },[monthKeys.length]);
 
   // Delete selected
-  const toggleId=useCallback((id)=>setSelectedIds(ids=>{const n=new Set(ids);n.has(id)?n.delete(id):n.add(id);return n;}),[]);
   const deleteSelected=()=>{
-    const removed=bets.filter(b=>selectedIds.has(b.id));
+    const sel=store.getSelected();
+    const removed=bets.filter(b=>sel.has(b.id));
     setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
-    const updated=bets.filter(b=>!selectedIds.has(b.id));
+    const updated=bets.filter(b=>!sel.has(b.id));
     setBets(updated);
-    supaDeleteManyBets([...selectedIds]).catch(()=>{});
-    setSelectMode(false);setSelectedIds(new Set());setConfirmDelete(false);
+    supaDeleteManyBets([...sel]).catch(()=>{});
+    setSelectMode(false);store.clear();setConfirmDelete(false);
     showToast(removed.length+" paris supprimés","#EF4444");
   };
 
@@ -2737,13 +2813,13 @@ function MesParisView({
         </button>
         {activeFilters>0&&<button onClick={clearFilters} style={{padding:"6px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>× Effacer</button>}
         <div style={{flex:1}}/>
-        {selectMode&&selectedIds.size>0&&(
+        {selectMode&&store.count>0&&(
           <button onClick={()=>{setBulkDate("");setBulkStatus("");setBulkTournament("");setBulkEditOpen(true);}}
             style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid #22C55E",background:"rgba(34,197,94,0.12)",color:"#22C55E",fontSize:16,fontWeight:700,cursor:"pointer"}}>
             ✓
           </button>
         )}
-        <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds(new Set());setConfirmDelete(false);setBulkEditOpen(false);}}
+        <button onClick={()=>{setSelectMode(v=>!v);store.clear();setConfirmDelete(false);setBulkEditOpen(false);}}
           style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(selectMode?"rgba(239,68,68,0.5)":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(239,68,68,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#EF4444":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
           {selectMode?"✕":"Sél."}
         </button>
@@ -2768,18 +2844,18 @@ function MesParisView({
       )}
 
       {/* ── SELECT MODE ACTIONS ── */}
-      {selectMode&&selectedIds.size>0&&(
+      {selectMode&&store.count>0&&(
         <div style={{display:"flex",gap:6,marginBottom:8}}>
           {confirmDelete?(
             <>
               <button onClick={deleteSelected} style={{flex:1,padding:"10px",background:"#EF4444",border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                Supprimer {selectedIds.size} paris
+                Supprimer {store.count} paris
               </button>
               <button onClick={()=>setConfirmDelete(false)} style={{padding:"10px 14px",background:"#1F2937",border:"none",borderRadius:9,color:"#9CA3AF",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕</button>
             </>
           ):(
             <button onClick={()=>setConfirmDelete(true)} style={{padding:"8px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:9,color:"#EF4444",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-              🗑 Supprimer ({selectedIds.size})
+              🗑 Supprimer ({store.count})
             </button>
           )}
         </div>
@@ -2798,12 +2874,7 @@ function MesParisView({
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:4}}>
             {pending.map(b=>(
-              <div key={b.id} style={{display:"flex",alignItems:"center",gap:6}}>
-                {selectMode&&<button onClick={()=>setSelectedIds(ids=>{const n=new Set(ids);n.has(b.id)?n.delete(b.id):n.add(b.id);return n;})} style={{width:18,height:18,borderRadius:4,border:"2px solid "+(selectedIds.has(b.id)?"#22C55E":"#374151"),background:selectedIds.has(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
-                <div style={{flex:1}}>
-                  <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
-                </div>
-              </div>
+              <div key={b.id} style={{display:"flex",alignItems:"center",gap:6}}>{selectMode&&<SelectCheckbox id={b.id} store={store} size={18}/>}<div style={{flex:1}}><BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/></div></div>
             ))}
           </div>
         </div>
@@ -2849,31 +2920,14 @@ function MesParisView({
                         {/* Day header */}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#0B1220"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            {selectMode&&(()=>{
-                              const allSelected=dayBets.every(b=>selectedIds.has(b.id));
-                              const someSelected=dayBets.some(b=>selectedIds.has(b.id));
-                              return(
-                                <button onClick={()=>{
-                                  if(allSelected){setSelectedIds(ids=>{const n=new Set(ids);dayBets.forEach(b=>n.delete(b.id));return n;})}
-                                  else{setSelectedIds(ids=>{const n=new Set(ids);dayBets.forEach(b=>n.add(b.id));return n;})}
-                                }} style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(allSelected?"#22C55E":someSelected?"#A78BFA":"#374151"),background:allSelected?"rgba(34,197,94,0.15)":someSelected?"rgba(167,139,250,0.1)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                                  {allSelected&&<span style={{fontSize:10,color:"#22C55E",fontWeight:900}}>✓</span>}
-                                  {someSelected&&!allSelected&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>–</span>}
-                                </button>
-                              );
-                            })()}
+                            {selectMode&&<DayCheckbox dayIds={dayBets.map(b=>b.id)} store={store}/>}
                             <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB"}}>{fmtDay(dk)}</span>
                           </div>
                           <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
                         </div>
                         {/* Bets */}
                         {dayBets.map(b=>(
-                          <div key={b.id} style={{display:"flex",alignItems:"center",gap:6,paddingLeft:selectMode?8:0}}>
-                            {selectMode&&<button onClick={()=>setSelectedIds(ids=>{const n=new Set(ids);n.has(b.id)?n.delete(b.id):n.add(b.id);return n;})} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(selectedIds.has(b.id)?"#22C55E":"#6B7280"),background:selectedIds.has(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
-                            <div style={{flex:1}}>
-                              <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
-                            </div>
-                          </div>
+                          <div key={b.id} style={{display:"flex",alignItems:"center",gap:6}}>{selectMode&&<SelectCheckbox id={b.id} store={store} size={18}/>}<div style={{flex:1}}><BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/></div></div>
                         ))}
                       </div>
                     );
@@ -2892,7 +2946,7 @@ function MesParisView({
           <div style={{width:"100%",background:"#111827",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
-                <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selectedIds.size} paris</div>
+                <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {store.count} paris</div>
                 <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Seuls les champs remplis seront modifiés</div>
               </div>
               <button onClick={()=>setBulkEditOpen(false)} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#6B7280",fontSize:18,cursor:"pointer"}}>×</button>
@@ -2920,9 +2974,10 @@ function MesParisView({
                 style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
             </div>
             <button onClick={()=>{
+              const sel=store.getSelected();
               if(!bulkStatus&&!bulkDate&&!bulkTournament)return;
               const updated=bets.map(b=>{
-                if(!selectedIds.has(b.id))return b;
+                if(!sel.has(b.id))return b;
                 const changes={};
                 if(bulkStatus){changes.status=bulkStatus;changes.profit=calcProfit(bulkStatus,b.stake,b.odds);if(bulkStatus!=="pending")changes.settledAt=Date.now();}
                 if(bulkDate){const time=b.datetime?String(b.datetime).slice(11,16):"12:00";changes.datetime=bulkDate+"T"+time;}
@@ -2930,12 +2985,12 @@ function MesParisView({
                 return{...b,...changes};
               });
               setBets(updated);
-              supaPushBets(updated.filter(b=>selectedIds.has(b.id))).catch(()=>{});
-              showToast(selectedIds.size+" paris modifiés ✓");
-              setBulkEditOpen(false);setSelectMode(false);setSelectedIds(new Set());
+              supaPushBets(updated.filter(b=>sel.has(b.id))).catch(()=>{});
+              showToast(store.count+" paris modifiés ✓");
+              setBulkEditOpen(false);setSelectMode(false);store.clear();
             }}
               style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-              Appliquer aux {selectedIds.size} paris
+              Appliquer aux {store.count} paris
             </button>
           </div>
         </div>
@@ -3828,13 +3883,13 @@ export default function App(){
   function applyBulkStatus(status){
     const now=Date.now();
     setBets(b=>b.map((bet,i)=>selectedIds.has(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkDatetime("");
-    showToast(selectedIds.size+" paris mis à jour");
+    setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
+    showToast(store.count+" paris mis à jour");
   }
   function applyBulkBK(){
     if(!bulkBK)return;
     setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,bookmaker:bulkBK}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkDatetime("");
+    setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
     showToast("Bookmaker mis à jour");
   }
   function applyBulkDatetime(){
@@ -3845,18 +3900,18 @@ export default function App(){
       setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
       return updated;
     });
-    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkDatetime("");
+    setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
     showToast("Date mise à jour");
   }
   function applyBulkMap(){
     if(!bulkMap)return;
     setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,mapTag:bulkMap}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkMap("");
+    setBulkModal(false);setSelectMode(false);store.clear();setBulkMap("");
     showToast("Map mise à jour");
   }
   function applyBulkTourney(name){
     setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,tournament:name}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkTourney("");
+    setBulkModal(false);setSelectMode(false);store.clear();setBulkTourney("");
     showToast("🏆 Tournoi mis à jour");
   }
 
@@ -6858,7 +6913,7 @@ export default function App(){
         {bulkModal&&(
           <div className="moverlay" onClick={()=>{setBulkModal(false);setBulkDatetime("");}}>
             <div className="modal" onClick={e=>e.stopPropagation()}>
-              <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Modifier {selectedIds.size} paris</div>
+              <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Modifier {store.count} paris</div>
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Statut</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
@@ -6882,7 +6937,7 @@ export default function App(){
                 </div>
                 <button onClick={applyBulkBK} disabled={!bulkBK}
                   style={{width:"100%",padding:"11px",background:bulkBK?"linear-gradient(135deg,#22C55E,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkBK?"#0B1220":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  {bulkBK?"Appliquer "+bulkBK+" à "+selectedIds.size+" paris":"Sélectionner un bookmaker"}
+                  {bulkBK?"Appliquer "+bulkBK+" à "+store.count+" paris":"Sélectionner un bookmaker"}
                 </button>
               </div>
               <div style={{marginBottom:14}}>
@@ -6893,7 +6948,7 @@ export default function App(){
                 </div>
                 <button onClick={applyBulkDatetime} disabled={!bulkDatetime}
                   style={{width:"100%",padding:"11px",background:bulkDatetime?"linear-gradient(135deg,#7C3AED,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkDatetime?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  {bulkDatetime?"Appliquer la date à "+selectedIds.size+" paris":"Choisir une date"}
+                  {bulkDatetime?"Appliquer la date à "+store.count+" paris":"Choisir une date"}
                 </button>
               </div>
               {/* Tournoi — menu déroulant */}
@@ -6915,7 +6970,7 @@ export default function App(){
                     </div>
                     <button onClick={()=>bulkTourney&&applyBulkTourney(bulkTourney)} disabled={!bulkTourney}
                       style={{width:"100%",padding:"11px",background:bulkTourney?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkTourney?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                      {bulkTourney?"Appliquer "+bulkTourney+" à "+selectedIds.size+" paris":"Sélectionner un tournoi"}
+                      {bulkTourney?"Appliquer "+bulkTourney+" à "+store.count+" paris":"Sélectionner un tournoi"}
                     </button>
                   </div>
                 );
@@ -6934,7 +6989,7 @@ export default function App(){
                 </div>
                 <button onClick={applyBulkMap} disabled={!bulkMap}
                   style={{width:"100%",padding:"11px",background:bulkMap?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkMap?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                  {bulkMap?"Appliquer "+bulkMap+" à "+selectedIds.size+" paris":"Sélectionner une map"}
+                  {bulkMap?"Appliquer "+bulkMap+" à "+store.count+" paris":"Sélectionner une map"}
                 </button>
               </div>
 
