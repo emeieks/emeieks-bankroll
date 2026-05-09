@@ -9,6 +9,8 @@ function normalizeDT(dt,id){
     if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
     return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
   };
+  // Rejeter les valeurs NaN ou invalides
+  if(dt&&typeof dt==="string"&&(dt.includes("NaN")||dt.includes("undefined")))dt=null;
   if(dt&&typeof dt==="string"&&/^\d{4}-\d{2}-\d{2}/.test(dt))return dt;
   if(dt&&(typeof dt==="number"||/^\d{10,}$/.test(String(dt))))return tsToStr(dt)||tsToStr(id)||"";
   if(!dt&&id)return tsToStr(id)||"";
@@ -7298,6 +7300,41 @@ export default function App(){
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Correction des dates T12:00 */}
+              <div style={{marginBottom:14,background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#F59E0B",marginBottom:4}}>🗓 Correction des dates</div>
+                <div style={{fontSize:11,color:"#6B7280",marginBottom:8}}>
+                  {bets.filter(b=>!b.datetime||String(b.datetime).includes("T12:00")||String(b.datetime).includes("NaN")).length} paris avec date invalide (T12:00 ou NaN) — reconstruite depuis l'ID.
+                </div>
+                <button onClick={()=>{
+                  const p=v=>String(v).padStart(2,"0");
+                  const tsToStr=ts=>{
+                    const d=new Date(Number(ts));
+                    if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
+                    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+                  };
+                  const needsFix=b=>{
+                    const dt=String(b.datetime||"");
+                    return !b.datetime||dt.includes("NaN")||dt.includes("undefined")||dt.includes("T12:00");
+                  };
+                  const fixed=bets.map(b=>{
+                    if(!needsFix(b))return b;
+                    const fromId=tsToStr(b.id);
+                    if(!fromId)return b;
+                    return {...b,datetime:fromId};
+                  });
+                  const count=fixed.filter((b,i)=>b.datetime!==bets[i].datetime).length;
+                  setBets(fixed);
+                  localStorage.setItem("v7_bets",JSON.stringify(fixed));
+                  setTimeout(()=>supaPushBets(fixed).catch(()=>{}),0);
+                  showToast(count+" dates corrigées ✓","#F59E0B");
+                  setSupaModal(false);
+                }}
+                  style={{width:"100%",padding:"10px",background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,color:"#F59E0B",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                  🔧 Corriger les dates depuis l'ID
+                </button>
               </div>
 
               {/* Actions manuelles */}
