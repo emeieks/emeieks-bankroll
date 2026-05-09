@@ -2870,7 +2870,7 @@ function MesParisView({
                 {!collapsedMonths.has(mk)&&(
                   <div style={{borderRadius:"0 0 12px 12px",overflow:"hidden",border:"1px solid #1F2937",borderTop:"none",marginBottom:6}}>
                     {days.map((dk,di)=>{
-                      const dayBets=byDay[dk]||[];
+                      const dayBets=[...(byDay[dk]||[])].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
                       const dayProfit=dayBets.reduce((s,b)=>s+(b.profit||0),0);
                       return(
                         <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
