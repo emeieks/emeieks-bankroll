@@ -3130,13 +3130,13 @@ export default function App(){
 
   const showBetConfirm=useCallback(()=>{},[]);
 
-  // ── Supabase: auto-push après chaque changement de paris (debounce 2s) ────
+  // ── Supabase: auto-push après chaque changement de paris (debounce 5s) ────
   useEffect(()=>{
     if(!loaded)return;
     const t=setTimeout(async()=>{
       try{ await supaPushBets(bets); setSupaOk(true); }
       catch(e){ setSupaOk(false); }
-    },2000);
+    },5000);
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
@@ -3663,9 +3663,11 @@ export default function App(){
         tournament:form.tournament||tname,
         settledAt:editingBet.status!=="pending"?new Date(newDatetime).getTime():(editingBet.settledAt||null),
       };
-      setBets(b=>b.map(bet=>bet.id===editingBet.id?updatedBet:bet));
-      // Push immédiat vers Supabase — seulement le pari modifié
-      supaPushBets([updatedBet]).catch(()=>{});
+      setBets(b=>{
+        const updated=b.map(bet=>bet.id===editingBet.id?updatedBet:bet);
+        setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
+        return updated;
+      });
       setEditingBet(null);
       setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
       showToast("Pari modifié ✓");
@@ -3759,6 +3761,21 @@ export default function App(){
 
     const openEdit=useCallback((b)=>{
     setEditingBet({...b});
+    // Pré-remplir le formulaire avec les données du pari existant
+    setForm(f=>({
+      ...f,
+      player:b.player||"",
+      overUnder:b.overUnder||"Over",
+      description:(b.description||"").replace(/^(Over|Under)\s/,""),
+      odds:String(b.odds||""),
+      stake:String(b.stake||""),
+      bookmaker:b.bookmaker||"",
+      datetime:b.datetime||f.datetime,
+      isHeadshot:b.isHeadshot||false,
+      isLive:b.isLive||false,
+      mapTag:b.mapTag||"Map 1",
+      tournament:b.tournament||"",
+    }));
   },[]);
 
   const deleteBet=useCallback((id)=>{
@@ -6914,6 +6931,7 @@ export default function App(){
             onClose={()=>setEditingBet(null)}
             onSave={(updated)=>{
               setBets(b=>b.map(bet=>bet.id===updated.id?updated:bet));
+              supaPushBets([updated]).catch(()=>{});
               setEditingBet(null);
               showToast("Pari modifié ✓");
             }}
