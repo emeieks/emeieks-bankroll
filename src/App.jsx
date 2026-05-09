@@ -3130,17 +3130,17 @@ export default function App(){
 
   const showBetConfirm=useCallback(()=>{},[]);
 
-  // ── Supabase: auto-push après chaque changement de paris (debounce 5s) ────
+  // ── Supabase: auto-push après chaque changement de paris (debounce 2s) ────
   useEffect(()=>{
     if(!loaded)return;
     const t=setTimeout(async()=>{
       try{ await supaPushBets(bets); setSupaOk(true); }
       catch(e){ setSupaOk(false); }
-    },5000);
+    },2000);
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
-  // ── Supabase: pull au chargement — merge simple, local prioritaire ───────
+  // ── Supabase: pull au chargement — Supabase est la source de vérité ───────
   useEffect(()=>{
     if(!loaded)return;
     (async()=>{
@@ -3149,21 +3149,11 @@ export default function App(){
         const remote=await supaPullBets();
         setSupaOk(true);
         if(!remote||remote.length===0){setSyncing(false);return;}
-
-        // Merge : local prioritaire. On ajoute seulement les paris présents
-        // dans remote mais absents en local (ex: ajoutés depuis un autre appareil)
-        const localIds=new Set(bets.map(b=>b.id));
-        const newFromRemote=remote.filter(b=>!localIds.has(b.id)).map(normalizeBet);
-
-        if(newFromRemote.length>0){
-          const merged=[...bets,...newFromRemote];
-          merged.sort((a,b2)=>(String(b2.datetime||"")).localeCompare(String(a.datetime||"")));
-          setBets(merged);
-          localStorage.setItem("v7_bets",JSON.stringify(merged));
-          showToast("☁️ +"+newFromRemote.length+" paris synchronisés","#7C3AED");
-        } else {
-          showToast("☁️ Sync OK","#7C3AED");
-        }
+        // Supabase EST la source de vérité — on remplace tout le local
+        const normalized=remote.map(normalizeBet);
+        setBets(normalized);
+        localStorage.setItem("v7_bets",JSON.stringify(normalized));
+        showToast("☁️ "+normalized.length+" paris chargés","#7C3AED");
       }catch(e){
         setSupaOk(false);
       }
@@ -3673,11 +3663,9 @@ export default function App(){
         tournament:form.tournament||tname,
         settledAt:editingBet.status!=="pending"?new Date(newDatetime).getTime():(editingBet.settledAt||null),
       };
-      setBets(b=>{
-        const updated=b.map(bet=>bet.id===editingBet.id?updatedBet:bet);
-        setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
-        return updated;
-      });
+      setBets(b=>b.map(bet=>bet.id===editingBet.id?updatedBet:bet));
+      // Push immédiat vers Supabase — seulement le pari modifié
+      supaPushBets([updatedBet]).catch(()=>{});
       setEditingBet(null);
       setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
       showToast("Pari modifié ✓");
