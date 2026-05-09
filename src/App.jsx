@@ -59,10 +59,19 @@ async function supaPullBets() {
     if(batch.length < limit) break;
     offset += limit;
   }
-  return all.map(b=>({
-    ...b,
-    splits:b.splits?JSON.parse(b.splits):undefined
-  }));
+  return all.map(b=>{
+    const p=v=>String(v).padStart(2,"0");
+    const tsToStr=ts=>{
+      const d=new Date(Number(ts));
+      if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
+      return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+    };
+    let dt=b.datetime;
+    if(dt&&typeof dt==="number")dt=tsToStr(dt);
+    else if(dt&&typeof dt==="string"&&/^\d{10,}$/.test(dt))dt=tsToStr(parseInt(dt));
+    else if(!dt||!/^\d{4}-\d{2}-\d{2}/.test(String(dt)))dt=tsToStr(b.id)||null;
+    return{...b,datetime:dt,splits:b.splits?JSON.parse(b.splits):undefined};
+  });
 }
 
 async function supaPushBets(bets) {
@@ -1857,7 +1866,11 @@ const STATUS_CFG={
 const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 
-function toDateKey(dt){return dt?dt.slice(0,10):"";}
+function toDateKey(dt){
+  if(!dt)return "";
+  try{const s=String(dt).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
+  catch{return "";}
+}
 function nowDT(){
   // Toujours utiliser l'heure de Montréal (America/Toronto)
   const p=v=>String(v).padStart(2,"0");
@@ -1871,15 +1884,17 @@ function calcProfit(status,stake,odds){
   return 0;
 }
 function fmtMonthFR(d){
-  const p=d.split("-");
-  if(p.length<2)return d;
-  return FR_MONTHS[parseInt(p[1])-1]+" "+p[0];
+  if(!d||d==="?")return "?";
+  try{const p=d.split("-");if(p.length<2)return d;return FR_MONTHS[parseInt(p[1])-1]+" "+p[0];}catch{return d;}
 }
 function fmtDayFR(d){
-  const p=d.split("-");
-  if(p.length<3)return d;
-  const dt=new Date(d+"T12:00:00");
-  return FR_DAYS[dt.getDay()]+" "+parseInt(p[2])+" "+FR_MONTHS[parseInt(p[1])-1]+" "+p[0];
+  if(!d||d==="?")return "?";
+  try{
+    const p=d.split("-");if(p.length<3)return d;
+    const dt=new Date(d+"T12:00:00");
+    if(isNaN(dt.getTime()))return d;
+    return FR_DAYS[dt.getDay()]+" "+parseInt(p[2])+" "+FR_MONTHS[parseInt(p[1])-1]+" "+p[0];
+  }catch{return d;}
 }
 function fmtDate(dt){
   if(!dt)return "";
@@ -2141,6 +2156,14 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
   const [ebMap,setEbMap]=useState(bet.mapTag||"Map 1");
   const [ebLive,setEbLive]=useState(!!bet.isLive);
   const [ebTournament,setEbTournament]=useState(bet.tournament||"");
+  // Normaliser datetime pour le champ input
+  const normDatetime=(dt)=>{
+    if(!dt)return "";
+    if(typeof dt==="number"){const d=new Date(dt);const p=v=>String(v).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());}
+    if(typeof dt==="string"&&/^\d{10,}$/.test(dt)){const d=new Date(parseInt(dt));const p=v=>String(v).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());}
+    return String(dt).slice(0,16);
+  };
+  const [ebDatetime,setEbDatetime]=useState(normDatetime(bet.datetime)||"");
 
   // Tournois disponibles pour ce jeu
   const ebTourneyOptions=useMemo(()=>{
@@ -2168,6 +2191,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
       mapTag:ebMap,
       isLive:ebLive,
       tournament:ebTournament||undefined,
+      datetime:ebDatetime||bet.datetime,
       profit:calcProfit(bet.status,stake,odds),
     });
   }
@@ -2290,6 +2314,17 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
               placeholder="Ou saisir manuellement..."
               style={{...fieldStyle,fontSize:12,padding:"8px 12px",marginTop:4}}/>
           )}
+        </div>
+
+        {/* Date & Heure */}
+        <div style={{marginBottom:12}}>
+          <span style={labelStyle}>Date & heure</span>
+          <input
+            type="datetime-local"
+            value={ebDatetime}
+            onChange={e=>setEbDatetime(e.target.value)}
+            style={{...fieldStyle,colorScheme:"dark",fontSize:13}}
+          />
         </div>
 
         {/* Live toggle */}
@@ -2535,6 +2570,254 @@ function NavIconSuivi({active}){
   </svg>);
 }
 
+// ── MesParisView ─────────────────────────────────────────────────────────────
+function MesParisView({
+  bets,setBets,bookmakers,bkPhotos,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
+  fBKs,setFBKs,setView,supaPushBets,supaDeleteManyBets,supaDeleteOneBet,setDeletedBets,BK_LOGOS,
+  fGames,setFGames,fStatus,setFStatus,fOverUnder,setFOverUnder,
+  fMinOdds,setFMinOdds,fMaxOdds,setFMaxOdds,fMinStake,setFMinStake,fMaxStake,setFMaxStake,
+  fMapFilter,setFMapFilter,fDuel,setFDuel,fLive,setFLive,fHeadshot,setFHeadshot,
+  fRole,setFRole,fLeague,setFLeague,fTourneys,setFTourneys,fDateFrom,setFDateFrom,fDateTo,setFDateTo,
+}){
+  const [selectMode,setSelectMode]=useState(false);
+  const [selectedIds,setSelectedIds]=useState([]);
+  const [confirmDelete,setConfirmDelete]=useState(false);
+  const [groupMode,setGroupMode]=useState("jour"); // "jour" | "semaine"
+
+  // ── Date helpers ──────────────────────────────────────────────────────────
+  const p=v=>String(v).padStart(2,"0");
+  const idToDateStr=id=>{
+    const d=new Date(Number(id));
+    if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+  };
+  const getDateKey=b=>{
+    let dt=b.datetime;
+    if(!dt||!/^\d{4}-\d{2}-\d{2}/.test(String(dt))){
+      dt=idToDateStr(b.id);
+    }
+    return dt?String(dt).slice(0,10):"?";
+  };
+  const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const FR_MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const FR_MONTHS_SHORT=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+  const fmtDay=dk=>{
+    if(!dk||dk==="?")return "Date inconnue";
+    try{
+      const [y,m,d]=dk.split("-").map(Number);
+      const wd=new Date(y,m-1,d).getDay();
+      return FR_DAYS[wd]+" "+d+" "+FR_MONTHS_SHORT[m-1];
+    }catch{return dk;}
+  };
+  const fmtMonth=mk=>{
+    if(!mk||mk==="?")return "?";
+    try{const [y,m]=mk.split("-").map(Number);return FR_MONTHS[m-1]+" "+y;}catch{return mk;}
+  };
+
+  // ── Active filters count ──────────────────────────────────────────────────
+  const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter&&fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus&&fStatus!=="All"?1:0)+(fOverUnder&&fOverUnder!=="All"?1:0)+(fRole&&fRole!=="All"?1:0)+(fLeague&&fLeague!=="All"?1:0)+(fTourneys&&fTourneys.size>0?1:0)+(fDateFrom?1:0)+(fDateTo?1:0);
+  const clearFilters=()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");if(setFTourneys)setFTourneys(new Set());setFDateFrom("");setFDateTo("");};
+
+  // ── Filter bets ───────────────────────────────────────────────────────────
+  const filtered=useMemo(()=>bets.filter(b=>{
+    if(fStatus&&fStatus!=="All"&&b.status!==fStatus)return false;
+    if(fGames&&fGames.length>0&&!fGames.includes(b.game))return false;
+    if(fBKs&&fBKs.length>0&&!fBKs.includes(b.bookmaker||""))return false;
+    if(fOverUnder&&fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
+    if(fRole&&fRole!=="All"&&b.role!==fRole)return false;
+    if(fLeague&&fLeague!=="All"&&b.league!==fLeague)return false;
+    if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
+    if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
+    if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
+    if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
+    if(fDuel&&!(b.description&&b.description.includes("Duel")))return false;
+    if(fLive&&!b.isLive)return false;
+    if(fHeadshot&&!b.isHeadshot)return false;
+    return true;
+  }),[bets,fStatus,fGames,fBKs,fOverUnder,fRole,fLeague,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fDuel,fLive,fHeadshot]);
+
+  const pending=useMemo(()=>filtered.filter(b=>b.status==="pending").sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||"")),[filtered]);
+  const settled=useMemo(()=>filtered.filter(b=>b.status!=="pending").sort((a,b2)=>(b2.settledAt||0)-(a.settledAt||0)||(b2.datetime||"").localeCompare(a.datetime||"")),[filtered]);
+
+  // Group settled by day
+  const {dayKeys,byDay,monthKeys,byMonth}=useMemo(()=>{
+    const byDay={};
+    settled.forEach(b=>{
+      const dk=getDateKey(b);
+      if(!byDay[dk])byDay[dk]=[];
+      byDay[dk].push(b);
+    });
+    const dayKeys=Object.keys(byDay).sort((a,z)=>z.localeCompare(a));
+    const byMonth={};
+    dayKeys.forEach(dk=>{
+      const mk=dk==="?"?"?":dk.slice(0,7);
+      if(!byMonth[mk])byMonth[mk]=[];
+      byMonth[mk].push(dk);
+    });
+    const monthKeys=Object.keys(byMonth).sort((a,z)=>z.localeCompare(a));
+    return{dayKeys,byDay,monthKeys,byMonth};
+  },[settled]);
+
+  // Delete selected
+  const deleteSelected=()=>{
+    const removed=bets.filter(b=>selectedIds.includes(b.id));
+    setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
+    const updated=bets.filter(b=>!selectedIds.includes(b.id));
+    setBets(updated);
+    supaDeleteManyBets(selectedIds).catch(()=>{});
+    setSelectMode(false);setSelectedIds([]);setConfirmDelete(false);
+    showToast(removed.length+" paris supprimés","#EF4444");
+  };
+
+  const lbl={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:1};
+
+  return(
+    <div className="view-enter">
+
+      {/* ── TOP BAR ── */}
+      <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+        <button onClick={()=>setView("filtres")}
+          style={{display:"flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"rgba(255,255,255,0.08)"),background:activeFilters>0?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 5px"}}>{activeFilters}</span>}
+        </button>
+        <button onClick={()=>setView("statistiques")}
+          style={{display:"flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,border:"1.5px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Stats
+        </button>
+        {activeFilters>0&&<button onClick={clearFilters} style={{padding:"6px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>× Effacer</button>}
+        <div style={{flex:1}}/>
+        <button onClick={()=>setGroupMode(m=>m==="jour"?"semaine":"jour")}
+          style={{padding:"7px 10px",borderRadius:9,border:"1.5px solid "+(groupMode==="semaine"?"#F59E0B":"rgba(255,255,255,0.08)"),background:groupMode==="semaine"?"rgba(245,158,11,0.08)":"rgba(255,255,255,0.03)",color:groupMode==="semaine"?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+          {groupMode==="semaine"?"Sem.":"Jour"}
+        </button>
+        <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
+          style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(selectMode?"#22C55E":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#22C55E":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+          {selectMode?"✕":"Sél."}
+        </button>
+      </div>
+
+      {/* ── BK LOGO FILTERS ── */}
+      {bookmakers.length>0&&(
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
+          {bookmakers.map(bk=>{
+            const on=fBKs.includes(bk);
+            const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
+            return(
+              <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])}
+                title={bk}
+                style={{width:36,height:36,borderRadius:9,border:"1.5px solid "+(on?"#22C55E":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
+                {logo?<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>}
+                {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── SELECT MODE ACTIONS ── */}
+      {selectMode&&selectedIds.length>0&&(
+        <div style={{display:"flex",gap:6,marginBottom:8}}>
+          {confirmDelete?(
+            <>
+              <button onClick={deleteSelected} style={{flex:1,padding:"10px",background:"#EF4444",border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                Supprimer {selectedIds.length} paris
+              </button>
+              <button onClick={()=>setConfirmDelete(false)} style={{padding:"10px 14px",background:"#1F2937",border:"none",borderRadius:9,color:"#9CA3AF",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕</button>
+            </>
+          ):(
+            <button onClick={()=>setConfirmDelete(true)} style={{padding:"8px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:9,color:"#EF4444",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              🗑 Supprimer ({selectedIds.length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {bets.length===0&&<div style={{color:"#6B7280",fontSize:14,padding:30,textAlign:"center"}}>Aucun pari enregistré</div>}
+
+      {/* ── PENDING ── */}
+      {pending.length>0&&(
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"0 2px"}}>
+            <div style={{width:3,height:16,borderRadius:2,background:"linear-gradient(180deg,#3B82F6,#7C3AED)"}}/>
+            <span style={{fontSize:12,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
+            <span style={{background:"#3B82F6",color:"#fff",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:8}}>{pending.length}</span>
+            <span style={{fontSize:11,color:"#A78BFA",marginLeft:"auto"}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}€ en jeu</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {pending.map(b=>(
+              <div key={b.id} style={{display:"flex",alignItems:"center",gap:6}}>
+                {selectMode&&<button onClick={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} style={{width:18,height:18,borderRadius:4,border:"2px solid "+(selectedIds.includes(b.id)?"#22C55E":"#374151"),background:selectedIds.includes(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
+                <div style={{flex:1}}>
+                  <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SETTLED ── */}
+      {settled.length>0&&(
+        <div>
+          {monthKeys.map(mk=>{
+            const days=byMonth[mk]||[];
+            const allBets=days.flatMap(dk=>byDay[dk]||[]);
+            const profit=allBets.reduce((s,b)=>s+(b.profit||0),0);
+            const staked=allBets.reduce((s,b)=>s+(b.stake||0),0);
+            const won=allBets.filter(b=>b.status==="won").length;
+            const total=allBets.filter(b=>b.status!=="pending").length;
+            const roi=staked>0?profit/staked*100:0;
+            const wr=total>0?won/total*100:0;
+            return(
+              <div key={mk} style={{marginBottom:14}}>
+                {/* Month header */}
+                <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"13px 16px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:.5}}>{fmtMonth(mk)}</div>
+                    <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{allBets.length} paris · {wr.toFixed(0)}%WR</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:18,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444"}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
+                    <div style={{fontSize:11,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
+                  </div>
+                </div>
+
+                {/* Days */}
+                <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
+                  {days.map((dk,di)=>{
+                    const dayBets=byDay[dk]||[];
+                    const dayProfit=dayBets.reduce((s,b)=>s+(b.profit||0),0);
+                    return(
+                      <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
+                        {/* Day header */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#0B1220"}}>
+                          <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB"}}>{fmtDay(dk)}</span>
+                          <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
+                        </div>
+                        {/* Bets */}
+                        {dayBets.map(b=>(
+                          <div key={b.id} style={{display:"flex",alignItems:"center",gap:6,paddingLeft:selectMode?8:0}}>
+                            {selectMode&&<button onClick={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(selectedIds.includes(b.id)?"#22C55E":"#6B7280"),background:selectedIds.includes(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
+                            <div style={{flex:1}}>
+                              <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App(){
   const [bets,setBets]=useState([]);
   const [bankroll,setBankroll]=useState(7500);
@@ -2677,13 +2960,35 @@ export default function App(){
 }
   // ── Supabase sync (sans login) ───────────────────────────────────────────
   const [syncing,setSyncing]=useState(false);
-  const [supaOk,setSupaOk]=useState(false); // true si connexion confirmée
+  const [supaOk,setSupaOk]=useState(false);
   const [supaModal,setSupaModal]=useState(false);
+  const [integrityChecking,setIntegrityChecking]=useState(false);
+  const [integrityReport,setIntegrityReport]=useState(null);
 
   // ── Load: localStorage ───────────────────────────────────────────────────
   useEffect(()=>{
     try{
-      const b=localStorage.getItem("v7_bets"); if(b)setBets(JSON.parse(b));
+      const b=localStorage.getItem("v7_bets");
+      if(b){
+        const parsed=JSON.parse(b);
+        const p=v=>String(v).padStart(2,"0");
+        const tsToStr=ts=>{
+          const d=new Date(Number(ts));
+          if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
+          return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+        };
+        const fixDT=(bet)=>{
+          let dt=bet.datetime;
+          // Déjà bon format
+          if(dt&&typeof dt==="string"&&/^\d{4}-\d{2}-\d{2}/.test(dt))return dt;
+          // Timestamp numérique
+          if(dt&&(typeof dt==="number"||/^\d{10,}$/.test(String(dt))))return tsToStr(dt)||tsToStr(bet.id);
+          // Null/undefined → utiliser l'id qui est Date.now() au moment de création
+          if(!dt&&bet.id)return tsToStr(bet.id);
+          return dt;
+        };
+        setBets(parsed.map(bet=>({...bet,datetime:fixDT(bet)})));
+      }
       const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
       // Fallback localStorage pour les custom players
       const cp=localStorage.getItem("v7_custom_p"); if(cp)setCustom(JSON.parse(cp));
@@ -2754,7 +3059,7 @@ export default function App(){
 
   const showBetConfirm=useCallback(()=>{},[]);
 
-  // ── Supabase: auto-push après chaque changement de paris (debounce 3s) ────
+  // ── Supabase: auto-push après chaque changement de paris (debounce 5s) ────
   useEffect(()=>{
     if(!loaded)return;
     const t=setTimeout(async()=>{
@@ -2764,8 +3069,7 @@ export default function App(){
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
-
-  // ── Supabase: pull au chargement — Supabase fait autorité ────────────────
+  // ── Supabase: pull au chargement — merge simple, local prioritaire ───────
   useEffect(()=>{
     if(!loaded)return;
     (async()=>{
@@ -2773,14 +3077,23 @@ export default function App(){
       try{
         const remote=await supaPullBets();
         setSupaOk(true);
-        // Supabase fait TOUJOURS autorité
-        // Si remote est vide = intentionnel (reset), on vide aussi local
-        const final=remote||[];
-        setBets(final);
-        localStorage.setItem("v7_bets",JSON.stringify(final));
-        if(final.length>0) showToast("☁️ "+final.length+" paris","#7C3AED");
+        if(!remote||remote.length===0){setSyncing(false);return;}
+
+        // Merge : local prioritaire. On ajoute seulement les paris présents
+        // dans remote mais absents en local (ex: ajoutés depuis un autre appareil)
+        const localIds=new Set(bets.map(b=>b.id));
+        const newFromRemote=remote.filter(b=>!localIds.has(b.id));
+
+        if(newFromRemote.length>0){
+          const merged=[...bets,...newFromRemote];
+          merged.sort((a,b2)=>(String(b2.datetime||"")).localeCompare(String(a.datetime||"")));
+          setBets(merged);
+          localStorage.setItem("v7_bets",JSON.stringify(merged));
+          showToast("☁️ +"+newFromRemote.length+" paris synchronisés","#7C3AED");
+        } else {
+          showToast("☁️ Sync OK","#7C3AED");
+        }
       }catch(e){
-        // Hors ligne → garder localStorage
         setSupaOk(false);
       }
       setSyncing(false);
@@ -3298,14 +3611,17 @@ export default function App(){
       setView("mesparis");
       return;
     }
-    setBets(b=>[{
+    const newBet={
       id:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
       odds,stake,bookmaker:form.bookmaker,status:form.status,
       game:info.game,league:info.league,role:info.role,team:info.team,
       datetime:form.datetime||nowDT(),isHeadshot:form.isHeadshot||false,isLive:form.isLive||false,
       mapTag:form.mapTag||"",profit:calcProfit(form.status,stake,odds),
       tournament:tname,
-    },...b]);
+    };
+    setBets(b=>[newBet,...b]);
+    // Push immédiat vers Supabase (pas d'attente du debounce)
+    supaPushBets([newBet]).catch(()=>{});
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
     showToast("Pari enregistré ✓");
     showBetConfirm(form.status);
@@ -3330,6 +3646,8 @@ export default function App(){
       tournament:tname,
     }));
     setBets(b=>[...newBets,...b]);
+    // Push immédiat vers Supabase
+    supaPushBets(newBets).catch(()=>{});
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
     setSessionMaps([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
     showToast(newBets.length+" paris enregistres");
@@ -3356,6 +3674,7 @@ export default function App(){
       mapTag:duelForm.mapTag,profit:0,tournament:tname,
     };
     setBets(b=>[bet,...b]);
+    supaPushBets([bet]).catch(()=>{});
     setDuelForm({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:duelForm.bookmaker,mapTag:"Map 1",isLive:false,datetime:""});
     showToast("Duel enregistré ⚔️");
     setView("mesparis");
@@ -3365,7 +3684,8 @@ export default function App(){
     const now=Date.now();
     setBets(b=>{
       const updated=b.map(bet=>bet.id!==id?bet:{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now:null});
-      setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
+      // Push immédiat — critique pour ne pas perdre won/lost
+      supaPushBets(updated.filter(bet=>bet.id===id)).catch(()=>{});
       return updated;
     });
     if(status!=="pending"){setSettledOrder(prev=>({...prev,[id]:now}));}
@@ -3482,6 +3802,13 @@ export default function App(){
   const customEntries=useMemo(()=>Object.entries(custom),[custom]);
   const customCount=useMemo(()=>Object.keys(custom).length,[custom]);
   const todayKey=useMemo(()=>toDateKey(nowDT()),[]);
+
+  // ── Rafraîchir datetime Montréal à chaque ouverture du formulaire d'ajout ──
+  useEffect(()=>{
+    if(view==="add"){
+      setForm(f=>({...f,datetime:nowDT()}));
+    }
+  },[view]);
 
 
   return(
@@ -3838,305 +4165,42 @@ export default function App(){
 
         {/* ── MES PARIS ── */}
         {view==="mesparis"&&(
-          <div className="view-enter">
-            {/* Header */}
-            <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",marginBottom:6}}>
-              <div style={{display:"flex",gap:6}}>
-                {selectMode&&selectedIds.length>0&&(
-                  <>
-                    {confirmDelete?(
-                      <>
-                        <button onClick={()=>{
-                          const removed=bets.filter(b=>selectedIds.includes(b.id));
-    setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
-    setBets(b=>b.filter(bet=>!selectedIds.includes(bet.id)));
-                          supaDeleteManyBets(selectedIds).catch(()=>{});
-                          setSelectMode(false);setSelectedIds([]);setConfirmDelete(false);
-                          showToast(selectedIds.length+" paris supprimés","#EF4444");
-                        }}
-                          style={{background:"#EF4444",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontWeight:700,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
-                          Confirmer
-                        </button>
-                        <button onClick={()=>setConfirmDelete(false)}
-                          style={{background:"#1F2937",border:"none",borderRadius:7,padding:"5px 10px",color:"#9CA3AF",fontWeight:600,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
-                          ✕
-                        </button>
-                      </>
-                    ):(
-                      <button onClick={()=>setConfirmDelete(true)}
-                        style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:7,padding:"5px 10px",color:"#EF4444",fontWeight:700,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
-                        🗑 {selectedIds.length}
-                      </button>
-                    )}
-                    <button onClick={()=>setBulkModal(true)}
-                      style={{background:"linear-gradient(135deg,#22C55E,#0EA5E9)",border:"none",borderRadius:7,padding:"5px 10px",color:"#0B1220",fontWeight:700,fontSize:11,fontFamily:"'Inter',sans-serif",cursor:"pointer"}}>
-                      ✓ {selectedIds.length}
-                    </button>
-                  </>
-                )}
-
-              </div>
-            </div>
-
-            {/* ── Status chips + Filtre button ── */}
-            {(()=>{
-              const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus!=="All"?1:0)+(fOverUnder!=="All"?1:0)+(fRole!=="All"?1:0)+(fLeague!=="All"?1:0)+(fDateFrom?1:0)+(fDateTo?1:0);
-              return(
-                <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                  {/* Ligne 1 : Filtres + Stats + Sél + Effacer */}
-                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                    <button onClick={()=>setView("filtres")}
-                      style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"rgba(255,255,255,0.08)"),background:activeFilters>0?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-                      Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:10,fontSize:9,fontWeight:800,padding:"2px 6px",marginLeft:1}}>{activeFilters}</span>}
-                    </button>
-                    <button onClick={()=>setView("statistiques")}
-                      style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                      Stats
-                    </button>
-                    {activeFilters>0&&(
-                      <button onClick={()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");setFTourneys(new Set());}}
-                        style={{padding:"5px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                        × Effacer
-                      </button>
-                    )}
-                    <div style={{flex:1}}/>
-                    <button onClick={()=>setBetGroupMode(m=>m==="jour"?"semaine":"jour")}
-                      style={{padding:"7px 10px",borderRadius:9,border:"1.5px solid "+(betGroupMode==="semaine"?"#F59E0B":"rgba(255,255,255,0.08)"),background:betGroupMode==="semaine"?"rgba(245,158,11,0.08)":"rgba(255,255,255,0.03)",color:betGroupMode==="semaine"?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      {betGroupMode==="semaine"?"Sem.":"Jour"}
-                    </button>
-                    <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
-                      style={{padding:"7px 14px",borderRadius:9,border:"1.5px solid "+(selectMode?"#22C55E":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#22C55E":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>
-                      {selectMode?"✕ Annuler":"Sél."}
-                    </button>
-                  </div>
-
-                  {/* Ligne 2 : Logos bookmakers pour filtrage rapide */}
-                  {bookmakers.length>0&&(
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap",paddingTop:2}}>
-                      {bookmakers.map(bk=>{
-                        const on=fBKs.includes(bk);
-                        const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
-                        return(
-                          <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])}
-                            title={bk}
-                            style={{width:38,height:38,borderRadius:10,border:"1.5px solid "+(on?"#22C55E":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all .15s",flexShrink:0}}>
-                            {logo?<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:5,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700,textAlign:"center",lineHeight:1,padding:"0 2px"}}>{bk.slice(0,4)}</span>}
-                            {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:11,height:11,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                </div>
-              );
-            })()}
-
-            {bets.length===0&&<div style={{color:"#6B7280",fontSize:14,padding:20,textAlign:"center"}}>Aucun pari enregistré</div>}
-
-            {(()=>{
-              // Build flat sorted list: pending first (by datetime desc), then settled by settledAt desc
-              const filtered=allSortedBets.filter(b=>{
-                if(fStatus!=="All"&&b.status!==fStatus)return false;
-                if(fGames.length>0&&!fGames.includes(b.game))return false;
-                if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre")&&!(b.splits||[]).some(sp=>fBKs.includes(sp.bookmaker)))return false;
-                if(fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
-                if(fRole!=="All"&&b.role!==fRole)return false;
-                if(fLeague!=="All"&&b.league!==fLeague)return false;
-                if(fDateFrom&&b.datetime&&b.datetime<fDateFrom)return false;
-                if(fDateTo&&b.datetime&&b.datetime>fDateTo+"T23:59:59")return false;
-                if(fMinOdds&&b.odds<parseFloat(fMinOdds))return false;
-                if(fMaxOdds&&b.odds>parseFloat(fMaxOdds))return false;
-                if(fMinStake&&b.stake<parseFloat(fMinStake))return false;
-                if(fMaxStake&&b.stake>parseFloat(fMaxStake))return false;
-                if(fDuel&&!(b.description&&b.description.includes("Duel vs")))return false;
-                if(fLive&&!b.isLive)return false;
-                if(fHeadshot&&!b.isHeadshot)return false;
-                if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
-                if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
-                return true;
-              });
-              if(filtered.length===0&&bets.length>0)return<div style={{color:"#6B7280",fontSize:13,padding:"20px",textAlign:"center"}}>Aucun pari pour ces filtres</div>;
-
-              // Pending on top
-              const pending=filtered.filter(b=>b.status==="pending");
-              const settled=filtered.filter(b=>b.status!=="pending");
-
-              // Group settled by the date the bet was PLACED (datetime), not the settle date
-              // Ainsi un pari placé dimanche et validé lundi apparaît sous dimanche
-              const settledByDay={};
-              const settledDayKeys=[];
-              settled.forEach(b=>{
-                const sk=toDateKey(b.datetime)||"?";
-                if(!settledByDay[sk]){settledByDay[sk]=[];settledDayKeys.push(sk);}
-                settledByDay[sk].push(b);
-              });
-
-              // Get ISO week key for a date
-              const getWeekKey=dk=>{
-                const d=new Date(dk+"T12:00:00");
-                const day=d.getDay()||7;
-                d.setDate(d.getDate()-day+1);
-                return d.toISOString().slice(0,10);
-              };
-
-              // Group settle days by month
-              const settledByMonth={};
-              const settledMonthKeys=[];
-              settledDayKeys.forEach(dk=>{
-                const mk=dk.slice(0,7);
-                if(!settledByMonth[mk]){settledByMonth[mk]=[];settledMonthKeys.push(mk);}
-                settledByMonth[mk].push(dk);
-              });
-
-              // Group settle days by week
-              const settledByWeek={};
-              const settledWeekKeys=[];
-              settledDayKeys.forEach(dk=>{
-                const wk=getWeekKey(dk);
-                if(!settledByWeek[wk]){settledByWeek[wk]=[];settledWeekKeys.push(wk);}
-                settledByWeek[wk].push(dk);
-              });
-
-              const allPendingSelected=pending.length>0&&pending.every(b=>selectedIds.includes(b.id));
-
-              return(
-                <div>
-                  {/* ── PENDING SECTION ── */}
-                  {pending.length>0&&(
-                    <div style={{marginBottom:12}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 2px",marginBottom:8}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          {selectMode&&<button onClick={()=>setSelectedIds(ids=>allPendingSelected?ids.filter(id=>!pending.map(b=>b.id).includes(id)):[...new Set([...ids,...pending.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"2px solid "+(allPendingSelected?"#22C55E":"#374151"),background:allPendingSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
-                          <div style={{width:3,height:16,borderRadius:2,background:"linear-gradient(180deg,#3B82F6,#7C3AED)"}}/>
-                          <span style={{fontSize:12,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
-                          <span style={{fontSize:11,color:"#fff",fontWeight:700,background:"#3B82F6",padding:"2px 8px",borderRadius:8}}>{pending.length}</span>
-                        </div>
-                        <span style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}€ en jeu</span>
-                      </div>
-                      <div style={{borderRadius:14,overflow:"hidden",border:"1px solid rgba(59,130,246,0.2)",background:"rgba(59,130,246,0.03)"}}>
-                        {pending.map(b=>(
-                          selectMode
-                            ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                            :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── SETTLED — groupés par mois puis par jour de settlement ── */}
-                  {betGroupMode==="semaine"?settledWeekKeys.map(wk=>{
-                    const weekDays=settledByWeek[wk];
-                    const weekBets=weekDays.flatMap(dk=>settledByDay[dk]||[]);
-                    const weekP=weekBets.reduce((s,b)=>s+(b.profit||0),0);
-                    const weekStaked=weekBets.reduce((s,b)=>s+(b.stake||0),0);
-                    const weekROI=weekStaked>0?(weekP/weekStaked*100):0;
-                    const wkEnd=new Date(wk+"T12:00:00");wkEnd.setDate(wkEnd.getDate()+6);
-                    const wkLabel="Sem. du "+new Date(wk+"T12:00:00").getDate()+" "+FR_MONTHS[new Date(wk+"T12:00:00").getMonth()]+" → "+wkEnd.getDate()+" "+FR_MONTHS[wkEnd.getMonth()];
-                    return(
-                      <div key={wk} style={{marginBottom:10}}>
-                        <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"12px 18px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <div>
-                            <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>{wkLabel}</span>
-                            <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{weekBets.length} paris</div>
-                          </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontSize:16,fontWeight:800,color:weekP>=0?"#22C55E":"#EF4444"}}>{weekP>=0?"+":""}{weekP.toFixed(0)}€</div>
-                            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:2}}>
-                              <span style={{fontSize:10,color:weekROI>=0?"#22C55E":"#EF4444"}}>{weekROI>=0?"+":""}{weekROI.toFixed(1)}%</span>
-                              <span style={{fontSize:10,color:((weekBets.filter(b=>b.status==="won").length/(weekBets.filter(b=>b.status!=="pending").length||1)*100)||0)>=55?"#22C55E":"#9CA3AF"}}>{weekBets.filter(b=>b.status!=="pending").length>0?(weekBets.filter(b=>b.status==="won").length/weekBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
-                          {weekDays.map((dk,di)=>{
-                            const dayBets=settledByDay[dk]||[];
-                            const dayP=dayBets.reduce((s,b)=>s+(b.profit||0),0);
-                            const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
-                            return(
-                              <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
-                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px 6px",background:"#0B1220"}}>
-                                  <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB",borderBottom:"2px solid rgba(255,255,255,0.2)",paddingBottom:1}}>{dayLabel}</span>
-                                  <span style={{fontSize:13,fontWeight:700,color:dayP>=0?"#22C55E":"#EF4444"}}>{dayP>=0?"+":""}{dayP.toFixed(0)}€</span>
-                                </div>
-                                {dayBets.map(b=>(
-                                  selectMode
-                                    ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
-                                ))}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  }):settledMonthKeys.map(mk=>{
-                    const monthDays=settledByMonth[mk];
-                    const monthBets=monthDays.flatMap(dk=>settledByDay[dk]||[]);
-                    const monthP=monthBets.reduce((s,b)=>s+(b.profit||0),0);
-                    const monthStaked=monthBets.reduce((s,b)=>s+(b.stake||0),0);
-                    const monthROI=monthStaked>0?((monthP/monthStaked)*100):0;
-                    const allMonthSelected=monthBets.every(b=>selectedIds.includes(b.id));
-                    return(
-                      <div key={mk} style={{marginBottom:10}}>
-                        {/* Gros header mois cliquable */}
-                        <div onClick={()=>toggleMonth(mk)} style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"14px 18px",marginBottom:collapsedMonths.has(mk)?0:6,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            {selectMode&&<button onClick={e=>{e.stopPropagation();setSelectedIds(ids=>allMonthSelected?ids.filter(id=>!monthBets.map(b=>b.id).includes(id)):[...new Set([...ids,...monthBets.map(b=>b.id)])])}} style={{width:18,height:18,borderRadius:5,border:"2px solid "+(allMonthSelected?"#22C55E":"#374151"),background:allMonthSelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
-                            <span style={{fontSize:18,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:1}}>{fmtMonthFR(mk+"-01")}</span>
-                            <span style={{fontSize:12,color:"#4B5563",fontWeight:500}}>{monthBets.length} paris</span>
-                          </div>
-                          <div style={{display:"flex",alignItems:"center",gap:12}}>
-                            <div style={{textAlign:"right"}}>
-                              <div style={{fontSize:17,fontWeight:800,color:monthP>=0?"#22C55E":"#EF4444"}}>{monthP>=0?"+":""}{monthP.toFixed(0)}€</div>
-                              <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:2}}>
-                                <span style={{fontSize:10,fontWeight:600,color:monthROI>=0?"#22C55E":"#EF4444"}}>{monthROI>=0?"+":""}{monthROI.toFixed(1)}%</span>
-                                <span style={{fontSize:10,fontWeight:600,color:((monthBets.filter(b=>b.status==="won").length/(monthBets.filter(b=>b.status!=="pending").length||1)*100)||0)>=55?"#22C55E":"#9CA3AF"}}>{monthBets.filter(b=>b.status!=="pending").length>0?(monthBets.filter(b=>b.status==="won").length/monthBets.filter(b=>b.status!=="pending").length*100).toFixed(0)+"%WR":"—"}</span>
-                              </div>
-                            </div>
-                            <span style={{fontSize:14,color:"#4B5563"}}>{collapsedMonths.has(mk)?"▶":"▼"}</span>
-                          </div>
-                        </div>
-
-                        {/* Jours — cachés si mois collapsed */}
-                        {!collapsedMonths.has(mk)&&(
-                        <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
-                          {monthDays.map((dk,di)=>{
-                            const dayBets=settledByDay[dk]||[];
-                            const dayP=dayBets.reduce((s,b)=>s+(b.profit||0),0);
-                            const allDaySelected=dayBets.every(b=>selectedIds.includes(b.id));
-                            const dayLabel=(()=>{try{const d=new Date(dk+"T12:00:00");return FR_DAYS[d.getDay()]+" "+d.getDate()+" "+FR_MONTHS[d.getMonth()];}catch{return dk;}})();
-                            return(
-                              <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
-                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px 7px",background:"#0B1220"}}>
-                                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                    {selectMode&&<button onClick={()=>setSelectedIds(ids=>allDaySelected?ids.filter(id=>!dayBets.map(b=>b.id).includes(id)):[...new Set([...ids,...dayBets.map(b=>b.id)])])} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(allDaySelected?"#22C55E":"#6B7280"),background:allDaySelected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer"}}/>}
-                                    <span style={{fontSize:15,fontWeight:700,color:"#E5E7EB",letterSpacing:.2,borderBottom:"2px solid rgba(255,255,255,0.25)",paddingBottom:1}}>{dayLabel}</span>
-                                  </div>
-                                  <span style={{fontSize:13,fontWeight:700,color:dayP>=0?"#22C55E":"#EF4444"}}>{dayP>=0?"+":""}{dayP.toFixed(0)}€</span>
-                                </div>
-                                {dayBets.map(b=>(
-                                  selectMode
-                                    ?<BetRowSelectable key={b.id} bet={b} selected={selectedIds.includes(b.id)} onToggle={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} onEdit={()=>openEdit(b)} bkPhotos={bkPhotos}/>
-                                    :<BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
-                                ))}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
+          <MesParisView
+            bets={bets}
+            setBets={setBets}
+            bookmakers={bookmakers}
+            bkPhotos={bkPhotos}
+            updateStatus={updateStatus}
+            deleteBet={deleteBet}
+            duplicateBet={duplicateBet}
+            openEdit={openEdit}
+            splitBet={splitBet}
+            showToast={showToast}
+            fGames={fGames} setFGames={setFGames}
+            fBKs={fBKs} setFBKs={setFBKs}
+            fStatus={fStatus} setFStatus={setFStatus}
+            fOverUnder={fOverUnder} setFOverUnder={setFOverUnder}
+            fMinOdds={fMinOdds} setFMinOdds={setFMinOdds}
+            fMaxOdds={fMaxOdds} setFMaxOdds={setFMaxOdds}
+            fMinStake={fMinStake} setFMinStake={setFMinStake}
+            fMaxStake={fMaxStake} setFMaxStake={setFMaxStake}
+            fMapFilter={fMapFilter} setFMapFilter={setFMapFilter}
+            fDuel={fDuel} setFDuel={setFDuel}
+            fLive={fLive} setFLive={setFLive}
+            fHeadshot={fHeadshot} setFHeadshot={setFHeadshot}
+            fRole={fRole} setFRole={setFRole}
+            fLeague={fLeague} setFLeague={setFLeague}
+            fTourneys={fTourneys} setFTourneys={setFTourneys}
+            fDateFrom={fDateFrom} setFDateFrom={setFDateFrom}
+            fDateTo={fDateTo} setFDateTo={setFDateTo}
+            setView={setView}
+            supaPushBets={supaPushBets}
+            supaDeleteManyBets={supaDeleteManyBets}
+            supaDeleteOneBet={supaDeleteOneBet}
+            setDeletedBets={setDeletedBets}
+            BK_LOGOS={BK_LOGOS}
+          />
         )}
-
-        {/* ── CALENDRIER PLEINE PAGE ── */}
         {view==="calendrier"&&(
           <div className="view-enter">
             {/* Header */}
@@ -7108,7 +7172,84 @@ export default function App(){
                   <span style={{width:7,height:7,borderRadius:"50%",background:supaOk?"#22C55E":"#EF4444",boxShadow:"0 0 6px "+(supaOk?"rgba(34,197,94,0.8)":"rgba(239,68,68,0.6)")}}/>
                   <span style={{fontSize:12,fontWeight:700,color:supaOk?"#22C55E":"#EF4444"}}>{syncing?"Synchronisation…":supaOk?"Connecté à Supabase":"Hors ligne — vérifie ta connexion"}</span>
                 </div>
-                <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris · sync automatique toutes les 3s</div>
+                <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris en local · sync auto toutes les 5s</div>
+              </div>
+
+              {/* Integrity check */}
+              <div style={{marginBottom:14}}>
+                <button onClick={async()=>{
+                  setIntegrityChecking(true);setIntegrityReport(null);
+                  try{
+                    const remote=await supaPullBets();
+                    const localIds=new Set(bets.map(b=>String(b.id)));
+                    const remoteIds=new Set(remote.map(b=>String(b.id)));
+                    const onlyLocal=bets.filter(b=>!remoteIds.has(String(b.id)));
+                    const onlyRemote=remote.filter(b=>!localIds.has(String(b.id)));
+                    setIntegrityReport({local:bets.length,remote:remote.length,onlyLocal,onlyRemote});
+                  }catch(e){setIntegrityReport({error:e.message});}
+                  setIntegrityChecking(false);
+                }} disabled={integrityChecking}
+                  style={{width:"100%",padding:"11px",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.25)",borderRadius:10,color:"#60A5FA",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:integrityReport?8:0}}>
+                  {integrityChecking?"🔍 Vérification…":"🔍 Vérifier l'intégrité des données"}
+                </button>
+                {integrityReport&&(
+                  <div style={{background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"12px 14px"}}>
+                    {integrityReport.error?(
+                      <div style={{color:"#EF4444",fontSize:12}}>Erreur : {integrityReport.error}</div>
+                    ):(
+                      <>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                          <div style={{background:"rgba(124,58,237,0.08)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
+                            <div style={{fontSize:20,fontWeight:800,color:"#A78BFA"}}>{integrityReport.local}</div>
+                            <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Local (iPhone)</div>
+                          </div>
+                          <div style={{background:"rgba(34,197,94,0.08)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
+                            <div style={{fontSize:20,fontWeight:800,color:"#22C55E"}}>{integrityReport.remote}</div>
+                            <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Supabase (Cloud)</div>
+                          </div>
+                        </div>
+                        {integrityReport.onlyLocal.length===0&&integrityReport.onlyRemote.length===0?(
+                          <div style={{display:"flex",alignItems:"center",gap:6,color:"#22C55E",fontSize:12,fontWeight:700}}>
+                            ✓ Parfait — local et cloud sont identiques
+                          </div>
+                        ):(
+                          <>
+                            {integrityReport.onlyLocal.length>0&&(
+                              <div style={{marginBottom:8}}>
+                                <div style={{fontSize:11,fontWeight:700,color:"#F59E0B",marginBottom:4}}>
+                                  ⚠️ {integrityReport.onlyLocal.length} paris en local mais PAS dans le cloud
+                                </div>
+                                <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
+                                  {integrityReport.onlyLocal.slice(0,3).map(b=><div key={b.id}>{b.player} · {String(b.description||"").slice(0,25)}</div>)}
+                                  {integrityReport.onlyLocal.length>3&&<div>+{integrityReport.onlyLocal.length-3} autres…</div>}
+                                </div>
+                                <button onClick={()=>{supaPushBets(integrityReport.onlyLocal).then(()=>{showToast(integrityReport.onlyLocal.length+" paris envoyés ✓","#22C55E");setIntegrityReport(null);}).catch(()=>showToast("Erreur envoi","#EF4444"));}}
+                                  style={{width:"100%",padding:"8px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,color:"#F59E0B",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                                  ↑ Envoyer ces {integrityReport.onlyLocal.length} paris vers le cloud
+                                </button>
+                              </div>
+                            )}
+                            {integrityReport.onlyRemote.length>0&&(
+                              <div>
+                                <div style={{fontSize:11,fontWeight:700,color:"#60A5FA",marginBottom:4}}>
+                                  ℹ️ {integrityReport.onlyRemote.length} paris dans le cloud mais PAS en local
+                                </div>
+                                <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
+                                  {integrityReport.onlyRemote.slice(0,3).map(b=><div key={b.id}>{b.player} · {String(b.description||"").slice(0,25)}</div>)}
+                                  {integrityReport.onlyRemote.length>3&&<div>+{integrityReport.onlyRemote.length-3} autres…</div>}
+                                </div>
+                                <button onClick={()=>{const merged=[...bets,...integrityReport.onlyRemote];setBets(merged);localStorage.setItem("v7_bets",JSON.stringify(merged));showToast(integrityReport.onlyRemote.length+" paris récupérés ✓","#22C55E");setIntegrityReport(null);}}
+                                  style={{width:"100%",padding:"8px",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:8,color:"#60A5FA",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                                  ↓ Récupérer ces {integrityReport.onlyRemote.length} paris depuis le cloud
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Actions manuelles */}
