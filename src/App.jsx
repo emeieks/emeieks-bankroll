@@ -2601,6 +2601,23 @@ function NavIconSuivi({active}){
 
 // ── SelectionOverlay — complètement isolé, ne re-render pas la liste ──────────
 // S'ouvre en overlay full-screen, gère sa propre sélection en local
+// ── SelectableRow — 1 ligne mémoïsée, ne re-render que si sa sélection change ──
+const SelectableRow=memo(function SelectableRow({bet,isSelected,onToggle,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos}){
+  // onToggle reçoit l id directement pour éviter les closures inline qui cassent memo
+  const handleToggle=useCallback(()=>onToggle(bet.id),[onToggle,bet.id]);
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:8,paddingLeft:8,background:isSelected?"rgba(124,58,237,0.05)":"transparent",transition:"background .1s"}}>
+      <button onClick={handleToggle}
+        style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(isSelected?"#7C3AED":"#374151"),background:isSelected?"rgba(124,58,237,0.2)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        {isSelected&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>✓</span>}
+      </button>
+      <div style={{flex:1}}>
+        <BetRow bet={bet} onStatus={onStatus} onDelete={onDelete} onDuplicate={onDuplicate} onEdit={onEdit} onSplit={onSplit} bkPhotos={bkPhotos}/>
+      </div>
+    </div>
+  );
+});
+
 // ── ActionModal — composant isolé pour éviter re-render de la liste ──────────
 const ActionModal=memo(function ActionModal({selectedSize,bets,selected,onClose,onApply,onDelete}){
   const [bulkStatus,setBulkStatus]=useState("");
@@ -2764,17 +2781,20 @@ function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,
                         <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
                       </div>
 
-                      {/* Bets — même BetRow que Mes Paris + checkbox */}
+                      {/* Bets — SelectableRow mémoïsé, ne re-render que si sa sélection change */}
                       {dayBets.map(b=>(
-                        <div key={b.id} style={{display:"flex",alignItems:"center",gap:8,paddingLeft:8,background:selected.has(b.id)?"rgba(124,58,237,0.05)":"transparent",transition:"background .1s"}}>
-                          <button onClick={()=>toggle(b.id)}
-                            style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(selected.has(b.id)?"#7C3AED":"#374151"),background:selected.has(b.id)?"rgba(124,58,237,0.2)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                            {selected.has(b.id)&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>✓</span>}
-                          </button>
-                          <div style={{flex:1}}>
-                            <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
-                          </div>
-                        </div>
+                        <SelectableRow
+                          key={b.id}
+                          bet={b}
+                          isSelected={selected.has(b.id)}
+                          onToggle={toggle}
+                          onStatus={updateStatus}
+                          onDelete={deleteBet}
+                          onDuplicate={duplicateBet}
+                          onEdit={openEdit}
+                          onSplit={splitBet}
+                          bkPhotos={bkPhotos}
+                        />
                       ))}
                     </div>
                   );
