@@ -2597,125 +2597,12 @@ function NavIconSuivi({active}){
   </svg>);
 }
 
-// ── SelectableRow — mémoïsé pour éviter re-render de toute la liste ──────────
-
-// ── SelectionOverlay — complètement isolé, ne re-render pas la liste ──────────
-// S'ouvre en overlay full-screen, gère sa propre sélection en local
-// ── SelectableRow — 1 ligne mémoïsée, ne re-render que si sa sélection change ──
-const SelectableRow=memo(function SelectableRow({bet,isSelected,onToggle,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos}){
-  // onToggle reçoit l id directement pour éviter les closures inline qui cassent memo
-  const handleToggle=useCallback(()=>onToggle(bet.id),[onToggle,bet.id]);
-  return(
-    <div style={{display:"flex",alignItems:"center",gap:8,paddingLeft:8,background:isSelected?"rgba(124,58,237,0.05)":"transparent",transition:"background .1s"}}>
-      <button onClick={handleToggle}
-        style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(isSelected?"#7C3AED":"#374151"),background:isSelected?"rgba(124,58,237,0.2)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        {isSelected&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>✓</span>}
-      </button>
-      <div style={{flex:1}}>
-        <BetRow bet={bet} onStatus={onStatus} onDelete={onDelete} onDuplicate={onDuplicate} onEdit={onEdit} onSplit={onSplit} bkPhotos={bkPhotos}/>
-      </div>
-    </div>
-  );
-});
-
-// ── ActionModal — composant isolé pour éviter re-render de la liste ──────────
-const ActionModal=memo(function ActionModal({selectedSize,bets,selected,onClose,onApply,onDelete}){
-  const [bulkStatus,setBulkStatus]=useState("");
-  const [bulkDate,setBulkDate]=useState("");
-  const [bulkTournament,setBulkTournament]=useState("");
-  const lbl={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8};
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
-      <div style={{width:"100%",background:"#111827",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <div>
-            <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selectedSize} paris</div>
-            <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Seuls les champs remplis seront modifiés</div>
-          </div>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#6B7280",fontSize:18,cursor:"pointer"}}>×</button>
-        </div>
-        <div style={{marginBottom:16}}>
-          <div style={{...lbl}}>Statut</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-            {["","won","lost"].map(s=>(
-              <button key={s} onClick={()=>setBulkStatus(s===bulkStatus?"":s)}
-                style={{padding:"11px 4px",borderRadius:10,border:"1.5px solid "+(bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":bulkStatus===s?"rgba(255,255,255,0.2)":"#1F2937"),background:bulkStatus===s&&s==="won"?"rgba(34,197,94,0.12)":bulkStatus===s&&s==="lost"?"rgba(239,68,68,0.1)":bulkStatus===s?"rgba(255,255,255,0.05)":"transparent",color:bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                {s===""?"En attente":s==="won"?"✓ Gagné":"✗ Perdu"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{marginBottom:16}}>
-          <div style={{...lbl}}>Date</div>
-          <input type="date" value={bulkDate} onChange={e=>setBulkDate(e.target.value)}
-            style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark",boxSizing:"border-box"}}/>
-        </div>
-        <div style={{marginBottom:24}}>
-          <div style={{...lbl}}>Tournoi</div>
-          <input type="text" value={bulkTournament} onChange={e=>setBulkTournament(e.target.value)}
-            placeholder="ex: MSI 2026, LEC Spring…"
-            style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
-        </div>
-        <button onClick={()=>onApply(bulkStatus,bulkDate,bulkTournament)}
-          style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:10}}>
-          {bulkStatus||bulkDate||bulkTournament?`Appliquer aux ${selectedSize} paris`:`Supprimer les ${selectedSize} paris`}
-        </button>
-        <button onClick={onDelete}
-          style={{width:"100%",padding:"12px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,color:"#EF4444",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-          🗑 Supprimer les {selectedSize} paris
-        </button>
-      </div>
-    </div>
-  );
-});
-
-function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,setBets,setDeletedBets,supaDeleteManyBets,supaPushBets,calcProfit,showToast,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,bkPhotos}){
+// ── SelectionModal — sélection multiple + changement de date ─────────────────
+function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth}){
   const [selected,setSelected]=useState(new Set());
-  const [actionOpen,setActionOpen]=useState(false);
+  const [newDate,setNewDate]=useState("");
+  const [saving,setSaving]=useState(false);
 
-  const toggle=useCallback(id=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;}),[]);
-  const toggleDay=useCallback(ids=>setSelected(s=>{
-    const allIn=ids.every(id=>s.has(id));
-    const n=new Set(s);
-    ids.forEach(id=>allIn?n.delete(id):n.add(id));
-    return n;
-  }),[]);
-
-  const applyAction=(bulkStatus,bulkDate,bulkTournament)=>{
-    if(!selected.size)return;
-    if(bulkStatus||bulkDate||bulkTournament){
-      const selectedSnapshot=new Set(selected);
-      // Calculer les mises à jour AVANT setBets pour pouvoir syncer ensuite
-      let toSync=[];
-      setBets(all=>{
-        const updated=all.map(b=>{
-          if(!selectedSnapshot.has(b.id))return b;
-          const c={};
-          if(bulkStatus){c.status=bulkStatus;c.profit=calcProfit(bulkStatus,b.stake,b.odds);if(bulkStatus!=="pending")c.settledAt=Date.now();}
-          if(bulkDate){const t=b.datetime?String(b.datetime).slice(11,16):"12:00";c.datetime=bulkDate+"T"+t;}
-          if(bulkTournament)c.tournament=bulkTournament;
-          return{...b,...c};
-        });
-        toSync=updated.filter(b=>selectedSnapshot.has(b.id));
-        return updated;
-      });
-      // Sync Supabase strictement APRES setBets, jamais dedans
-      setTimeout(()=>{ supaPushBets(toSync).catch(()=>{}); },0);
-      showToast(selected.size+" paris modifiés ✓");
-      setActionOpen(false);
-      onClose();
-    } else {
-      const removed=bets.filter(b=>selected.has(b.id));
-      setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
-      setBets(all=>all.filter(b=>!selected.has(b.id)));
-      supaDeleteManyBets([...selected]).catch(()=>{});
-      showToast(removed.length+" paris supprimés","#EF4444");
-      setActionOpen(false);
-      onClose();
-    }
-  };
-
-  // Sorted by datetime desc (heure d'entrée)
   const sortedByDay=useMemo(()=>{
     const result={};
     Object.entries(byDay).forEach(([dk,dayBets])=>{
@@ -2724,107 +2611,97 @@ function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,
     return result;
   },[byDay]);
 
+  const toggle=id=>{
+    setSelected(prev=>{
+      const n=new Set(prev);
+      n.has(id)?n.delete(id):n.add(id);
+      return n;
+    });
+  };
+
+  const apply=()=>{
+    if(!selected.size||!newDate)return;
+    setSaving(true);
+    const toSync=[];
+    const updated=bets.map(b=>{
+      if(!selected.has(b.id))return b;
+      const time=b.datetime?String(b.datetime).slice(11,16):"12:00";
+      const nb={...b,datetime:newDate+"T"+time};
+      toSync.push(nb);
+      return nb;
+    });
+    setBets(updated);
+    setTimeout(()=>{ supaPushBets(toSync).catch(()=>{}); setSaving(false); },0);
+    showToast(selected.size+" paris mis à jour ✓");
+    onClose();
+  };
+
   return(
-    <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:200,display:"flex",flexDirection:"column",overflowY:"auto",fontFamily:"Inter,sans-serif"}}>
-      {/* ── STICKY HEADER ── */}
-      <div style={{position:"sticky",top:0,background:"#0B1220",borderBottom:"1px solid #1F2937",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,zIndex:10}}>
+    <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"Inter,sans-serif"}}>
+      {/* Header */}
+      <div style={{background:"#0B1220",borderBottom:"1px solid #1F2937",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
         <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:34,height:34,color:"#9CA3AF",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
         <div style={{flex:1,fontSize:15,fontWeight:700,color:"#E5E7EB"}}>
           {selected.size>0?selected.size+" sélectionné"+(selected.size>1?"s":""):"Sélectionner des paris"}
         </div>
         {selected.size>0&&(
-          <button onClick={()=>setActionOpen(true)}
-            style={{padding:"8px 16px",borderRadius:9,background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>
-            ✓ Modifier
+          <button onClick={()=>setSelected(new Set())} style={{fontSize:11,color:"#6B7280",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tout désélect.</button>
+        )}
+      </div>
+
+      {/* Date picker */}
+      <div style={{padding:"12px 16px",borderBottom:"1px solid #1F2937",flexShrink:0,background:"#0F1829"}}>
+        <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Nouvelle date</div>
+        <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}
+          style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark",boxSizing:"border-box"}}/>
+        {selected.size>0&&newDate&&(
+          <button onClick={apply} disabled={saving}
+            style={{marginTop:10,width:"100%",padding:"13px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>
+            {saving?"Enregistrement...":"Appliquer au "+selected.size+" pari"+(selected.size>1?"s":"")}
           </button>
         )}
       </div>
 
-      {/* ── MONTHS/DAYS LIST — même apparence que Mes Paris ── */}
-      <div style={{flex:1,padding:"8px 14px 80px"}}>
+      {/* Liste des paris */}
+      <div style={{flex:1,overflowY:"auto",padding:"8px 14px 40px"}}>
         {monthKeys.map(mk=>{
           const days=byMonth[mk]||[];
-          const allBets=days.flatMap(dk=>sortedByDay[dk]||[]);
-          const profit=allBets.reduce((s,b)=>s+(b.profit||0),0);
-          const won=allBets.filter(b=>b.status==="won").length;
-          const total=allBets.length;
-          const wr=total>0?won/total*100:0;
           return(
             <div key={mk} style={{marginBottom:14}}>
-              {/* Month header */}
-              <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:"14px 14px 0 0",padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:.5}}>{fmtMonth(mk)}</div>
-                  <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{allBets.length} paris · {wr.toFixed(0)}%WR</div>
-                </div>
-                <div style={{fontSize:18,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444"}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
-              </div>
-
-              {/* Days */}
-              <div style={{borderRadius:"0 0 12px 12px",overflow:"hidden",border:"1px solid #1F2937",borderTop:"none"}}>
-                {days.map((dk,di)=>{
-                  const dayBets=sortedByDay[dk]||[];
-                  const dayIds=dayBets.map(b=>b.id);
-                  const allIn=dayIds.length>0&&dayIds.every(id=>selected.has(id));
-                  const someIn=dayIds.some(id=>selected.has(id));
-                  const dayProfit=dayBets.reduce((s,b)=>s+(b.profit||0),0);
-                  return(
-                    <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
-                      {/* Day header with checkbox */}
-                      <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"#0B1220"}}>
-                        <button onClick={()=>toggleDay(dayIds)}
-                          style={{width:20,height:20,borderRadius:5,border:"2px solid "+(allIn?"#22C55E":someIn?"#A78BFA":"#374151"),background:allIn?"rgba(34,197,94,0.15)":someIn?"rgba(167,139,250,0.1)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                          {allIn&&<span style={{fontSize:11,color:"#22C55E",fontWeight:900}}>✓</span>}
-                          {someIn&&!allIn&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:900}}>–</span>}
-                        </button>
-                        <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB",flex:1}}>{fmtDay(dk)}</span>
-                        <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
-                      </div>
-
-                      {/* Bets — SelectableRow mémoïsé, ne re-render que si sa sélection change */}
-                      {dayBets.map(b=>(
-                        <SelectableRow
-                          key={b.id}
-                          bet={b}
-                          isSelected={selected.has(b.id)}
-                          onToggle={toggle}
-                          onStatus={updateStatus}
-                          onDelete={deleteBet}
-                          onDuplicate={duplicateBet}
-                          onEdit={openEdit}
-                          onSplit={splitBet}
-                          bkPhotos={bkPhotos}
-                        />
-                      ))}
+              <div style={{fontSize:13,fontWeight:800,color:"#6B7280",textTransform:"uppercase",letterSpacing:.8,padding:"8px 0 6px"}}>{mk}</div>
+              {days.map(dk=>{
+                const dayBets=sortedByDay[dk]||[];
+                return(
+                  <div key={dk} style={{marginBottom:8,borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
+                    <div style={{padding:"8px 12px",background:"#111827",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>{fmtDay(dk)}</span>
+                      <span style={{fontSize:11,color:"#6B7280"}}>{dayBets.length} paris</span>
                     </div>
-                  );
-                })}
-              </div>
+                    {dayBets.map(b=>{
+                      const isSel=selected.has(b.id);
+                      return(
+                        <div key={b.id} onClick={()=>toggle(b.id)}
+                          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:isSel?"rgba(124,58,237,0.08)":"transparent",borderTop:"1px solid #1F2937",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
+                          <div style={{width:20,height:20,borderRadius:5,border:"2px solid "+(isSel?"#7C3AED":"#374151"),background:isSel?"rgba(124,58,237,0.25)":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                            {isSel&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:900}}>✓</span>}
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400,fontSize:12}}>— {b.description}</span></div>
+                            <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>@{b.odds} · {b.stake}€ · {b.datetime?String(b.datetime).slice(0,10):""}</div>
+                          </div>
+                          <div style={{fontSize:13,fontWeight:700,color:b.status==="won"?"#22C55E":b.status==="lost"?"#EF4444":"#3B82F6",flexShrink:0}}>
+                            {b.status==="pending"?"@"+b.odds:((b.profit||0)>=0?"+":"")+(b.profit||0).toFixed(0)+"€"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </div>
-
-      {/* ── ACTION MODAL — composant isolé pour ne pas re-rendre la liste ── */}
-      {actionOpen&&(
-        <ActionModal
-          selectedSize={selected.size}
-          bets={bets}
-          selected={selected}
-          onClose={()=>setActionOpen(false)}
-          onApply={applyAction}
-          onDelete={()=>{
-            const removed=bets.filter(b=>selected.has(b.id));
-            if(!removed.length)return;
-            setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
-            setBets(all=>all.filter(b=>!selected.has(b.id)));
-            supaDeleteManyBets([...selected]).catch(()=>{});
-            showToast(removed.length+' paris supprimés','#EF4444');
-            setActionOpen(false);
-            onClose();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -2840,7 +2717,7 @@ function MesParisView({
   calcProfit,
 }){
   const [collapsedMonths,setCollapsedMonths]=useState(new Set());
-  const [selectOpen,setSelectOpen]=useState(false); // separate overlay
+  const [selectOpen,setSelectOpen]=useState(false);
   const toggleMonth=mk=>setCollapsedMonths(prev=>{const n=new Set(prev);n.has(mk)?n.delete(mk):n.add(mk);return n;});
 
   const p=v=>String(v).padStart(2,"0");
@@ -2912,6 +2789,20 @@ function MesParisView({
           Sél.
         </button>
       </div>
+
+      {selectOpen&&(
+        <SelectionModal
+          bets={bets}
+          onClose={()=>setSelectOpen(false)}
+          setBets={setBets}
+          supaPushBets={supaPushBets}
+          showToast={showToast}
+          fmtDay={fmtDay}
+          byDay={byDay}
+          monthKeys={monthKeys}
+          byMonth={byMonth}
+        />
+      )}
 
       {/* ── BK LOGO FILTERS ── */}
       {bookmakers.length>0&&(
@@ -3001,30 +2892,6 @@ function MesParisView({
         </div>
       )}
 
-      {/* ── SELECTION OVERLAY — rendu séparé, n'affecte pas la liste ── */}
-      {selectOpen&&(
-        <SelectionOverlay
-          bets={filtered}
-          byDay={byDay}
-          monthKeys={monthKeys}
-          byMonth={byMonth}
-          fmtDay={fmtDay}
-          fmtMonth={fmtMonth}
-          onClose={()=>setSelectOpen(false)}
-          setBets={setBets}
-          setDeletedBets={setDeletedBets}
-          supaDeleteManyBets={supaDeleteManyBets}
-          supaPushBets={supaPushBets}
-          calcProfit={calcProfit}
-          showToast={showToast}
-          updateStatus={updateStatus}
-          deleteBet={deleteBet}
-          duplicateBet={duplicateBet}
-          openEdit={openEdit}
-          splitBet={splitBet}
-          bkPhotos={bkPhotos}
-        />
-      )}
     </div>
   );
 }
