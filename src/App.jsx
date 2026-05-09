@@ -3663,6 +3663,7 @@ export default function App(){
         tournament:form.tournament||tname,
         settledAt:editingBet.status!=="pending"?new Date(newDatetime).getTime():(editingBet.settledAt||null),
       };
+      const editedBK=form.bookmaker;
       setBets(b=>{
         const updated=b.map(bet=>bet.id===editingBet.id?updatedBet:bet);
         setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
@@ -3671,6 +3672,7 @@ export default function App(){
       setEditingBet(null);
       setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
       showToast("Pari modifié ✓");
+      if(editedBK){setFBKs(prev=>prev.includes(editedBK)?prev:[...prev,editedBK]);}
       setView("mesparis");
       return;
     }
@@ -3685,9 +3687,12 @@ export default function App(){
     setBets(b=>[newBet,...b]);
     // Push immédiat vers Supabase (pas d'attente du debounce)
     supaPushBets([newBet]).catch(()=>{});
+    const addedBK=form.bookmaker;
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
     showToast("Pari enregistré ✓");
     showBetConfirm(form.status);
+    // Filtrer automatiquement par le bookmaker du pari ajouté
+    if(addedBK){setFBKs(prev=>prev.includes(addedBK)?prev:[...prev,addedBK]);}
     setView("mesparis");
   }
 
@@ -3708,12 +3713,14 @@ export default function App(){
       profit:calcProfit(m.status,parseFloat(m.stake||form.stake||0),parseFloat(m.odds)),
       tournament:tname,
     }));
+    const sessionBK=form.bookmaker;
     setBets(b=>[...newBets,...b]);
     // Push immédiat vers Supabase
     supaPushBets(newBets).catch(()=>{});
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
     setSessionMaps([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
     showToast(newBets.length+" paris enregistres");
+    if(sessionBK){setFBKs(prev=>prev.includes(sessionBK)?prev:[...prev,sessionBK]);}
     setView("mesparis");
   }
 
@@ -3736,10 +3743,12 @@ export default function App(){
       datetime:duelForm.datetime||nowDT(),isHeadshot:false,isLive:duelForm.isLive,
       mapTag:duelForm.mapTag,profit:0,tournament:tname,
     };
+    const duelBK=duelForm.bookmaker;
     setBets(b=>[bet,...b]);
     supaPushBets([bet]).catch(()=>{});
     setDuelForm({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:duelForm.bookmaker,mapTag:"Map 1",isLive:false,datetime:""});
     showToast("Duel enregistré ⚔️");
+    if(duelBK){setFBKs(prev=>prev.includes(duelBK)?prev:[...prev,duelBK]);}
     setView("mesparis");
   }
 
@@ -5379,7 +5388,7 @@ export default function App(){
                         <span style={{fontSize:10,color:"#6B7280"}}>{gs.count} paris</span>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{g(s.profit||0).toFixed(0)}€</span>
+                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}€</span>
   <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
                       </div>
                     </div>
