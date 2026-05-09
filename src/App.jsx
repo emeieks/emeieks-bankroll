@@ -2608,7 +2608,7 @@ function MesParisView({
   calcProfit,
 }){
   const [selectMode,setSelectMode]=useState(false);
-  const [selectedIds,setSelectedIds]=useState([]);
+  const [selectedIds,setSelectedIds]=useState(()=>new Set());
   const [confirmDelete,setConfirmDelete]=useState(false);
   // Collapse all months by default except the most recent one
   const [collapsedMonths,setCollapsedMonths]=useState(()=>{
@@ -2707,13 +2707,14 @@ function MesParisView({
   },[monthKeys.length]);
 
   // Delete selected
+  const toggleId=useCallback((id)=>setSelectedIds(ids=>{const n=new Set(ids);n.has(id)?n.delete(id):n.add(id);return n;}),[]);
   const deleteSelected=()=>{
-    const removed=bets.filter(b=>selectedIds.includes(b.id));
+    const removed=bets.filter(b=>selectedIds.has(b.id));
     setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
-    const updated=bets.filter(b=>!selectedIds.includes(b.id));
+    const updated=bets.filter(b=>!selectedIds.has(b.id));
     setBets(updated);
-    supaDeleteManyBets(selectedIds).catch(()=>{});
-    setSelectMode(false);setSelectedIds([]);setConfirmDelete(false);
+    supaDeleteManyBets([...selectedIds]).catch(()=>{});
+    setSelectMode(false);setSelectedIds(new Set());setConfirmDelete(false);
     showToast(removed.length+" paris supprimés","#EF4444");
   };
 
@@ -2736,14 +2737,14 @@ function MesParisView({
         </button>
         {activeFilters>0&&<button onClick={clearFilters} style={{padding:"6px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>× Effacer</button>}
         <div style={{flex:1}}/>
-        {selectMode&&selectedIds.length>0&&(
+        {selectMode&&selectedIds.size>0&&(
           <button onClick={()=>{setBulkDate("");setBulkStatus("");setBulkTournament("");setBulkEditOpen(true);}}
             style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid #22C55E",background:"rgba(34,197,94,0.12)",color:"#22C55E",fontSize:16,fontWeight:700,cursor:"pointer"}}>
             ✓
           </button>
         )}
-        <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);setBulkEditOpen(false);}}
-          style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(selectMode?"#22C55E":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#22C55E":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+        <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds(new Set());setConfirmDelete(false);setBulkEditOpen(false);}}
+          style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(selectMode?"rgba(239,68,68,0.5)":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(239,68,68,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#EF4444":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
           {selectMode?"✕":"Sél."}
         </button>
       </div>
@@ -2767,18 +2768,18 @@ function MesParisView({
       )}
 
       {/* ── SELECT MODE ACTIONS ── */}
-      {selectMode&&selectedIds.length>0&&(
+      {selectMode&&selectedIds.size>0&&(
         <div style={{display:"flex",gap:6,marginBottom:8}}>
           {confirmDelete?(
             <>
               <button onClick={deleteSelected} style={{flex:1,padding:"10px",background:"#EF4444",border:"none",borderRadius:9,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                Supprimer {selectedIds.length} paris
+                Supprimer {selectedIds.size} paris
               </button>
               <button onClick={()=>setConfirmDelete(false)} style={{padding:"10px 14px",background:"#1F2937",border:"none",borderRadius:9,color:"#9CA3AF",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕</button>
             </>
           ):(
             <button onClick={()=>setConfirmDelete(true)} style={{padding:"8px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:9,color:"#EF4444",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-              🗑 Supprimer ({selectedIds.length})
+              🗑 Supprimer ({selectedIds.size})
             </button>
           )}
         </div>
@@ -2798,7 +2799,7 @@ function MesParisView({
           <div style={{display:"flex",flexDirection:"column",gap:4}}>
             {pending.map(b=>(
               <div key={b.id} style={{display:"flex",alignItems:"center",gap:6}}>
-                {selectMode&&<button onClick={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} style={{width:18,height:18,borderRadius:4,border:"2px solid "+(selectedIds.includes(b.id)?"#22C55E":"#374151"),background:selectedIds.includes(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
+                {selectMode&&<button onClick={()=>setSelectedIds(ids=>{const n=new Set(ids);n.has(b.id)?n.delete(b.id):n.add(b.id);return n;})} style={{width:18,height:18,borderRadius:4,border:"2px solid "+(selectedIds.has(b.id)?"#22C55E":"#374151"),background:selectedIds.has(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
                 <div style={{flex:1}}>
                   <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
                 </div>
@@ -2849,12 +2850,12 @@ function MesParisView({
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#0B1220"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
                             {selectMode&&(()=>{
-                              const allSelected=dayBets.every(b=>selectedIds.includes(b.id));
-                              const someSelected=dayBets.some(b=>selectedIds.includes(b.id));
+                              const allSelected=dayBets.every(b=>selectedIds.has(b.id));
+                              const someSelected=dayBets.some(b=>selectedIds.has(b.id));
                               return(
                                 <button onClick={()=>{
-                                  if(allSelected){setSelectedIds(ids=>ids.filter(id=>!dayBets.map(b=>b.id).includes(id)));}
-                                  else{setSelectedIds(ids=>[...new Set([...ids,...dayBets.map(b=>b.id)])]);}
+                                  if(allSelected){setSelectedIds(ids=>{const n=new Set(ids);dayBets.forEach(b=>n.delete(b.id));return n;})}
+                                  else{setSelectedIds(ids=>{const n=new Set(ids);dayBets.forEach(b=>n.add(b.id));return n;})}
                                 }} style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(allSelected?"#22C55E":someSelected?"#A78BFA":"#374151"),background:allSelected?"rgba(34,197,94,0.15)":someSelected?"rgba(167,139,250,0.1)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
                                   {allSelected&&<span style={{fontSize:10,color:"#22C55E",fontWeight:900}}>✓</span>}
                                   {someSelected&&!allSelected&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>–</span>}
@@ -2868,7 +2869,7 @@ function MesParisView({
                         {/* Bets */}
                         {dayBets.map(b=>(
                           <div key={b.id} style={{display:"flex",alignItems:"center",gap:6,paddingLeft:selectMode?8:0}}>
-                            {selectMode&&<button onClick={()=>setSelectedIds(ids=>ids.includes(b.id)?ids.filter(x=>x!==b.id):[...ids,b.id])} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(selectedIds.includes(b.id)?"#22C55E":"#6B7280"),background:selectedIds.includes(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
+                            {selectMode&&<button onClick={()=>setSelectedIds(ids=>{const n=new Set(ids);n.has(b.id)?n.delete(b.id):n.add(b.id);return n;})} style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(selectedIds.has(b.id)?"#22C55E":"#6B7280"),background:selectedIds.has(b.id)?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0}}/>}
                             <div style={{flex:1}}>
                               <BetRow bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
                             </div>
@@ -2891,7 +2892,7 @@ function MesParisView({
           <div style={{width:"100%",background:"#111827",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
-                <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selectedIds.length} paris</div>
+                <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selectedIds.size} paris</div>
                 <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Seuls les champs remplis seront modifiés</div>
               </div>
               <button onClick={()=>setBulkEditOpen(false)} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#6B7280",fontSize:18,cursor:"pointer"}}>×</button>
@@ -2921,7 +2922,7 @@ function MesParisView({
             <button onClick={()=>{
               if(!bulkStatus&&!bulkDate&&!bulkTournament)return;
               const updated=bets.map(b=>{
-                if(!selectedIds.includes(b.id))return b;
+                if(!selectedIds.has(b.id))return b;
                 const changes={};
                 if(bulkStatus){changes.status=bulkStatus;changes.profit=calcProfit(bulkStatus,b.stake,b.odds);if(bulkStatus!=="pending")changes.settledAt=Date.now();}
                 if(bulkDate){const time=b.datetime?String(b.datetime).slice(11,16):"12:00";changes.datetime=bulkDate+"T"+time;}
@@ -2929,12 +2930,12 @@ function MesParisView({
                 return{...b,...changes};
               });
               setBets(updated);
-              supaPushBets(updated.filter(b=>selectedIds.includes(b.id))).catch(()=>{});
-              showToast(selectedIds.length+" paris modifiés ✓");
-              setBulkEditOpen(false);setSelectMode(false);setSelectedIds([]);
+              supaPushBets(updated.filter(b=>selectedIds.has(b.id))).catch(()=>{});
+              showToast(selectedIds.size+" paris modifiés ✓");
+              setBulkEditOpen(false);setSelectMode(false);setSelectedIds(new Set());
             }}
               style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-              Appliquer aux {selectedIds.length} paris
+              Appliquer aux {selectedIds.size} paris
             </button>
           </div>
         </div>
@@ -3826,36 +3827,36 @@ export default function App(){
 
   function applyBulkStatus(status){
     const now=Date.now();
-    setBets(b=>b.map((bet,i)=>selectedIds.includes(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds([]);setBulkDatetime("");
-    showToast(selectedIds.length+" paris mis à jour");
+    setBets(b=>b.map((bet,i)=>selectedIds.has(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null}:bet));
+    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkDatetime("");
+    showToast(selectedIds.size+" paris mis à jour");
   }
   function applyBulkBK(){
     if(!bulkBK)return;
-    setBets(b=>b.map(bet=>selectedIds.includes(bet.id)?{...bet,bookmaker:bulkBK}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds([]);setBulkDatetime("");
+    setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,bookmaker:bulkBK}:bet));
+    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkDatetime("");
     showToast("Bookmaker mis à jour");
   }
   function applyBulkDatetime(){
     if(!bulkDatetime)return;
     setBets(b=>{
-      const updated=b.map(bet=>selectedIds.includes(bet.id)?{...bet,datetime:bulkDatetime}:bet);
+      const updated=b.map(bet=>selectedIds.has(bet.id)?{...bet,datetime:bulkDatetime}:bet);
       // Push immediately — don't wait for debounce
       setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
       return updated;
     });
-    setBulkModal(false);setSelectMode(false);setSelectedIds([]);setBulkDatetime("");
+    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkDatetime("");
     showToast("Date mise à jour");
   }
   function applyBulkMap(){
     if(!bulkMap)return;
-    setBets(b=>b.map(bet=>selectedIds.includes(bet.id)?{...bet,mapTag:bulkMap}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds([]);setBulkMap("");
+    setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,mapTag:bulkMap}:bet));
+    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkMap("");
     showToast("Map mise à jour");
   }
   function applyBulkTourney(name){
-    setBets(b=>b.map(bet=>selectedIds.includes(bet.id)?{...bet,tournament:name}:bet));
-    setBulkModal(false);setSelectMode(false);setSelectedIds([]);setBulkTourney("");
+    setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,tournament:name}:bet));
+    setBulkModal(false);setSelectMode(false);setSelectedIds(new Set());setBulkTourney("");
     showToast("🏆 Tournoi mis à jour");
   }
 
@@ -6857,7 +6858,7 @@ export default function App(){
         {bulkModal&&(
           <div className="moverlay" onClick={()=>{setBulkModal(false);setBulkDatetime("");}}>
             <div className="modal" onClick={e=>e.stopPropagation()}>
-              <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Modifier {selectedIds.length} paris</div>
+              <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Modifier {selectedIds.size} paris</div>
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Statut</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
@@ -6881,7 +6882,7 @@ export default function App(){
                 </div>
                 <button onClick={applyBulkBK} disabled={!bulkBK}
                   style={{width:"100%",padding:"11px",background:bulkBK?"linear-gradient(135deg,#22C55E,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkBK?"#0B1220":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  {bulkBK?"Appliquer "+bulkBK+" à "+selectedIds.length+" paris":"Sélectionner un bookmaker"}
+                  {bulkBK?"Appliquer "+bulkBK+" à "+selectedIds.size+" paris":"Sélectionner un bookmaker"}
                 </button>
               </div>
               <div style={{marginBottom:14}}>
@@ -6892,7 +6893,7 @@ export default function App(){
                 </div>
                 <button onClick={applyBulkDatetime} disabled={!bulkDatetime}
                   style={{width:"100%",padding:"11px",background:bulkDatetime?"linear-gradient(135deg,#7C3AED,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkDatetime?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  {bulkDatetime?"Appliquer la date à "+selectedIds.length+" paris":"Choisir une date"}
+                  {bulkDatetime?"Appliquer la date à "+selectedIds.size+" paris":"Choisir une date"}
                 </button>
               </div>
               {/* Tournoi — menu déroulant */}
@@ -6914,7 +6915,7 @@ export default function App(){
                     </div>
                     <button onClick={()=>bulkTourney&&applyBulkTourney(bulkTourney)} disabled={!bulkTourney}
                       style={{width:"100%",padding:"11px",background:bulkTourney?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkTourney?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                      {bulkTourney?"Appliquer "+bulkTourney+" à "+selectedIds.length+" paris":"Sélectionner un tournoi"}
+                      {bulkTourney?"Appliquer "+bulkTourney+" à "+selectedIds.size+" paris":"Sélectionner un tournoi"}
                     </button>
                   </div>
                 );
@@ -6933,7 +6934,7 @@ export default function App(){
                 </div>
                 <button onClick={applyBulkMap} disabled={!bulkMap}
                   style={{width:"100%",padding:"11px",background:bulkMap?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkMap?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                  {bulkMap?"Appliquer "+bulkMap+" à "+selectedIds.length+" paris":"Sélectionner une map"}
+                  {bulkMap?"Appliquer "+bulkMap+" à "+selectedIds.size+" paris":"Sélectionner une map"}
                 </button>
               </div>
 
