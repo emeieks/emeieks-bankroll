@@ -2601,12 +2601,60 @@ function NavIconSuivi({active}){
 
 // ── SelectionOverlay — complètement isolé, ne re-render pas la liste ──────────
 // S'ouvre en overlay full-screen, gère sa propre sélection en local
-function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,setBets,setDeletedBets,supaDeleteManyBets,supaPushBets,calcProfit,showToast,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,bkPhotos}){
-  const [selected,setSelected]=useState(new Set());
-  const [actionOpen,setActionOpen]=useState(false);
+// ── ActionModal — composant isolé pour éviter re-render de la liste ──────────
+const ActionModal=memo(function ActionModal({selectedSize,bets,selected,onClose,onApply,onDelete}){
   const [bulkStatus,setBulkStatus]=useState("");
   const [bulkDate,setBulkDate]=useState("");
   const [bulkTournament,setBulkTournament]=useState("");
+  const lbl={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8};
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div style={{width:"100%",background:"#111827",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selectedSize} paris</div>
+            <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Seuls les champs remplis seront modifiés</div>
+          </div>
+          <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#6B7280",fontSize:18,cursor:"pointer"}}>×</button>
+        </div>
+        <div style={{marginBottom:16}}>
+          <div style={{...lbl}}>Statut</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+            {["","won","lost"].map(s=>(
+              <button key={s} onClick={()=>setBulkStatus(s===bulkStatus?"":s)}
+                style={{padding:"11px 4px",borderRadius:10,border:"1.5px solid "+(bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":bulkStatus===s?"rgba(255,255,255,0.2)":"#1F2937"),background:bulkStatus===s&&s==="won"?"rgba(34,197,94,0.12)":bulkStatus===s&&s==="lost"?"rgba(239,68,68,0.1)":bulkStatus===s?"rgba(255,255,255,0.05)":"transparent",color:bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                {s===""?"En attente":s==="won"?"✓ Gagné":"✗ Perdu"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:16}}>
+          <div style={{...lbl}}>Date</div>
+          <input type="date" value={bulkDate} onChange={e=>setBulkDate(e.target.value)}
+            style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{marginBottom:24}}>
+          <div style={{...lbl}}>Tournoi</div>
+          <input type="text" value={bulkTournament} onChange={e=>setBulkTournament(e.target.value)}
+            placeholder="ex: MSI 2026, LEC Spring…"
+            style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+        </div>
+        <button onClick={()=>onApply(bulkStatus,bulkDate,bulkTournament)}
+          style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:10}}>
+          {bulkStatus||bulkDate||bulkTournament?`Appliquer aux ${selectedSize} paris`:`Supprimer les ${selectedSize} paris`}
+        </button>
+        <button onClick={onDelete}
+          style={{width:"100%",padding:"12px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,color:"#EF4444",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+          🗑 Supprimer les {selectedSize} paris
+        </button>
+      </div>
+    </div>
+  );
+});
+
+function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,setBets,setDeletedBets,supaDeleteManyBets,supaPushBets,calcProfit,showToast,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,bkPhotos}){
+  const [selected,setSelected]=useState(new Set());
+  const [actionOpen,setActionOpen]=useState(false);
 
   const toggle=useCallback(id=>setSelected(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;}),[]);
   const toggleDay=useCallback(ids=>setSelected(s=>{
@@ -2616,7 +2664,7 @@ function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,
     return n;
   }),[]);
 
-  const applyAction=()=>{
+  const applyAction=(bulkStatus,bulkDate,bulkTournament)=>{
     if(!selected.size)return;
     if(bulkStatus||bulkDate||bulkTournament){
       const selectedSnapshot=new Set(selected);
@@ -2636,14 +2684,17 @@ function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,
         return updated;
       });
       showToast(selected.size+" paris modifiés ✓");
+      setActionOpen(false);
+      onClose();
     } else {
       const removed=bets.filter(b=>selected.has(b.id));
       setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
       setBets(all=>all.filter(b=>!selected.has(b.id)));
       supaDeleteManyBets([...selected]).catch(()=>{});
       showToast(removed.length+" paris supprimés","#EF4444");
+      setActionOpen(false);
+      onClose();
     }
-    onClose();
   };
 
   // Sorted by datetime desc (heure d'entrée)
@@ -2654,8 +2705,6 @@ function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,
     });
     return result;
   },[byDay]);
-
-  const lbl={fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8};
 
   return(
     <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:200,display:"flex",flexDirection:"column",overflowY:"auto",fontFamily:"Inter,sans-serif"}}>
@@ -2735,57 +2784,25 @@ function SelectionOverlay({bets,byDay,monthKeys,byMonth,fmtDay,fmtMonth,onClose,
         })}
       </div>
 
-      {/* ── ACTION MODAL ── */}
+      {/* ── ACTION MODAL — composant isolé pour ne pas re-rendre la liste ── */}
       {actionOpen&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:300,display:"flex",alignItems:"flex-end"}} onClick={()=>setActionOpen(false)}>
-          <div style={{width:"100%",background:"#111827",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div>
-                <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selected.size} paris</div>
-                <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Seuls les champs remplis seront modifiés</div>
-              </div>
-              <button onClick={()=>setActionOpen(false)} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#6B7280",fontSize:18,cursor:"pointer"}}>×</button>
-            </div>
-            <div style={{marginBottom:16}}>
-              <div style={{...lbl}}>Statut</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                {["","won","lost"].map(s=>(
-                  <button key={s} onClick={()=>setBulkStatus(s===bulkStatus?"":s)}
-                    style={{padding:"11px 4px",borderRadius:10,border:"1.5px solid "+(bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":bulkStatus===s?"rgba(255,255,255,0.2)":"#1F2937"),background:bulkStatus===s&&s==="won"?"rgba(34,197,94,0.12)":bulkStatus===s&&s==="lost"?"rgba(239,68,68,0.1)":bulkStatus===s?"rgba(255,255,255,0.05)":"transparent",color:bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                    {s===""?"En attente":s==="won"?"✓ Gagné":"✗ Perdu"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{marginBottom:16}}>
-              <div style={{...lbl}}>Date</div>
-              <input type="date" value={bulkDate} onChange={e=>setBulkDate(e.target.value)}
-                style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark",boxSizing:"border-box"}}/>
-            </div>
-            <div style={{marginBottom:24}}>
-              <div style={{...lbl}}>Tournoi</div>
-              <input type="text" value={bulkTournament} onChange={e=>setBulkTournament(e.target.value)}
-                placeholder="ex: MSI 2026, LEC Spring…"
-                style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
-            </div>
-            <button onClick={applyAction}
-              style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:10}}>
-              {bulkStatus||bulkDate||bulkTournament?`Appliquer aux ${selected.size} paris`:`Supprimer les ${selected.size} paris`}
-            </button>
-            <button onClick={()=>{
-              const removed=bets.filter(b=>selected.has(b.id));
-              if(!removed.length)return;
-              setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
-              setBets(all=>all.filter(b=>!selected.has(b.id)));
-              supaDeleteManyBets([...selected]).catch(()=>{});
-              showToast(removed.length+" paris supprimés","#EF4444");
-              onClose();
-            }}
-              style={{width:"100%",padding:"12px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,color:"#EF4444",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-              🗑 Supprimer les {selected.size} paris
-            </button>
-          </div>
-        </div>
+        <ActionModal
+          selectedSize={selected.size}
+          bets={bets}
+          selected={selected}
+          onClose={()=>setActionOpen(false)}
+          onApply={applyAction}
+          onDelete={()=>{
+            const removed=bets.filter(b=>selected.has(b.id));
+            if(!removed.length)return;
+            setDeletedBets(prev=>[...removed.map(b=>({...b,deletedAt:Date.now()})),...prev].slice(0,50));
+            setBets(all=>all.filter(b=>!selected.has(b.id)));
+            supaDeleteManyBets([...selected]).catch(()=>{});
+            showToast(removed.length+' paris supprimés','#EF4444');
+            setActionOpen(false);
+            onClose();
+          }}
+        />
       )}
     </div>
   );
