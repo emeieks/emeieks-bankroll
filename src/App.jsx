@@ -1,6 +1,21 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 
 
+// ── Normalize datetime helper ─────────────────────────────────────────────
+function normalizeDT(dt,id){
+  const p=v=>String(v).padStart(2,"0");
+  const tsToStr=ts=>{
+    const d=new Date(Number(ts));
+    if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+  };
+  if(dt&&typeof dt==="string"&&/^\d{4}-\d{2}-\d{2}/.test(dt))return dt;
+  if(dt&&(typeof dt==="number"||/^\d{10,}$/.test(String(dt))))return tsToStr(dt)||tsToStr(id)||"";
+  if(!dt&&id)return tsToStr(id)||"";
+  return dt||"";
+}
+function normalizeBet(b){return{...b,datetime:normalizeDT(b.datetime,b.id)};}
+
 // ── Supabase — sync sans login ────────────────────────────────────────────
 const SUPA_URL = "https://mtgryzsovqiolinobbjw.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10Z3J5enNvdnFpb2xpbm9iYmp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNDc3MTgsImV4cCI6MjA5MDYyMzcxOH0.2d4Vvm55p_SHi-wGRBrbfsxiwRh-wdqP9tDsHm_Qj3k";
@@ -60,17 +75,8 @@ async function supaPullBets() {
     offset += limit;
   }
   return all.map(b=>{
-    const p=v=>String(v).padStart(2,"0");
-    const tsToStr=ts=>{
-      const d=new Date(Number(ts));
-      if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
-      return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
-    };
-    let dt=b.datetime;
-    if(dt&&typeof dt==="number")dt=tsToStr(dt);
-    else if(dt&&typeof dt==="string"&&/^\d{10,}$/.test(dt))dt=tsToStr(parseInt(dt));
-    else if(!dt||!/^\d{4}-\d{2}-\d{2}/.test(String(dt)))dt=tsToStr(b.id)||null;
-    return{...b,datetime:dt,splits:b.splits?JSON.parse(b.splits):undefined};
+    const splits=b.splits?JSON.parse(b.splits):undefined;
+    return normalizeBet({...b,splits});
   });
 }
 
@@ -137,21 +143,28 @@ function BankrollChart({points,h=150}){
   if(!points||points.length<2)return(
     <div style={{height:h,display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280",fontSize:13}}>Pas assez de donnees</div>
   );
-  const W=400,H=h,pad={t:8,b:24,l:44,r:8};
+  const W=400,H=h,pad={t:16,b:24,l:44,r:42};
   const vals=points.map(p=>p.v);
-  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+  const min=Math.min(...vals),max=Math.max(...vals);
+  const range=max-min||1;
+  const yMin=min-range*0.08;
+  const yMax=max+range*0.22;
+  const yRange=yMax-yMin;
   const cx=W-pad.l-pad.r,cy=H-pad.t-pad.b;
   const px=i=>pad.l+i/(points.length-1)*cx;
-  const py=v=>pad.t+cy-(v-min)/range*cy;
+  const py=v=>pad.t+cy-(v-yMin)/yRange*cy;
   const linePath="M"+points.map((p,i)=>px(i)+","+py(p.v)).join(" L");
-  const fillPath="M"+px(0)+","+py(points[0].v)+" "+points.map((p,i)=>"L"+px(i)+","+py(p.v)).join(" ")+" L"+px(points.length-1)+","+H+" L"+px(0)+","+H+" Z";
+  const fillPath="M"+px(0)+","+py(points[0].v)+" "+points.map((p,i)=>"L"+px(i)+","+py(p.v)).join(" ")+" L"+px(points.length-1)+","+(pad.t+cy)+" L"+px(0)+","+(pad.t+cy)+" Z";
   const up=points[points.length-1].v>=points[0].v;
   const color=up?"#22C55E":"#EF4444";
   const yTicks=[min,min+range*0.5,max];
   const xSamples=[0,Math.floor((points.length-1)/2),points.length-1];
-  // ATH : maximum historique
-  const athVal=Math.max(...vals);
+  const athVal=max;
   const athY=py(athVal);
+  const currentVal=points[points.length-1].v;
+  const currentX=px(points.length-1);
+  const currentY=py(currentVal);
+  const distFromATH=athVal-currentVal;
   return(
     <svg width="100%" viewBox={"0 0 "+W+" "+H} preserveAspectRatio="none" style={{overflow:"visible"}}>
       <defs><linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.25"/><stop offset="100%" stopColor={color} stopOpacity="0.01"/></linearGradient></defs>
@@ -160,10 +173,15 @@ function BankrollChart({points,h=150}){
       {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#9CA3AF">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
       <path d={fillPath} fill="url(#cf)"/>
       <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* Ligne ATH */}
-      <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="#FFFFFF" strokeWidth="1" strokeDasharray="4,3" strokeOpacity="0.4"/>
-      <text x={W-pad.r+2} y={athY+4} textAnchor="start" fontSize="8" fill="#FFFFFF" fontWeight="700" opacity="0.5">ATH</text>
-      <circle cx={px(points.length-1)} cy={py(points[points.length-1].v)} r="4" fill={color}/>
+      <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="#FFFFFF" strokeWidth="1" strokeDasharray="4,3" strokeOpacity="0.35"/>
+      <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="8" fill="#FFFFFF" fontWeight="700" opacity="0.4">ATH</text>
+      <circle cx={currentX} cy={currentY} r="4" fill={color}/>
+      {distFromATH>1&&(
+        <g>
+          <line x1={currentX} y1={currentY-6} x2={currentX} y2={athY+3} stroke="#FFFFFF" strokeWidth="1" strokeOpacity="0.2" strokeDasharray="2,2"/>
+          <text x={currentX+6} y={(currentY+athY)/2+4} fontSize="9" fill="#FFFFFF" fontWeight="700" opacity="0.65">{"-"+distFromATH.toFixed(0)+"€"}</text>
+        </g>
+      )}
     </svg>
   );
 }
@@ -1898,12 +1916,21 @@ function fmtDayFR(d){
 }
 function fmtDate(dt){
   if(!dt)return "";
-  const p=dt.split("T");
-  const dp=p[0].split("-");
-  if(dp.length<3)return dt;
-  const d=dp[2],m=dp[1],y=dp[0];
-  const tp=p[1]?p[1].slice(0,5):"";
-  return d+"/"+m+"/"+y+(tp?" - "+tp:"");
+  // Si c'est un timestamp numérique, convertir d'abord
+  if(typeof dt==="number"||(typeof dt==="string"&&/^\d{10,}$/.test(dt))){
+    const d=new Date(typeof dt==="number"?dt:parseInt(dt));
+    if(isNaN(d.getTime()))return "";
+    const p=v=>String(v).padStart(2,"0");
+    dt=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+  }
+  try{
+    const p=String(dt).split("T");
+    const dp=p[0].split("-");
+    if(dp.length<3)return "";
+    const day=dp[2],m=dp[1],y=dp[0];
+    const tp=p[1]?p[1].slice(0,5):"";
+    return day+"/"+m+"/"+y+(tp?" - "+tp:"");
+  }catch{return "";}
 }
 
 
@@ -2435,7 +2462,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
       {/* ── Actions déployées ── */}
       {open&&(
         <div style={{padding:"8px 14px 10px",borderTop:"1px solid rgba(255,255,255,0.04)"}}>
-          <div style={{fontSize:10,color:"#4B5563",marginBottom:8}}>{bet.datetime?bet.datetime.slice(8,10)+" "+["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][parseInt(bet.datetime.slice(5,7))-1]+" · "+bet.datetime.slice(11,16):""}</div>
+          <div style={{fontSize:10,color:"#4B5563",marginBottom:8}}>{bet.datetime?String(bet.datetime).slice(8,10)+" "+["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][parseInt(bet.datetime.slice(5,7))-1]+" · "+bet.datetime.slice(11,16):""}</div>
           {bet.splits&&bet.splits.length>0&&(
             <div style={{marginBottom:8,background:"#0B1220",borderRadius:8,padding:"8px 10px"}}>
               <div style={{fontSize:9,color:"#6B7280",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Répartition</div>
@@ -2578,11 +2605,21 @@ function MesParisView({
   fMinOdds,setFMinOdds,fMaxOdds,setFMaxOdds,fMinStake,setFMinStake,fMaxStake,setFMaxStake,
   fMapFilter,setFMapFilter,fDuel,setFDuel,fLive,setFLive,fHeadshot,setFHeadshot,
   fRole,setFRole,fLeague,setFLeague,fTourneys,setFTourneys,fDateFrom,setFDateFrom,fDateTo,setFDateTo,
+  calcProfit,
 }){
   const [selectMode,setSelectMode]=useState(false);
   const [selectedIds,setSelectedIds]=useState([]);
   const [confirmDelete,setConfirmDelete]=useState(false);
-  const [groupMode,setGroupMode]=useState("jour"); // "jour" | "semaine"
+  // Collapse all months by default except the most recent one
+  const [collapsedMonths,setCollapsedMonths]=useState(()=>{
+    // Start with empty - we'll collapse old months after first render
+    return new Set();
+  });
+  const toggleMonth=mk=>setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});
+  const [bulkEditOpen,setBulkEditOpen]=useState(false);
+  const [bulkDate,setBulkDate]=useState("");
+  const [bulkStatus,setBulkStatus]=useState("");
+  const [bulkTournament,setBulkTournament]=useState("");
 
   // ── Date helpers ──────────────────────────────────────────────────────────
   const p=v=>String(v).padStart(2,"0");
@@ -2636,10 +2673,11 @@ function MesParisView({
     return true;
   }),[bets,fStatus,fGames,fBKs,fOverUnder,fRole,fLeague,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fDuel,fLive,fHeadshot]);
 
-  const pending=useMemo(()=>filtered.filter(b=>b.status==="pending").sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||"")),[filtered]);
-  const settled=useMemo(()=>filtered.filter(b=>b.status!=="pending").sort((a,b2)=>(b2.settledAt||0)-(a.settledAt||0)||(b2.datetime||"").localeCompare(a.datetime||"")),[filtered]);
+  const pending=useMemo(()=>filtered.filter(b=>b.status==="pending").sort((a,b2)=>(String(b2.datetime||"")).localeCompare(String(a.datetime||""))),[filtered]);
+  const settled=useMemo(()=>filtered.filter(b=>b.status!=="pending").sort((a,b2)=>(b2.settledAt||0)-(a.settledAt||0)||(String(b2.datetime||"")).localeCompare(String(a.datetime||""))),[filtered]);
 
   // Group settled by day
+  // Auto-collapse older months (keep latest 2 open) - computed block
   const {dayKeys,byDay,monthKeys,byMonth}=useMemo(()=>{
     const byDay={};
     settled.forEach(b=>{
@@ -2657,6 +2695,16 @@ function MesParisView({
     const monthKeys=Object.keys(byMonth).sort((a,z)=>z.localeCompare(a));
     return{dayKeys,byDay,monthKeys,byMonth};
   },[settled]);
+
+  // Auto-collapse older months (keep latest 2 open) when data loads
+  useEffect(()=>{
+    if(monthKeys.length>2){
+      setCollapsedMonths(prev=>{
+        if(prev.size>0)return prev; // respect manual toggles
+        return new Set(monthKeys.slice(2));
+      });
+    }
+  },[monthKeys.length]);
 
   // Delete selected
   const deleteSelected=()=>{
@@ -2688,11 +2736,13 @@ function MesParisView({
         </button>
         {activeFilters>0&&<button onClick={clearFilters} style={{padding:"6px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>× Effacer</button>}
         <div style={{flex:1}}/>
-        <button onClick={()=>setGroupMode(m=>m==="jour"?"semaine":"jour")}
-          style={{padding:"7px 10px",borderRadius:9,border:"1.5px solid "+(groupMode==="semaine"?"#F59E0B":"rgba(255,255,255,0.08)"),background:groupMode==="semaine"?"rgba(245,158,11,0.08)":"rgba(255,255,255,0.03)",color:groupMode==="semaine"?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-          {groupMode==="semaine"?"Sem.":"Jour"}
-        </button>
-        <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);}}
+        {selectMode&&selectedIds.length>0&&(
+          <button onClick={()=>{setBulkDate("");setBulkStatus("");setBulkTournament("");setBulkEditOpen(true);}}
+            style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid #22C55E",background:"rgba(34,197,94,0.12)",color:"#22C55E",fontSize:16,fontWeight:700,cursor:"pointer"}}>
+            ✓
+          </button>
+        )}
+        <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds([]);setConfirmDelete(false);setBulkEditOpen(false);}}
           style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid "+(selectMode?"#22C55E":"rgba(255,255,255,0.1)"),background:selectMode?"rgba(34,197,94,0.08)":"rgba(255,255,255,0.04)",color:selectMode?"#22C55E":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
           {selectMode?"✕":"Sél."}
         </button>
@@ -2773,19 +2823,23 @@ function MesParisView({
             return(
               <div key={mk} style={{marginBottom:14}}>
                 {/* Month header */}
-                <div style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:14,padding:"13px 16px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div onClick={()=>toggleMonth(mk)} style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:collapsedMonths.has(mk)?"14px":"14px 14px 0 0",padding:"13px 16px",marginBottom:0,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
                   <div>
                     <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:.5}}>{fmtMonth(mk)}</div>
                     <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{allBets.length} paris · {wr.toFixed(0)}%WR</div>
                   </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:18,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444"}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
-                    <div style={{fontSize:11,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:18,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444"}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
+                      <div style={{fontSize:11,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
+                    </div>
+                    <span style={{fontSize:12,color:"#6B7280",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}>▼</span>
                   </div>
                 </div>
 
-                {/* Days */}
-                <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
+                {/* Days — hidden when collapsed */}
+                {!collapsedMonths.has(mk)&&(
+                <div style={{borderRadius:"0 0 12px 12px",overflow:"hidden",border:"1px solid #1F2937",borderTop:"none",marginBottom:6}}>
                   {days.map((dk,di)=>{
                     const dayBets=byDay[dk]||[];
                     const dayProfit=dayBets.reduce((s,b)=>s+(b.profit||0),0);
@@ -2793,7 +2847,22 @@ function MesParisView({
                       <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
                         {/* Day header */}
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#0B1220"}}>
-                          <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB"}}>{fmtDay(dk)}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            {selectMode&&(()=>{
+                              const allSelected=dayBets.every(b=>selectedIds.includes(b.id));
+                              const someSelected=dayBets.some(b=>selectedIds.includes(b.id));
+                              return(
+                                <button onClick={()=>{
+                                  if(allSelected){setSelectedIds(ids=>ids.filter(id=>!dayBets.map(b=>b.id).includes(id)));}
+                                  else{setSelectedIds(ids=>[...new Set([...ids,...dayBets.map(b=>b.id)])]);}
+                                }} style={{width:18,height:18,borderRadius:4,border:"1.5px solid "+(allSelected?"#22C55E":someSelected?"#A78BFA":"#374151"),background:allSelected?"rgba(34,197,94,0.15)":someSelected?"rgba(167,139,250,0.1)":"transparent",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                                  {allSelected&&<span style={{fontSize:10,color:"#22C55E",fontWeight:900}}>✓</span>}
+                                  {someSelected&&!allSelected&&<span style={{fontSize:10,color:"#A78BFA",fontWeight:900}}>–</span>}
+                                </button>
+                              );
+                            })()}
+                            <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB"}}>{fmtDay(dk)}</span>
+                          </div>
                           <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
                         </div>
                         {/* Bets */}
@@ -2809,9 +2878,65 @@ function MesParisView({
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── BULK EDIT MODAL ── */}
+      {bulkEditOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:1000,display:"flex",alignItems:"flex-end"}} onClick={()=>setBulkEditOpen(false)}>
+          <div style={{width:"100%",background:"#111827",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:800,color:"#E5E7EB"}}>Modifier {selectedIds.length} paris</div>
+                <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>Seuls les champs remplis seront modifiés</div>
+              </div>
+              <button onClick={()=>setBulkEditOpen(false)} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:32,height:32,color:"#6B7280",fontSize:18,cursor:"pointer"}}>×</button>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Statut</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                {["","won","lost"].map(s=>(
+                  <button key={s} onClick={()=>setBulkStatus(s===bulkStatus?"":s)}
+                    style={{padding:"10px 4px",borderRadius:10,border:"1.5px solid "+(bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":bulkStatus===s?"rgba(255,255,255,0.2)":"#1F2937"),background:bulkStatus===s&&s==="won"?"rgba(34,197,94,0.12)":bulkStatus===s&&s==="lost"?"rgba(239,68,68,0.1)":bulkStatus===s?"rgba(255,255,255,0.05)":"transparent",color:bulkStatus===s&&s==="won"?"#22C55E":bulkStatus===s&&s==="lost"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                    {s===""?"En attente":s==="won"?"✓ Gagné":"✗ Perdu"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Date</div>
+              <input type="date" value={bulkDate} onChange={e=>setBulkDate(e.target.value)}
+                style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:24}}>
+              <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Tournoi</div>
+              <input type="text" value={bulkTournament} onChange={e=>setBulkTournament(e.target.value)}
+                placeholder="ex: MSI 2026, LEC Spring…"
+                style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"11px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <button onClick={()=>{
+              if(!bulkStatus&&!bulkDate&&!bulkTournament)return;
+              const updated=bets.map(b=>{
+                if(!selectedIds.includes(b.id))return b;
+                const changes={};
+                if(bulkStatus){changes.status=bulkStatus;changes.profit=calcProfit(bulkStatus,b.stake,b.odds);if(bulkStatus!=="pending")changes.settledAt=Date.now();}
+                if(bulkDate){const time=b.datetime?String(b.datetime).slice(11,16):"12:00";changes.datetime=bulkDate+"T"+time;}
+                if(bulkTournament)changes.tournament=bulkTournament;
+                return{...b,...changes};
+              });
+              setBets(updated);
+              supaPushBets(updated.filter(b=>selectedIds.includes(b.id))).catch(()=>{});
+              showToast(selectedIds.length+" paris modifiés ✓");
+              setBulkEditOpen(false);setSelectMode(false);setSelectedIds([]);
+            }}
+              style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              Appliquer aux {selectedIds.length} paris
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -2971,23 +3096,7 @@ export default function App(){
       const b=localStorage.getItem("v7_bets");
       if(b){
         const parsed=JSON.parse(b);
-        const p=v=>String(v).padStart(2,"0");
-        const tsToStr=ts=>{
-          const d=new Date(Number(ts));
-          if(isNaN(d.getTime())||d.getFullYear()<2020)return null;
-          return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
-        };
-        const fixDT=(bet)=>{
-          let dt=bet.datetime;
-          // Déjà bon format
-          if(dt&&typeof dt==="string"&&/^\d{4}-\d{2}-\d{2}/.test(dt))return dt;
-          // Timestamp numérique
-          if(dt&&(typeof dt==="number"||/^\d{10,}$/.test(String(dt))))return tsToStr(dt)||tsToStr(bet.id);
-          // Null/undefined → utiliser l'id qui est Date.now() au moment de création
-          if(!dt&&bet.id)return tsToStr(bet.id);
-          return dt;
-        };
-        setBets(parsed.map(bet=>({...bet,datetime:fixDT(bet)})));
+        setBets(parsed.map(normalizeBet));
       }
       const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
       // Fallback localStorage pour les custom players
@@ -3082,7 +3191,7 @@ export default function App(){
         // Merge : local prioritaire. On ajoute seulement les paris présents
         // dans remote mais absents en local (ex: ajoutés depuis un autre appareil)
         const localIds=new Set(bets.map(b=>b.id));
-        const newFromRemote=remote.filter(b=>!localIds.has(b.id));
+        const newFromRemote=remote.filter(b=>!localIds.has(b.id)).map(normalizeBet);
 
         if(newFromRemote.length>0){
           const merged=[...bets,...newFromRemote];
@@ -3160,7 +3269,7 @@ export default function App(){
     const cutoff=new Date();
     cutoff.setDate(cutoff.getDate()-statsPeriod);
     const cutStr=cutoff.toISOString().slice(0,10);
-    return settled.filter(b=>b.datetime&&b.datetime.slice(0,10)>=cutStr);
+    return settled.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=cutStr);
   },[settled,statsPeriod]);
 
   const globalOverUnderStats=useMemo(()=>{
@@ -3270,7 +3379,7 @@ export default function App(){
 
   const {currentStreak,streakType}=useMemo(()=>{
     const resolved=[...bets].filter(b=>b.status!=="pending"&&b.datetime)
-      .sort((a,b2)=>b2.datetime.localeCompare(a.datetime));
+      .sort((a,b2)=>String(b2.datetime||"").localeCompare(String(a.datetime||"")));
     if(!resolved.length)return{currentStreak:0,streakType:"none"};
     const first=resolved[0].status;
     let count=0;
@@ -3392,7 +3501,7 @@ export default function App(){
   const {bestMonth,worstMonth}=useMemo(()=>{
     const byMo={};
     settledFiltered.forEach(b=>{
-      const mo=b.datetime?b.datetime.slice(0,7):"?";
+      const mo=b.datetime?String(b.datetime).slice(0,7):"?";
       if(mo==="?")return;
       byMo[mo]=(byMo[mo]||0)+b.profit;
     });
@@ -3404,9 +3513,9 @@ export default function App(){
 
   const exportCSV=useCallback(()=>{
     const hdr="Date,Joueur,Jeu,Equipe,Role,Over/Under,Description,Cote,Mise,Bookmaker,Statut,Profit,Live,Headshot";
-    const sorted=[...bets].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||""));
+    const sorted=[...bets].sort((a,b2)=>(String(b2.datetime||"")).localeCompare(String(a.datetime||"")));
     const rows=sorted.map(b=>[
-      b.datetime?b.datetime.slice(0,16):"",b.player,b.game,b.team||"",b.role||"",
+      b.datetime?String(b.datetime).slice(0,16):"",b.player,b.game,b.team||"",b.role||"",
       b.overUnder,b.description||"",b.odds,b.stake,b.bookmaker||"",b.status,(b.profit||0).toFixed(2),
       b.isLive?"Oui":"Non",b.isHeadshot?"Oui":"Non"
     ].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(","));
@@ -3448,7 +3557,7 @@ export default function App(){
       if(calGames.length>0&&!calGames.includes(b.game))return;
       const dk=toDateKey(b.datetime);
       if(!dk)return;
-      if(b.status!=="pending"){dp[dk]=(dp[dk]||0)+b.profit;}
+      if(b.status!=="pending"){dp[dk]=(dp[dk]||0)+(b.profit||0);}
       else{dpd[dk]=(dpd[dk]||0)+1;}
     });
     return{dailyProfit:dp,dailyPending:dpd};
@@ -3493,7 +3602,7 @@ export default function App(){
         const sa=a.settledAt||0,sb=b2.settledAt||0;
         if(sa!==sb)return sb-sa;
       }
-      return (b2.datetime||"").localeCompare(a.datetime||"");
+      return (String(b2.datetime||"")).localeCompare(String(a.datetime||""));
     });
   },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
 
@@ -3511,13 +3620,13 @@ export default function App(){
       if(a.status==="pending"&&b2.status==="pending"){
         const mapCmp=mapNum(b2)-mapNum(a); // Map 2 avant Map 1
         if(mapCmp!==0)return mapCmp;
-        return (b2.datetime||"").localeCompare(a.datetime||""); // à map égale, plus récent en haut
+        return (String(b2.datetime||"")).localeCompare(String(a.datetime||"")); // à map égale, plus récent en haut
       }
       // Settled entre eux: trier par settledAt desc
       const sa=a.settledAt||0;
       const sb=b2.settledAt||0;
       if(sa!==sb)return sb-sa;
-      return (b2.datetime||"").localeCompare(a.datetime||"");
+      return (String(b2.datetime||"")).localeCompare(String(a.datetime||""));
     });
     const bd={};
     sorted.forEach(b=>{
@@ -3541,7 +3650,7 @@ export default function App(){
     if(homePeriod){
       const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
       const cutStr=cutoff.toISOString().slice(0,10);
-      s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)>=cutStr);
+      s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=cutStr);
     }
     // Chart filters
     const {games,overUnder,live,bookmakers}=homeChartFilters;
@@ -3552,8 +3661,8 @@ export default function App(){
     if(live==="Headshot")s=s.filter(b=>b.isHeadshot);
     if(live==="Duel")s=s.filter(b=>b.description&&b.description.toLowerCase().includes("duel"));
     if(bookmakers.length>0)s=s.filter(b=>bookmakers.includes(b.bookmaker)||(b.splits||[]).some(sp=>bookmakers.includes(sp.bookmaker)));
-    if(homeChartFilters.dateFrom)s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)>=homeChartFilters.dateFrom);
-    if(homeChartFilters.dateTo)s=s.filter(b=>b.datetime&&b.datetime.slice(0,10)<=homeChartFilters.dateTo);
+    if(homeChartFilters.dateFrom)s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=homeChartFilters.dateFrom);
+    if(homeChartFilters.dateTo)s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)<=homeChartFilters.dateTo);
     return s;
   },[settled,homePeriod,homeChartFilters]);
   const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.profit||0),0),[homeSettled]);
@@ -3562,14 +3671,14 @@ export default function App(){
   const progression=useMemo(()=>bankroll>0?(totalProfit/bankroll)*100:0,[totalProfit,bankroll]);
   const chartPoints=useMemo(()=>{
     const pts=[{v:0,dt:""}];
-    const sorted=[...settled].sort((a,b2)=>(a.datetime||"").localeCompare(b2.datetime||""));
+    const sorted=[...settled].sort((a,b2)=>String(a.datetime||"").localeCompare(String(b2.datetime||"")));
     let running=0;
     sorted.forEach(b=>{running+=b.profit;pts.push({v:running,dt:toDateKey(b.datetime)});});
     return pts;
   },[settled]);
   const chartPointsFiltered=useMemo(()=>{
     // Rebuild chart from homeSettled (already filtered by period + filters)
-    const sorted=[...homeSettled].sort((a,b2)=>(a.datetime||"").localeCompare(b2.datetime||""));
+    const sorted=[...homeSettled].sort((a,b2)=>String(a.datetime||"").localeCompare(String(b2.datetime||"")));
     if(!sorted.length)return [{v:0,dt:""}];
     const pts=[{v:0,dt:""}];
     let running=0;
@@ -3862,8 +3971,8 @@ export default function App(){
         .cal-cell:active{transform:scale(.94);}
         .cal-cell.today{border-color:rgba(124,58,237,.5);}
         .cal-cell.selected{background:rgba(124,58,237,.12);border-color:#7C3AED;}
-        .view-enter{animation:fadeUp .22s cubic-bezier(.32,.72,0,1);}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+        .view-enter{animation:fadeUp .2s cubic-bezier(.32,.72,0,1);will-change:opacity,transform;}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
         .month-header{font-size:13px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px;padding:14px 4px 6px;}
         .day-header{font-size:12px;color:#6B7280;font-weight:600;padding:8px 0 5px;display:flex;justify-content:space-between;align-items:center;}
         select option{background:#1F2937;color:#E5E7EB;}
@@ -3923,7 +4032,7 @@ export default function App(){
 
             {/* Graphique plein — sans card verte */}
             <div style={{borderRadius:16,overflow:"hidden",marginBottom:12,background:"#0B1117",border:"1px solid #1F2937"}}>
-              <BankrollChart points={chartPointsFiltered} h={200}/>
+              <BankrollChart points={chartPointsFiltered} h={280}/>
               <div style={{display:"flex",gap:5,padding:"8px 12px 12px"}}>
                 {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
                   <button key={l} onClick={()=>setHomePeriod(d)}
@@ -3975,39 +4084,6 @@ export default function App(){
                   <polygon points="4,4 20,4 14,12 14,20 10,20 10,12" fill="rgba(96,165,250,0.1)"/>
                 </svg>
                 Filtres
-              </button>
-            </div>
-
-            {/* Paris récents */}
-            <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,overflow:"hidden"}}>
-              <div style={{padding:"12px 16px",borderBottom:"1px solid #1F2937"}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1}}>Paris récents</div>
-              </div>
-              {[...bets].sort((a,b2)=>(b2.datetime||"").localeCompare(a.datetime||"")).slice(0,6).map(b=>{
-                const isPending=b.status==="pending";
-                const dateStr=b.datetime?b.datetime.slice(0,10):"";
-                return(
-                  <div key={b.id} style={{display:"flex",alignItems:"center",gap:10,padding:"13px 16px",borderBottom:"1px solid #0D1117"}}>
-                    <div style={{width:38,height:38,borderRadius:10,flexShrink:0,background:"#0B1220",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      <GameLogo game={b.game} size={22}/>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.player}</div>
-                      <div style={{fontSize:11,color:"#6B7280"}}>{b.overUnder} {b.description} · @{b.odds}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      {isPending
-                        ?<div style={{fontSize:15,fontWeight:700,color:"#60A5FA"}}>@{b.odds}</div>
-                        :<div style={{fontSize:15,fontWeight:700,color:b.profit>=0?"#22C55E":"#EF4444"}}>{b.profit>=0?"+":""}{(b.profit||0).toFixed(2)}€</div>
-                      }
-                      <div style={{fontSize:10,color:"#4B5563",marginTop:2}}>{dateStr}</div>
-                    </div>
-                  </div>
-                );
-              })}
-              <button onClick={()=>setView("mesparis")}
-                style={{width:"100%",padding:"12px",background:"transparent",border:"none",color:"#A78BFA",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center"}}>
-                Voir tous ({bets.length})
               </button>
             </div>
 
@@ -4199,6 +4275,7 @@ export default function App(){
             supaDeleteOneBet={supaDeleteOneBet}
             setDeletedBets={setDeletedBets}
             BK_LOGOS={BK_LOGOS}
+            calcProfit={calcProfit}
           />
         )}
         {view==="calendrier"&&(
@@ -4348,7 +4425,7 @@ export default function App(){
                 <div style={{fontSize:22,fontWeight:800,color:"#60A5FA"}}>
                   {(()=>{
                     const mo=String(calMonth+1).padStart(2,"0");
-                    return (calGames.length>0?calFilteredBets:bets).filter(b=>b.datetime&&b.datetime.startsWith(calYear+"-"+mo)).length;
+                    return (calGames.length>0?calFilteredBets:bets).filter(b=>b.datetime&&String(b.datetime).startsWith(calYear+"-"+mo)).length;
                   })()}
                 </div>
               </div>
@@ -5289,7 +5366,7 @@ export default function App(){
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:11,color:"#9CA3AF"}}>Profit</span>
-                            <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
+                            <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
                           </div>
                         </div>
                         {/* Barre WR */}
@@ -5325,7 +5402,7 @@ export default function App(){
                         <span style={{fontSize:10,color:"#6B7280"}}>{gs.count} paris</span>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}€</span>
+                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{g(s.profit||0).toFixed(0)}€</span>
   <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
                       </div>
                     </div>
@@ -5377,7 +5454,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {p.count>0?(p.won/p.count*100).toFixed(0):0}% WR</div>
                                 </div>
                               </div>
-                              <span style={{fontWeight:700,fontSize:13,color:p.profit>=0?"#22C55E":"#EF4444"}}>{p.profit>=0?"+":""}{p.profit.toFixed(0)}€</span>
+                              <span style={{fontWeight:700,fontSize:13,color:p.profit>=0?"#22C55E":"#EF4444"}}>{p.profit>=0?"+":""}{(p.profit||0).toFixed(0)}€</span>
                             </div>
                           ))}
                         </>
@@ -5400,7 +5477,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{m.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:m.profit>=0?"#22C55E":"#EF4444"}}>{m.profit>=0?"+":""}{m.profit.toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:m.profit>=0?"#22C55E":"#EF4444"}}>{m.profit>=0?"+":""}{(m.profit||0).toFixed(0)}€</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -5426,7 +5503,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{r.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:r.profit>=0?"#22C55E":"#EF4444"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:r.profit>=0?"#22C55E":"#EF4444"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -5449,7 +5526,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{l.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:l.profit>=0?"#22C55E":"#EF4444"}}>{l.profit>=0?"+":""}{l.profit.toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:l.profit>=0?"#22C55E":"#EF4444"}}>{l.profit>=0?"+":""}{(l.profit||0).toFixed(0)}€</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -5478,7 +5555,7 @@ export default function App(){
                                   </div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{(t.profit||0).toFixed(0)}€</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -5503,7 +5580,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#818CF8",display:"flex",alignItems:"center",gap:4}}>{r.line} <span style={{fontSize:9,color:"#4B5563"}}>›</span></span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
                               <span style={{fontSize:10}}>{r.wr>55?"✅":r.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5519,7 +5596,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#F59E0B"}}>Duels</span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
                               <span style={{fontSize:10}}>{r.wr>55?"✅":r.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5542,7 +5619,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#60A5FA"}}>{label}</span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{s.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:s.wr>55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{s.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
                               <span style={{fontSize:10}}>{s.wr>55?"✅":s.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5558,7 +5635,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#818CF8"}}>{r.line}</span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
                               <span style={{fontSize:10}}>{r.wr>55?"✅":r.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5657,7 +5734,7 @@ export default function App(){
                       <span style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{r.label}</span>
                       <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                       <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                      <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}€</span>
+                      <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
                       <span style={{fontSize:11,color:r.roi>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.roi>=0?"+":""}{r.roi.toFixed(0)}%</span>
                     </div>
                   ))}
@@ -5690,7 +5767,7 @@ export default function App(){
                             </div>
                           </div>
                           <div style={{textAlign:"right"}}>
-                            <div style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div>
+                            <div style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</div>
                             <div style={{fontSize:10,color:bkROI>=0?"#22C55E":"#EF4444"}}>{bkROI>=0?"+":""}{bkROI.toFixed(1)}% ROI</div>
                           </div>
                         </div>
@@ -5737,7 +5814,7 @@ export default function App(){
             const isO=b.overUnder==="Over",isU=b.overUnder==="Under";
             const map=b.mapTag||"Sans tag",bk=b.bookmaker||"Autre";
             const role=b.role||"Inconnu";
-            const mo=b.datetime?b.datetime.slice(0,7):"?";
+            const mo=b.datetime?String(b.datetime).slice(0,7):"?";
             const bkt=bk2(b.odds||1);
             if(!byMap[map])byMap[map]=mk(); add(byMap[map],b);
             if(!byBK[bk])byBK[bk]=mk(); add(byBK[bk],b);
@@ -5796,7 +5873,7 @@ export default function App(){
               </div>
               <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{s.n}p</span>
               <span style={{fontSize:12,fontWeight:700,color:wrc(s.wr),minWidth:44,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
-              <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
+              <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
             </div>
           );
 
@@ -5963,7 +6040,7 @@ export default function App(){
                         </div>
                         <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{r.n}p</span>
                         <span style={{fontSize:12,fontWeight:700,color:wrc(r.wr),minWidth:44,textAlign:"right"}}>{r.wr.toFixed(0)}%</span>
-                        <span style={{fontSize:13,fontWeight:800,color:"#EF4444",minWidth:66,textAlign:"right"}}>{r.profit.toFixed(0)}€</span>
+                        <span style={{fontSize:13,fontWeight:800,color:"#EF4444",minWidth:66,textAlign:"right"}}>{(r.profit||0).toFixed(0)}€</span>
                       </div>
                     ))}
                   </div>
@@ -5981,7 +6058,7 @@ export default function App(){
                         </div>
                         <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{s.n}p</span>
                         <span style={{fontSize:12,fontWeight:700,color:wrc(s.wr),minWidth:44,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
-                        <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span>
+                        <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
                       </div>
                     ))}
                   </div>
@@ -6027,7 +6104,7 @@ export default function App(){
                       {ps?(
                         <div>
                           <div style={{display:"flex",justifyContent:"space-around",padding:"14px 12px",borderBottom:"1px solid #1A2235"}}>
-                            {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#22C55E":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#22C55E":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+ps.profit.toFixed(0)+"€",c:ps.profit>=0?"#22C55E":"#EF4444"}].map(x=>(
+                            {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#22C55E":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#22C55E":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+p(s.profit||0).toFixed(0)+"€",c:ps.profit>=0?"#22C55E":"#EF4444"}].map(x=>(
                               <div key={x.l} style={{textAlign:"center"}}>
                                 <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{x.l}</div>
                                 <div style={{fontSize:16,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -6383,21 +6460,17 @@ export default function App(){
                       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px"}}>
                         <GameLogo game={game} size={18}/>
                         <span style={{fontSize:13,fontWeight:700,color:cfg.accent||"#A78BFA",width:64,flexShrink:0}}>{game}</span>
-                        <div style={{flex:1,background:"#0B1220",borderRadius:8,border:"1px solid #1F2937",padding:"6px 10px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}
-                          onClick={()=>{
-                            if(saved.length===0){setModalTourney(game);return;}
-                            const current=t&&!isExpired?t.name:"";
-                            const opts=["", ...saved];
-                            const idx=opts.indexOf(current);
-                            const next=opts[(idx+1)%opts.length];
-                            if(!next){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}
-                            else{setActiveTourneys(prev=>({...prev,[game]:{name:next,end:""}}));}
-                          }}>
-                          <span style={{fontSize:12,color:hasActive?"#E5E7EB":"#4B5563",fontWeight:hasActive?600:400}}>
-                            {hasActive?"🏆 "+t.name:"Aucun tournoi actif"}
-                          </span>
-                          <span style={{fontSize:10,color:"#374151"}}>⌄</span>
-                        </div>
+                        <select
+                          value={hasActive?t.name:""}
+                          onChange={e=>{
+                            const val=e.target.value;
+                            if(!val){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}
+                            else{setActiveTourneys(prev=>({...prev,[game]:{name:val,end:""}}));}
+                          }}
+                          style={{flex:1,background:"#0B1220",border:"1px solid "+(hasActive?"rgba(124,58,237,0.4)":"#1F2937"),borderRadius:8,padding:"7px 10px",color:hasActive?"#E5E7EB":"#4B5563",fontWeight:hasActive?600:400,fontSize:12,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",colorScheme:"dark"}}>
+                          <option value="">Aucun tournoi actif</option>
+                          {saved.map(s=><option key={s} value={s}>{s}</option>)}
+                        </select>
                         <button onClick={()=>setModalTourney(game)}
                           style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:8,padding:"6px 10px",color:"#A78BFA",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:700,flexShrink:0}}>
                           +
@@ -7220,8 +7293,12 @@ export default function App(){
                                   ⚠️ {integrityReport.onlyLocal.length} paris en local mais PAS dans le cloud
                                 </div>
                                 <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
-                                  {integrityReport.onlyLocal.slice(0,3).map(b=><div key={b.id}>{b.player} · {String(b.description||"").slice(0,25)}</div>)}
-                                  {integrityReport.onlyLocal.length>3&&<div>+{integrityReport.onlyLocal.length-3} autres…</div>}
+                                  {integrityReport.onlyLocal.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
+                                    <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
+                                    <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}€ · {b.bookmaker}</span>
+                                    <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
+                                  </div>)}
+                                  {integrityReport.onlyLocal.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyLocal.length-5} autres…</div>}
                                 </div>
                                 <button onClick={()=>{supaPushBets(integrityReport.onlyLocal).then(()=>{showToast(integrityReport.onlyLocal.length+" paris envoyés ✓","#22C55E");setIntegrityReport(null);}).catch(()=>showToast("Erreur envoi","#EF4444"));}}
                                   style={{width:"100%",padding:"8px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,color:"#F59E0B",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
@@ -7235,8 +7312,13 @@ export default function App(){
                                   ℹ️ {integrityReport.onlyRemote.length} paris dans le cloud mais PAS en local
                                 </div>
                                 <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
-                                  {integrityReport.onlyRemote.slice(0,3).map(b=><div key={b.id}>{b.player} · {String(b.description||"").slice(0,25)}</div>)}
-                                  {integrityReport.onlyRemote.length>3&&<div>+{integrityReport.onlyRemote.length-3} autres…</div>}
+                                  {integrityReport.onlyRemote.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
+                                    <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
+                                    <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}€ · {b.bookmaker}</span>
+                                    <span style={{color:b.status==="won"?"#22C55E":b.status==="lost"?"#EF4444":"#3B82F6",marginLeft:4,fontWeight:600}}>{b.status}</span>
+                                    <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
+                                  </div>)}
+                                  {integrityReport.onlyRemote.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyRemote.length-5} autres…</div>}
                                 </div>
                                 <button onClick={()=>{const merged=[...bets,...integrityReport.onlyRemote];setBets(merged);localStorage.setItem("v7_bets",JSON.stringify(merged));showToast(integrityReport.onlyRemote.length+" paris récupérés ✓","#22C55E");setIntegrityReport(null);}}
                                   style={{width:"100%",padding:"8px",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:8,color:"#60A5FA",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
