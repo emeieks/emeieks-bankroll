@@ -10,8 +10,14 @@ function normalizeDT(dt,id){
     return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
   };
   if(dt&&typeof dt==="string"&&(dt.includes("NaN")||dt.includes("undefined")))dt=null;
-  if(dt&&typeof dt==="string"&&/^\d{4}-\d{2}-\d{2}/.test(dt))return dt;
+  // Priorite absolue : si datetime est une chaine date valide, ne jamais l ecraser
+  if(dt&&typeof dt==="string"&&/^\d{4}-\d{2}-\d{2}/.test(dt)){
+    const base=dt.slice(0,16);
+    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(base))return base;
+    return dt.slice(0,10)+"T12:00";
+  }
   if(dt&&(typeof dt==="number"||/^\d{10,}$/.test(String(dt))))return tsToStr(dt)||tsToStr(id)||"";
+  // Fallback sur l id SEULEMENT si datetime est absent
   if(!dt&&id)return tsToStr(id)||"";
   return dt||"";
 }
@@ -82,10 +88,17 @@ async function supaPullBets() {
 }
 
 async function supaPushBets(bets) {
+  // Forcer le format YYYY-MM-DDTHH:MM pour la datetime (éviter transformation Supabase)
+  const safeDT=dt=>{
+    if(!dt)return dt;
+    const s=String(dt);
+    if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s))return s.slice(0,16);
+    return dt;
+  };
   const rows = bets.map(({id,player,description,overUnder,odds,stake,bookmaker,
     status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits})=>
     ({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,
-      team,datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
+      team,datetime:safeDT(datetime),isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
       splits:splits&&splits.length>0?JSON.stringify(splits):null}));
   // Chunk en 500
   for(let i=0;i<rows.length;i+=500){
@@ -2639,6 +2652,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       return nb;
     });
     setBets(updated);
+    // Sauvegarder immédiatement en localStorage ET Supabase (pas d attendre le debounce)
+    try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
     setTimeout(()=>{supaPushBets(toSync).catch(()=>{});setSaving(false);},0);
     const parts=[];
     if(newDate)parts.push("date → "+newDate);
@@ -2758,7 +2773,7 @@ function MesParisView({
   const filtered=useMemo(()=>bets.filter(b=>{
     if(fStatus&&fStatus!=="All"&&b.status!==fStatus)return false;
     if(fGames&&fGames.length>0&&!fGames.includes(b.game))return false;
-    if(fBKs&&fBKs.length>0&&!fBKs.includes(b.bookmaker||""))return false;
+    if(fBKs&&fBKs.length>0&&!fBKs.includes(b.bookmaker||"")&&!(b.splits||[]).some(sp=>fBKs.includes(sp.bookmaker)))return false;
     if(fOverUnder&&fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
     if(fRole&&fRole!=="All"&&b.role!==fRole)return false;
     if(fLeague&&fLeague!=="All"&&b.league!==fLeague)return false;
@@ -3094,7 +3109,15 @@ export default function App(){
           setCustom(obj);
         }
       }).catch(()=>{});
-      const bm=localStorage.getItem("v7_bmakers"); if(bm)setBookmakers(JSON.parse(bm));
+      const bm=localStorage.getItem("v7_bmakers");
+      if(bm){
+        const saved=JSON.parse(bm);
+        // Fusionner avec DEFAULT_BK pour s assurer que les nouveaux bookmakers par défaut sont présents
+        const merged=[...saved];
+        DEFAULT_BK.forEach(bk=>{if(!merged.includes(bk))merged.push(bk);});
+        setBookmakers(merged);
+        if(merged.length!==saved.length)localStorage.setItem("v7_bmakers",JSON.stringify(merged));
+      }
       const bp=localStorage.getItem("v7_bkphotos"); if(bp)setBkPhotos(JSON.parse(bp));
       const tv=localStorage.getItem("v7_tourneys"); if(tv)setActiveTourneys(JSON.parse(tv));
       const stv=localStorage.getItem("v7_saved_tourneys"); if(stv)setSavedTourneys(JSON.parse(stv));
@@ -3163,7 +3186,7 @@ export default function App(){
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
-  // ── Supabase: pull au chargement — Supabase est la source de vérité ───────
+  // ── Supabase: pull au chargement ─────────────────────────────────────────
   useEffect(()=>{
     if(!loaded)return;
     (async()=>{
@@ -3172,11 +3195,27 @@ export default function App(){
         const remote=await supaPullBets();
         setSupaOk(true);
         if(!remote||remote.length===0){setSyncing(false);return;}
-        // Supabase EST la source de vérité — on remplace tout le local
-        const normalized=remote.map(normalizeBet);
-        setBets(normalized);
-        localStorage.setItem("v7_bets",JSON.stringify(normalized));
-        showToast("☁️ "+normalized.length+" paris chargés","#7C3AED");
+        // Fusionner : la version locale a la priorité sur Supabase pour les champs
+        // modifiés manuellement (datetime, bookmaker) car le push peut avoir un délai
+        const localRaw=localStorage.getItem("v7_bets");
+        const localBets=localRaw?JSON.parse(localRaw):[];
+        const localMap={};
+        localBets.forEach(b=>{if(b&&b.id)localMap[b.id]=b;});
+        const merged=remote.map(remoteBet=>{
+          const local=localMap[remoteBet.id];
+          if(!local)return normalizeBet(remoteBet);
+          const dtOk=dt=>dt&&/^\d{4}-\d{2}-\d{2}/.test(String(dt));
+          // Datetime locale prioritaire (changement manuel)
+          const finalDT=dtOk(local.datetime)?local.datetime:dtOk(remoteBet.datetime)?remoteBet.datetime:null;
+          // settledAt local prioritaire (cohérent avec datetime locale)
+          const finalSA=local.settledAt||remoteBet.settledAt||null;
+          // Bookmaker local prioritaire si différent (changement manuel récent)
+          const finalBK=local.bookmaker||remoteBet.bookmaker;
+          return normalizeBet({...remoteBet,...(finalDT?{datetime:finalDT}:{}),...(finalSA?{settledAt:finalSA}:{}),bookmaker:finalBK});
+        });
+        setBets(merged);
+        localStorage.setItem("v7_bets",JSON.stringify(merged));
+        showToast("☁️ "+merged.length+" paris chargés","#7C3AED");
       }catch(e){
         setSupaOk(false);
       }
@@ -3526,17 +3565,22 @@ export default function App(){
     reader.readAsText(file);
   },[showToast]);
 
-  const {dailyProfit,dailyPending}=useMemo(()=>{
-    const dp={},dpd={};
+  const {dailyProfit,dailyPending,dailyCount}=useMemo(()=>{
+    const dp={},dpd={},dc={};
+    // Utiliser fGames pour être cohérent avec MesParisView
+    const gameFilter=calGames.length>0?calGames:fGames;
     bets.forEach(b=>{
-      if(calGames.length>0&&!calGames.includes(b.game))return;
+      if(gameFilter.length>0&&!gameFilter.includes(b.game))return;
       const dk=toDateKey(b.datetime);
       if(!dk)return;
-      if(b.status!=="pending"){dp[dk]=(dp[dk]||0)+(b.profit||0);}
+      if(b.status!=="pending"){
+        dp[dk]=(dp[dk]||0)+(b.profit||0);
+        dc[dk]=(dc[dk]||0)+1;
+      }
       else{dpd[dk]=(dpd[dk]||0)+1;}
     });
-    return{dailyProfit:dp,dailyPending:dpd};
-  },[bets,calGames]);
+    return{dailyProfit:dp,dailyPending:dpd,dailyCount:dc};
+  },[bets,calGames,fGames]);
 
   const monthProfit=useMemo(()=>{
     const mo=String(calMonth+1).padStart(2,"0");
@@ -3581,7 +3625,7 @@ export default function App(){
     });
   },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
 
-  const calFilteredBets=useMemo(()=>calGames.length>0?bets.filter(b=>calGames.includes(b.game)):bets,[bets,calGames]);
+  const calFilteredBets=useMemo(()=>{const gf=calGames.length>0?calGames:fGames;return gf.length>0?bets.filter(b=>gf.includes(b.game)):bets;},[bets,calGames,fGames]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(()=>{
     const now=Date.now();
@@ -3835,37 +3879,76 @@ export default function App(){
 
   function applyBulkStatus(status){
     const now=Date.now();
-    setBets(b=>b.map((bet,i)=>selectedIds.has(bet.id)?{...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null}:bet));
+    const changed=[];
+    setBets(b=>{
+      const updated=b.map((bet,i)=>{
+        if(!selectedIds.has(bet.id))return bet;
+        const u={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null};
+        changed.push(u);return u;
+      });
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
+      setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
+      return updated;
+    });
     setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
-    showToast(store.count+" paris mis à jour");
+    showToast(store.count+" paris mis à jour ✓");
   }
   function applyBulkBK(){
     if(!bulkBK)return;
-    setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,bookmaker:bulkBK}:bet));
+    const changed=[];
+    setBets(b=>{
+      const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,bookmaker:bulkBK};changed.push(u);return u;});
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
+      setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
+      return updated;
+    });
     setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
     showToast("Bookmaker mis à jour");
   }
   function applyBulkDatetime(){
     if(!bulkDatetime)return;
+    const changed=[];
     setBets(b=>{
-      const updated=b.map(bet=>selectedIds.has(bet.id)?{...bet,datetime:bulkDatetime}:bet);
-      // Push immediately — don't wait for debounce
-      setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
+      const updated=b.map(bet=>{
+        if(!selectedIds.has(bet.id))return bet;
+        // Conserver l heure originale, changer seulement la date
+        const time=bet.datetime?String(bet.datetime).slice(11,16):"12:00";
+        const newDT=bulkDatetime.slice(0,10)+"T"+time;
+        // Mettre à jour settledAt pour que le tri dans Mes Paris soit cohérent
+        const newSettledAt=bet.status!=="pending"?new Date(newDT).getTime():(bet.settledAt||null);
+        const updated={...bet,datetime:newDT,settledAt:newSettledAt};
+        changed.push(updated);
+        return updated;
+      });
+      // Push immédiat uniquement les paris modifiés
+      setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
       return updated;
     });
     setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
-    showToast("Date mise à jour");
+    showToast("Date mise à jour ✓");
   }
   function applyBulkMap(){
     if(!bulkMap)return;
-    setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,mapTag:bulkMap}:bet));
+    const changed=[];
+    setBets(b=>{
+      const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,mapTag:bulkMap};changed.push(u);return u;});
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
+      setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
+      return updated;
+    });
     setBulkModal(false);setSelectMode(false);store.clear();setBulkMap("");
-    showToast("Map mise à jour");
+    showToast("Map mise à jour ✓");
   }
   function applyBulkTourney(name){
-    setBets(b=>b.map(bet=>selectedIds.has(bet.id)?{...bet,tournament:name}:bet));
+    const changed=[];
+    setBets(b=>{
+      const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,tournament:name};changed.push(u);return u;});
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
+      setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
+      return updated;
+    });
     setBulkModal(false);setSelectMode(false);store.clear();setBulkTourney("");
-    showToast("🏆 Tournoi mis à jour");
+    showToast("🏆 Tournoi mis à jour ✓");
   }
 
   function savePlayer(){
@@ -4434,7 +4517,8 @@ export default function App(){
                 <div style={{fontSize:22,fontWeight:800,color:"#60A5FA"}}>
                   {(()=>{
                     const mo=String(calMonth+1).padStart(2,"0");
-                    return (calGames.length>0?calFilteredBets:bets).filter(b=>b.datetime&&String(b.datetime).startsWith(calYear+"-"+mo)).length;
+                    const prefix=calYear+"-"+mo;
+                    return Object.entries(dailyCount).filter(([d])=>d.startsWith(prefix)).reduce((s,[,v])=>s+v,0);
                   })()}
                 </div>
               </div>
