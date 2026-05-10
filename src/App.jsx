@@ -3193,60 +3193,92 @@ export default function App(){
   const showBetConfirm=useCallback(()=>{},[]);
 
   // ── Supabase: auto-push après chaque changement de paris (debounce 5s) ────
+  // Auto-push : déclenché seulement par un vrai changement local (ajout/modif/suppression)
+  // NE PAS push après un pull (sinon boucle infinie ordi↔iOS)
+  const lastPulledRef=useRef(null);
   useEffect(()=>{
     if(!loaded)return;
+    // Éviter de re-pusher ce qu on vient de puller
+    const key=bets.length+":"+( bets[0]?.id||"" );
+    if(lastPulledRef.current===key)return;
     const t=setTimeout(async()=>{
-      try{ await supaPushBets(bets); setSupaOk(true); }
+      try{
+        // Appliquer les overrides avant push pour garantir que les dates/bookmakers
+        // modifiés manuellement sont bien envoyés à Supabase
+        const ovRaw=localStorage.getItem("v7_overrides");
+        const overrides=ovRaw?JSON.parse(ovRaw):{};
+        const hasOv=Object.keys(overrides).length>0;
+        const betsToSend=hasOv?bets.map(b=>{
+          const ov=overrides[String(b.id)];
+          if(!ov)return b;
+          return{...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{})};
+        }):bets;
+        await supaPushBets(betsToSend);
+        // Nettoyer les overrides une fois pushés avec succès
+        if(hasOv)localStorage.removeItem("v7_overrides");
+        setSupaOk(true);
+      }
       catch(e){ setSupaOk(false); }
-    },5000);
+    },3000);
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
-  // ── Supabase: pull au chargement ─────────────────────────────────────────
-  useEffect(()=>{
-    if(!loaded)return;
-    (async()=>{
-      setSyncing(true);
-      try{
-        const remote=await supaPullBets();
-        setSupaOk(true);
-        if(!remote||remote.length===0){setSyncing(false);return;}
-        // Fusionner : la version locale a la priorité sur Supabase pour les champs
-        // modifiés manuellement (datetime, bookmaker) car le push peut avoir un délai
+  // ── Supabase: pull — Supabase est la source de vérité ───────────────────
+  const pullFromSupa=useCallback(async(silent=false)=>{
+    setSyncing(true);
+    try{
+      // 1. D abord pousser les overrides locaux vers Supabase
+      const ovRaw=localStorage.getItem("v7_overrides");
+      const overrides=ovRaw?JSON.parse(ovRaw):{};
+      const ovIds=Object.keys(overrides);
+      if(ovIds.length>0){
+        // Récupérer les bets locaux pour les ids overridés
         const localRaw=localStorage.getItem("v7_bets");
         const localBets=localRaw?JSON.parse(localRaw):[];
-        const localMap={};
-        localBets.forEach(b=>{if(b&&b.id)localMap[b.id]=b;});
-        // Charger les overrides de dates/bookmakers modifiés manuellement
-        const ovRaw=localStorage.getItem("v7_overrides");
-        const overrides=ovRaw?JSON.parse(ovRaw):{};
-        const merged=remote.map(remoteBet=>{
-          const ov=overrides[remoteBet.id];
-          const local=localMap[remoteBet.id];
-          const dtOk=dt=>dt&&/^\d{4}-\d{2}-\d{2}/.test(String(dt));
-          // Priorité : override manuel > local > remote
-          const finalDT=ov?.datetime?ov.datetime:dtOk(local?.datetime)?local.datetime:dtOk(remoteBet.datetime)?remoteBet.datetime:null;
-          const finalSA=ov?.settledAt||local?.settledAt||remoteBet.settledAt||null;
-          const finalBK=ov?.bookmaker||local?.bookmaker||remoteBet.bookmaker;
-          return normalizeBet({...remoteBet,...(finalDT?{datetime:finalDT}:{}),...(finalSA?{settledAt:finalSA}:{}),bookmaker:finalBK});
+        const toSync=localBets.filter(b=>overrides[String(b.id)]);
+        // Appliquer les overrides avant push
+        const withOv=toSync.map(b=>{
+          const ov=overrides[String(b.id)];
+          return {...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{})};
         });
-        setBets(merged);
-        localStorage.setItem("v7_bets",JSON.stringify(merged));
-        // Push les overrides vers Supabase et les nettoyer si tout va bien
-        const toSync=merged.filter(b=>overrides[b.id]);
-        if(toSync.length>0){
-          supaPushBets(toSync).then(()=>{
-            localStorage.removeItem("v7_overrides");
-          }).catch(()=>{});
+        if(withOv.length>0){
+          await supaPushBets(withOv);
+          localStorage.removeItem("v7_overrides");
         }
-        showToast("☁️ "+merged.length+" paris chargés","#7C3AED");
-      }catch(e){
-        setSupaOk(false);
       }
-      setSyncing(false);
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[loaded]);
+      // 2. Pull depuis Supabase — c est la vérité
+      const remote=await supaPullBets();
+      setSupaOk(true);
+      if(!remote||remote.length===0){setSyncing(false);return;}
+      // 3. Supabase gagne — pas de merge local (évite conflits inter-appareils)
+      const normalized=remote.map(normalizeBet);
+      // Marquer comme venant d un pull pour éviter le re-push automatique
+      lastPulledRef.current=normalized.length+":"+(normalized[0]?.id||"");
+      setBets(normalized);
+      localStorage.setItem("v7_bets",JSON.stringify(normalized));
+      if(!silent)showToast("☁️ "+normalized.length+" paris chargés","#7C3AED");
+    }catch(e){
+      setSupaOk(false);
+    }
+    setSyncing(false);
+  },[showToast]);
+
+  // Pull au chargement
+  useEffect(()=>{if(!loaded)return;pullFromSupa(false);},[loaded]);
+
+  // Re-pull quand l app revient au premier plan (iOS background → foreground)
+  useEffect(()=>{
+    const onVisible=()=>{if(document.visibilityState==="visible")pullFromSupa(true);};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>document.removeEventListener("visibilitychange",onVisible);
+  },[pullFromSupa]);
+
+  // Re-pull toutes les 60s si l app est visible
+  useEffect(()=>{
+    if(!loaded)return;
+    const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},60000);
+    return()=>clearInterval(t);
+  },[loaded,pullFromSupa]);
 
   // ── Reouvrir clavier iPhone au retour sur l'app ──────────────────────────
   const lastFocusedRef = useRef(null);
