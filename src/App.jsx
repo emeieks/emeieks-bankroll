@@ -2948,7 +2948,7 @@ function MesParisView({
           byDay={byDay}
           monthKeys={monthKeys}
           byMonth={byMonth}
-          bookmakers={visibleBKs}
+          bookmakers={bookmakers}
           BK_LOGOS={BK_LOGOS}
           bkPhotos={bkPhotos}
         />
