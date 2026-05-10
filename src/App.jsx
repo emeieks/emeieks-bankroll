@@ -2652,8 +2652,21 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       return nb;
     });
     setBets(updated);
-    // Sauvegarder immédiatement en localStorage ET Supabase (pas d attendre le debounce)
+    // Sauvegarder immédiatement en localStorage
     try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
+    // Stocker les overrides séparément pour survivre au pull Supabase
+    try{
+      const ovRaw=localStorage.getItem("v7_overrides");
+      const overrides=ovRaw?JSON.parse(ovRaw):{};
+      toSync.forEach(b=>{
+        overrides[b.id]={};
+        if(newDate)overrides[b.id].datetime=b.datetime;
+        if(newDate)overrides[b.id].settledAt=b.settledAt;
+        if(newBK)overrides[b.id].bookmaker=b.bookmaker;
+      });
+      localStorage.setItem("v7_overrides",JSON.stringify(overrides));
+    }catch{}
+    // Push immédiat vers Supabase
     setTimeout(()=>{supaPushBets(toSync).catch(()=>{});setSaving(false);},0);
     const parts=[];
     if(newDate)parts.push("date → "+newDate);
@@ -3201,20 +3214,28 @@ export default function App(){
         const localBets=localRaw?JSON.parse(localRaw):[];
         const localMap={};
         localBets.forEach(b=>{if(b&&b.id)localMap[b.id]=b;});
+        // Charger les overrides de dates/bookmakers modifiés manuellement
+        const ovRaw=localStorage.getItem("v7_overrides");
+        const overrides=ovRaw?JSON.parse(ovRaw):{};
         const merged=remote.map(remoteBet=>{
+          const ov=overrides[remoteBet.id];
           const local=localMap[remoteBet.id];
-          if(!local)return normalizeBet(remoteBet);
           const dtOk=dt=>dt&&/^\d{4}-\d{2}-\d{2}/.test(String(dt));
-          // Datetime locale prioritaire (changement manuel)
-          const finalDT=dtOk(local.datetime)?local.datetime:dtOk(remoteBet.datetime)?remoteBet.datetime:null;
-          // settledAt local prioritaire (cohérent avec datetime locale)
-          const finalSA=local.settledAt||remoteBet.settledAt||null;
-          // Bookmaker local prioritaire si différent (changement manuel récent)
-          const finalBK=local.bookmaker||remoteBet.bookmaker;
+          // Priorité : override manuel > local > remote
+          const finalDT=ov?.datetime||dtOk(local?.datetime)?local?.datetime:dtOk(remoteBet.datetime)?remoteBet.datetime:null;
+          const finalSA=ov?.settledAt||local?.settledAt||remoteBet.settledAt||null;
+          const finalBK=ov?.bookmaker||local?.bookmaker||remoteBet.bookmaker;
           return normalizeBet({...remoteBet,...(finalDT?{datetime:finalDT}:{}),...(finalSA?{settledAt:finalSA}:{}),bookmaker:finalBK});
         });
         setBets(merged);
         localStorage.setItem("v7_bets",JSON.stringify(merged));
+        // Push les overrides vers Supabase et les nettoyer si tout va bien
+        const toSync=merged.filter(b=>overrides[b.id]);
+        if(toSync.length>0){
+          supaPushBets(toSync).then(()=>{
+            localStorage.removeItem("v7_overrides");
+          }).catch(()=>{});
+        }
         showToast("☁️ "+merged.length+" paris chargés","#7C3AED");
       }catch(e){
         setSupaOk(false);
@@ -3733,7 +3754,14 @@ export default function App(){
       const editedBK=form.bookmaker;
       setBets(b=>{
         const updated=b.map(bet=>bet.id===editingBet.id?updatedBet:bet);
-        setTimeout(()=>supaPushBets(updated).catch(()=>{}),100);
+        // Override persistant pour survivre au pull Supabase
+        try{
+          const ovRaw=localStorage.getItem("v7_overrides");
+          const ov=ovRaw?JSON.parse(ovRaw):{};
+          ov[updatedBet.id]={datetime:updatedBet.datetime,settledAt:updatedBet.settledAt,bookmaker:updatedBet.bookmaker};
+          localStorage.setItem("v7_overrides",JSON.stringify(ov));
+        }catch{}
+        setTimeout(()=>supaPushBets([updatedBet]).catch(()=>{}),0);
         return updated;
       });
       setEditingBet(null);
@@ -3920,6 +3948,13 @@ export default function App(){
         changed.push(updated);
         return updated;
       });
+      // Stocker overrides pour survivre au pull Supabase
+      try{
+        const ovRaw=localStorage.getItem("v7_overrides");
+        const ov=ovRaw?JSON.parse(ovRaw):{};
+        changed.forEach(b=>{ov[b.id]={datetime:b.datetime,settledAt:b.settledAt};});
+        localStorage.setItem("v7_overrides",JSON.stringify(ov));
+      }catch{}
       // Push immédiat uniquement les paris modifiés
       setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
       return updated;
