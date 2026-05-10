@@ -75,7 +75,7 @@ async function supaPullBets() {
   let all = [];
   let offset = 0;
   while(true) {
-    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits&order=datetime.desc&limit=${limit}&offset=${offset}`);
+    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt&order=datetime.desc&limit=${limit}&offset=${offset}`);
     if(!batch || batch.length === 0) break;
     all = [...all, ...batch];
     if(batch.length < limit) break;
@@ -95,11 +95,13 @@ async function supaPushBets(bets) {
     if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s))return s.slice(0,16);
     return dt;
   };
+  const now=Date.now();
   const rows = bets.map(({id,player,description,overUnder,odds,stake,bookmaker,
-    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits})=>
+    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt})=>
     ({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,
       team,datetime:safeDT(datetime),isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
-      splits:splits&&splits.length>0?JSON.stringify(splits):null}));
+      splits:splits&&splits.length>0?JSON.stringify(splits):null,
+      updatedAt:updatedAt||now}));
   // Chunk en 500
   for(let i=0;i<rows.length;i+=500){
     await supaFetch("/rest/v1/bets",{
@@ -3227,38 +3229,68 @@ export default function App(){
   const pullFromSupa=useCallback(async(silent=false)=>{
     setSyncing(true);
     try{
-      // 1. D abord pousser les overrides locaux vers Supabase
+      // 1. Pousser les overrides locaux vers Supabase (changements manuels en attente)
       const ovRaw=localStorage.getItem("v7_overrides");
       const overrides=ovRaw?JSON.parse(ovRaw):{};
       const ovIds=Object.keys(overrides);
       if(ovIds.length>0){
-        // Récupérer les bets locaux pour les ids overridés
         const localRaw=localStorage.getItem("v7_bets");
         const localBets=localRaw?JSON.parse(localRaw):[];
-        const toSync=localBets.filter(b=>overrides[String(b.id)]);
-        // Appliquer les overrides avant push
-        const withOv=toSync.map(b=>{
-          const ov=overrides[String(b.id)];
-          return {...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{})};
-        });
+        const withOv=localBets
+          .filter(b=>overrides[String(b.id)])
+          .map(b=>{
+            const ov=overrides[String(b.id)];
+            return{...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{}),updatedAt:Date.now()};
+          });
         if(withOv.length>0){
           await supaPushBets(withOv);
           localStorage.removeItem("v7_overrides");
         }
       }
-      // 2. Pull depuis Supabase — c est la vérité
+      // 2. Pull Supabase
       const remote=await supaPullBets();
       setSupaOk(true);
       if(!remote||remote.length===0){setSyncing(false);return;}
-      // 3. Supabase gagne — pas de merge local (évite conflits inter-appareils)
-      const normalized=remote.map(normalizeBet);
-      // Marquer comme venant d un pull pour éviter le re-push automatique
-      lastPulledRef.current=normalized.length+":"+(normalized[0]?.id||"");
-      setBets(normalized);
-      localStorage.setItem("v7_bets",JSON.stringify(normalized));
-      if(!silent)showToast("☁️ "+normalized.length+" paris chargés","#7C3AED");
+      // 3. Merge local-first : le plus récent (updatedAt) gagne
+      // Si Supabase est indisponible, l app fonctionne avec le localStorage
+      const localRaw=localStorage.getItem("v7_bets");
+      const localBets=localRaw?JSON.parse(localRaw):[];
+      const localMap={};
+      localBets.forEach(b=>{if(b&&b.id)localMap[String(b.id)]=b;});
+      const remoteMap={};
+      remote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
+      // Union des deux sets d'ids
+      const allIds=new Set([...Object.keys(localMap),...Object.keys(remoteMap)]);
+      const merged=[];
+      allIds.forEach(sid=>{
+        const loc=localMap[sid];
+        const rem=remoteMap[sid];
+        if(!rem)return; // Pari supprimé sur Supabase → ne pas garder le local
+        if(!loc){merged.push(normalizeBet(rem));return;}
+        // Le plus récent gagne (updatedAt comme arbitre)
+        const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
+        const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
+        merged.push(normalizeBet(locTs>=remTs?loc:rem));
+      });
+      // Marquer comme pull pour éviter re-push automatique
+      lastPulledRef.current=merged.length+":"+(merged[0]?.id||"");
+      setBets(merged);
+      localStorage.setItem("v7_bets",JSON.stringify(merged));
+      // Push les bets locaux plus récents vers Supabase pour les autres appareils
+      const toSyncBack=merged.filter(b=>{
+        const loc=localMap[String(b.id)];
+        const rem=remoteMap[String(b.id)];
+        if(!loc||!rem)return false;
+        const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
+        const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
+        return locTs>remTs;
+      });
+      if(toSyncBack.length>0)supaPushBets(toSyncBack).catch(()=>{});
+      if(!silent)showToast("☁️ "+merged.length+" paris","#7C3AED");
     }catch(e){
+      // Supabase indisponible → continuer avec localStorage (offline mode)
       setSupaOk(false);
+      if(!silent)showToast("⚠️ Mode hors-ligne","#F59E0B");
     }
     setSyncing(false);
   },[showToast]);
@@ -3807,7 +3839,7 @@ export default function App(){
       return;
     }
     const newBet={
-      id:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
+      id:Date.now(),updatedAt:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
       odds,stake,bookmaker:form.bookmaker,status:form.status,
       game:info.game,league:info.league,role:info.role,team:info.team,
       datetime:form.datetime||nowDT(),isHeadshot:form.isHeadshot||false,isLive:form.isLive||false,
@@ -3888,7 +3920,7 @@ export default function App(){
     setBets(b=>{
       const updated=b.map(bet=>{
         if(bet.id!==id)return bet;
-        const newBet={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now:null};
+        const newBet={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now:null,updatedAt:now};
         betToSync=newBet;
         return newBet;
       });
@@ -3946,7 +3978,7 @@ export default function App(){
     setBets(b=>{
       const updated=b.map((bet,i)=>{
         if(!selectedIds.has(bet.id))return bet;
-        const u={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null};
+        const u={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null,updatedAt:now};
         changed.push(u);return u;
       });
       try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch{}
@@ -6746,7 +6778,7 @@ export default function App(){
                         const newName=prompt("Nouveau nom pour "+bk+":",bk);
                         if(!newName||!newName.trim()||newName.trim()===bk)return;
                         setBookmakers(b=>b.map(x=>x===bk?newName.trim():x));
-                        setBets(b=>b.map(bet=>bet.bookmaker===bk?{...bet,bookmaker:newName.trim()}:bet));
+                        setBets(b=>b.map(bet=>bet.bookmaker===bk?{...bet,bookmaker:newName.trim(),updatedAt:Date.now()}:bet));
                         showToast(bk+" → "+newName.trim());
                       }} style={{width:32,height:32,background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,color:"#3B82F6",cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center"}}>
                         ✎
@@ -7384,7 +7416,7 @@ export default function App(){
                         newTotalStake=splitModal.stake+addStake;
                       }
                       const newProfit=calcProfit(splitModal.status,newTotalStake,splitModal.odds);
-                      setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit}:bet));
+                      setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit,updatedAt:Date.now()}:bet));
                       showToast(splitForm.bookmaker+" "+addStake+"€ · Total "+newTotalStake.toFixed(0)+"€","#A78BFA");
                       setSplitModal(null);
                     }}
