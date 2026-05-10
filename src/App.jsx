@@ -2253,7 +2253,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
         <div style={{marginBottom:12}}>
           <span style={labelStyle}>Bookmaker</span>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {visibleBKs.map(bk=>(
+            {bookmakers.map(bk=>(
               <button key={bk} onClick={()=>setEbBK(bk)}
                 style={{padding:"7px 12px",borderRadius:8,border:"1.5px solid "+(ebBK===bk?"#7C3AED":"#1F2937"),background:ebBK===bk?"rgba(124,58,237,0.15)":"transparent",color:ebBK===bk?"#A78BFA":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
                 {bk}
@@ -2692,11 +2692,11 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
           <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Tournoi</div>
           <input type="text" value={newTournament} onChange={e=>setNewTournament(e.target.value)} placeholder="ex: MSI 2026, LEC Spring…" style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
         </div>
-        {visibleBKs.length>0&&(
+        {bookmakers.length>0&&(
           <div>
             <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Bookmaker</div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {visibleBKs.map(bk=>{
+              {bookmakers.map(bk=>{
                 const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
                 const isOn=newBK===bk;
                 return(
@@ -2846,9 +2846,9 @@ function MesParisView({
       </div>
 
       {/* ── BK LOGO FILTERS ── */}
-      {visibleBKs.length>0&&(
+      {bookmakers.length>0&&(
         <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
-          {visibleBKs.map(bk=>{
+          {bookmakers.map(bk=>{
             const on=fBKs.includes(bk);
             const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
             return(
