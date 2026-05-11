@@ -2761,7 +2761,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
 
 // ── MesParisView ─────────────────────────────────────────────────────────────
 function MesParisView({
-  bets,setBets,bookmakers,bkPhotos,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
+  bets,setBets,bookmakers,bkPhotos,hiddenBKs,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
   fBKs,setFBKs,setView,supaPushBets,supaDeleteManyBets,supaDeleteOneBet,setDeletedBets,BK_LOGOS,
   fGames,setFGames,fStatus,setFStatus,fOverUnder,setFOverUnder,
   fMinOdds,setFMinOdds,fMaxOdds,setFMaxOdds,fMinStake,setFMinStake,fMaxStake,setFMaxStake,
@@ -2850,7 +2850,7 @@ function MesParisView({
       {/* ── BK LOGO FILTERS ── */}
       {bookmakers.length>0&&(
         <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
-          {bookmakers.map(bk=>{
+          {bookmakers.filter(bk=>!hiddenBKs||!hiddenBKs.has(bk)).map(bk=>{
             const on=fBKs.includes(bk);
             const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
             return(
@@ -4473,6 +4473,7 @@ export default function App(){
             setBets={setBets}
             bookmakers={bookmakers}
             bkPhotos={bkPhotos}
+            hiddenBKs={hiddenBKs}
             updateStatus={updateStatus}
             deleteBet={deleteBet}
             duplicateBet={duplicateBet}
