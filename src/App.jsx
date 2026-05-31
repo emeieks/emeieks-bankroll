@@ -2600,6 +2600,8 @@ export default function App(){
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        input,textarea,select{background:transparent!important;-webkit-appearance:none;appearance:none;color-scheme:dark;}
+        input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px rgba(8,14,28,.9) inset!important;-webkit-text-fill-color:#E5E7EB!important;}
         body{background:#0B1220;margin:0;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         .card{background:#111827;border:1px solid #1F2937;border-radius:14px;padding:14px;transition:border-color .2s ease;}
         .tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600;}
@@ -3790,9 +3792,8 @@ export default function App(){
                 if(opts.length===0)return null;
                 return(
                   <div style={{display:"flex",alignItems:"center",gap:8,borderRadius:13,border:"1px solid rgba(255,255,255,.06)",background:"rgba(8,14,28,.9)",overflow:"hidden",height:50}}>
-                    <div style={{height:"100%",width:66,borderRight:"1px solid rgba(255,255,255,.05)",background:"rgba(255,255,255,.03)",display:"flex",alignItems:"center",justifyContent:"center",gap:4,flexShrink:0}}>
-                      <GameLogo game={form.autoInfo.game} size={13}/>
-                      <span style={{fontSize:11,fontWeight:500,color:"#8e98ad"}}>{form.autoInfo.game}</span>
+                    <div style={{height:"100%",width:46,borderRight:"1px solid rgba(255,255,255,.05)",background:"rgba(255,255,255,.03)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <GameLogo game={form.autoInfo.game} size={22}/>
                     </div>
                     <select id="kills-select" value={form.description} onChange={e=>{const val=e.target.value;const isHS=val.includes("Headshot");setForm(f=>({...f,description:val,isHeadshot:isHS}));if(e.target.value){setTimeout(()=>{const el=document.getElementById("odds-input-field");if(el)el.focus();},80);}}}
                       style={{flex:1,height:"100%",background:"transparent",border:"none",padding:"0 12px 0 4px",color:form.description?"#a8c4ff":"#5a6880",fontSize:14,fontFamily:"Inter,sans-serif",fontWeight:500,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
