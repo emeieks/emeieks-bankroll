@@ -164,13 +164,13 @@ function BankrollChart({points,h=150}){
   return(
     <svg width="100%" viewBox={"0 0 "+W+" "+H} preserveAspectRatio="none" style={{overflow:"visible"}}>
       <defs>
-        <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.3"/><stop offset="100%" stopColor={color} stopOpacity="0.01"/></linearGradient>
-        <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="2.5" result="blur"/>
+        <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.38"/><stop offset="60%" stopColor={color} stopOpacity="0.08"/><stop offset="100%" stopColor={color} stopOpacity="0.01"/></linearGradient>
+        <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3.5" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <filter id={glowId+"pt"} x="-200%" y="-200%" width="500%" height="500%">
-          <feGaussianBlur stdDeviation="4" result="blur"/>
+        <filter id={glowId+"pt"} x="-300%" y="-300%" width="700%" height="700%">
+          <feGaussianBlur stdDeviation="6" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
@@ -178,13 +178,14 @@ function BankrollChart({points,h=150}){
       {yTicks.map((v,i)=><text key={i} x={pad.l-3} y={py(v)+4} textAnchor="end" fontSize="9" fill="#4a5a6e">{v.toFixed(0)}</text>)}
       {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#4a5a6e">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
       <path d={fillPath} fill="url(#cf)"/>
-      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4"/>
-      <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter={"url(#"+glowId+")"}/>
-      <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="rgba(255,255,255,.25)" strokeWidth="1" strokeDasharray="4,3"/>
-      <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="8" fill="rgba(255,255,255,.35)" fontWeight="700">ATH</text>
-      <circle cx={currentX} cy={currentY} r="6" fill={color} opacity="0.2" filter={"url(#"+glowId+"pt)"}/>
-      <circle cx={currentX} cy={currentY} r="4" fill={color} filter={"url(#"+glowId+"pt)"}/>
-      <circle cx={currentX} cy={currentY} r="2.5" fill="#fff" opacity="0.9"/>
+      <path d={linePath} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.25"/>
+      <path d={linePath} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter={"url(#"+glowId+")"}/>
+      <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="rgba(255,255,255,.18)" strokeWidth="0.8" strokeDasharray="4,4"/>
+      <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="8" fill="rgba(255,255,255,.3)" fontWeight="700">ATH</text>
+      <circle cx={currentX} cy={currentY} r="10" fill={color} opacity="0.08" filter={"url(#"+glowId+"pt)"}/>
+      <circle cx={currentX} cy={currentY} r="6" fill={color} opacity="0.25" filter={"url(#"+glowId+"pt)"}/>
+      <circle cx={currentX} cy={currentY} r="4.5" fill={color}/>
+      <circle cx={currentX} cy={currentY} r="2" fill="#fff" opacity="0.95"/>
       {distFromATH>1&&(
         <g>
           <line x1={currentX} y1={currentY-8} x2={currentX} y2={athY+3} stroke="rgba(255,255,255,.15)" strokeWidth="1" strokeDasharray="2,2"/>
@@ -1039,7 +1040,7 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
 // ── Nav Icons (outside App to avoid recreating on every render) ─────────────
 function NavIconHome({active}){
   const c=active?"#A78BFA":"#6B7280";
-  return(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 12L12 3l9 9v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" fill={active?"rgba(167,139,250,0.1)":"none"}/>
     <polyline points="9,21 9,12 15,12 15,21"/>
   </svg>);
@@ -1047,7 +1048,7 @@ function NavIconHome({active}){
 function NavIconParis({active,count}){
   const c=active?"#A78BFA":"#6B7280";
   return(<div style={{position:"relative",display:"inline-flex"}}>
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="2" width="16" height="20" rx="2" fill={active?"rgba(167,139,250,0.1)":"none"}/>
       <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="12" y2="15"/>
       <circle cx="17" cy="17" r="3" fill={active?"#A78BFA":"#6B7280"} stroke="none" opacity={active?1:0.5}/>
@@ -1058,7 +1059,7 @@ function NavIconParis({active,count}){
 }
 function NavIconAnalyse({active}){
   const c=active?"#A78BFA":"#6B7280";
-  return(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="10" cy="10" r="6" fill={active?"rgba(167,139,250,0.1)":"none"}/>
     <line x1="14.5" y1="14.5" x2="20" y2="20"/>
     <line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/>
@@ -1066,7 +1067,7 @@ function NavIconAnalyse({active}){
 }
 function NavIconSuivi({active}){
   const c=active?"#A78BFA":"#6B7280";
-  return(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="8" r="3" fill={active?"rgba(167,139,250,0.1)":"none"}/>
     <circle cx="5" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
     <circle cx="19" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
@@ -1292,12 +1293,12 @@ function MesParisView({
       {/* ── TOP BAR ── */}
       <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
         <button onClick={()=>setView("filtres")}
-          style={{display:"flex",alignItems:"center",gap:5,padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(activeFilters>0?"rgba(124,58,237,.5)":"rgba(255,255,255,.07)"),background:activeFilters>0?"rgba(124,58,237,.12)":"rgba(255,255,255,.03)",color:activeFilters>0?"#a78bfa":"#7a8a9a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+          style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:10,border:"1px solid "+(activeFilters>0?"rgba(124,58,237,.4)":"rgba(255,255,255,.06)"),background:activeFilters>0?"rgba(124,58,237,.1)":"rgba(255,255,255,.02)",color:activeFilters>0?"#a78bfa":"#6a7a8a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
           Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 6px",marginLeft:2}}>{activeFilters}</span>}
         </button>
         <button onClick={()=>setView("statistiques")}
-          style={{display:"flex",alignItems:"center",gap:5,padding:"8px 14px",borderRadius:10,border:"1.5px solid rgba(255,255,255,.07)",background:"rgba(255,255,255,.03)",color:"#7a8a9a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+          style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",background:"rgba(255,255,255,.02)",color:"#6a7a8a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Stats
         </button>
@@ -1317,8 +1318,8 @@ function MesParisView({
             const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
             return(
               <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])} title={bk}
-                style={{width:40,height:40,borderRadius:10,border:"1.5px solid "+(on?"rgba(34,197,94,.5)":"rgba(255,255,255,.07)"),background:on?"rgba(34,197,94,.1)":"rgba(255,255,255,.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
-                {logo?<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:5,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>}
+                style={{width:36,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.4)":"rgba(255,255,255,.06)"),background:on?"rgba(34,197,94,.08)":"rgba(255,255,255,.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
+                {logo?<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>}
                 {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
               </button>
             );
@@ -2650,11 +2651,11 @@ export default function App(){
         .ou-btn:active{transform:scale(.97);}
         .ou-btn.over.on{border-color:#22C55E;background:rgba(34,197,94,0.1);color:#22C55E;box-shadow:0 0 16px rgba(74,222,128,0.15);}
         .ou-btn.under.on{border-color:#EF4444;background:rgba(239,68,68,0.1);color:#EF4444;box-shadow:0 0 16px rgba(239,68,68,0.12);}
-        .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 6px;border-radius:10px;transition:color .2s ease,transform .15s ease;font-family:'Inter',sans-serif;color:#6B7280;min-width:56px;will-change:transform,color;}
-        .navitem:active{transform:scale(.92);}
-        .navitem.on{color:#A78BFA;}
-        .navitem.on svg{filter:drop-shadow(0 0 6px rgba(167,139,250,0.45));}
-        .navitem .lbl{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;transition:color .2s ease;}
+        .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 8px 4px;border-radius:12px;transition:color .2s ease,transform .15s ease;font-family:'Inter',sans-serif;color:#4a5a6e;min-width:56px;will-change:transform,color;}
+        .navitem:active{transform:scale(.90);}
+        .navitem.on{color:#c4b5fd;}
+        .navitem.on svg{filter:drop-shadow(0 0 8px rgba(167,139,250,0.55));}
+        .navitem .lbl{font-size:9px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;transition:color .2s ease;}
         .stat-bloc{background:#111827;border:1px solid #1F2937;border-radius:14px;overflow:hidden;}
         .stat-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1F2937;transition:background .15s ease;}
         .stat-row:last-child{border-bottom:none;}
@@ -2744,13 +2745,15 @@ export default function App(){
               </div>
 
               {/* Hero KPI principal — crypto style */}
-              <div style={{background:"linear-gradient(160deg,rgba(14,22,46,.99),rgba(7,12,28,.99))",border:"1px solid rgba(124,58,237,.28)",borderRadius:20,padding:"16px 16px 14px",boxShadow:"0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(124,58,237,.1),inset 0 1px 0 rgba(255,255,255,.04)",position:"relative",overflow:"hidden",marginBottom:10}}>
+              <div style={{background:"linear-gradient(160deg,rgba(14,22,46,.99),rgba(7,12,28,.99))",border:"1px solid rgba(124,58,237,.18)",borderRadius:20,padding:"16px 16px 14px",boxShadow:"0 20px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04)",position:"relative",overflow:"hidden",marginBottom:10}}>
                 {/* Bande top gradient */}
                 <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,#7c3aed,#3b82f6,#7c3aed,transparent)"}}/>
                 {/* Cercles décoratifs abstraits */}
                 <div style={{position:"absolute",top:"-60%",right:"-20%",width:"80%",height:"180%",background:"radial-gradient(ellipse,rgba(124,58,237,.12),transparent 60%)",pointerEvents:"none"}}/>
-                <div style={{position:"absolute",top:"30%",right:"10%",width:120,height:120,borderRadius:"50%",border:"1px solid rgba(124,58,237,.06)",pointerEvents:"none"}}/>
-                <div style={{position:"absolute",top:"10%",right:"5%",width:200,height:200,borderRadius:"50%",border:"1px solid rgba(59,130,246,.04)",pointerEvents:"none"}}/>
+                <div style={{position:"absolute",top:"20%",right:"8%",width:100,height:100,borderRadius:"50%",border:"1px solid rgba(124,58,237,.09)",pointerEvents:"none"}}/>
+                <div style={{position:"absolute",top:"5%",right:"1%",width:170,height:170,borderRadius:"50%",border:"1px solid rgba(59,130,246,.06)",pointerEvents:"none"}}/>
+                <div style={{position:"absolute",top:"-10%",right:"-5%",width:240,height:240,borderRadius:"50%",border:"1px solid rgba(124,58,237,.04)",pointerEvents:"none"}}/>
+                <div style={{position:"absolute",top:"45%",right:"12%",width:60,height:60,borderRadius:"50%",border:"1px solid rgba(96,165,250,.07)",pointerEvents:"none"}}/>
                 {/* Halo couleur profit */}
                 <div style={{position:"absolute",bottom:"-30%",left:"-15%",width:"60%",height:"100%",background:"radial-gradient(ellipse,"+(totalProfit>=0?"rgba(34,197,94,.07)":"rgba(239,68,68,.06)")+",transparent 65%)",pointerEvents:"none"}}/>
 
@@ -2776,7 +2779,7 @@ export default function App(){
                     {label:"PARIS TOTAL",value:String(homeSettled.length+pending),sub:homeSettled.filter(b=>b.status==="won").length+"W · "+homeSettled.filter(b=>b.status==="lost").length+"L",color:"#60a5fa",border:"rgba(59,130,246,.2)",glow:"rgba(59,130,246,.07)"},
                     {label:"PROGRESSION",value:(progression>=0?"+":"")+progression.toFixed(1)+"%",sub:"BK "+bankroll.toFixed(0)+"€",color:progression>=0?"#22c55e":"#ef4444",border:progression>=0?"rgba(34,197,94,.2)":"rgba(239,68,68,.2)",glow:progression>=0?"rgba(34,197,94,.07)":"rgba(239,68,68,.06)"},
                   ].map(({label,value,sub,color,border,glow})=>(
-                    <div key={label} style={{background:"linear-gradient(160deg,rgba(12,18,38,.99),rgba(7,12,26,.99))",border:"1px solid "+border,borderRadius:14,padding:"14px",boxShadow:"0 8px 24px rgba(0,0,0,.45),0 0 0 1px "+glow,position:"relative",overflow:"hidden"}}>
+                    <div key={label} style={{background:"linear-gradient(160deg,rgba(12,18,38,.99),rgba(7,12,26,.99))",border:"1px solid "+border.replace(".2)",".12)").replace(".2,",".12,"),borderRadius:14,padding:"13px",boxShadow:"0 6px 20px rgba(0,0,0,.4)",position:"relative",overflow:"hidden"}}>
                       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 120%,"+glow+",transparent 65%)",pointerEvents:"none"}}/>
                       <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,"+border+",transparent)"}}/>
                       <div style={{position:"absolute",bottom:0,left:0,right:0,height:30,background:"radial-gradient(ellipse at 50% 100%,"+glow+",transparent 80%)",pointerEvents:"none"}}/>
@@ -2793,7 +2796,7 @@ export default function App(){
             {/* ── GRAPHIQUE — hauteur réduite ── */}
             <div style={{position:"relative",zIndex:1,marginBottom:12}}>
               <div style={{position:"absolute",inset:"-1px",borderRadius:17,background:"radial-gradient(ellipse at 50% 0%,rgba(124,58,237,.1),transparent 70%)",pointerEvents:"none",zIndex:0}}/>
-              <div style={{borderRadius:16,overflow:"hidden",background:"rgba(8,14,24,.97)",border:"1px solid rgba(99,130,200,.18)",boxShadow:"0 12px 40px rgba(0,0,0,.4)",position:"relative",zIndex:1}}>
+              <div style={{borderRadius:16,overflow:"hidden",background:"rgba(8,14,24,.97)",border:"1px solid rgba(99,130,200,.1)",boxShadow:"0 16px 48px rgba(0,0,0,.5)",position:"relative",zIndex:1}}>
                 <BankrollChart points={chartPointsFiltered} h={200}/>
                 <div style={{display:"flex",gap:5,padding:"8px 12px 12px"}}>
                   {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
@@ -5717,7 +5720,7 @@ export default function App(){
         {(()=>{
           const pendingCount=bets.filter(b=>b.status==="pending").length;
           return(
-            <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0D1526",borderTop:"1px solid #1F2937",display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 4px 12px",zIndex:50,backdropFilter:"blur(12px)"}}>
+            <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.06)",display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 4px 14px",zIndex:50,backdropFilter:"blur(20px)",boxShadow:"0 -4px 24px rgba(0,0,0,.4)"}}>
               {(()=>{
                 const navItems=NAV.filter(n=>n.id!=="add");
                 const mid=Math.floor(navItems.length/2);
