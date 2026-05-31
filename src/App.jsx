@@ -417,10 +417,10 @@ function NumPad({value,onChange,placeholder,step,id}){
           MozAppearance:"textfield",
           border:"none",
           padding:"12px 14px",
-          color:value?"#E5E7EB":"#6B7280",
-          fontSize:16,
+          color:value?"#eef3ff":"#5a6478",
+          fontSize:20,
           fontFamily:"'Inter',system-ui,sans-serif",
-          fontWeight:value?600:400,
+          fontWeight:value?700:400,
           outline:"none",
           boxSizing:"border-box",
           paddingRight:value?42:14,
@@ -866,8 +866,8 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const descLine=bet.description||"";
 
   return(
-    <div style={{borderBottom:"1px solid #1F2937",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"3px solid "+(isPending?"#3B82F6":isWon?"#22C55E":"#EF4444"),transition:"border-color .2s"}}>
-      <div onClick={()=>setOpen(v=>!v)} style={{padding:"9px 14px",cursor:"pointer",userSelect:"none"}}>
+    <div style={{borderBottom:"1px solid rgba(255,255,255,.05)",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"4px solid "+(isPending?"#3B82F6":isWon?"#22C55E":"#EF4444"),background:isPending?"rgba(59,130,246,.015)":isWon?"rgba(34,197,94,.015)":"rgba(239,68,68,.015)",transition:"border-color .2s"}}>
+      <div onClick={()=>setOpen(v=>!v)} style={{padding:"12px 14px",cursor:"pointer",userSelect:"none"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
 
           {/* Logo sport — petit carré comme sur la photo */}
@@ -879,7 +879,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
           <div style={{flex:1,minWidth:0}}>
             {/* Ligne 1 : Joueur [Map X] — Description */}
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,flexWrap:"wrap"}}>
-              <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</span>
+              <span style={{fontWeight:800,fontSize:15,color:"#f0f4ff",textTransform:"capitalize"}}>{bet.player}</span>
               {bet.splits&&bet.splits.length>0&&<span style={{fontSize:9,color:"#22C55E",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:4,padding:"1px 5px",fontWeight:700}}>{1+bet.splits.length}</span>}
               {bet.isLive&&<span style={{fontSize:9,fontWeight:800,color:"#FF4757",background:"rgba(255,71,87,0.15)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(255,71,87,0.3)",letterSpacing:.5}}>LIVE</span>}
               {bet.mapTag&&<span style={{fontSize:10,fontWeight:700,color:"#F59E0B",background:"rgba(245,158,11,0.12)",padding:"1px 6px",borderRadius:4,border:"1px solid rgba(245,158,11,0.25)",flexShrink:0}}>{bet.mapTag}</span>}
@@ -890,7 +890,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               <span style={{fontSize:13,fontWeight:600,color:"#94A3B8"}}>@{bet.odds}</span>
               {bet.bookmaker&&<span style={{color:"#E5E7EB",margin:"0 4px",fontSize:18,lineHeight:1,opacity:0.6}}>•</span>}
               {bkLogo
-                ? <img src={bkLogo} alt={bet.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0}}/>
+                ? <img src={bkLogo} alt={bet.bookmaker} style={{width:16,height:16,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
                 : bet.bookmaker
                   ? <span style={{fontSize:11,fontWeight:600,color:"#3B82F6"}}>{bet.bookmaker}</span>
                   : null
@@ -909,7 +909,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
 
           {/* Droite : profit + statut + chevron */}
           <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
-            <div style={{fontWeight:800,fontSize:14,color:profitColor,fontFamily:"Inter,sans-serif"}}>{profitTxt}</div>
+            <div style={{fontWeight:700,fontSize:14,color:profitColor,fontFamily:"Inter,sans-serif",opacity:isWon?.9:1}}>{profitTxt}</div>
             <span style={{color:"#6B7280",fontSize:13,marginTop:2,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
           </div>
         </div>
@@ -1307,14 +1307,14 @@ function MesParisView({
 
       {/* ── PENDING ── */}
       {pending.length>0&&(
-        <div style={{marginBottom:14}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"0 2px"}}>
-            <div style={{width:3,height:16,borderRadius:2,background:"linear-gradient(180deg,#3B82F6,#7C3AED)"}}/>
+        <div style={{marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"10px 14px",background:"rgba(59,130,246,.06)",borderRadius:12,border:"1px solid rgba(59,130,246,.15)"}}>
+            <div style={{width:3,height:18,borderRadius:2,background:"linear-gradient(180deg,#60a5fa,#7C3AED)",flexShrink:0}}/>
             <span style={{fontSize:12,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
-            <span style={{background:"#3B82F6",color:"#fff",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:8}}>{pending.length}</span>
-            <span style={{fontSize:11,color:"#A78BFA",marginLeft:"auto"}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}€ en jeu</span>
+            <span style={{background:"rgba(59,130,246,.25)",color:"#93c5fd",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:8,border:"1px solid rgba(59,130,246,.3)"}}>{pending.length}</span>
+            <span style={{fontSize:12,color:"#a78bfa",marginLeft:"auto",fontWeight:600}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}€ en jeu</span>
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+          <div style={{display:"flex",flexDirection:"column",gap:2}}>
             {pending.map(b=>(
               <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
             ))}
@@ -1336,17 +1336,23 @@ function MesParisView({
             const wr=total>0?won/total*100:0;
             return(
               <div key={mk} style={{marginBottom:14}}>
-                <div onClick={()=>toggleMonth(mk)} style={{background:"linear-gradient(135deg,#0F1829,#111D30)",border:"1px solid #1E3050",borderRadius:collapsedMonths.has(mk)?"14px":"14px 14px 0 0",padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none"}}>
+                <div onClick={()=>toggleMonth(mk)} style={{background:"linear-gradient(135deg,#0d1628,#0f1e35)",border:"1px solid rgba(99,130,200,.2)",borderRadius:collapsedMonths.has(mk)?"14px":"14px 14px 0 0",padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none",boxShadow:"0 4px 16px rgba(0,0,0,.3)"}}>
                   <div>
-                    <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",textTransform:"uppercase",letterSpacing:.5}}>{fmtMonth(mk)}</div>
-                    <div style={{fontSize:11,color:"#4B5563",marginTop:2}}>{allBets.length} paris · {wr.toFixed(0)}%WR</div>
+                    <div style={{fontSize:16,fontWeight:800,color:"#dce8ff",textTransform:"uppercase",letterSpacing:.8}}>{fmtMonth(mk)}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3}}>
+                      <span style={{fontSize:11,color:"#4B6080",fontWeight:500}}>{allBets.length} paris</span>
+                      <span style={{fontSize:10,color:"#3a5070"}}>·</span>
+                      <span style={{fontSize:11,color:wr>=55?"#22c55e":wr>=45?"#f59e0b":"#ef4444",fontWeight:700}}>{wr.toFixed(0)}% WR</span>
+                      <span style={{fontSize:10,color:"#3a5070"}}>·</span>
+                      <span style={{fontSize:11,color:staked>0?"#7a9cc4":"#3a5070",fontWeight:500}}>{staked.toFixed(0)}€ misés</span>
+                    </div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:18,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444"}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
-                      <div style={{fontSize:11,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
+                      <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444",letterSpacing:-.3}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
+                      <div style={{fontSize:11,color:roi>=0?"#16a34a":"#dc2626",fontWeight:600}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
                     </div>
-                    <span style={{fontSize:12,color:"#6B7280",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}>▼</span>
+                    <span style={{fontSize:11,color:"#4B6080",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}>▼</span>
                   </div>
                 </div>
                 {!collapsedMonths.has(mk)&&(
@@ -1356,8 +1362,8 @@ function MesParisView({
                       const dayProfit=dayBets.reduce((s,b)=>s+(b.profit||0),0);
                       return(
                         <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#0B1220"}}>
-                            <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB"}}>{fmtDay(dk)}</span>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",background:"rgba(8,14,28,.95)"}}>
+                            <span style={{fontSize:13,fontWeight:700,color:"#c8d4e8"}}>{fmtDay(dk)}</span>
                             <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
                           </div>
                           {dayBets.map(b=>(
@@ -3824,11 +3830,11 @@ export default function App(){
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
-                    style={{height:50,borderRadius:12,border:"1.5px solid "+(form.overUnder==="Over"?"#22c55e":"rgba(34,197,94,.15)"),background:form.overUnder==="Over"?"rgba(34,197,94,.1)":"rgba(255,255,255,.02)",color:form.overUnder==="Over"?"#22e875":"#5a6880",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.3,boxShadow:form.overUnder==="Over"?"0 0 20px rgba(34,197,94,.15),inset 0 0 12px rgba(34,197,94,.04)":"none",transition:"all .15s"}}>
+                    style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?"#22c55e":"rgba(34,197,94,.2)"),background:form.overUnder==="Over"?"rgba(34,197,94,.14)":"rgba(34,197,94,.03)",color:form.overUnder==="Over"?"#22e875":"#4e7060",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 28px rgba(34,197,94,.2),inset 0 1px 0 rgba(34,197,94,.15)":"none",transition:"all .15s"}}>
                     ▲ OVER
                   </button>
                   <button onClick={()=>setForm(f=>({...f,overUnder:"Under"}))}
-                    style={{height:50,borderRadius:12,border:"1.5px solid "+(form.overUnder==="Under"?"#3b82f6":"rgba(59,130,246,.15)"),background:form.overUnder==="Under"?"rgba(59,130,246,.1)":"rgba(255,255,255,.02)",color:form.overUnder==="Under"?"#60a5fa":"#5a6880",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.3,boxShadow:form.overUnder==="Under"?"0 0 20px rgba(59,130,246,.15),inset 0 0 12px rgba(59,130,246,.04)":"none",transition:"all .15s"}}>
+                    style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Under"?"#3b82f6":"rgba(59,130,246,.2)"),background:form.overUnder==="Under"?"rgba(59,130,246,.14)":"rgba(59,130,246,.03)",color:form.overUnder==="Under"?"#60a5fa":"#3d5270",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Under"?"0 0 28px rgba(59,130,246,.2),inset 0 1px 0 rgba(59,130,246,.15)":"none",transition:"all .15s"}}>
                     ▼ UNDER
                   </button>
                 </div>
@@ -3843,24 +3849,24 @@ export default function App(){
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:9}}>
                   <div>
-                    <div style={{fontSize:10,color:"#5a6478",fontWeight:600,marginBottom:5,letterSpacing:.5}}>COTE</div>
-                    <div style={{height:52,borderRadius:12,border:"1px solid rgba(255,255,255,.07)",background:"rgba(8,14,28,.9)",display:"flex",alignItems:"center",padding:"0 12px",fontSize:17,fontWeight:600,color:"#e4eaf6",overflow:"hidden",gap:4}}>
-                      <span style={{color:"#5a6478",fontSize:14}}>@</span>
+                    <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase"}}>Cote</div>
+                    <div style={{height:48,borderRadius:12,border:"1px solid rgba(255,255,255,.09)",background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",padding:"0 10px",overflow:"hidden",gap:3}}>
+                      <span style={{color:"#4a5468",fontSize:13,fontWeight:500,flexShrink:0}}>@</span>
                       <NumPad id="odds-input-field" value={form.odds} onChange={v=>setForm(f=>({...f,odds:v}))} placeholder="1.85" step="0.01"/>
                     </div>
                   </div>
                   <div>
-                    <div style={{fontSize:10,color:"#5a6478",fontWeight:600,marginBottom:5,letterSpacing:.5}}>MISE (€)</div>
-                    <div style={{height:52,borderRadius:12,border:"1px solid rgba(255,255,255,.07)",background:"rgba(8,14,28,.9)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 12px",fontSize:17,fontWeight:600,color:"#e4eaf6",overflow:"hidden"}}>
+                    <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase"}}>Mise</div>
+                    <div style={{height:48,borderRadius:12,border:"1px solid rgba(255,255,255,.09)",background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px",overflow:"hidden"}}>
                       <NumPad value={form.stake} onChange={v=>setForm(f=>({...f,stake:v}))} placeholder="75" step="1"/>
-                      <span style={{color:"#5a6478",fontSize:14,marginLeft:4}}>€</span>
+                      <span style={{color:"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>€</span>
                     </div>
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:form.odds&&form.stake?9:0}}>
                   {QUICK_STAKES.map(s=>(
                     <button key={s} onClick={()=>setForm(f=>({...f,stake:String(s)}))}
-                      style={{height:38,borderRadius:10,border:"1px solid "+(parseFloat(form.stake)===s?"rgba(139,92,246,.5)":"rgba(255,255,255,.06)"),background:parseFloat(form.stake)===s?"rgba(139,92,246,.1)":"rgba(255,255,255,.03)",color:parseFloat(form.stake)===s?"#c4b5fd":"#6b7280",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:500}}>
+                      style={{height:36,borderRadius:10,border:"1px solid "+(parseFloat(form.stake)===s?"rgba(139,92,246,.6)":"rgba(255,255,255,.1)"),background:parseFloat(form.stake)===s?"rgba(139,92,246,.18)":"rgba(255,255,255,.05)",color:parseFloat(form.stake)===s?"#d4c5ff":"#8892a4",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:parseFloat(form.stake)===s?700:500,boxShadow:parseFloat(form.stake)===s?"0 0 12px rgba(139,92,246,.2)":"none",transition:"all .15s"}}>
                       {s}€
                     </button>
                   ))}
@@ -4005,7 +4011,7 @@ export default function App(){
                         {(()=>{
                           const src=getAvatarSrc(form.autoInfo);
                           return(
-                            <div style={{width:82,height:82,flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden",borderRadius:10}}>
+                            <div style={{width:90,height:90,flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden",borderRadius:10}}>
                               {/* Logo équipe en filigrane */}
                               {form.autoInfo?.team_logo_url&&(
                                 <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"75%",height:"75%",objectFit:"contain",opacity:.1,zIndex:0,pointerEvents:"none"}}/>
@@ -4029,7 +4035,7 @@ export default function App(){
                         <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:5}}>
                           {/* Ligne 1 : nom joueur (principal) */}
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <span style={{fontSize:16,fontWeight:800,color:"#eef3ff",letterSpacing:-.3,lineHeight:1}}>{form.autoInfo?.name||form.player}</span>
+                            <span style={{fontSize:18,fontWeight:800,color:"#f0f4ff",letterSpacing:-.4,lineHeight:1}}>{form.autoInfo?.name||form.player}</span>
                             {form.autoInfo?.team_logo_url&&(
                               <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{width:14,height:14,objectFit:"contain",opacity:.7,flexShrink:0}}/>
                             )}
@@ -4062,7 +4068,7 @@ export default function App(){
                             {gain&&(
                               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
                                 <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>GAIN POTENTIEL</span>
-                                <span style={{fontSize:15,fontWeight:800,color:"#22c55e"}}>+{gain}€</span>
+                                <span style={{fontSize:17,fontWeight:800,color:"#22e875",textShadow:"0 0 12px rgba(34,232,117,.3)"}}>+{gain}€</span>
                               </div>
                             )}
                           </div>
@@ -4107,39 +4113,35 @@ export default function App(){
         {/* ── STATS ── */}
         {view==="statistiques"&&(
           <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:15,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Statistiques</div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <button onClick={exportCSV} style={{background:"#111827",border:"1px solid #1F2937",borderRadius:7,padding:"6px 10px",color:"#9CA3AF",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:600}}>
-                  CSV
-                </button>
-                <button onClick={exportJSON} style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:7,padding:"6px 10px",color:"#22C55E",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:700}}>
-                  💾 Backup
-                </button>
-                <label style={{background:"#111827",border:"1px solid #1F2937",borderRadius:7,padding:"6px 10px",color:"#9CA3AF",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:11,fontWeight:600}}>
-                  📂 Import
-                  <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:1.5,color:"#dce8ff"}}>Statistiques</div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                <button onClick={exportCSV} style={{background:"transparent",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"5px 9px",color:"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600}}>CSV</button>
+                <button onClick={exportJSON} style={{background:"transparent",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"5px 9px",color:"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600}}>💾</button>
+                <label style={{background:"transparent",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"5px 9px",color:"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600}}>
+                  📂<input type="file" accept=".json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
                 </label>
               </div>
             </div>
 
             {settled.length>0&&(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:16}}>
-                <div className="card" style={{padding:"12px"}}>
-                  <div style={{fontSize:9,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Série actuelle</div>
-                  <div style={{fontSize:28,fontWeight:800,color:currentStreak>1?(streakType==="won"?"#22C55E":"#EF4444"):"#9CA3AF",lineHeight:1}}>{currentStreak>1?currentStreak:"-"}</div>
-                  <div style={{fontSize:9,color:"#9CA3AF",marginTop:3}}>{currentStreak>1?(streakType==="won"?"✓ victoires":"✗ défaites")+" de suite":"Pas de série"}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+                <div style={{background:"linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.05))",border:"1px solid rgba(124,58,237,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
+                  <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#7c3aed,#3b82f6)"}}/>
+                  <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:6,fontWeight:700}}>Série actuelle</div>
+                  <div style={{fontSize:32,fontWeight:800,color:currentStreak>1?(streakType==="won"?"#22C55E":"#EF4444"):"#3a4a5e",lineHeight:1,letterSpacing:-1}}>{currentStreak>1?currentStreak:"—"}</div>
+                  <div style={{fontSize:10,color:currentStreak>1?(streakType==="won"?"#16a34a":"#dc2626"):"#3a4a5e",marginTop:4,fontWeight:600}}>{currentStreak>1?(streakType==="won"?"victoires":"défaites")+" consécutives":"Pas de série"}</div>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {bestMonth&&<div className="card" style={{padding:"10px 12px",flex:1}}>
-                    <div style={{fontSize:9,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Meilleur mois</div>
-                    <div style={{fontSize:16,fontWeight:700,color:"#22C55E"}}>+{bestMonth[1].toFixed(0)}€</div>
-                    <div style={{fontSize:9,color:"#9CA3AF"}}>{bestMonth[0]}</div>
+                  {bestMonth&&<div style={{background:"linear-gradient(135deg,rgba(34,197,94,.07),rgba(16,185,129,.04))",border:"1px solid rgba(34,197,94,.15)",borderRadius:14,padding:"12px 14px",flex:1}}>
+                    <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:4,fontWeight:700}}>Meilleur mois</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#22C55E",letterSpacing:-.3}}>+{bestMonth[1].toFixed(0)}€</div>
+                    <div style={{fontSize:10,color:"#4a6a50",marginTop:2,fontWeight:500}}>{bestMonth[0]}</div>
                   </div>}
-                  {worstMonth&&worstMonth[1]<0&&<div className="card" style={{padding:"10px 12px",flex:1}}>
-                    <div style={{fontSize:9,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Pire mois</div>
-                    <div style={{fontSize:16,fontWeight:700,color:"#EF4444"}}>{worstMonth[1].toFixed(0)}€</div>
-                    <div style={{fontSize:9,color:"#9CA3AF"}}>{worstMonth[0]}</div>
+                  {worstMonth&&worstMonth[1]<0&&<div style={{background:"linear-gradient(135deg,rgba(239,68,68,.07),rgba(220,38,38,.04))",border:"1px solid rgba(239,68,68,.15)",borderRadius:14,padding:"12px 14px",flex:1}}>
+                    <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:4,fontWeight:700}}>Pire mois</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#EF4444",letterSpacing:-.3}}>{worstMonth[1].toFixed(0)}€</div>
+                    <div style={{fontSize:10,color:"#6a4a4a",marginTop:2,fontWeight:500}}>{worstMonth[0]}</div>
                   </div>}
                 </div>
               </div>
@@ -4151,12 +4153,18 @@ export default function App(){
             {/* ── GRAPHIQUES BANKROLL ── */}
             {settled.length>=2&&(
               <div style={{marginBottom:16}}>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1,fontWeight:700}}>Bankroll cumulative</div>
-                    <div style={{fontSize:12,fontWeight:700,color:totalProfit>=0?"#22C55E":"#EF4444"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                <div style={{background:"linear-gradient(180deg,rgba(10,18,34,.98),rgba(6,12,24,.99))",border:"1px solid rgba(99,130,200,.15)",borderRadius:16,padding:"14px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.3)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                    <div>
+                      <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:1.2,fontWeight:700,marginBottom:2}}>Bankroll cumulative</div>
+                      <div style={{fontSize:22,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:1,fontWeight:700,marginBottom:2}}>Paris</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#7a9cc4"}}>{settledFiltered.length}</div>
+                    </div>
                   </div>
-                  <BankrollChart points={chartPoints} h={140}/>
+                  <BankrollChart points={chartPoints} h={155}/>
                 </div>
               </div>
             )}
@@ -4174,22 +4182,22 @@ export default function App(){
 
             {/* ── COMPARATEUR GLOBAL OVER/UNDER ── */}
             {(globalOverUnderStats.overS||globalOverUnderStats.underS)&&(
-              <div className="card" style={{padding:"12px 14px",marginBottom:16}}>
-                <div style={{fontSize:11,color:"#60A5FA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>📊 Over / Under — Tous jeux</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  {[{label:"🔼 Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.08)"},{label:"🔽 Under",s:globalOverUnderStats.underS,color:"#EF4444",bg:"rgba(239,68,68,0.08)"}].map(({label,s,color,bg})=>{
+              <div style={{background:"linear-gradient(135deg,rgba(10,16,30,.98),rgba(8,14,24,.99))",border:"1px solid rgba(99,130,200,.12)",borderRadius:16,padding:"12px 14px",marginBottom:16}}>
+                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Over / Under — Tous jeux</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.06)",border:"rgba(34,197,94,0.15)"},{label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.06)",border:"rgba(59,130,246,0.15)"}].map(({label,s,color,bg,border})=>{
                     if(!s)return null;
                     return(
-                      <div key={label} style={{background:bg,borderRadius:12,padding:"12px 14px",border:"1px solid "+(s.profit>=0?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.15)")}}>
-                        <div style={{fontSize:13,fontWeight:700,color,marginBottom:8}}>{label}</div>
-                        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      <div key={label} style={{background:bg,borderRadius:12,padding:"10px 12px",border:"1px solid "+border}}>
+                        <div style={{fontSize:12,fontWeight:800,color,marginBottom:7,letterSpacing:.3}}>{label}</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:4}}>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:"#9CA3AF"}}>Paris</span>
-                            <span style={{fontSize:11,fontWeight:700,color:"#E5E7EB"}}>{s.count}</span>
+                            <span style={{fontSize:10,color:"#5a6a7e"}}>Paris</span>
+                            <span style={{fontSize:11,fontWeight:700,color:"#c8d4e8"}}>{s.count}</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:"#9CA3AF"}}>Win Rate</span>
-                            <span style={{fontSize:12,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
+                            <span style={{fontSize:10,color:"#5a6a7e"}}>Win Rate</span>
+                            <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:11,color:"#9CA3AF"}}>ROI</span>
@@ -4549,26 +4557,33 @@ export default function App(){
             {/* ── COTES PAR TRANCHES ── */}
             {oddsRangeStats.length>0&&(
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",letterSpacing:.5,marginBottom:8,paddingBottom:6,borderBottom:"2px solid rgba(124,58,237,0.4)",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:15}}>📊</span> Cotes par tranches
-                </div>
-                <div className="stat-bloc">
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 60px 52px",gap:2,padding:"4px 14px 6px"}}>
-                    <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textTransform:"uppercase"}}>Cote</span>
-                    <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"center"}}>N</span>
-                    <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"center"}}>WR%</span>
-                    <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"right"}}>Profit</span>
-                    <span style={{fontSize:9,color:"#4B5563",fontWeight:700,textAlign:"right"}}>ROI</span>
-                  </div>
-                  {oddsRangeStats.map(r=>(
-                    <div key={r.label} style={{display:"grid",gridTemplateColumns:"1fr 40px 48px 60px 52px",gap:2,padding:"6px 14px",borderTop:"1px solid #1F2937",alignItems:"center"}}>
-                      <span style={{fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{r.label}</span>
-                      <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
-                      <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                      <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
-                      <span style={{fontSize:11,color:r.roi>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.roi>=0?"+":""}{r.roi.toFixed(0)}%</span>
-                    </div>
-                  ))}
+                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Cotes par tranches</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {(()=>{
+                    const maxCount = Math.max(...oddsRangeStats.map(r=>r.count));
+                    return oddsRangeStats.map(r=>{
+                      const barW = maxCount>0 ? (r.count/maxCount*100) : 0;
+                      const profitColor = r.profit>=0?"#22C55E":"#EF4444";
+                      const wrColor = r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
+                      return(
+                        <div key={r.label} style={{background:"rgba(255,255,255,.02)",borderRadius:10,padding:"9px 12px",border:"1px solid rgba(255,255,255,.04)"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8",minWidth:60}}>{r.label}</span>
+                              <span style={{fontSize:10,color:"#4a5a6e"}}>{r.count} paris</span>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:10}}>
+                              <span style={{fontSize:11,fontWeight:700,color:wrColor}}>{r.wr.toFixed(0)}%</span>
+                              <span style={{fontSize:12,fontWeight:700,color:profitColor,minWidth:52,textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
+                            </div>
+                          </div>
+                          <div style={{height:3,borderRadius:2,background:"rgba(255,255,255,.04)",overflow:"hidden"}}>
+                            <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"rgba(34,197,94,.5)":"rgba(239,68,68,.5)",borderRadius:2,transition:"width .4s ease"}}/>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}
