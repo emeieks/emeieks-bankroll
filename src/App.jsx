@@ -907,10 +907,10 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
             </div>
           </div>
 
-          {/* Droite : profit + statut + chevron */}
-          <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
-            <div style={{fontWeight:700,fontSize:14,color:profitColor,fontFamily:"Inter,sans-serif",opacity:isWon?.9:1}}>{profitTxt}</div>
-            <span style={{color:"#6B7280",fontSize:13,marginTop:2,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
+          {/* Droite : profit + chevron */}
+          <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,minWidth:62}}>
+            <div style={{fontWeight:700,fontSize:13,color:profitColor,fontFamily:"Inter,sans-serif",opacity:isPending?.6:isWon?.85:1}}>{profitTxt}</div>
+            <span style={{color:"#3d4d5e",fontSize:11,marginTop:1,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▼</span>
           </div>
         </div>
       </div>
@@ -1263,26 +1263,22 @@ function MesParisView({
   return(
     <div className="view-enter">
       {/* ── TOP BAR ── */}
-      <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+      <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
         <button onClick={()=>setView("filtres")}
-          style={{display:"flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,border:"1.5px solid "+(activeFilters>0?"#7C3AED":"rgba(255,255,255,0.08)"),background:activeFilters>0?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",color:activeFilters>0?"#A78BFA":"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-          Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 5px"}}>{activeFilters}</span>}
+          style={{display:"flex",alignItems:"center",gap:5,padding:"8px 14px",borderRadius:10,border:"1.5px solid "+(activeFilters>0?"rgba(124,58,237,.5)":"rgba(255,255,255,.07)"),background:activeFilters>0?"rgba(124,58,237,.12)":"rgba(255,255,255,.03)",color:activeFilters>0?"#a78bfa":"#7a8a9a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          Filtres{activeFilters>0&&<span style={{background:"#7C3AED",color:"#fff",borderRadius:8,fontSize:9,fontWeight:800,padding:"1px 6px",marginLeft:2}}>{activeFilters}</span>}
         </button>
         <button onClick={()=>setView("statistiques")}
-          style={{display:"flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,border:"1.5px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          style={{display:"flex",alignItems:"center",gap:5,padding:"8px 14px",borderRadius:10,border:"1.5px solid rgba(255,255,255,.07)",background:"rgba(255,255,255,.03)",color:"#7a8a9a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Stats
         </button>
-        <button onClick={()=>setSelectOpen(true)}
-          style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-          Sél.
-        </button>
-        {activeFilters>0&&<button onClick={clearFilters} style={{padding:"6px 10px",borderRadius:7,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>× Effacer</button>}
         <div style={{flex:1}}/>
+        {activeFilters>0&&<button onClick={clearFilters} style={{padding:"7px 11px",borderRadius:10,border:"1px solid rgba(239,68,68,.25)",background:"rgba(239,68,68,.05)",color:"#f87171",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>✕ Effacer</button>}
         <button onClick={()=>setSelectOpen(true)}
-          style={{padding:"7px 12px",borderRadius:9,border:"1.5px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-          Sél.
+          style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid rgba(255,255,255,.07)",background:"rgba(255,255,255,.03)",color:"#7a8a9a",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+          Sélectionner
         </button>
       </div>
 
@@ -1294,8 +1290,8 @@ function MesParisView({
             const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
             return(
               <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])} title={bk}
-                style={{width:36,height:36,borderRadius:9,border:"1.5px solid "+(on?"#22C55E":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
-                {logo?<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>}
+                style={{width:40,height:40,borderRadius:10,border:"1.5px solid "+(on?"rgba(34,197,94,.5)":"rgba(255,255,255,.07)"),background:on?"rgba(34,197,94,.1)":"rgba(255,255,255,.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
+                {logo?<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:5,objectFit:"cover"}}/>:<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>}
                 {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
               </button>
             );
@@ -4124,28 +4120,47 @@ export default function App(){
               </div>
             </div>
 
-            {settled.length>0&&(
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-                <div style={{background:"linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.05))",border:"1px solid rgba(124,58,237,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
-                  <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#7c3aed,#3b82f6)"}}/>
-                  <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:6,fontWeight:700}}>Série actuelle</div>
-                  <div style={{fontSize:32,fontWeight:800,color:currentStreak>1?(streakType==="won"?"#22C55E":"#EF4444"):"#3a4a5e",lineHeight:1,letterSpacing:-1}}>{currentStreak>1?currentStreak:"—"}</div>
-                  <div style={{fontSize:10,color:currentStreak>1?(streakType==="won"?"#16a34a":"#dc2626"):"#3a4a5e",marginTop:4,fontWeight:600}}>{currentStreak>1?(streakType==="won"?"victoires":"défaites")+" consécutives":"Pas de série"}</div>
+            {settled.length>0&&(()=>{
+              const totalStaked=settledFiltered.reduce((s,b)=>s+(b.stake||0),0);
+              const globalROI=totalStaked>0?(totalProfit/totalStaked*100):0;
+              const globalWR=settledFiltered.length>0?(settledFiltered.filter(b=>b.status==="won").length/settledFiltered.length*100):0;
+              return(
+              <div style={{marginBottom:14}}>
+                {/* Ligne 1 — Profit + ROI */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  <div style={{background:"linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.04))",border:"1px solid rgba(34,197,94,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#22c55e,#16a34a)"}}/>
+                    <div style={{fontSize:8,color:"#4a6a50",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Profit net</div>
+                    <div style={{fontSize:24,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                    <div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{settledFiltered.length} paris résolus</div>
+                  </div>
+                  <div style={{background:"linear-gradient(135deg,rgba(59,130,246,.08),rgba(99,102,241,.04))",border:"1px solid rgba(59,130,246,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#3b82f6,#6366f1)"}}/>
+                    <div style={{fontSize:8,color:"#3a5270",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>ROI global</div>
+                    <div style={{fontSize:24,fontWeight:800,color:globalROI>=0?"#60a5fa":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{globalROI>=0?"+":""}{globalROI.toFixed(1)}%</div>
+                    <div style={{fontSize:10,color:"#3a5270",marginTop:4,fontWeight:500}}>{totalStaked.toFixed(0)}€ misés</div>
+                  </div>
                 </div>
-                <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {bestMonth&&<div style={{background:"linear-gradient(135deg,rgba(34,197,94,.07),rgba(16,185,129,.04))",border:"1px solid rgba(34,197,94,.15)",borderRadius:14,padding:"12px 14px",flex:1}}>
-                    <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:4,fontWeight:700}}>Meilleur mois</div>
-                    <div style={{fontSize:18,fontWeight:800,color:"#22C55E",letterSpacing:-.3}}>+{bestMonth[1].toFixed(0)}€</div>
-                    <div style={{fontSize:10,color:"#4a6a50",marginTop:2,fontWeight:500}}>{bestMonth[0]}</div>
-                  </div>}
-                  {worstMonth&&worstMonth[1]<0&&<div style={{background:"linear-gradient(135deg,rgba(239,68,68,.07),rgba(220,38,38,.04))",border:"1px solid rgba(239,68,68,.15)",borderRadius:14,padding:"12px 14px",flex:1}}>
-                    <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:4,fontWeight:700}}>Pire mois</div>
-                    <div style={{fontSize:18,fontWeight:800,color:"#EF4444",letterSpacing:-.3}}>{worstMonth[1].toFixed(0)}€</div>
-                    <div style={{fontSize:10,color:"#6a4a4a",marginTop:2,fontWeight:500}}>{worstMonth[0]}</div>
-                  </div>}
+                {/* Ligne 2 — WR + Série/Meilleur mois */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"12px 14px"}}>
+                    <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Win Rate</div>
+                    <div style={{fontSize:24,fontWeight:800,color:globalWR>=55?"#22C55E":globalWR<45?"#EF4444":"#9CA3AF",letterSpacing:-.5,lineHeight:1}}>{globalWR.toFixed(1)}%</div>
+                    <div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{settledFiltered.filter(b=>b.status==="won").length}W · {settledFiltered.filter(b=>b.status==="lost").length}L</div>
+                  </div>
+                  <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"12px 14px"}}>
+                    <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>{currentStreak>1?"Série en cours":"Meilleur mois"}</div>
+                    {currentStreak>1
+                      ? <><div style={{fontSize:24,fontWeight:800,color:streakType==="won"?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{currentStreak}</div><div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{streakType==="won"?"victoires":"défaites"} consécutives</div></>
+                      : bestMonth
+                        ? <><div style={{fontSize:20,fontWeight:800,color:"#22C55E",letterSpacing:-.3,lineHeight:1}}>+{bestMonth[1].toFixed(0)}€</div><div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{bestMonth[0]}</div></>
+                        : <div style={{fontSize:20,fontWeight:800,color:"#3a4a5e"}}>—</div>
+                    }
+                  </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
 
 
 
@@ -4185,19 +4200,19 @@ export default function App(){
               <div style={{background:"linear-gradient(135deg,rgba(10,16,30,.98),rgba(8,14,24,.99))",border:"1px solid rgba(99,130,200,.12)",borderRadius:16,padding:"12px 14px",marginBottom:16}}>
                 <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Over / Under — Tous jeux</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[{label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.06)",border:"rgba(34,197,94,0.15)"},{label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.06)",border:"rgba(59,130,246,0.15)"}].map(({label,s,color,bg,border})=>{
+                  {[{label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.05)",border:"rgba(34,197,94,0.12)"},{label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.05)",border:"rgba(59,130,246,0.12)"}].map(({label,s,color,bg,border})=>{
                     if(!s)return null;
                     return(
-                      <div key={label} style={{background:bg,borderRadius:12,padding:"10px 12px",border:"1px solid "+border}}>
-                        <div style={{fontSize:12,fontWeight:800,color,marginBottom:7,letterSpacing:.3}}>{label}</div>
-                        <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      <div key={label} style={{background:bg,borderRadius:11,padding:"9px 11px",border:"1px solid "+border}}>
+                        <div style={{fontSize:11,fontWeight:800,color,marginBottom:6,letterSpacing:.3}}>{label}</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:10,color:"#5a6a7e"}}>Paris</span>
-                            <span style={{fontSize:11,fontWeight:700,color:"#c8d4e8"}}>{s.count}</span>
+                            <span style={{fontSize:10,fontWeight:700,color:"#c8d4e8"}}>{s.count}</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:10,color:"#5a6a7e"}}>Win Rate</span>
-                            <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
+                            <span style={{fontSize:10,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:11,color:"#9CA3AF"}}>ROI</span>
