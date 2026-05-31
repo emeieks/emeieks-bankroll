@@ -3743,19 +3743,23 @@ export default function App(){
                       {form.autoInfo.name||form.player}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-                      <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"3px 7px",borderRadius:6,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.07)",color:"#a8b4cc",fontWeight:600,fontSize:10}}>
-                        <GameLogo game={form.autoInfo.game} size={10}/>{form.autoInfo.game}
-                      </span>
+                      <GameLogo game={form.autoInfo.game} size={16}/>
                       {form.autoInfo.team&&(
-                        <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 7px",borderRadius:6,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.07)",color:"#a8b4cc",fontWeight:600,fontSize:10}}>
-                          {form.autoInfo.team_logo_url&&(
-                            <img src={form.autoInfo.team_logo_url} alt="" style={{width:11,height:11,objectFit:"contain",flexShrink:0,opacity:.85}} onError={e=>e.target.style.display='none'}/>
-                          )}
-                          {form.autoInfo.team}
-                        </span>
+                        <>
+                          <span style={{color:"#4a5a6e",fontSize:12,fontWeight:300}}>·</span>
+                          <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>
+                            {form.autoInfo.team_logo_url&&(
+                              <img src={form.autoInfo.team_logo_url} alt="" style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",marginRight:4,opacity:.9}} onError={e=>e.target.style.display='none'}/>
+                            )}
+                            {form.autoInfo.team}
+                          </span>
+                        </>
                       )}
                       {form.autoInfo.role&&(
-                        <span style={{display:"inline-flex",alignItems:"center",padding:"3px 7px",borderRadius:6,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.07)",color:"#a8b4cc",fontWeight:600,fontSize:10}}>{form.autoInfo.role}</span>
+                        <>
+                          <span style={{color:"#4a5a6e",fontSize:12,fontWeight:300}}>·</span>
+                          <span style={{fontSize:11,color:"#7a8fa8",fontWeight:600}}>{form.autoInfo.role}</span>
+                        </>
                       )}
                     </div>
                     {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;return <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:5,background:"rgba(124,58,237,.1)",color:"#a78bfa",fontWeight:600,fontSize:10,border:"1px solid rgba(124,58,237,.2)",alignSelf:"flex-start"}}>🏆 {t.name}</span>})()}
