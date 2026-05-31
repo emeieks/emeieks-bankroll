@@ -236,7 +236,7 @@ function getAvatarSrc(player) {
 async function supaFetchPlayers() {
   // Lire depuis players_full (vue avec JOIN teams → team_logo_url)
   const res = await fetch(
-    SUPA_URL + "/rest/v1/players_full?select=id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file&order=name.asc",
+    SUPA_URL + "/rest/v1/players_full?select=id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file&order=name.asc&limit=2000",
     { headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY } }
   );
   if (!res.ok) {
