@@ -3755,7 +3755,7 @@ export default function App(){
                         </span>
                       )}
                       {form.autoInfo.role&&(
-                        <span style={{fontSize:10,color:"#3a4a5e",fontWeight:500}}>{form.autoInfo.role}</span>
+                        <span style={{display:"inline-flex",alignItems:"center",padding:"3px 7px",borderRadius:6,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.07)",color:"#a8b4cc",fontWeight:600,fontSize:10}}>{form.autoInfo.role}</span>
                       )}
                     </div>
                     {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;return <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:5,background:"rgba(124,58,237,.1)",color:"#a78bfa",fontWeight:600,fontSize:10,border:"1px solid rgba(124,58,237,.2)",alignSelf:"flex-start"}}>🏆 {t.name}</span>})()}
@@ -4022,42 +4022,42 @@ export default function App(){
                           );
                         })()}
                         {/* Contenu */}
-                        <div style={{flex:1,minWidth:0}}>
+                        <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:5}}>
                           {/* Ligne 1 : nom joueur (principal) */}
-                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
                             <span style={{fontSize:16,fontWeight:800,color:"#eef3ff",letterSpacing:-.3,lineHeight:1}}>{form.autoInfo?.name||form.player}</span>
                             {form.autoInfo?.team_logo_url&&(
                               <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{width:14,height:14,objectFit:"contain",opacity:.7,flexShrink:0}}/>
                             )}
                           </div>
                           {/* Ligne 2 : sélection */}
-                          <div style={{marginBottom:8}}>
-                            <span style={{fontSize:12,fontWeight:500,color:"#7a9cc4"}}>{form.overUnder&&form.description?form.overUnder+" "+form.description.replace(/^(Over|Under)\s/,""):form.description}</span>
+                          <div>
+                            <span style={{fontSize:12,fontWeight:500,color:"#7a9cc4",lineHeight:1.3}}>{form.overUnder&&form.description?form.overUnder+" "+form.description.replace(/^(Over|Under)\s/,""):form.description}</span>
                           </div>
-                          {/* Ligne 3 : cote · mise · bookmaker · gain */}
-                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                                <span style={{fontSize:8,color:"#3d4d62",fontWeight:500,letterSpacing:.4}}>COTE</span>
+                          {/* Ligne 3 : cote · mise · bookmaker · gain potentiel */}
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:3,borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:10}}>
+                              <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                                <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>COTE</span>
                                 <span style={{fontSize:14,fontWeight:700,color:"#e4eaf6"}}>@{form.odds}</span>
                               </div>
-                              <span style={{width:1,height:24,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
-                              <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                                <span style={{fontSize:8,color:"#3d4d62",fontWeight:500,letterSpacing:.4}}>MISE</span>
+                              <span style={{width:1,height:26,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
+                              <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                                <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>MISE</span>
                                 <span style={{fontSize:14,fontWeight:700,color:"#e4eaf6"}}>{form.stake}€</span>
                               </div>
                               {form.bookmaker&&BK_LOGOS[form.bookmaker]&&(
-                                <><span style={{width:1,height:24,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
+                                <><span style={{width:1,height:26,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
                                 <img src={BK_LOGOS[form.bookmaker]} alt={form.bookmaker} style={{width:22,height:22,objectFit:"contain",borderRadius:5,opacity:.9}}/></>
                               )}
                               {form.bookmaker&&!BK_LOGOS[form.bookmaker]&&(
-                                <><span style={{width:1,height:24,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
+                                <><span style={{width:1,height:26,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
                                 <span style={{fontSize:10,color:"#5a6478",fontWeight:600}}>{form.bookmaker}</span></>
                               )}
                             </div>
                             {gain&&(
-                              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:1}}>
-                                <span style={{fontSize:8,color:"#3d4d62",fontWeight:500,letterSpacing:.4}}>GAIN</span>
+                              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+                                <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>GAIN POTENTIEL</span>
                                 <span style={{fontSize:15,fontWeight:800,color:"#22c55e"}}>+{gain}€</span>
                               </div>
                             )}
