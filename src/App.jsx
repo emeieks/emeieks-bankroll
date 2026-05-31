@@ -5922,24 +5922,7 @@ export default function App(){
           </div>
         )}
 
-        {/* ── EDIT BET MODAL ── */}
-        {editingBet&&(
-          <EditBetModal
-            bet={editingBet}
-            bookmakers={bookmakers}
-            calcProfit={calcProfit}
-            allPlayers={allPlayers}
-            activeTourneys={activeTourneys}
-            savedTourneys={savedTourneys}
-            onClose={()=>setEditingBet(null)}
-            onSave={(updated)=>{
-              setBets(b=>b.map(bet=>bet.id===updated.id?updated:bet));
-              supaPushBets([updated]).catch(()=>{});
-              setEditingBet(null);
-              showToast("Pari modifié ✓");
-            }}
-          />
-        )}
+
 
 
 
