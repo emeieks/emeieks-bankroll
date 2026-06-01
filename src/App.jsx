@@ -252,21 +252,39 @@ function getAvatarSrc(player) {
 }
 
 async function supaFetchPlayers() {
-  // Lire depuis players_full (vue avec JOIN teams → team_logo_url)
-  const res = await fetch(
-    SUPA_URL + "/rest/v1/players_full?select=id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file&order=name.asc&limit=2000",
-    { headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY } }
-  );
-  if (!res.ok) {
-    // Fallback sur players si la vue n'existe pas encore
-    const res2 = await fetch(
-      SUPA_URL + "/rest/v1/players?select=id,name,game,league,role,team,photo_url,avatar_url,avatar_file&order=name.asc",
-      { headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY } }
-    );
-    if (!res2.ok) return null;
-    return await res2.json();
+  const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY };
+  const limit = 1000;
+
+  async function fetchAll(endpoint, fields) {
+    let all = [];
+    let offset = 0;
+    while (true) {
+      const res = await fetch(
+        `${SUPA_URL}/rest/v1/${endpoint}?select=${fields}&order=name.asc&limit=${limit}&offset=${offset}`,
+        { headers }
+      );
+      if (!res.ok) return null;
+      const batch = await res.json();
+      if (!batch || batch.length === 0) break;
+      all = [...all, ...batch];
+      if (batch.length < limit) break;
+      offset += limit;
+    }
+    return all;
   }
-  return await res.json();
+
+  // Essayer players_full en premier
+  const full = await fetchAll(
+    "players_full",
+    "id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file"
+  );
+  if (full !== null) return full;
+
+  // Fallback sur players avec pagination aussi
+  return await fetchAll(
+    "players",
+    "id,name,game,league,role,team,photo_url,avatar_url,avatar_file"
+  );
 }
 
 async function supaUpsertPlayer(data) {
