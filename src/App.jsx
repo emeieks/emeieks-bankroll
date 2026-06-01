@@ -51,7 +51,7 @@ async function supaPullBets() {
   let all = [];
   let offset = 0;
   while(true) {
-    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt&order=datetime.desc&limit=${limit}&offset=${offset}&archived=is.false`);
+    const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge&order=datetime.desc&limit=${limit}&offset=${offset}&archived=is.false`);
     if(!batch || batch.length === 0) break;
     all = [...all, ...batch];
     if(batch.length < limit) break;
@@ -59,7 +59,11 @@ async function supaPullBets() {
   }
   return all.map(b=>{
     const splits=b.splits?JSON.parse(b.splits):undefined;
-    return normalizeBet({...b,splits});
+    return normalizeBet({...b,splits,
+      ppMapType:b.pp_map_type||null,
+      ppLine:b.pp_line||null,
+      ppEdge:b.pp_edge??null,
+    });
   });
 }
 
@@ -73,11 +77,13 @@ async function supaPushBets(bets) {
   };
   const now=Date.now();
   const rows = bets.map(({id,player,description,overUnder,odds,stake,bookmaker,
-    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt})=>
+    status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,
+    ppMapType,ppLine,ppEdge})=>
     ({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,
       team,datetime:safeDT(datetime),isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
       splits:splits&&splits.length>0?JSON.stringify(splits):null,
-      updatedAt:updatedAt||now,archived:false}));
+      updatedAt:updatedAt||now,archived:false,
+      pp_map_type:ppMapType||null,pp_line:ppLine||null,pp_edge:ppEdge??null}));
   // Chunk en 500
   for(let i=0;i<rows.length;i+=500){
     await supaFetch("/rest/v1/bets",{
@@ -137,12 +143,12 @@ function BankrollChart({points,h=150}){
   if(!points||points.length<2)return(
     <div style={{height:h,display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280",fontSize:13}}>Pas assez de donnees</div>
   );
-  const W=400,H=h,pad={t:16,b:24,l:44,r:42};
+  const W=400,H=h,pad={t:10,b:22,l:44,r:42};
   const vals=points.map(p=>p.v);
   const min=Math.min(...vals),max=Math.max(...vals);
   const range=max-min||1;
-  const yMin=min-range*0.08;
-  const yMax=max+range*0.22;
+  const yMin=min-range*0.04;
+  const yMax=max+range*0.12;
   const yRange=yMax-yMin;
   const cx=W-pad.l-pad.r,cy=H-pad.t-pad.b;
   const px=i=>pad.l+i/(points.length-1)*cx;
@@ -151,45 +157,69 @@ function BankrollChart({points,h=150}){
   const fillPath="M"+px(0)+","+py(points[0].v)+" "+points.map((p,i)=>"L"+px(i)+","+py(p.v)).join(" ")+" L"+px(points.length-1)+","+(pad.t+cy)+" L"+px(0)+","+(pad.t+cy)+" Z";
   const up=points[points.length-1].v>=points[0].v;
   const color=up?"#22C55E":"#EF4444";
-  const glowColor=up?"rgba(34,197,94,.6)":"rgba(239,68,68,.6)";
   const glowId="glow_"+Math.abs(points[0].v|0);
   const yTicks=[min,min+range*0.5,max];
   const xSamples=[0,Math.floor((points.length-1)/2),points.length-1];
+  // ATH = max val and its position
+  const athIdx=vals.indexOf(max);
   const athVal=max;
+  const athX=px(athIdx);
   const athY=py(athVal);
   const currentVal=points[points.length-1].v;
   const currentX=px(points.length-1);
   const currentY=py(currentVal);
   const distFromATH=athVal-currentVal;
+  const isAtATH=distFromATH<0.5;
   return(
     <svg width="100%" viewBox={"0 0 "+W+" "+H} preserveAspectRatio="none" style={{overflow:"visible"}}>
       <defs>
-        <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.38"/><stop offset="60%" stopColor={color} stopOpacity="0.08"/><stop offset="100%" stopColor={color} stopOpacity="0.01"/></linearGradient>
-        <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3.5" result="blur"/>
+        <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.52"/>
+          <stop offset="45%" stopColor={color} stopOpacity="0.18"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+        </linearGradient>
+        <filter id={glowId} x="-20%" y="-60%" width="140%" height="220%">
+          <feGaussianBlur stdDeviation="2" result="blur1"/>
+          <feGaussianBlur stdDeviation="5" result="blur2"/>
+          <feMerge><feMergeNode in="blur2"/><feMergeNode in="blur1"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id={glowId+"pt"} x="-400%" y="-400%" width="900%" height="900%">
+          <feGaussianBlur stdDeviation="7" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        <filter id={glowId+"pt"} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="6" result="blur"/>
+        <filter id={glowId+"ath"} x="-500%" y="-500%" width="1100%" height="1100%">
+          <feGaussianBlur stdDeviation="8" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      {yTicks.map((v,i)=><line key={i} x1={pad.l} y1={py(v)} x2={W-pad.r} y2={py(v)} stroke="rgba(255,255,255,.05)" strokeWidth="1" strokeDasharray="3,4"/>)}
-      {yTicks.map((v,i)=><text key={i} x={pad.l-3} y={py(v)+4} textAnchor="end" fontSize="9" fill="#4a5a6e">{v.toFixed(0)}</text>)}
-      {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#4a5a6e">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
+      {yTicks.map((v,i)=><line key={i} x1={pad.l} y1={py(v)} x2={W-pad.r} y2={py(v)} stroke="rgba(255,255,255,.04)" strokeWidth="1" strokeDasharray="3,5"/>)}
+      {yTicks.map((v,i)=><text key={i} x={pad.l-3} y={py(v)+4} textAnchor="end" fontSize="9" fill="#3a4a5e">{v.toFixed(0)}</text>)}
+      {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#3a4a5e">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
+      {/* Gradient fill */}
       <path d={fillPath} fill="url(#cf)"/>
-      <path d={linePath} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.25"/>
-      <path d={linePath} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" filter={"url(#"+glowId+")"}/>
-      <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="rgba(255,255,255,.18)" strokeWidth="0.8" strokeDasharray="4,4"/>
-      <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="8" fill="rgba(255,255,255,.3)" fontWeight="700">ATH</text>
-      <circle cx={currentX} cy={currentY} r="10" fill={color} opacity="0.08" filter={"url(#"+glowId+"pt)"}/>
-      <circle cx={currentX} cy={currentY} r="6" fill={color} opacity="0.25" filter={"url(#"+glowId+"pt)"}/>
-      <circle cx={currentX} cy={currentY} r="4.5" fill={color}/>
-      <circle cx={currentX} cy={currentY} r="2" fill="#fff" opacity="0.95"/>
+      {/* Soft underline for depth */}
+      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.18"/>
+      {/* Main glow line */}
+      <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter={"url(#"+glowId+")"}/>
+      {/* ATH dashed line */}
+      <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="rgba(255,215,80,.22)" strokeWidth="0.8" strokeDasharray="4,5"/>
+      <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="8" fill="rgba(255,215,80,.45)" fontWeight="700">ATH</text>
+      {/* ATH halo point */}
+      {!isAtATH&&<>
+        <circle cx={athX} cy={athY} r="14" fill="rgba(255,215,80,.04)" filter={"url(#"+glowId+"ath)"}/>
+        <circle cx={athX} cy={athY} r="5" fill="rgba(255,215,80,.18)" filter={"url(#"+glowId+"ath)"}/>
+        <circle cx={athX} cy={athY} r="3" fill="rgba(255,215,80,.55)"/>
+        <circle cx={athX} cy={athY} r="1.2" fill="rgba(255,240,150,.9)"/>
+      </>}
+      {/* Current point */}
+      <circle cx={currentX} cy={currentY} r="12" fill={color} opacity="0.07" filter={"url(#"+glowId+"pt)"}/>
+      <circle cx={currentX} cy={currentY} r="6" fill={color} opacity="0.22" filter={"url(#"+glowId+"pt)"}/>
+      <circle cx={currentX} cy={currentY} r="4" fill={color}/>
+      <circle cx={currentX} cy={currentY} r="1.8" fill="#fff" opacity="0.95"/>
       {distFromATH>1&&(
         <g>
-          <line x1={currentX} y1={currentY-8} x2={currentX} y2={athY+3} stroke="rgba(255,255,255,.15)" strokeWidth="1" strokeDasharray="2,2"/>
-          <text x={currentX+6} y={(currentY+athY)/2+4} fontSize="9" fill="rgba(255,255,255,.5)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"€"}</text>
+          <line x1={currentX} y1={currentY-7} x2={currentX} y2={athY+4} stroke="rgba(255,255,255,.12)" strokeWidth="1" strokeDasharray="2,3"/>
+          <text x={currentX+6} y={(currentY+athY)/2+4} fontSize="9" fill="rgba(255,255,255,.4)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"€"}</text>
         </g>
       )}
     </svg>
@@ -254,15 +284,10 @@ function getAvatarSrc(player) {
 async function supaFetchPlayers() {
   const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY };
   const limit = 1000;
-
   async function fetchAll(endpoint, fields) {
-    let all = [];
-    let offset = 0;
+    let all = []; let offset = 0;
     while (true) {
-      const res = await fetch(
-        `${SUPA_URL}/rest/v1/${endpoint}?select=${fields}&order=name.asc&limit=${limit}&offset=${offset}`,
-        { headers }
-      );
+      const res = await fetch(SUPA_URL+"/rest/v1/"+endpoint+"?select="+fields+"&order=name.asc&limit="+limit+"&offset="+offset,{headers});
       if (!res.ok) return null;
       const batch = await res.json();
       if (!batch || batch.length === 0) break;
@@ -272,19 +297,9 @@ async function supaFetchPlayers() {
     }
     return all;
   }
-
-  // Essayer players_full en premier
-  const full = await fetchAll(
-    "players_full",
-    "id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file"
-  );
+  const full = await fetchAll("players_full","id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file");
   if (full !== null) return full;
-
-  // Fallback sur players avec pagination aussi
-  return await fetchAll(
-    "players",
-    "id,name,game,league,role,team,photo_url,avatar_url,avatar_file"
-  );
+  return await fetchAll("players","id,name,game,league,role,team,photo_url,avatar_url,avatar_file");
 }
 
 async function supaUpsertPlayer(data) {
@@ -370,7 +385,7 @@ const STATUS_CFG={
   won:{label:"Gagné",color:"#22C55E",bg:"rgba(34,197,94,0.1)"},
   lost:{label:"Perdu",color:"#EF4444",bg:"rgba(248,113,113,0.1)"},
 };
-const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false};
+const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:""};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 
 function toDateKey(dt){
@@ -444,6 +459,13 @@ function NumPad({value,onChange,placeholder,step,id}){
             onChange(v);
           } else {
             onChange(v.replace(/\./g,""));
+          }
+        }}
+        onBlur={e=>{
+          if(!isDecimal)return;
+          let v=e.target.value.replace(/,/g,".").replace(/[^0-9.]/g,"");
+          if(v&&!v.includes(".")&&parseInt(v)>=100){
+            onChange((parseInt(v)/100).toFixed(2));
           }
         }}
         style={{
@@ -901,51 +923,59 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   // Fix double Over/Under : bet.description contient déjà "Over X Kills" — on affiche seulement description
   const descLine=bet.description||"";
 
+  const hasPP=bet.ppEdge!=null&&bet.ppMapType;
+  const glowStyle=!isPending&&(isWon
+    ?"0 0 10px rgba(34,197,94,.18)":"0 0 8px rgba(239,68,68,.14)");
   return(
-    <div style={{borderBottom:"1px solid rgba(255,255,255,.04)",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"3px solid "+(isPending?"rgba(96,165,250,.6)":isWon?"rgba(34,197,94,.6)":"rgba(239,68,68,.55)"),background:"transparent",position:"relative",transition:"all .15s"}}>
-      <div onClick={()=>setOpen(v=>!v)} style={{padding:"11px 14px 11px 12px",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+    <div style={{borderBottom:"1px solid rgba(255,255,255,.04)",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"2.5px solid "+(isPending?"rgba(96,165,250,.5)":isWon?"rgba(34,197,94,.55)":"rgba(239,68,68,.5)"),background:"transparent",position:"relative",transition:"all .15s"}}>
+      <div onClick={()=>setOpen(v=>!v)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
+        <div style={{display:"flex",alignItems:"center",gap:11}}>
 
-          {/* Logo sport */}
-          <div style={{width:32,height:32,borderRadius:9,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)"}}>
-            <GameLogo game={bet.game} size={32}/>
+          {/* Logo sport — légèrement plus grand */}
+          <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
+            <GameLogo game={bet.game} size={37}/>
           </div>
 
           {/* Centre */}
           <div style={{flex:1,minWidth:0}}>
-            {/* Ligne 1 : Joueur + badges */}
-            <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
-              <span style={{fontWeight:800,fontSize:14,color:"#edf2ff",textTransform:"capitalize",letterSpacing:"-.3px",lineHeight:1}}>{bet.player}</span>
+            {/* L1 : Joueur — niveau 1 visuel */}
+            <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}}>
+              <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1}}>{bet.player}</span>
               {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#4ade80",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.2)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
               {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
               {bet.mapTag&&<span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.2)",flexShrink:0}}>{bet.mapTag}</span>}
             </div>
-            {/* Ligne 2 : sélection */}
-            {descLine&&<div style={{fontSize:12,color:"#7a8ea8",fontWeight:500,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{descLine}</div>}
-            {/* Ligne 3 : cote · BK · mise · ligue */}
+            {/* L2 : Sélection — niveau 2 visuel */}
+            {descLine&&(
+              <div style={{marginBottom:4}}>
+                <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>{descLine}</span>
+              </div>
+            )}
+            {/* L3 : Méta infos — niveau 3 (discret) */}
             <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap"}}>
-              <span style={{fontSize:11,fontWeight:700,color:"#4a6080",letterSpacing:"-.1px"}}>@{bet.odds}</span>
-              {(bkLogo||bet.bookmaker)&&<span style={{color:"#2a3a50",margin:"0 5px",fontSize:14,lineHeight:1}}>·</span>}
+              <span style={{fontSize:10.5,fontWeight:600,color:"#3d5270",letterSpacing:"-.1px"}}>@{bet.odds}</span>
+              {(bkLogo||bet.bookmaker)&&<span style={{color:"#222f3e",margin:"0 4px",fontSize:12,lineHeight:1}}>·</span>}
               {bkLogo
-                ? <img src={bkLogo} alt={bet.bookmaker} style={{width:14,height:14,borderRadius:3,objectFit:"cover",flexShrink:0}}/>
-                : bet.bookmaker ? <span style={{fontSize:10,fontWeight:600,color:"#3a5070"}}>{bet.bookmaker}</span> : null
+                ? <img src={bkLogo} alt={bet.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>
+                : bet.bookmaker ? <span style={{fontSize:10,fontWeight:600,color:"#2e4060"}}>{bet.bookmaker}</span> : null
               }
               {(bet.splits||[]).map((sp,i)=>{
                 const spLogo=BK_LOGOS[sp.bookmaker]||bkPhotos[sp.bookmaker]||null;
                 return spLogo
-                  ? <img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:2}}/>
-                  : <span key={i} style={{fontSize:10,fontWeight:600,color:"#3a5070",marginLeft:3}}>{sp.bookmaker}</span>;
+                  ? <img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:3}}/>
+                  : <span key={i} style={{fontSize:10,fontWeight:600,color:"#2e4060",marginLeft:3}}>{sp.bookmaker}</span>;
               })}
-              {bet.stake&&<><span style={{color:"#2a3a50",margin:"0 5px",fontSize:14,lineHeight:1}}>·</span><span style={{fontSize:11,fontWeight:600,color:"#5a4a7e"}}>{bet.stake}€</span></>}
-              {bet.league&&<><span style={{color:"#2a3a50",margin:"0 5px",fontSize:14,lineHeight:1}}>·</span>{L[bet.league]?<span style={{display:"flex",alignItems:"center",gap:3}}><img src={L[bet.league]} alt={bet.league} style={{width:13,height:13,objectFit:"contain",borderRadius:2,flexShrink:0}}/><span style={{fontSize:9,fontWeight:600,color:"#5a6a7a"}}>{bet.league}</span></span>:<span style={{fontSize:10,color:"#4a5a6a"}}>{bet.league}</span>}</>}
-              {bet.tournament&&(bet.game==="CS2"||bet.game==="Dota2")&&<><span style={{color:"#2a3a50",margin:"0 5px",fontSize:14,lineHeight:1}}>·</span><span style={{fontSize:9,color:"#6a7a8a",fontWeight:600}}>🏆 {bet.tournament}</span></>}
+              {bet.stake&&<><span style={{color:"#222f3e",margin:"0 4px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:10,fontWeight:500,color:"#3a3060"}}>{bet.stake}€</span></>}
+              {bet.league&&<><span style={{color:"#222f3e",margin:"0 4px",fontSize:12,lineHeight:1}}>·</span>{L[bet.league]?<span style={{display:"flex",alignItems:"center",gap:3}}><img src={L[bet.league]} alt={bet.league} style={{width:13,height:13,objectFit:"contain",borderRadius:2,flexShrink:0}}/><span style={{fontSize:9,fontWeight:600,color:"#4a5a6a"}}>{bet.league}</span></span>:<span style={{fontSize:10,color:"#3a4a5a"}}>{bet.league}</span>}</>}
+              {bet.tournament&&(bet.game==="CS2"||bet.game==="Dota2")&&<><span style={{color:"#222f3e",margin:"0 4px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:9,color:"#4a5a6a",fontWeight:600}}>🏆 {bet.tournament}</span></>}
+              {hasPP&&<><span style={{color:"#222f3e",margin:"0 4px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:9,fontWeight:700,color:"rgba(139,92,246,.5)",letterSpacing:.2}}>PP {bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
             </div>
           </div>
 
-          {/* Droite : profit + chevron */}
-          <div style={{textAlign:"right",flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:58}}>
-            <div style={{fontWeight:700,fontSize:13,color:profitColor,fontFamily:"Inter,sans-serif",letterSpacing:"-.3px",opacity:isPending?.55:1}}>{profitTxt}</div>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{transition:"transform .2s",transform:open?"rotate(180deg)":"none",opacity:.35}}>
+          {/* Droite : profit seul */}
+          <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,minWidth:56}}>
+            <div style={{fontWeight:800,fontSize:14,color:profitColor,fontFamily:"Inter,sans-serif",letterSpacing:"-.4px",lineHeight:1,opacity:isPending?.5:1,textShadow:isPending?"none":glowStyle||"none"}}>{profitTxt}</div>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{transition:"transform .2s",transform:open?"rotate(180deg)":"none",opacity:.25}}>
               <path d="M2 3.5L5 6.5L8 3.5" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
@@ -1553,7 +1583,8 @@ export default function App(){
   const [homePeriod,setHomePeriod]=useState(null);
   const [homeChartModal,setHomeChartModal]=useState(false);
   const [homeChartFilters,setHomeChartFilters]=useState({games:[],overUnder:"All",live:"All",bookmakers:[],dateFrom:"",dateTo:""});
-  const [statsDrill,setStatsDrill]=useState(null); // {game, league} or null
+  const [statsDrill,setStatsDrill]=useState(null);
+  const [ppEdgeDrill,setPpEdgeDrill]=useState(null); // {edge, mapType} or null // {game, league} or null
   const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
   const [analyseBets,setAnalyseBets]=useState([]);
   const [analyseLoading,setAnalyseLoading]=useState(false);
@@ -2337,6 +2368,23 @@ export default function App(){
     if(editingBet){
       // Mode édition — remplace le pari existant avec tous les champs
       const newDatetime=form.datetime||nowDT();
+      const ppFinalLineEdit=form.ppDescription||(()=>{
+        const bk=parseFloat(form.description);
+        if(!bk||isNaN(bk)||!form.overUnder||!form.ppMapType)return null;
+        const edge=form.overUnder==="Over"?2.0:2.5;
+        if(form.ppMapType==="Map 1+2") return(Math.round((bk*2-edge)*2)/2).toFixed(1)+" Kills";
+        if(form.ppMapType==="Map 3") return(Math.round((bk-1.5)*2)/2).toFixed(1)+" Kills";
+        return null;
+      })();
+      const ppEdgeEdit=(()=>{
+        if(!ppFinalLineEdit||!form.description)return null;
+        const bk=parseFloat(form.description);
+        const pp=parseFloat(ppFinalLineEdit);
+        if(isNaN(bk)||isNaN(pp))return null;
+        if(form.ppMapType==="Map 1+2") return parseFloat((bk-(pp/2)).toFixed(2));
+        if(form.ppMapType==="Map 3") return parseFloat((bk-pp).toFixed(2));
+        return null;
+      })();
       const updatedBet={
         ...editingBet,
         player:form.player,description:desc,overUnder:form.overUnder,
@@ -2347,6 +2395,9 @@ export default function App(){
         profit:calcProfit(editingBet.status,stake,odds),
         tournament:form.tournament||tname,
         settledAt:editingBet.status!=="pending"?new Date(newDatetime).getTime():(editingBet.settledAt||null),
+        ppMapType:form.ppMapType||null,
+        ppLine:ppFinalLineEdit||null,
+        ppEdge:ppEdgeEdit,
       };
       const editedBK=form.bookmaker;
       setBets(b=>{
@@ -2368,6 +2419,24 @@ export default function App(){
       setView("mesparis");
       return;
     }
+    // Calcul edge PP
+    const ppFinalLine=form.ppDescription||(()=>{
+      const bk=parseFloat(form.description);
+      if(!bk||isNaN(bk)||!form.overUnder||!form.ppMapType)return null;
+      const edge=form.overUnder==="Over"?2.0:2.5;
+      if(form.ppMapType==="Map 1+2") return(Math.round((bk*2-edge)*2)/2).toFixed(1)+" Kills";
+      if(form.ppMapType==="Map 3") return(Math.round((bk-1.5)*2)/2).toFixed(1)+" Kills";
+      return null;
+    })();
+    const ppEdge=(()=>{
+      if(!ppFinalLine||!form.description)return null;
+      const bk=parseFloat(form.description);
+      const pp=parseFloat(ppFinalLine);
+      if(isNaN(bk)||isNaN(pp))return null;
+      if(form.ppMapType==="Map 1+2") return parseFloat((bk-(pp/2)).toFixed(2));
+      if(form.ppMapType==="Map 3") return parseFloat((bk-pp).toFixed(2));
+      return null;
+    })();
     const newBet={
       id:Date.now(),updatedAt:Date.now(),player:form.player,description:desc,overUnder:form.overUnder,
       odds,stake,bookmaker:form.bookmaker,status:form.status,
@@ -2375,6 +2444,9 @@ export default function App(){
       datetime:form.datetime||nowDT(),isHeadshot:form.isHeadshot||false,isLive:form.isLive||false,
       mapTag:form.mapTag||"",profit:calcProfit(form.status,stake,odds),
       tournament:tname,
+      ppMapType:form.ppMapType||null,
+      ppLine:ppFinalLine||null,
+      ppEdge:ppEdge,
     };
     setBets(b=>[newBet,...b]);
     // Push immédiat vers Supabase (pas d'attente du debounce)
@@ -2462,7 +2534,6 @@ export default function App(){
 
     const openEdit=useCallback((b)=>{
     setEditingBet({...b});
-    // Pré-remplir le formulaire avec les données du pari existant
     setForm(f=>({
       ...f,
       player:b.player||"",
@@ -2477,6 +2548,8 @@ export default function App(){
       mapTag:b.mapTag||"Map 1",
       tournament:b.tournament||"",
       autoInfo:findPlayer(b.player)||null,
+      ppMapType:b.ppMapType||"",
+      ppDescription:b.ppLine||"",
     }));
     setView("add");
   },[findPlayer]);
@@ -4077,6 +4150,159 @@ export default function App(){
               {form.mapLocked&&<div style={{fontSize:10,color:"#F59E0B",marginTop:6,fontWeight:600}}>🔒 Map verrouillée pour le prochain pari</div>}
             </div>
 
+
+
+            {/* ── 6b. PRIZEPICKS ── */}
+            {!duelMode&&!sessionMode&&(()=>{
+              const game=form.autoInfo?.game;
+              // PP type = type de ligne PP uniquement, sans lien avec mapTag du pari
+              // Map 1+2 : stats cumulées 2 maps → ligne × 2 avec edge
+              // Map 3 : stats map unitaire → ligne directe avec edge réduit
+              function calcPPLine(baseVal, overUnder, ppType){
+                if(!baseVal||!overUnder||!ppType)return null;
+                if(ppType==="Map 1+2"){
+                  // Ligne PP = base × 2 − edge
+                  const edge = overUnder==="Over" ? 2.0 : 2.5;
+                  const raw = baseVal * 2 - edge;
+                  return Math.round(raw * 2) / 2;
+                }
+                if(ppType==="Map 3"){
+                  // Ligne PP = base directe − edge réduit
+                  const edge = overUnder==="Over" ? 1.5 : 1.5;
+                  const raw = baseVal - edge;
+                  return Math.round(raw * 2) / 2;
+                }
+                return null;
+              }
+              function genOpts(ppType){
+                if(!game||!ppType)return[];
+                const range=(start,end)=>{
+                  const r=[];
+                  for(let v=start;v<=end+0.001;v+=0.5) r.push(parseFloat(v.toFixed(1)));
+                  return r;
+                };
+                if(ppType==="Map 1+2"){
+                  if(game==="CS2"||game==="Valorant") return range(18.5,42.5);
+                  if(game==="Dota2") return range(2.5,24.5);
+                  if(game==="LoL") return range(0.5,15.5);
+                }
+                if(ppType==="Map 3"){
+                  if(game==="CS2"||game==="Valorant") return range(8.5,22.5);
+                  if(game==="Dota2") return range(2,13);
+                  if(game==="LoL") return range(0.5,10.5);
+                }
+                return[];
+              }
+              const opts=genOpts(form.ppMapType);
+              const baseKills=form.description?parseFloat(form.description):null;
+              const autoLine=(baseKills&&!isNaN(baseKills)&&form.overUnder&&form.ppMapType)
+                ?calcPPLine(baseKills,form.overUnder,form.ppMapType):null;
+              // Valeur courante PP (override manuel ou auto)
+              const currentPP=form.ppDescription||(autoLine!==null?autoLine.toFixed(1)+" Kills":"");
+              const currentPPVal=currentPP?parseFloat(currentPP):null;
+              // Index de la valeur courante dans opts (pour le picker centré)
+              const currentIdx=currentPPVal!==null?opts.findIndex(o=>Math.abs(o-currentPPVal)<0.01):-1;
+              return(
+                <div style={{background:"linear-gradient(180deg,rgba(14,8,28,.98),rgba(8,4,20,.99))",borderRadius:18,border:"1px solid rgba(139,92,246,.35)",padding:"11px 12px 10px",marginBottom:8,boxShadow:"0 8px 24px rgba(107,33,245,.15)"}}>
+                  {/* Header */}
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                    <span style={{fontSize:13,fontWeight:700,color:"#c4b5fd",letterSpacing:.2}}>PrizePicks</span>
+                    {(()=>{
+                      const bk=parseFloat(form.description);
+                      const line=form.ppDescription?parseFloat(form.ppDescription):autoLine;
+                      if(!line||isNaN(bk)||!form.ppMapType)return null;
+                      const edge=form.ppMapType==="Map 1+2"
+                        ?(bk-(line/2)).toFixed(2)
+                        :(bk-line).toFixed(2);
+                      return(
+                        <span style={{marginLeft:"auto",fontSize:10,color:"rgba(167,139,250,.7)",fontWeight:600,background:"rgba(139,92,246,.12)",padding:"2px 7px",borderRadius:5,border:"1px solid rgba(139,92,246,.25)"}}>
+                          Edge {edge>0?"+":""}{edge}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {/* PP type — Map 1+2 ou Map 3 (indépendant du mapTag du pari) */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:9}}>
+                    {["Map 1+2","Map 3"].map(mt=>{
+                      const isOn=form.ppMapType===mt;
+                      return(
+                        <button key={mt} onClick={()=>setForm(f=>({...f,ppMapType:mt,ppDescription:""}))}
+                          style={{height:52,borderRadius:13,border:"2px solid "+(isOn?"rgba(139,92,246,.8)":"rgba(139,92,246,.15)"),background:isOn?"rgba(139,92,246,0.15)":"rgba(139,92,246,0.03)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,boxShadow:isOn?"0 0 20px rgba(139,92,246,.25)":"none"}}>
+                          <span style={{fontSize:15,fontWeight:800,color:isOn?"#c4b5fd":"#6b5a8a"}}>{mt}</span>
+                          <span style={{fontSize:9,color:isOn?"rgba(196,181,253,.5)":"#3d2e52",fontWeight:600,letterSpacing:.5,textTransform:"uppercase"}}>{mt==="Map 1+2"?"Combiné":"Unitaire"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Ligne PP */}
+                  {form.ppMapType&&opts.length>0&&(
+                    <div>
+                      {/* Picker centré sur la valeur auto — ±2 valeurs visibles */}
+                      {(()=>{
+                        const refIdx=currentIdx>=0?currentIdx:Math.floor(opts.length/2);
+                        // Afficher 5 valeurs : -2 / -1 / [current] / +1 / +2
+                        const visible=[-2,-1,0,1,2].map(d=>{
+                          const idx=refIdx+d;
+                          if(idx<0||idx>=opts.length)return null;
+                          return{val:opts[idx],delta:d};
+                        });
+                        return(
+                          <div style={{display:"flex",alignItems:"center",gap:0,borderRadius:13,border:"1px solid rgba(139,92,246,.3)",background:"rgba(139,92,246,.06)",overflow:"hidden",height:56}}>
+                            <img src="data:image/png;base64,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"
+                              onError={e=>{e.target.style.display="none";}}
+                              alt="PP" style={{width:20,height:20,borderRadius:4,objectFit:"cover",flexShrink:0,margin:"0 10px"}}/>
+                            <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:0,overflow:"hidden"}}>
+                              {visible.map((item,i)=>{
+                                if(!item)return<div key={i} style={{flex:1}}/>;
+                                const isCurrent=item.delta===0;
+                                return(
+                                  <button key={item.val} onClick={()=>setForm(f=>({...f,ppDescription:item.val.toFixed(1)+" Kills"}))}
+                                    style={{flex:isCurrent?2:1,height:"100%",background:isCurrent?"rgba(139,92,246,.2)":"transparent",border:"none",borderLeft:i>0?"1px solid rgba(139,92,246,.1)":"none",cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:0,transition:"all .1s"}}>
+                                    <span style={{fontSize:isCurrent?17:12,fontWeight:isCurrent?800:500,color:isCurrent?"#c4b5fd":"rgba(139,92,246,.4)",lineHeight:1}}>
+                                      {item.val.toFixed(1)}
+                                    </span>
+                                    {isCurrent&&<span style={{fontSize:8,color:"rgba(196,181,253,.4)",marginTop:2,fontWeight:600}}>KILLS</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {/* Override select invisible pour mobile */}
+                            <div style={{position:"relative",width:36,height:"100%",borderLeft:"1px solid rgba(139,92,246,.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                              <span style={{color:"rgba(139,92,246,.5)",fontSize:14,pointerEvents:"none"}}>⋯</span>
+                              <select value={form.ppDescription} onChange={e=>setForm(f=>({...f,ppDescription:e.target.value}))}
+                                style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}>
+                                <option value="">{autoLine!==null?`Auto: ${autoLine.toFixed(1)}`:"Choisir..."}</option>
+                                {opts.map(o=><option key={o} value={o.toFixed(1)+" Kills"}>{o.toFixed(1)} Kills</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* Reset auto */}
+                      {form.ppDescription&&autoLine!==null&&(
+                        <button onClick={()=>setForm(f=>({...f,ppDescription:""}))}
+                          style={{marginTop:5,width:"100%",background:"none",border:"none",color:"rgba(167,139,250,.35)",fontSize:10,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
+                          ↺ Auto ({autoLine.toFixed(1)} Kills)
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {form.ppMapType&&opts.length===0&&(
+                    <div style={{height:40,display:"flex",alignItems:"center",justifyContent:"center",color:"#3d2e52",fontSize:12}}>
+                      {!game?"Sélectionnez d'abord un joueur":"Jeu non supporté"}
+                    </div>
+                  )}
+                  {!form.ppMapType&&(
+                    <div style={{height:40,display:"flex",alignItems:"center",justifyContent:"center",color:"#3d2e52",fontSize:12,fontWeight:500}}>
+                      Choisir Map 1+2 ou Map 3
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* ── 7. STATUT ── */}
             <div style={{background:"linear-gradient(180deg,rgba(14,20,38,.98),rgba(8,12,24,.99))",borderRadius:18,border:"1px solid "+(lockedStatus?"rgba(245,158,11,.25)":"rgba(139,92,246,.2)"),padding:"11px 12px 10px",marginBottom:8,boxShadow:"0 8px 24px rgba(0,0,0,.2)"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:9}}>
@@ -4166,9 +4392,25 @@ export default function App(){
                               <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{width:14,height:14,objectFit:"contain",opacity:.7,flexShrink:0}}/>
                             )}
                           </div>
-                          {/* Ligne 2 : sélection */}
-                          <div>
+                          {/* Ligne 2 : sélection + PP edge */}
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
                             <span style={{fontSize:12,fontWeight:500,color:"#7a9cc4",lineHeight:1.3}}>{form.overUnder&&form.description?form.overUnder+" "+form.description.replace(/^(Over|Under)\s/,""):form.description}</span>
+                            {(()=>{
+                              const bk=parseFloat(form.description);
+                              const ppLine=form.ppDescription||(()=>{
+                                if(!bk||isNaN(bk)||!form.overUnder||!form.ppMapType)return null;
+                                const edge=form.overUnder==="Over"?2.0:2.5;
+                                if(form.ppMapType==="Map 1+2") return(Math.round((bk*2-edge)*2)/2).toFixed(1)+" Kills";
+                                if(form.ppMapType==="Map 3") return(Math.round((bk-1.5)*2)/2).toFixed(1)+" Kills";
+                                return null;
+                              })();
+                              if(!ppLine||isNaN(bk)||!form.ppMapType)return null;
+                              const pp=parseFloat(ppLine);
+                              const edge=form.ppMapType==="Map 1+2"?(bk-(pp/2)).toFixed(2):(bk-pp).toFixed(2);
+                              return(
+                                <span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>PP {edge>0?"+":""}{edge}</span>
+                              );
+                            })()}
                           </div>
                           {/* Ligne 3 : cote · mise · bookmaker · gain potentiel */}
                           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:3,borderTop:"1px solid rgba(255,255,255,.04)"}}>
@@ -4296,23 +4538,48 @@ export default function App(){
 
 
             {/* ── GRAPHIQUES BANKROLL ── */}
-            {settled.length>=2&&(
+            {settled.length>=2&&(()=>{
+              const athVal=Math.max(...chartPoints.map(p=>p.v));
+              const totalStakedAll=settledFiltered.reduce((s,b)=>s+(b.stake||0),0);
+              const avgProfit=settledFiltered.length>0?(settledFiltered.reduce((s,b)=>s+(b.profit||0),0)/settledFiltered.length):0;
+              // Max drawdown
+              let peak=0,maxDD=0;
+              chartPoints.forEach(p=>{if(p.v>peak)peak=p.v;const dd=peak-p.v;if(dd>maxDD)maxDD=dd;});
+              const progression=totalStakedAll>0?(totalProfit/totalStakedAll*100):0;
+              return(
               <div style={{marginBottom:16}}>
-                <div style={{background:"linear-gradient(180deg,rgba(10,18,34,.98),rgba(6,12,24,.99))",border:"1px solid rgba(99,130,200,.15)",borderRadius:16,padding:"14px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.3)"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                <div style={{background:"linear-gradient(180deg,rgba(8,14,28,.99),rgba(5,10,20,1))",border:"1px solid rgba(99,130,200,.18)",borderRadius:18,padding:"14px 16px 12px",boxShadow:"0 12px 40px rgba(0,0,0,.45),0 0 0 0.5px rgba(99,130,200,.08)"}}>
+                  {/* Header row */}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                     <div>
-                      <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:1.2,fontWeight:700,marginBottom:2}}>Bankroll cumulative</div>
-                      <div style={{fontSize:22,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                      <div style={{fontSize:9,color:"#3a4a5e",textTransform:"uppercase",letterSpacing:1.5,fontWeight:700,marginBottom:3}}>Bankroll cumulative</div>
+                      <div style={{fontSize:26,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.8,lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
                     </div>
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:1,fontWeight:700,marginBottom:2}}>Paris</div>
-                      <div style={{fontSize:14,fontWeight:700,color:"#7a9cc4"}}>{settledFiltered.length}</div>
+                      <div style={{fontSize:9,color:"#3a4a5e",textTransform:"uppercase",letterSpacing:1,fontWeight:700,marginBottom:3}}>Paris</div>
+                      <div style={{fontSize:16,fontWeight:700,color:"#5a7a9e"}}>{settledFiltered.length}</div>
                     </div>
                   </div>
-                  <BankrollChart points={chartPoints} h={155}/>
+                  {/* Chart — bigger */}
+                  <BankrollChart points={chartPoints} h={175}/>
+                  {/* KPI secondary strip */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:0,marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                    {[
+                      {label:"ATH",value:(athVal>=0?"+":"")+athVal.toFixed(0)+"€",color:"rgba(255,215,80,.7)"},
+                      {label:"Max DD",value:maxDD>0?"-"+maxDD.toFixed(0)+"€":"—",color:"rgba(239,68,68,.6)"},
+                      {label:"Moy/pari",value:(avgProfit>=0?"+":"")+avgProfit.toFixed(1)+"€",color:avgProfit>=0?"rgba(34,197,94,.6)":"rgba(239,68,68,.6)"},
+                      {label:"ROI total",value:(progression>=0?"+":"")+progression.toFixed(1)+"%",color:progression>=0?"rgba(96,165,250,.7)":"rgba(239,68,68,.6)"},
+                    ].map(({label,value,color})=>(
+                      <div key={label} style={{textAlign:"center",padding:"2px 0"}}>
+                        <div style={{fontSize:8,color:"#2a3a4e",textTransform:"uppercase",letterSpacing:1,fontWeight:700,marginBottom:2}}>{label}</div>
+                        <div style={{fontSize:11,fontWeight:700,color}}>{value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
+              );
+            })())}
 
             {/* Période filter */}
             <div style={{display:"flex",gap:6,marginBottom:14}}>
@@ -4330,32 +4597,33 @@ export default function App(){
               <div style={{background:"linear-gradient(135deg,rgba(10,16,30,.98),rgba(8,14,24,.99))",border:"1px solid rgba(99,130,200,.12)",borderRadius:16,padding:"12px 14px",marginBottom:16}}>
                 <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Over / Under — Tous jeux</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[{label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.05)",border:"rgba(34,197,94,0.12)"},{label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.05)",border:"rgba(59,130,246,0.12)"}].map(({label,s,color,bg,border})=>{
+                  {[{label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.07)",border:"rgba(34,197,94,0.2)",glow:"rgba(34,197,94,0.08)"},{label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.07)",border:"rgba(59,130,246,0.2)",glow:"rgba(59,130,246,0.08)"}].map(({label,s,color,bg,border,glow})=>{
                     if(!s)return null;
                     return(
-                      <div key={label} style={{background:bg,borderRadius:11,padding:"9px 11px",border:"1px solid "+border}}>
-                        <div style={{fontSize:11,fontWeight:800,color,marginBottom:6,letterSpacing:.3}}>{label}</div>
-                        <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                      <div key={label} style={{background:"linear-gradient(135deg,"+bg+",rgba(0,0,0,0))",borderRadius:12,padding:"10px 12px",border:"1px solid "+border,boxShadow:"0 4px 16px "+glow+",inset 0 1px 0 rgba(255,255,255,.04)",position:"relative",overflow:"hidden"}}>
+                        <div style={{position:"absolute",top:0,left:0,right:0,height:"1px",background:"linear-gradient(90deg,transparent,"+color+"44,transparent)"}}/>
+                        <div style={{fontSize:11,fontWeight:800,color,marginBottom:7,letterSpacing:.3}}>{label}</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:4}}>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:10,color:"#5a6a7e"}}>Paris</span>
-                            <span style={{fontSize:10,fontWeight:700,color:"#c8d4e8"}}>{s.count}</span>
+                            <span style={{fontSize:10,color:"#4a5a6e"}}>Paris</span>
+                            <span style={{fontSize:10,fontWeight:700,color:"#b8c4d8"}}>{s.count}</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:10,color:"#5a6a7e"}}>Win Rate</span>
-                            <span style={{fontSize:10,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
+                            <span style={{fontSize:10,color:"#4a5a6e"}}>Win Rate</span>
+                            <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr.toFixed(1)}%</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:"#9CA3AF"}}>ROI</span>
+                            <span style={{fontSize:10,color:"#4a5a6e"}}>ROI</span>
                             <span style={{fontSize:11,fontWeight:700,color:s.roi>=0?"#22C55E":"#EF4444"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:"#9CA3AF"}}>Profit</span>
+                            <span style={{fontSize:11,color:"#7a8ea8"}}>Profit</span>
                             <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
                           </div>
                         </div>
-                        {/* Barre WR */}
-                        <div style={{marginTop:8,height:4,background:"#1F2937",borderRadius:2,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:s.wr+"%",background:s.wr>=55?"linear-gradient(90deg,#22C55E,#22C55E)":s.wr<45?"linear-gradient(90deg,#EF4444,#EF4444)":"linear-gradient(90deg,#9CA3AF,#6B7280)",borderRadius:2,transition:"width .5s ease"}}/>
+                        {/* Barre WR épaisse */}
+                        <div style={{marginTop:9,height:6,background:"rgba(255,255,255,.04)",borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:s.wr+"%",background:s.wr>=55?"linear-gradient(90deg,#16a34a,#22C55E)":s.wr<45?"linear-gradient(90deg,#dc2626,#EF4444)":"linear-gradient(90deg,#6B7280,#9CA3AF)",borderRadius:3,transition:"width .6s ease",boxShadow:s.wr>=55?"0 0 8px rgba(34,197,94,.5)":s.wr<45?"0 0 8px rgba(239,68,68,.5)":"none"}}/>
                         </div>
                       </div>
                     );
@@ -4365,6 +4633,232 @@ export default function App(){
               </div>
             )}
 
+
+
+            {/* ── HEATMAP PERFORMANCE MENSUELLE ── */}
+            {settled.length>=4&&(()=>{
+              // Construire map mois → stats
+              const byMo={};
+              settledFiltered.forEach(b=>{
+                const mo=b.datetime?String(b.datetime).slice(0,7):"?";
+                if(mo==="?")return;
+                if(!byMo[mo])byMo[mo]={profit:0,count:0,won:0};
+                byMo[mo].profit+=b.profit;
+                byMo[mo].count++;
+                if(b.status==="won")byMo[mo].won++;
+              });
+              const months=Object.keys(byMo).sort();
+              if(months.length<2)return null;
+              const profits=months.map(m=>byMo[m].profit);
+              const maxAbs=Math.max(...profits.map(Math.abs),1);
+              const MONTH_FR=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+              return(
+                <div style={{marginBottom:16}}>
+                  <div style={{background:"linear-gradient(180deg,rgba(8,14,28,.99),rgba(5,10,20,1))",border:"1px solid rgba(99,130,200,.15)",borderRadius:18,padding:"14px 16px",boxShadow:"0 12px 40px rgba(0,0,0,.4)"}}>
+                    <div style={{fontSize:9,color:"#3a4a5e",textTransform:"uppercase",letterSpacing:1.5,fontWeight:700,marginBottom:12}}>Performance mensuelle</div>
+                    <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:2}}>
+                      {months.map(mo=>{
+                        const d=byMo[mo];
+                        const ratio=d.profit/maxAbs; // -1 to +1
+                        const absR=Math.abs(ratio);
+                        const isPos=d.profit>=0;
+                        const color=isPos?"#22C55E":"#EF4444";
+                        const bgOpacity=0.07+absR*0.28;
+                        const borderOpacity=0.12+absR*0.35;
+                        const glowOpacity=absR*0.25;
+                        const [yr,mn]=mo.split("-");
+                        const label=MONTH_FR[parseInt(mn,10)-1]||mn;
+                        const wr=d.count>0?(d.won/d.count*100):0;
+                        return(
+                          <div key={mo} style={{flex:"0 0 auto",minWidth:48,textAlign:"center"}}>
+                            {/* Bar */}
+                            <div style={{height:64,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",marginBottom:4,position:"relative"}}>
+                              {/* Zero line */}
+                              <div style={{position:"absolute",bottom:"50%",left:0,right:0,height:1,background:"rgba(255,255,255,.06)"}}/>
+                              {isPos?(
+                                <div style={{
+                                  width:28,borderRadius:"3px 3px 0 0",
+                                  height:Math.max(3,absR*32)+"px",
+                                  background:"linear-gradient(0deg,#16a34a,#22C55E)",
+                                  boxShadow:glowOpacity>0.05?"0 0 "+(glowOpacity*30)+"px rgba(34,197,94,"+glowOpacity.toFixed(2)+")":"none",
+                                  position:"absolute",bottom:"50%",
+                                  transition:"height .4s ease"
+                                }}/>
+                              ):(
+                                <div style={{
+                                  width:28,borderRadius:"0 0 3px 3px",
+                                  height:Math.max(3,absR*32)+"px",
+                                  background:"linear-gradient(180deg,#dc2626,#EF4444)",
+                                  boxShadow:glowOpacity>0.05?"0 0 "+(glowOpacity*30)+"px rgba(239,68,68,"+glowOpacity.toFixed(2)+")":"none",
+                                  position:"absolute",top:"50%",
+                                  transition:"height .4s ease"
+                                }}/>
+                              )}
+                            </div>
+                            {/* Profit label */}
+                            <div style={{fontSize:8,fontWeight:700,color,marginBottom:2,lineHeight:1}}>{isPos?"+":""}{d.profit.toFixed(0)}€</div>
+                            {/* Month label */}
+                            <div style={{fontSize:8,color:"#2a3a4e",fontWeight:600}}>{label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Legend strip */}
+                    <div style={{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:6,borderTop:"1px solid rgba(255,255,255,.03)"}}>
+                      <span style={{fontSize:8,color:"#2a3a4e"}}>{months.length} mois · {settledFiltered.length} paris</span>
+                      <span style={{fontSize:8,color:totalProfit>=0?"rgba(34,197,94,.5)":"rgba(239,68,68,.5)",fontWeight:700}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€ total</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+
+            {/* ── SECTION EDGE PRIZEPICKS ── */}
+            {(()=>{
+              // Collect all settled bets with ppEdge
+              const ppBets=settledFiltered.filter(b=>b.ppEdge!=null&&b.ppMapType&&b.game);
+              if(ppBets.length===0)return null;
+
+              // Group by rounded edge (0.5 steps)
+              const byEdge={};
+              ppBets.forEach(b=>{
+                const e=Math.round(b.ppEdge*4)/4; // snap to 0.25
+                const key=e.toFixed(1);
+                if(!byEdge[key])byEdge[key]={edge:e,count:0,won:0,profit:0,staked:0,byGame:{}};
+                byEdge[key].count++;
+                byEdge[key].profit+=b.profit;
+                byEdge[key].staked+=b.stake;
+                if(b.status==="won")byEdge[key].won++;
+                // by game
+                const g=b.game||"?";
+                if(!byEdge[key].byGame[g])byEdge[key].byGame[g]={count:0,won:0,profit:0,staked:0};
+                byEdge[key].byGame[g].count++;
+                byEdge[key].byGame[g].profit+=b.profit;
+                byEdge[key].byGame[g].staked+=b.stake;
+                if(b.status==="won")byEdge[key].byGame[g].won++;
+              });
+
+              const edgeKeys=Object.keys(byEdge).sort((a,b)=>parseFloat(a)-parseFloat(b));
+              const maxCount=Math.max(...edgeKeys.map(k=>byEdge[k].count));
+
+              return(
+                <div style={{marginBottom:16}}>
+                  <div style={{background:"linear-gradient(180deg,rgba(8,12,24,.99),rgba(5,8,18,1))",border:"1px solid rgba(139,92,246,.2)",borderRadius:18,padding:"14px 16px",boxShadow:"0 12px 40px rgba(0,0,0,.4),0 0 0 0.5px rgba(107,33,245,.06)"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:20,height:20,borderRadius:5,background:"#6b21f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2L8 8H2L7 13L5 20L12 16L19 20L17 13L22 8H16L12 2Z" fill="white"/></svg>
+                        </div>
+                        <span style={{fontSize:10,color:"#a78bfa",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase"}}>Edge PrizePicks</span>
+                      </div>
+                      <span style={{fontSize:9,color:"#4a3a6e"}}>{ppBets.length} paris PP</span>
+                    </div>
+
+                    {/* Edge rows */}
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {edgeKeys.map(key=>{
+                        const d=byEdge[key];
+                        const wr=d.count>0?d.won/d.count*100:0;
+                        const roi=d.staked>0?d.profit/d.staked*100:0;
+                        const barW=maxCount>0?d.count/maxCount*100:0;
+                        const isOpen=ppEdgeDrill===key;
+                        const profitColor=d.profit>=0?"#22C55E":"#EF4444";
+                        const wrColor=wr>=55?"#22C55E":wr<45?"#EF4444":"#9CA3AF";
+                        const games=Object.keys(d.byGame).sort();
+
+                        return(
+                          <div key={key}>
+                            {/* Edge row — cliquable */}
+                            <button onClick={()=>setPpEdgeDrill(isOpen?null:key)}
+                              style={{width:"100%",background:isOpen?"rgba(139,92,246,.08)":"rgba(255,255,255,.02)",borderRadius:isOpen?"10px 10px 0 0":"10px",padding:"10px 12px",border:"1px solid "+(isOpen?"rgba(139,92,246,.3)":"rgba(255,255,255,.05)"),cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left",transition:"all .15s"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:0}}>
+                                {/* Edge badge */}
+                                <div style={{minWidth:52,display:"flex",alignItems:"center",gap:5}}>
+                                  <span style={{fontSize:14,fontWeight:800,color:"#c4b5fd",letterSpacing:-.3}}>+{d.edge.toFixed(1)}</span>
+                                  <span style={{fontSize:8,color:"#5a4a7e",fontWeight:600}}>edge</span>
+                                </div>
+                                {/* Count */}
+                                <span style={{fontSize:9,color:"#4a3a6e",minWidth:40}}>{d.count} paris</span>
+                                {/* WR */}
+                                <span style={{fontSize:11,fontWeight:700,color:wrColor,minWidth:44}}>{wr.toFixed(0)}%</span>
+                                {/* ROI */}
+                                <span style={{fontSize:10,fontWeight:600,color:roi>=0?"#22C55E":"#EF4444",minWidth:48}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
+                                {/* Profit */}
+                                <span style={{fontSize:12,fontWeight:800,color:profitColor,flex:1,textAlign:"right"}}>{d.profit>=0?"+":""}{d.profit.toFixed(0)}€</span>
+                                {/* Arrow */}
+                                <span style={{fontSize:10,color:"#5a4a7e",marginLeft:6,transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s"}}>▼</span>
+                              </div>
+                              {/* Bar */}
+                              <div style={{marginTop:6,height:3,background:"rgba(139,92,246,.08)",borderRadius:2,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:barW+"%",background:d.profit>=0?"linear-gradient(90deg,#7c3aed,#a78bfa)":"linear-gradient(90deg,#dc2626,#ef4444)",borderRadius:2,transition:"width .5s ease"}}/>
+                              </div>
+                            </button>
+
+                            {/* Drill-down par jeu */}
+                            {isOpen&&(
+                              <div style={{background:"rgba(107,33,245,.04)",border:"1px solid rgba(139,92,246,.2)",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
+                                {/* Header colonnes */}
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 50px 48px 52px 60px",padding:"7px 12px",borderBottom:"1px solid rgba(139,92,246,.1)"}}>
+                                  {["Jeu","Paris","WR","ROI","Profit"].map(h=>(
+                                    <span key={h} style={{fontSize:8,color:"#4a3a6e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",textAlign:h!=="Jeu"?"center":"left"}}>{h}</span>
+                                  ))}
+                                </div>
+                                {games.map(g=>{
+                                  const gd=d.byGame[g];
+                                  const gwr=gd.count>0?gd.won/gd.count*100:0;
+                                  const groi=gd.staked>0?gd.profit/gd.staked*100:0;
+                                  return(
+                                    <div key={g} style={{display:"grid",gridTemplateColumns:"1fr 50px 48px 52px 60px",padding:"9px 12px",borderBottom:"1px solid rgba(139,92,246,.06)",alignItems:"center"}}>
+                                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                        <GameLogo game={g} size={14}/>
+                                        <span style={{fontSize:12,fontWeight:600,color:"#b8a8d8"}}>{g}</span>
+                                      </div>
+                                      <span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{gd.count}</span>
+                                      <span style={{fontSize:11,fontWeight:700,color:gwr>=55?"#22C55E":gwr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{gwr.toFixed(0)}%</span>
+                                      <span style={{fontSize:11,fontWeight:600,color:groi>=0?"#22C55E":"#EF4444",textAlign:"center"}}>{groi>=0?"+":""}{groi.toFixed(1)}%</span>
+                                      <span style={{fontSize:12,fontWeight:800,color:gd.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{gd.profit>=0?"+":""}{gd.profit.toFixed(0)}€</span>
+                                    </div>
+                                  );
+                                })}
+                                {/* Total row */}
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 50px 48px 52px 60px",padding:"8px 12px",background:"rgba(139,92,246,.06)",alignItems:"center"}}>
+                                  <span style={{fontSize:10,fontWeight:700,color:"#7a6a9e",textTransform:"uppercase",letterSpacing:.5}}>Total</span>
+                                  <span style={{fontSize:11,fontWeight:700,color:"#8a7aae",textAlign:"center"}}>{d.count}</span>
+                                  <span style={{fontSize:11,fontWeight:800,color:wr>=55?"#22C55E":wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{wr.toFixed(0)}%</span>
+                                  <span style={{fontSize:11,fontWeight:700,color:roi>=0?"#22C55E":"#EF4444",textAlign:"center"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
+                                  <span style={{fontSize:13,fontWeight:800,color:d.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{d.profit>=0?"+":""}{d.profit.toFixed(0)}€</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Global PP summary */}
+                    {(()=>{
+                      const tot=ppBets.length;
+                      const totW=ppBets.filter(b=>b.status==="won").length;
+                      const totP=ppBets.reduce((s,b)=>s+(b.profit||0),0);
+                      const totS=ppBets.reduce((s,b)=>s+(b.stake||0),0);
+                      const totWR=tot>0?totW/tot*100:0;
+                      const totROI=totS>0?totP/totS*100:0;
+                      return(
+                        <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(139,92,246,.1)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <span style={{fontSize:9,color:"#4a3a6e",fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Global PP</span>
+                          <div style={{display:"flex",gap:14,alignItems:"center"}}>
+                            <span style={{fontSize:10,color:totWR>=55?"#22C55E":totWR<45?"#EF4444":"#9CA3AF",fontWeight:700}}>{totWR.toFixed(0)}% WR</span>
+                            <span style={{fontSize:10,color:totROI>=0?"#22C55E":"#EF4444",fontWeight:700}}>{totROI>=0?"+":""}{totROI.toFixed(1)}% ROI</span>
+                            <span style={{fontSize:13,fontWeight:800,color:totP>=0?"#22C55E":"#EF4444"}}>{totP>=0?"+":""}{totP.toFixed(0)}€</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── PAR JEU — accordéons regroupés ── */}
             {ALL_GAMES.map(game=>{
@@ -5747,7 +6241,7 @@ export default function App(){
                 navItems.forEach((n,idx)=>{
                   if(idx===mid){
                     items.push(<button key="add-fab" onClick={()=>{setView("add");setTimeout(()=>playerACRef.current?.focus(),80);}}
-                      style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,0.55)",flexShrink:0,transform:view==="add"?"scale(0.93)":"scale(1)",transition:"transform .15s ease",marginBottom:4}}>
+                      style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 16px rgba(124,58,237,0.45)",flexShrink:0,transform:view==="add"?"scale(0.93)":"scale(1)",transition:"transform .15s ease",marginBottom:4}}>
                       <span style={{fontSize:30,color:"#fff",lineHeight:1,marginTop:-1}}>+</span>
                     </button>);
                   }
