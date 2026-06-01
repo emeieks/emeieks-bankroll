@@ -4579,7 +4579,7 @@ export default function App(){
                 </div>
               </div>
               );
-            })())}
+            })()}
 
             {/* Période filter */}
             <div style={{display:"flex",gap:6,marginBottom:14}}>
