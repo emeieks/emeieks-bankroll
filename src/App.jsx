@@ -6062,33 +6062,83 @@ export default function App(){
                 </div>
                 {/* Panel expanded - heure + boutons */}
                 {isExpanded&&(
-                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
-                    <span style={{fontSize:10,color:"#60A5FA",fontWeight:600,flexShrink:0}}>
-                      {matchTime?"🕐 "+matchTime:"Heure non disponible"}
-                    </span>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <button onClick={e=>{
-                        e.stopPropagation();
-                        const bkMap={"Betby":"Betby","Thunderpick":"Thunderpick","betby":"Betby","thunderpick":"Thunderpick"};
-                        const bk=bkMap[b.source]||b.source||"";
-                        const statLabel=b.stat==="headshots"?"HS":"Kills";
-                        const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
-                        const mapTag=b.map!=null?"Map "+b.map:"Map 1";
-                        const ou=b.direction==="OVER"?"Over":"Under";
-                        const gk=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
-                        const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
-                        setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo});
-                        setEditingBet(null);
-                        setExpandedAnalyseBet(null);
-                        setView("add");
-                      }}
-                        style={{padding:"5px 14px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:7,color:"#A78BFA",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
-                        + Ajouter
-                      </button>
-                      <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
-                        style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#6ee7a0":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
-                        {isHidden?"✓ Réafficher":"✓ Pris"}
-                      </button>
+                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",flexDirection:"column",gap:8}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:10,color:"#60A5FA",fontWeight:600,flexShrink:0}}>
+                        {matchTime?"🕐 "+matchTime:"Heure non disponible"}
+                      </span>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <button onClick={e=>{
+                          e.stopPropagation();
+                          const bkMap={"Betby":"Betby","Thunderpick":"Thunderpick","betby":"Betby","thunderpick":"Thunderpick"};
+                          const bk=bkMap[b.source]||b.source||"";
+                          const statLabel=b.stat==="headshots"?"HS":"Kills";
+                          const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
+                          const mapTag=b.map!=null?"Map "+b.map:"Map 1";
+                          const ou=b.direction==="OVER"?"Over":"Under";
+                          const gk=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+                          const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
+                          // Calcul ppLine selon ppMapType sélectionné
+                          const selPPType=window.__ppTypeSelected?.[betKey]||"";
+                          let ppDesc="";
+                          if(selPPType&&b.book_line!=null){
+                            const bkVal=parseFloat(b.book_line);
+                            const edge=ou==="Over"?2.0:2.5;
+                            if(selPPType==="Map 1+2") ppDesc=(Math.round((bkVal*2-edge)*2)/2).toFixed(1)+" Kills";
+                            else if(selPPType==="Map 3") ppDesc=(Math.round((bkVal-1.5)*2)/2).toFixed(1)+" Kills";
+                            else if(selPPType==="Map 1+2+3") ppDesc=(Math.round((bkVal*3-(ou==="Over"?3.0:4.0))*2)/2).toFixed(1)+" Kills";
+                          }
+                          setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo,ppMapType:selPPType,ppDescription:ppDesc});
+                          setEditingBet(null);
+                          setExpandedAnalyseBet(null);
+                          setView("add");
+                        }}
+                          style={{padding:"5px 14px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:7,color:"#A78BFA",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                          + Ajouter
+                        </button>
+                        <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
+                          style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#6ee7a0":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                          {isHidden?"✓ Réafficher":"✓ Pris"}
+                        </button>
+                      </div>
+                    </div>
+                    {/* PrizePicks cut selector */}
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      <div style={{fontSize:9,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.8}}>PrizePicks Cut</div>
+                      <div style={{display:"flex",gap:5}}>
+                        {["Map 1+2","Map 3","Map 1+2+3"].map(t=>{
+                          const sel=(window.__ppTypeSelected?.[betKey]||"")=== t;
+                          const bkVal=b.book_line!=null?parseFloat(b.book_line):null;
+                          const ou=b.direction==="OVER"?"Over":"Under";
+                          const edge=ou==="Over"?2.0:2.5;
+                          let ppVal="";
+                          if(bkVal!=null){
+                            if(t==="Map 1+2") ppVal=(Math.round((bkVal*2-edge)*2)/2).toFixed(1);
+                            else if(t==="Map 3") ppVal=(Math.round((bkVal-1.5)*2)/2).toFixed(1);
+                            else if(t==="Map 1+2+3") ppVal=(Math.round((bkVal*3-(ou==="Over"?3.0:4.0))*2)/2).toFixed(1);
+                          }
+                          return(
+                            <button key={t} onClick={e=>{
+                              e.stopPropagation();
+                              if(!window.__ppTypeSelected) window.__ppTypeSelected={};
+                              window.__ppTypeSelected[betKey]=sel?"":t;
+                              setExpandedAnalyseBet(null);
+                              setTimeout(()=>setExpandedAnalyseBet(betKey),10);
+                            }} style={{
+                              flex:1,padding:"5px 4px",borderRadius:7,
+                              background:sel?"rgba(167,139,250,0.2)":"rgba(255,255,255,0.04)",
+                              border:"1px solid "+(sel?"rgba(167,139,250,0.6)":"rgba(255,255,255,0.08)"),
+                              color:sel?"#c4b5fd":"#6B7280",
+                              cursor:"pointer",fontSize:10,fontWeight:700,
+                              fontFamily:"'Inter',sans-serif",
+                              display:"flex",flexDirection:"column",alignItems:"center",gap:1
+                            }}>
+                              <span>{t}</span>
+                              {ppVal&&<span style={{fontSize:9,color:sel?"#a78bfa":"#4B5563",fontWeight:600}}>{ppVal} K</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
