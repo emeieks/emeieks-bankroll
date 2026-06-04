@@ -1567,6 +1567,8 @@ export default function App(){
   const [sessionMode,setSessionMode]=useState(false);
   const [duelMode,setDuelMode]=useState(false);
   const [casinoMode,setCasinoMode]=useState(false);
+  const [casinoEditModal,setCasinoEditModal]=useState(false);
+  const [casinoEditBet,setCasinoEditBet]=useState(null); // {id, bookmaker, amount}
   const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:""});
   const [sessionMaps,setSessionMaps]=useState([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
   const [fGames,setFGames]=useState([]);
@@ -4628,9 +4630,10 @@ export default function App(){
               const byBK={};
               casinoBets.forEach(b=>{
                 const bk=b.bookmaker||"Autre";
-                if(!byBK[bk])byBK[bk]={loss:0,count:0};
+                if(!byBK[bk])byBK[bk]={loss:0,count:0,bets:[]};
                 byBK[bk].loss+=b.profit||0;
                 byBK[bk].count++;
+                byBK[bk].bets.push(b);
               });
               return(
                 <div style={{background:"rgba(245,158,11,0.05)",border:"1px solid rgba(245,158,11,0.15)",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
@@ -4642,15 +4645,94 @@ export default function App(){
                     <div style={{fontSize:16,fontWeight:800,color:"#EF4444"}}>{totalCasino.toFixed(0)}$</div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {Object.entries(byBK).sort((a,b)=>a[1].loss-b[1].loss).map(([bk,{loss,count}])=>(
-                      <div key={bk} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid rgba(255,255,255,0.05)"}}>
+                    {Object.entries(byBK).sort((a,b)=>a[1].loss-b[1].loss).map(([bk,{loss,count,bets:bkBets}])=>(
+                      <div key={bk} onClick={()=>{setCasinoEditModal(bk);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",transition:"all .15s"}}
+                        onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(245,158,11,0.3)"}
+                        onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(255,255,255,0.05)"}>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
                           <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{bk}</span>
                           <span style={{fontSize:10,color:"#6B7280"}}>{count} entrée{count>1?"s":""}</span>
                         </div>
-                        <span style={{fontSize:13,fontWeight:700,color:"#EF4444"}}>{loss.toFixed(0)}$</span>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:13,fontWeight:700,color:"#EF4444"}}>{loss.toFixed(0)}$</span>
+                          <span style={{fontSize:10,color:"#6B7280"}}>✏️</span>
+                        </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── MODAL EDIT CASINO BETS ── */}
+            {casinoEditModal&&(()=>{
+              const casinoBets=bets.filter(b=>b.game==="Casino"&&(b.bookmaker||"Autre")===casinoEditModal);
+              return(
+                <div className="moverlay" onClick={()=>{setCasinoEditModal(false);setCasinoEditBet(null);}}>
+                  <div className="modal" onClick={e=>e.stopPropagation()}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span>🎰</span>
+                        <span style={{fontSize:14,fontWeight:700,color:"#fbbf24"}}>{casinoEditModal}</span>
+                      </div>
+                      <button onClick={()=>{setCasinoEditModal(false);setCasinoEditBet(null);}} style={{background:"#1F2937",border:"none",borderRadius:8,color:"#6B7280",fontSize:16,cursor:"pointer",padding:"4px 8px"}}>✕</button>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
+                      {casinoBets.sort((a,b2)=>String(b2.datetime||"").localeCompare(String(a.datetime||""))).map(b=>(
+                        <div key={b.id} style={{background:"#0D1117",borderRadius:10,border:"1px solid #1F2937",padding:"10px 12px"}}>
+                          {casinoEditBet===b.id?(
+                            // Edit mode
+                            <div>
+                              <div style={{fontSize:10,color:"#6B7280",marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Montant perdu ($)</div>
+                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                <div style={{flex:1,display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.04)",borderRadius:8,border:"1px solid rgba(255,255,255,.08)",padding:"8px 12px"}}>
+                                  <span style={{color:"#6B7280",fontSize:13}}>-$</span>
+                                  <input type="number" inputMode="decimal" id={"casino-edit-"+b.id}
+                                    defaultValue={Math.abs(b.profit||0)}
+                                    style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:16,fontWeight:700,fontFamily:"Inter,sans-serif"}}/>
+                                </div>
+                                <button onClick={()=>{
+                                  const el=document.getElementById("casino-edit-"+b.id);
+                                  const newAmt=parseFloat(el?.value)||0;
+                                  setBets(prev=>prev.map(x=>x.id===b.id?{...x,stake:newAmt,profit:-newAmt}:x));
+                                  supaUpsertBet({...b,stake:newAmt,profit:-newAmt});
+                                  setCasinoEditBet(null);
+                                  showToast("Modifié ✓");
+                                }} style={{padding:"8px 14px",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:8,color:"#6ee7a0",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+                                  ✓ Sauv.
+                                </button>
+                                <button onClick={()=>setCasinoEditBet(null)}
+                                  style={{padding:"8px 10px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ):(
+                            // View mode
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                              <div>
+                                <div style={{fontSize:13,fontWeight:700,color:"#EF4444"}}>-{Math.abs(b.profit||0).toFixed(0)}$</div>
+                                <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{b.datetime?String(b.datetime).slice(0,10):""}</div>
+                              </div>
+                              <div style={{display:"flex",gap:6}}>
+                                <button onClick={()=>setCasinoEditBet(b.id)}
+                                  style={{padding:"5px 12px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:7,color:"#fbbf24",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                                  ✏️ Éditer
+                                </button>
+                                <button onClick={()=>{
+                                  if(!window.confirm("Supprimer cette entrée ?"))return;
+                                  deleteBet(b.id);
+                                  if(casinoBets.length<=1)setCasinoEditModal(false);
+                                  showToast("Supprimé ✓");
+                                }} style={{padding:"5px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:7,color:"#EF4444",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               );
