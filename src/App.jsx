@@ -159,7 +159,7 @@ function BankrollChart({points,h=150}){
   const linePath="M"+points.map((p,i)=>px(i)+","+py(p.v)).join(" L");
   const fillPath="M"+px(0)+","+py(points[0].v)+" "+points.map((p,i)=>"L"+px(i)+","+py(p.v)).join(" ")+" L"+px(points.length-1)+","+(pad.t+cy)+" L"+px(0)+","+(pad.t+cy)+" Z";
   const up=points[points.length-1].v>=points[0].v;
-  const color=up?"#4ade80":"#EF4444";
+  const color=up?"#6ee7a0":"#EF4444";
   const glowId="glow_"+Math.abs(points[0].v|0);
   const yTicks=[min,min+range*0.5,max];
   const xSamples=[0,Math.floor((points.length-1)/2),points.length-1];
@@ -245,13 +245,13 @@ function ProfitChart({points,h=110}){
   return(
     <svg width="100%" viewBox={"0 0 "+W+" "+H} preserveAspectRatio="none" style={{overflow:"visible"}}>
       <defs>
-        <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4ade80" stopOpacity=".7"/><stop offset="100%" stopColor="#4ade80" stopOpacity=".15"/></linearGradient>
+        <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6ee7a0" stopOpacity=".7"/><stop offset="100%" stopColor="#6ee7a0" stopOpacity=".15"/></linearGradient>
         <linearGradient id="pr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#EF4444" stopOpacity=".15"/><stop offset="100%" stopColor="#EF4444" stopOpacity=".7"/></linearGradient>
       </defs>
       {/* zero line */}
       <line x1={padL} y1={zeroY} x2={W-padR} y2={zeroY} stroke="#374151" strokeWidth="1"/>
       <text x={padL-3} y={zeroY+4} textAnchor="end" fontSize="8" fill="#6B7280">0</text>
-      <text x={padL-3} y={padT+5} textAnchor="end" fontSize="8" fill="#4ade80">+{maxAbs.toFixed(0)}</text>
+      <text x={padL-3} y={padT+5} textAnchor="end" fontSize="8" fill="#6ee7a0">+{maxAbs.toFixed(0)}</text>
       <text x={padL-3} y={H-padB+4} textAnchor="end" fontSize="8" fill="#EF4444">-{maxAbs.toFixed(0)}</text>
       {/* bars */}
       {points.map((p,i)=>{
@@ -333,6 +333,27 @@ async function supaUpsertPlayer(data) {
   return Array.isArray(result) ? result[0] : result;
 }
 
+async function supaUploadPlayerPhoto(file, game, team, playerName) {
+  const slug = playerName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const teamSlug = team.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const gameSlug = game.toLowerCase();
+  const path = gameSlug === 'dota2'
+    ? gameSlug + '/' + slug + '.webp'
+    : gameSlug + '/' + teamSlug + '/' + slug + '.webp';
+  const res = await fetch(SUPA_URL + '/storage/v1/object/players/' + path, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': file.type || 'image/webp',
+      'x-upsert': 'true',
+    },
+    body: file,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return SUPA_URL + '/storage/v1/object/public/players/' + path;
+}
+
 async function supaDeletePlayer(id) {
   await fetch(SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(id), {
     method: "DELETE",
@@ -385,7 +406,7 @@ const GAME_CFG={
 };
 const STATUS_CFG={
   pending:{label:"En attente",color:"#3B82F6",bg:"rgba(96,165,250,0.1)"},
-  won:{label:"Gagné",color:"#4ade80",bg:"rgba(34,197,94,0.1)"},
+  won:{label:"Gagné",color:"#6ee7a0",bg:"rgba(34,197,94,0.1)"},
   lost:{label:"Perdu",color:"#EF4444",bg:"rgba(248,113,113,0.1)"},
 };
 const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:""};
@@ -576,8 +597,8 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
           onChange={handleChange} onFocus={()=>{setRecents(getRecentPlayers());setOpen(true);}}
           style={{paddingRight:isConfirmed?42:14,height:48,background:"transparent",border:"none",outline:"none",borderRadius:0,boxShadow:"none"}}/>
         {isConfirmed&&(
-          <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",justifyContent:"center",width:24,height:24,background:"rgba(34,197,94,0.15)",borderRadius:"50%",border:"1.5px solid #4ade80",pointerEvents:"none"}}>
-            <span style={{color:"#4ade80",fontSize:14,lineHeight:1}}>✓</span>
+          <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",justifyContent:"center",width:24,height:24,background:"rgba(34,197,94,0.15)",borderRadius:"50%",border:"1.5px solid #6ee7a0",pointerEvents:"none"}}>
+            <span style={{color:"#6ee7a0",fontSize:14,lineHeight:1}}>✓</span>
           </div>
         )}
       </div>
@@ -607,7 +628,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
                       {p.league&&!hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
                       {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4}}>{t.name}</span>}
                       <span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>
-                      {isSelected&&<span style={{color:"#4ade80",fontSize:14,fontWeight:700,marginLeft:2}}>✓</span>}
+                      {isSelected&&<span style={{color:"#6ee7a0",fontSize:14,fontWeight:700,marginLeft:2}}>✓</span>}
                     </div>
                   );
                 })()}
@@ -646,7 +667,7 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{key}</span>
-                    {isCustom&&<span style={{fontSize:9,color:"#4ade80",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.2)",padding:"1px 5px",borderRadius:4,fontWeight:700}}>MODIFIÉ</span>}
+                    {isCustom&&<span style={{fontSize:9,color:"#6ee7a0",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.2)",padding:"1px 5px",borderRadius:4,fontWeight:700}}>MODIFIÉ</span>}
                   </div>
                   <div style={{fontSize:10,color:"#9CA3AF"}}>{p.team} · {p.role}{p.league?" · "+p.league:""}</div>
                 </div>
@@ -778,7 +799,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {["Over","Under"].map(ou=>(
               <button key={ou} onClick={()=>setEbOU(ou)}
-                style={{padding:"11px 0",borderRadius:10,border:"1.5px solid "+(ebOU===ou?(ou==="Over"?"#4ade80":"#EF4444"):"#1F2937"),background:ebOU===ou?(ou==="Over"?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)"):"transparent",color:ebOU===ou?(ou==="Over"?"#4ade80":"#EF4444"):"#6B7280",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                style={{padding:"11px 0",borderRadius:10,border:"1.5px solid "+(ebOU===ou?(ou==="Over"?"#6ee7a0":"#EF4444"):"#1F2937"),background:ebOU===ou?(ou==="Over"?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)"):"transparent",color:ebOU===ou?(ou==="Over"?"#6ee7a0":"#EF4444"):"#6B7280",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
                 {ou}
               </button>
             ))}
@@ -811,7 +832,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
         {ebOdds&&ebStake&&(
           <div style={{textAlign:"center",marginBottom:12,padding:"8px",background:"rgba(34,197,94,0.06)",borderRadius:8,border:"1px solid rgba(34,197,94,0.15)"}}>
             <span style={{fontSize:12,color:"#6B7280"}}>Gain potentiel : </span>
-            <span style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>+{(parseFloat(ebStake||0)*(parseFloat(ebOdds||1)-1)).toFixed(2)}$</span>
+            <span style={{fontSize:14,fontWeight:700,color:"#6ee7a0"}}>+{(parseFloat(ebStake||0)*(parseFloat(ebOdds||1)-1)).toFixed(2)}$</span>
           </div>
         )}
 
@@ -842,7 +863,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
                 return(
                   <button key={t} onClick={()=>setEbTournament(t)}
                     style={{padding:"6px 11px",borderRadius:8,border:"1.5px solid "+(ebTournament===t?"#F59E0B":"#1F2937"),background:ebTournament===t?"rgba(245,158,11,0.12)":"transparent",color:ebTournament===t?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>
-                    {isActive&&<span style={{width:5,height:5,borderRadius:"50%",background:"#4ade80",boxShadow:"0 0 4px rgba(34,197,94,0.7)",flexShrink:0}}/>}
+                    {isActive&&<span style={{width:5,height:5,borderRadius:"50%",background:"#6ee7a0",boxShadow:"0 0 4px rgba(34,197,94,0.7)",flexShrink:0}}/>}
                     {t}
                   </button>
                 );
@@ -919,7 +940,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const isPending=bet.status==="pending";
   const isWon=bet.status==="won";
   const isLost=bet.status==="lost";
-  const profitColor=isPending?"#60A5FA":isWon?"#4ade80":"#EF4444";
+  const profitColor=isPending?"#60A5FA":isWon?"#6ee7a0":"#EF4444";
   const profitTxt=isPending?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"$";
   const borderCol=isPending?"rgba(255,255,255,0.06)":isWon?"rgba(34,197,94,0.35)":"rgba(248,113,113,0.35)";
   const bkLogo=BK_LOGOS[bet.bookmaker]||bkPhotos[bet.bookmaker]||null;
@@ -930,7 +951,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const glowStyle=!isPending&&(isWon
     ?"0 0 10px rgba(34,197,94,.18)":"0 0 8px rgba(239,68,68,.14)");
   return(
-    <div style={{borderBottom:"1px solid rgba(255,255,255,.04)",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"2.5px solid "+(isPending?"rgba(96,165,250,.5)":isWon?"rgba(34,197,94,.55)":"rgba(239,68,68,.5)"),background:"transparent",position:"relative",transition:"all .15s"}}>
+    <div style={{borderBottom:"1px solid rgba(255,255,255,.04)",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"2.5px solid "+(isPending?"#60a5fa":isWon?"#22d97a":"#f43f5e"),background:"transparent",position:"relative",transition:"all .15s"}}>
       <div onClick={()=>setOpen(v=>!v)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
         <div style={{display:"flex",alignItems:"center",gap:11}}>
 
@@ -944,7 +965,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
             {/* L1 : Joueur — Kills — Map */}
             <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"wrap"}}>
               <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
-              {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#4ade80",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.2)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
+              {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#6ee7a0",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.2)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
               {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
               {descLine&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
               {bet.mapTag&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.2)",flexShrink:0}}>{bet.mapTag}</span></>}
@@ -1051,9 +1072,9 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
 const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onEdit}){
   const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
   return(
-    <div className="betrow" style={{background:selected?"rgba(34,197,94,0.04)":"#111827",padding:"11px 13px",borderLeft:selected?"3px solid #4ade80":"3px solid transparent"}}>
+    <div className="betrow" style={{background:selected?"rgba(34,197,94,0.04)":"#111827",padding:"11px 13px",borderLeft:selected?"3px solid #6ee7a0":"3px solid transparent"}}>
       <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-        <button onClick={onToggle} style={{width:22,height:22,borderRadius:6,border:"2px solid "+(selected?"#4ade80":"#1F2937"),background:selected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0,marginTop:2}}/>
+        <button onClick={onToggle} style={{width:22,height:22,borderRadius:6,border:"2px solid "+(selected?"#6ee7a0":"#1F2937"),background:selected?"rgba(34,197,94,0.1)":"transparent",cursor:"pointer",flexShrink:0,marginTop:2}}/>
         <div style={{flex:1,minWidth:0}}>
           {/* Date */}
           <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4}}>{fmtDate(bet.datetime)}{bet.bookmaker?" · "+bet.bookmaker:""}</div>
@@ -1067,7 +1088,7 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
               </div>
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
-              <div style={{fontWeight:700,fontSize:13,color:bet.status==="pending"?"#3B82F6":bet.profit>=0?"#4ade80":"#EF4444"}}>
+              <div style={{fontWeight:700,fontSize:13,color:bet.status==="pending"?"#3B82F6":bet.profit>=0?"#6ee7a0":"#EF4444"}}>
                 {bet.status==="pending"?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"$"}
               </div>
               <div style={{fontSize:10,color:sc.color}}>{sc.label}</div>
@@ -1247,7 +1268,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
                             <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400,fontSize:12}}>— {b.description}</span></div>
                             <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>@{b.odds} · {b.stake}$ · {b.datetime?String(b.datetime).slice(0,10):""}</div>
                           </div>
-                          <div style={{fontSize:13,fontWeight:700,color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6",flexShrink:0}}>
+                          <div style={{fontSize:13,fontWeight:700,color:b.status==="won"?"#6ee7a0":b.status==="lost"?"#EF4444":"#3B82F6",flexShrink:0}}>
                             {b.status==="pending"?"@"+b.odds:((b.profit||0)>=0?"+":"")+(b.profit||0).toFixed(0)+"$"}
                           </div>
                         </div>
@@ -1382,8 +1403,8 @@ function MesParisView({
             return(
               <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])} title={bk}
                 style={{width:36,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.4)":"rgba(255,255,255,.06)"),background:on?"rgba(34,197,94,.08)":"rgba(255,255,255,.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
-                {logo?(<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>):(<span style={{fontSize:8,color:on?"#4ade80":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>)}
-                {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#4ade80",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
+                {logo?(<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>):(<span style={{fontSize:8,color:on?"#6ee7a0":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>)}
+                {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#6ee7a0",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
               </button>
             );
           })}
@@ -1440,7 +1461,7 @@ function MesParisView({
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#4ade80":"#f87171",letterSpacing:-.3}}>{profit>=0?"+":""}{profit.toFixed(0)}$</div>
+                      <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#6ee7a0":"#f87171",letterSpacing:-.3}}>{profit>=0?"+":""}{profit.toFixed(0)}$</div>
                       <div style={{fontSize:11,color:roi>=0?"#22a55a":"#c04040",fontWeight:600}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
                     </div>
                     <span style={{fontSize:11,color:"#4B6080",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}>▼</span>
@@ -1455,7 +1476,7 @@ function MesParisView({
                         <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",background:"rgba(10,16,32,.97)",borderTop:"1px solid rgba(255,255,255,.03)"}}>
                             <span style={{fontSize:13,fontWeight:700,color:"#b8c8de"}}>{fmtDay(dk)}</span>
-                            <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#4ade80":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
+                            <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#6ee7a0":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
                           </div>
                           {dayBets.map(b=>(
                             <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
@@ -1544,6 +1565,7 @@ export default function App(){
   const [editingBet,setEditingBet]=useState(null); // null or bet object being edited
   const [sessionMode,setSessionMode]=useState(false);
   const [duelMode,setDuelMode]=useState(false);
+  const [casinoMode,setCasinoMode]=useState(false);
   const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:""});
   const [sessionMaps,setSessionMaps]=useState([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
   const [fGames,setFGames]=useState([]);
@@ -1581,7 +1603,7 @@ export default function App(){
   const toggleHideBK=bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;});
   const visibleBKs=bookmakers.filter(bk=>!hiddenBKs.has(bk));
   const [modalPlayer,setModalPlayer]=useState(false);
-  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
+  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});
   const [editingPlayer,setEditingPlayer]=useState(null); // {key, data}
   // Tournois actifs par jeu: {CS2: {name:"PGL Astana 2026", end:"2026-04-10"}, ...}
   const [activeTourneys,setActiveTourneys]=useState({});
@@ -1740,7 +1762,7 @@ export default function App(){
     return()=>clearTimeout(t);
   },[bets,loaded]);
 
-  const showToast=useCallback((msg,color="#4ade80")=>{
+  const showToast=useCallback((msg,color="#6ee7a0")=>{
     setToast({msg,color});setTimeout(()=>setToast(null),2200);
   },[]);
 
@@ -2652,16 +2674,22 @@ export default function App(){
     showToast("🏆 Tournoi mis à jour ✓");
   }
 
-  function savePlayer(){
-    if(!pform.name.trim())return;
+  const savePlayer=async()=>{
+    if(!pform.name.trim()||!pform.team.trim())return;
     const key=pform.name.toLowerCase().trim();
-    const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team};
-    supaUpsertPlayer({name:key,...data}).catch(()=>{});
-    setPlayers(p=>({...p,[key.toLowerCase()]:data}));
-    setPform({name:"",game:"LoL",league:"",role:"",team:""});
-    setModalPlayer(false);
-    showToast(pform.name+" ajouté ✓");
-  }
+    let photoUrl=pform.photoUrl||null;
+    try{
+      if(pform.photoFile){
+        photoUrl=await supaUploadPlayerPhoto(pform.photoFile,pform.game,pform.team,pform.name);
+      }
+      const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team,photo_url:photoUrl,avatar_url:photoUrl};
+      await supaUpsertPlayer({name:key,...data});
+      setPlayers(p=>({...p,[key]:data}));
+      setPform({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});
+      setModalPlayer(false);
+      showToast(pform.name+" ajouté ✓");
+    }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
+  };
   function saveBookmaker(){
     if(!newBK.trim())return;
     setBookmakers(b=>[...b,newBK.trim()]);
@@ -2734,7 +2762,7 @@ export default function App(){
         .add-ifield:focus{border-color:rgba(124,58,237,0.6);box-shadow:0 0 0 3px rgba(124,58,237,0.12);}
         .ou-btn{padding:13px 0;border-radius:12px;border:1.5px solid #1F2937;background:rgba(255,255,255,0.03);color:#9CA3AF;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .25s ease;will-change:border-color,background,color,box-shadow;}
         .ou-btn:active{transform:scale(.97);}
-        .ou-btn.over.on{border-color:#4ade80;background:rgba(34,197,94,0.1);color:#4ade80;box-shadow:0 0 16px rgba(74,222,128,0.15);}
+        .ou-btn.over.on{border-color:#6ee7a0;background:rgba(34,197,94,0.1);color:#6ee7a0;box-shadow:0 0 16px rgba(74,222,128,0.15);}
         .ou-btn.under.on{border-color:#EF4444;background:rgba(239,68,68,0.1);color:#EF4444;box-shadow:0 0 16px rgba(239,68,68,0.12);}
         .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 8px 4px;border-radius:12px;transition:color .2s ease,transform .15s ease;font-family:'Inter',sans-serif;color:#4a5a6e;min-width:56px;will-change:transform,color;}
         .navitem:active{transform:scale(.90);}
@@ -2822,10 +2850,10 @@ export default function App(){
                   </div>
                 </div>
                 <button onClick={()=>setSupaModal(true)}
-                  style={{display:"flex",alignItems:"center",gap:5,background:supaOk?"rgba(34,197,94,.06)":"rgba(124,58,237,.06)",border:"1px solid "+(supaOk?"rgba(34,197,94,.18)":"rgba(124,58,237,.18)"),borderRadius:10,padding:"6px 12px",cursor:"pointer",fontFamily:"Inter,sans-serif",color:supaOk?"#4ade80":"#a78bfa",fontSize:11,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>
+                  style={{display:"flex",alignItems:"center",gap:5,background:supaOk?"rgba(34,197,94,.06)":"rgba(124,58,237,.06)",border:"1px solid "+(supaOk?"rgba(34,197,94,.18)":"rgba(124,58,237,.18)"),borderRadius:10,padding:"6px 12px",cursor:"pointer",fontFamily:"Inter,sans-serif",color:supaOk?"#6ee7a0":"#a78bfa",fontSize:11,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>
                   <span style={{fontSize:11}}>☁️</span>
                   <span>{syncing?"Sync…":supaOk?"✓":"Cloud"}</span>
-                  {supaOk&&!syncing&&<span style={{width:5,height:5,borderRadius:"50%",background:"#4ade80",boxShadow:"0 0 6px rgba(34,197,94,.9)",flexShrink:0}}/>}
+                  {supaOk&&!syncing&&<span style={{width:5,height:5,borderRadius:"50%",background:"#6ee7a0",boxShadow:"0 0 6px rgba(34,197,94,.9)",flexShrink:0}}/>}
                 </button>
               </div>
 
@@ -2922,14 +2950,14 @@ export default function App(){
                 <div style={{background:"linear-gradient(160deg,rgba(10,16,32,.99),rgba(7,12,26,.99))",borderRadius:16,border:"1px solid rgba(99,130,200,.14)",overflow:"hidden",boxShadow:"0 10px 32px rgba(0,0,0,.4)"}}>
                   {bets.filter(b=>b.status!=="pending").slice(0,5).map((b,i)=>{
                     const isWon=b.status==="won";
-                    const profitColor=isWon?"#4ade80":"#ef4444";
+                    const profitColor=isWon?"#6ee7a0":"#ef4444";
                     const profitVal=b.profit!=null?b.profit:(isWon?(b.stake||0)*(b.odds-1):-(b.stake||0));
                     const profitTxt=(profitVal>=0?"+":"")+profitVal.toFixed(2)+"$";
                     const bkLogo=BK_LOGOS[b.bookmaker]||bkPhotos[b.bookmaker]||null;
                     const hasPPh=b.ppEdge!=null&&b.ppMapType;
                     const descLine=b.description?b.description.replace(/^(Over|Under)\s/,""):""
                     return(
-                      <div key={b.id} onClick={()=>setView("mesparis")} style={{borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",cursor:"pointer",borderLeft:"2.5px solid "+(isWon?"rgba(74,222,128,.55)":"rgba(239,68,68,.5)"),background:"transparent"}}>
+                      <div key={b.id} onClick={()=>setView("mesparis")} style={{borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",cursor:"pointer",borderLeft:"2.5px solid "+(isWon?"#22d97a":"#f43f5e"),background:"transparent"}}>
                         <div style={{display:"flex",alignItems:"center",gap:11,padding:"11px 13px 11px 12px"}}>
                           <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
                             <GameLogo game={b.game} size={37}/>
@@ -3089,9 +3117,9 @@ export default function App(){
                       return(
                         <button key={bk} onClick={()=>setHomeChartFilters(f=>({...f,bookmakers:on?f.bookmakers.filter(x=>x!==bk):[...f.bookmakers,bk]}))}
                           title={bk}
-                          style={{width:42,height:42,borderRadius:11,border:"1.5px solid "+(on?"#4ade80":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all .15s"}}>
-                          {logo?(<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>):(<span style={{fontSize:9,color:on?"#4ade80":"#6B7280",fontWeight:700}}>{bk.slice(0,3)}</span>)}
-                          {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#4ade80",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
+                          style={{width:42,height:42,borderRadius:11,border:"1.5px solid "+(on?"#6ee7a0":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all .15s"}}>
+                          {logo?(<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>):(<span style={{fontSize:9,color:on?"#6ee7a0":"#6B7280",fontWeight:700}}>{bk.slice(0,3)}</span>)}
+                          {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#6ee7a0",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}>✓</span></div>}
                         </button>
                       );
                     })}
@@ -3232,9 +3260,9 @@ export default function App(){
                           border:"1px solid "+(isSel?"#7C3AED":isPositive?"rgba(34,197,94,0.3)":isNegative?"rgba(248,113,113,0.25)":"transparent"),
                           transition:"all .15s ease",
                         }}>
-                        <div style={{fontSize:14,fontWeight:isToday?800:600,color:isToday?"#4ade80":"#E5E7EB",marginBottom:hasProfit?2:0}}>{d}</div>
+                        <div style={{fontSize:14,fontWeight:isToday?800:600,color:isToday?"#6ee7a0":"#E5E7EB",marginBottom:hasProfit?2:0}}>{d}</div>
                         {hasProfit&&(
-                          <div style={{fontSize:9,fontWeight:700,color:isPositive?"#4ade80":"#EF4444",lineHeight:1.1}}>
+                          <div style={{fontSize:9,fontWeight:700,color:isPositive?"#6ee7a0":"#EF4444",lineHeight:1.1}}>
                             {isPositive?"+":""}{Math.abs(profit)>=1000?(profit/1000).toFixed(1)+"K":profit.toFixed(0)}$
                           </div>
                         )}
@@ -3265,7 +3293,7 @@ export default function App(){
                 <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                     <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>{calSelected.split("-").reverse().join("/")} — {selectedDayBets.length} paris</div>
-                    {dp!==undefined&&<span style={{fontWeight:800,fontSize:14,color:dp>=0?"#4ade80":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}$</span>}
+                    {dp!==undefined&&<span style={{fontWeight:800,fontSize:14,color:dp>=0?"#6ee7a0":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}$</span>}
                   </div>
                   <div style={{background:"#0B1220",borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
                     {selectedDayBets.map(b=>(
@@ -3278,7 +3306,7 @@ export default function App(){
                           </div>
                         </div>
                         <div style={{textAlign:"right"}}>
-                          <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6"}}>
+                          <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#6ee7a0":b.status==="lost"?"#EF4444":"#3B82F6"}}>
                             {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"$"}
                           </div>
                           <div style={{fontSize:10,color:STATUS_CFG[b.status]?STATUS_CFG[b.status].color:"#9CA3AF"}}>{STATUS_CFG[b.status]?STATUS_CFG[b.status].label:b.status}</div>
@@ -3295,7 +3323,7 @@ export default function App(){
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
                 <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Bénéfice du mois</div>
-                <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#4ade80":"#EF4444"}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(0)}$</div>
+                <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#6ee7a0":"#EF4444"}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(0)}$</div>
               </div>
               <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
                 <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Paris du mois</div>
@@ -3511,9 +3539,9 @@ export default function App(){
                   <div style={{background:"rgba(124,58,237,0.06)",border:"1px solid rgba(124,58,237,0.15)",borderRadius:8,padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
                       <div style={{fontSize:10,color:"#9CA3AF"}}>{inRange.length} paris · {wr}% WR</div>
-                      <div style={{fontSize:10,color:parseFloat(roi)>=0?"#4ade80":"#EF4444"}}>{parseFloat(roi)>=0?"+":""}{roi}% ROI</div>
+                      <div style={{fontSize:10,color:parseFloat(roi)>=0?"#6ee7a0":"#EF4444"}}>{parseFloat(roi)>=0?"+":""}{roi}% ROI</div>
                     </div>
-                    <div style={{fontSize:16,fontWeight:700,color:profit>=0?"#4ade80":"#EF4444"}}>
+                    <div style={{fontSize:16,fontWeight:700,color:profit>=0?"#6ee7a0":"#EF4444"}}>
                       {profit>=0?"+":""}{profit.toFixed(0)}$
                     </div>
                   </div>
@@ -3650,7 +3678,7 @@ export default function App(){
                 <div style={{display:"flex",gap:9,marginBottom:14}}>
                   <div className="card" style={{flex:1,padding:"10px 12px"}}>
                     <div style={{fontSize:11,color:"#9CA3AF",marginBottom:2}}>{fs.length} paris</div>
-                    <div style={{fontSize:15,fontWeight:700,color:fp>=0?"#4ade80":"#EF4444"}}>{fp>=0?"+":""}{fp.toFixed(0)}$</div>
+                    <div style={{fontSize:15,fontWeight:700,color:fp>=0?"#6ee7a0":"#EF4444"}}>{fp>=0?"+":""}{fp.toFixed(0)}$</div>
                   </div>
                   <div className="card" style={{flex:1,padding:"10px 12px"}}>
                     <div style={{fontSize:11,color:"#9CA3AF",marginBottom:2}}>Win Rate</div>
@@ -3704,14 +3732,92 @@ export default function App(){
                   style={{padding:"7px 13px",borderRadius:12,border:"1.5px solid "+(duelMode?"#F59E0B":"rgba(255,255,255,0.1)"),background:duelMode?"rgba(245,158,11,0.12)":"rgba(255,255,255,0.04)",color:duelMode?"#F59E0B":"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                   ⚔️
                 </button>
-                <button onClick={()=>{setSessionMode(v=>!v);setDuelMode(false);}}
+                <button onClick={()=>{setSessionMode(v=>!v);setDuelMode(false);setCasinoMode(false);}}
                   style={{padding:"7px 13px",borderRadius:12,border:"1.5px solid "+(sessionMode?"#7C3AED":"rgba(255,255,255,0.1)"),background:sessionMode?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.04)",color:sessionMode?"#A78BFA":"#9CA3AF",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                   Multi
+                </button>
+                <button onClick={()=>{setCasinoMode(v=>!v);setDuelMode(false);setSessionMode(false);}}
+                  style={{padding:"7px 13px",borderRadius:12,border:"1.5px solid "+(casinoMode?"#f59e0b":"rgba(255,255,255,0.1)"),background:casinoMode?"rgba(245,158,11,0.12)":"rgba(255,255,255,0.04)",color:casinoMode?"#fbbf24":"#9CA3AF",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                  🎰
                 </button>
               </div>
             </div>
 
             <div style={{padding:"10px 14px 20px"}}>
+
+            {/* ── CASINO MODE ── */}
+            {casinoMode&&(
+              <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(245,158,11,0.25)",padding:"14px 16px",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:16}}>🎰</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"#fbbf24"}}>Mode Casino / Rollover</span>
+                </div>
+                <div style={{fontSize:12,color:"#9CA3AF",marginBottom:12,lineHeight:1.5}}>
+                  Enregistre une perte de rollover — montant misé sur casino pour débloquer un bonus.
+                </div>
+                {/* Bookmaker */}
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Bookmaker</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {DEFAULT_BK.map(bk=>(
+                      <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
+                        style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(form.bookmaker===bk?"#f59e0b":"rgba(255,255,255,.08)"),background:form.bookmaker===bk?"rgba(245,158,11,.12)":"rgba(255,255,255,.03)",color:form.bookmaker===bk?"#fbbf24":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                        {bk}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Montant perdu */}
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Montant perdu ($)</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.04)",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",padding:"10px 14px"}}>
+                    <span style={{color:"#6B7280",fontSize:14}}>-$</span>
+                    <input
+                      type="number" inputMode="decimal"
+                      value={form.stake||""}
+                      onChange={e=>setForm(f=>({...f,stake:e.target.value}))}
+                      placeholder="0"
+                      style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"Inter,sans-serif"}}
+                    />
+                  </div>
+                </div>
+                {/* Note optionnelle */}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Note (optionnel)</div>
+                  <input
+                    value={form.player||""}
+                    onChange={e=>setForm(f=>({...f,player:e.target.value,description:"Rollover casino"}))}
+                    placeholder="ex: Rollover bonus 500$"
+                    style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 14px",color:"#f0f4ff",fontSize:13,fontFamily:"Inter,sans-serif",boxSizing:"border-box",outline:"none"}}
+                  />
+                </div>
+                {/* Bouton ajouter */}
+                <button onClick={()=>{
+                  if(!form.stake||!form.bookmaker)return;
+                  const amt=parseFloat(form.stake)||0;
+                  const newBet={
+                    id:Date.now(),updatedAt:Date.now(),
+                    player:form.player||"Casino Rollover",
+                    description:"Rollover casino",
+                    overUnder:"Under",odds:1,stake:amt,
+                    bookmaker:form.bookmaker,
+                    status:"lost",profit:-amt,
+                    game:"Casino",league:"",role:"",team:"",
+                    datetime:nowDT(),isHeadshot:false,isLive:false,
+                    mapTag:"",tournament:form.bookmaker,
+                    ppMapType:null,ppLine:null,ppEdge:null,
+                    archived:false,splits:null,
+                  };
+                  setBets(prev=>[newBet,...prev]);
+                  supaUpsertBet(newBet);
+                  setForm({...EMPTY_FORM});
+                  setCasinoMode(false);
+                  showToast("Perte casino enregistrée ✓");
+                }} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#d97706,#f59e0b)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                  🎰 Enregistrer la perte casino
+                </button>
+              </div>
+            )}
 
             {/* ── DUEL MODE ── */}
             {duelMode&&(
@@ -4691,9 +4797,9 @@ export default function App(){
                           {GAMES.map(g=>{
                             const s=stats(edgeMatrix[bk.label][g]);
                             if(!s)return(<span key={g} style={{textAlign:"center",color:"#1a2a3a",fontSize:10}}>—</span>);
-                            return(<div key={g} style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}%</div><div style={{color:s.roi>=0?"#4ade80":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div><div style={{color:s.profit>=0?"#4ade80":"#f87171",fontSize:9}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div></div>);
+                            return(<div key={g} style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}%</div><div style={{color:s.roi>=0?"#6ee7a0":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div><div style={{color:s.profit>=0?"#6ee7a0":"#f87171",fontSize:9}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div></div>);
                           })}
-                          {(()=>{const s=stats(edgeMatrix[bk.label].total);if(!s)return(<span style={{color:"#1a2a3a"}}>—</span>);return(<div style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{color:"#7a9cbd"}}>{s.cnt}p</div><div style={{fontWeight:700,color:s.profit>=0?"#4ade80":"#f87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div></div>);})()}
+                          {(()=>{const s=stats(edgeMatrix[bk.label].total);if(!s)return(<span style={{color:"#1a2a3a"}}>—</span>);return(<div style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{color:"#7a9cbd"}}>{s.cnt}p</div><div style={{fontWeight:700,color:s.profit>=0?"#6ee7a0":"#f87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div></div>);})()}
                         </div>
                       ))}
                     </div>
@@ -4704,7 +4810,7 @@ export default function App(){
                         <div key={game+stat} style={{background:"rgba(8,12,24,.99)",border:"1px solid rgba(139,92,246,.2)",borderRadius:14,overflow:"hidden"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"rgba(139,92,246,.05)",borderBottom:"1px solid rgba(139,92,246,.1)"}}><GameLogo game={game} size={14}/><span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>{game}</span><span style={{fontSize:10,color:"#6a5a8e"}}>→ {stat}</span></div>
                           <div style={{display:"grid",gridTemplateColumns:"80px 40px 52px 52px 60px",padding:"5px 12px",borderBottom:"1px solid #0d1628"}}>{["Edge","N","WR","ROI","Profit"].map(h=>(<span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textAlign:h==="Edge"?"left":"center"}}>{h}</span>))}</div>
-                          {EDGE_BUCKETS.map((bk,i)=>{const s=stats(byEdge[bk.label]);if(!s)return null;return(<div key={bk.label} style={{display:"grid",gridTemplateColumns:"80px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:i<EDGE_BUCKETS.length-1?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>{bk.label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);}) }
+                          {EDGE_BUCKETS.map((bk,i)=>{const s=stats(byEdge[bk.label]);if(!s)return null;return(<div key={bk.label} style={{display:"grid",gridTemplateColumns:"80px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:i<EDGE_BUCKETS.length-1?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>{bk.label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);}) }
                         </div>
                       ))}
                     </div>
@@ -4716,9 +4822,9 @@ export default function App(){
                         return(
                           <div key={game+stat} style={{background:"rgba(8,12,24,.99)",border:"1px solid rgba(139,92,246,.18)",borderRadius:14,overflow:"hidden"}}>
                             <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderBottom:"1px solid rgba(139,92,246,.1)"}}><GameLogo game={game} size={14}/><span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>{game} — {stat}</span></div>
-                            {[{label:"Over",s:so,color:"#4ade80"},{label:"Under",s:su,color:"#60a5fa"}].map(({label,s,color})=>{
+                            {[{label:"Over",s:so,color:"#6ee7a0"},{label:"Under",s:su,color:"#60a5fa"}].map(({label,s,color})=>{
                               if(!s)return null;
-                              return(<div key={label} style={{display:"grid",gridTemplateColumns:"60px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:label==="Over"?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color}}>{label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);
+                              return(<div key={label} style={{display:"grid",gridTemplateColumns:"60px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:label==="Over"?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color}}>{label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);
                             })}
                           </div>
                         );
@@ -4740,9 +4846,9 @@ export default function App(){
                                 return(
                                   <div key={l.line} style={{padding:"9px 12px",borderBottom:i<sl.length-1?"1px solid #0d1628":"none"}}>
                                     <div style={{fontSize:13,fontWeight:800,color:"#c4b5fd",marginBottom:5}}>Ligne {l.line.toFixed(1)} <span style={{fontSize:9,color:"#4a3a6e"}}>· {l.total.cnt}p</span></div>
-                                    {[{label:"Over",s:so,color:"#4ade80"},{label:"Under",s:su,color:"#60a5fa"}].map(({label,s,color})=>{
+                                    {[{label:"Over",s:so,color:"#6ee7a0"},{label:"Under",s:su,color:"#60a5fa"}].map(({label,s,color})=>{
                                       if(!s)return null;
-                                      return(<div key={label} style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:9,fontWeight:700,color,minWidth:38}}>{label}:</span><span style={{fontSize:10,color:"#6a5a8e"}}>{s.cnt}p</span><span style={{fontSize:10,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}% WR</span><span style={{fontSize:10,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</span><span style={{fontSize:10,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",marginLeft:"auto"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);
+                                      return(<div key={label} style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:9,fontWeight:700,color,minWidth:38}}>{label}:</span><span style={{fontSize:10,color:"#6a5a8e"}}>{s.cnt}p</span><span style={{fontSize:10,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}% WR</span><span style={{fontSize:10,fontWeight:600,color:s.roi>=0?"#6ee7a0":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</span><span style={{fontSize:10,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",marginLeft:"auto"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);
                                     })}
                                   </div>
                                 );
@@ -4816,7 +4922,7 @@ export default function App(){
                       {/* Top 5 + Worst 5 joueurs */}
                       {gs.topP.length>0&&(
                         <>
-                          <div style={{fontSize:11,color:"#4ade80",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"14px 14px 6px",borderBottom:"1px solid rgba(74,222,128,.15)",fontFamily:"'Inter',sans-serif"}}>🏆 Top 5 joueurs</div>
+                          <div style={{fontSize:11,color:"#6ee7a0",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"14px 14px 6px",borderBottom:"1px solid rgba(74,222,128,.15)",fontFamily:"'Inter',sans-serif"}}>🏆 Top 5 joueurs</div>
                           {gs.topP.map((p,i)=>(
                             <div key={p.player} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"player",filterValue:p.player})} style={{cursor:"pointer"}}>
                               <div style={{display:"flex",alignItems:"center",gap:9}}>
@@ -5128,11 +5234,11 @@ export default function App(){
                           const roi=t.staked>0?Math.round(t.profit*1000/t.staked)/10:0;
                           return(
                             <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
-                              <span style={{fontSize:9,fontWeight:700,color:ou==="Over"?"#4ade80":"#60a5fa",minWidth:36}}>{ou}:</span>
+                              <span style={{fontSize:9,fontWeight:700,color:ou==="Over"?"#6ee7a0":"#60a5fa",minWidth:36}}>{ou}:</span>
                               <span style={{fontSize:10,color:"#6a5a8e"}}>{t.cnt}p</span>
-                              <span style={{fontSize:10,fontWeight:700,color:wr>=55?"#4ade80":wr<45?"#f87171":"#9CA3AF"}}>{wr}% WR</span>
-                              <span style={{fontSize:10,fontWeight:600,color:roi>=0?"#4ade80":"#f87171"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</span>
-                              <span style={{fontSize:10,fontWeight:800,color:t.profit>=0?"#4ade80":"#f87171",marginLeft:"auto"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}$</span>
+                              <span style={{fontSize:10,fontWeight:700,color:wr>=55?"#6ee7a0":wr<45?"#f87171":"#9CA3AF"}}>{wr}% WR</span>
+                              <span style={{fontSize:10,fontWeight:600,color:roi>=0?"#6ee7a0":"#f87171"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</span>
+                              <span style={{fontSize:10,fontWeight:800,color:t.profit>=0?"#6ee7a0":"#f87171",marginLeft:"auto"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}$</span>
                             </div>
                           );
                         };
@@ -5311,8 +5417,8 @@ export default function App(){
           const gROI=totalStk>0?(totalP/totalStk*100):0;
           const pageTitle=filterType?({role:"Position",map:"Map",tourney:"Tournoi",bk:"Bookmaker",kill:"Kills",player:"Joueur"}[filterType]||filterType)+" — "+filterValue:(league?game+" · "+league:game);
 
-          const pc=v=>(v||0)>=0?"#4ade80":"#EF4444";
-          const wrc=v=>(v||0)>=55?"#4ade80":(v||0)<45?"#EF4444":"#9CA3AF";
+          const pc=v=>(v||0)>=0?"#6ee7a0":"#EF4444";
+          const wrc=v=>(v||0)>=55?"#6ee7a0":(v||0)<45?"#EF4444":"#9CA3AF";
 
           // Simple table row — label | N paris | WR% | Profit
           // ── Composants drill-down ──
@@ -5554,7 +5660,7 @@ export default function App(){
                       {ps?(
                         <div>
                           <div style={{display:"flex",justifyContent:"space-around",padding:"14px 12px",borderBottom:"1px solid #1A2235"}}>
-                            {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#4ade80":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#4ade80":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+p(s.profit||0).toFixed(0)+"$",c:ps.profit>=0?"#4ade80":"#EF4444"}].map(x=>(
+                            {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#6ee7a0":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#6ee7a0":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+p(s.profit||0).toFixed(0)+"$",c:ps.profit>=0?"#6ee7a0":"#EF4444"}].map(x=>(
                               <div key={x.l} style={{textAlign:"center"}}>
                                 <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{x.l}</div>
                                 <div style={{fontSize:16,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -5637,9 +5743,9 @@ export default function App(){
                   if(!d||d.cnt===0)return{txt:"—",color:"#3a4a5e"};
                   const wr=Math.round(d.won*100/d.cnt);
                   const roi=d.staked>0?Math.round(d.profit*1000/d.staked)/10:0;
-                  if(m==="roi")return{txt:(roi>=0?"+":"")+roi.toFixed(1)+"%",color:roi>=0?"#4ade80":"#f87171"};
-                  if(m==="profit")return{txt:(d.profit>=0?"+":"")+d.profit.toFixed(0)+"$",color:d.profit>=0?"#4ade80":"#f87171"};
-                  if(m==="wr")return{txt:wr+"%",color:wr>=55?"#4ade80":wr<45?"#f87171":"#9CA3AF"};
+                  if(m==="roi")return{txt:(roi>=0?"+":"")+roi.toFixed(1)+"%",color:roi>=0?"#6ee7a0":"#f87171"};
+                  if(m==="profit")return{txt:(d.profit>=0?"+":"")+d.profit.toFixed(0)+"$",color:d.profit>=0?"#6ee7a0":"#f87171"};
+                  if(m==="wr")return{txt:wr+"%",color:wr>=55?"#6ee7a0":wr<45?"#f87171":"#9CA3AF"};
                   if(m==="n")return{txt:String(d.cnt),color:"#7a9cbd"};
                   return{txt:"—",color:"#3a4a5e"};
                 };
@@ -5680,7 +5786,7 @@ export default function App(){
                             <div key={key} style={{display:"grid",gridTemplateColumns:"70px 1fr 40px 80px",padding:"9px 12px",borderBottom:i<sortedLines(overByLine).length-1?"1px solid #111827":"none",alignItems:"center"}}>
                               <span style={{fontSize:14,fontWeight:800,color:"#c4b5fd"}}>{key}</span>
                               <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{d.cnt}</span>
-                              <span style={{fontSize:11,fontWeight:600,color:wr>=55?"#4ade80":wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{wr}%</span>
+                              <span style={{fontSize:11,fontWeight:600,color:wr>=55?"#6ee7a0":wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{wr}%</span>
                               <span style={{fontSize:12,fontWeight:800,color:mv.color,textAlign:"right"}}>{mv.txt}</span>
                             </div>
                           );
@@ -5709,7 +5815,7 @@ export default function App(){
                             <div key={key} style={{display:"grid",gridTemplateColumns:"70px 1fr 40px 80px",padding:"9px 12px",borderBottom:i<sortedLines(underByLine).length-1?"1px solid #111827":"none",alignItems:"center"}}>
                               <span style={{fontSize:14,fontWeight:800,color:"#c4b5fd"}}>{key}</span>
                               <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{d.cnt}</span>
-                              <span style={{fontSize:11,fontWeight:600,color:wr>=55?"#4ade80":wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{wr}%</span>
+                              <span style={{fontSize:11,fontWeight:600,color:wr>=55?"#6ee7a0":wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{wr}%</span>
                               <span style={{fontSize:12,fontWeight:800,color:mv.color,textAlign:"right"}}>{mv.txt}</span>
                             </div>
                           );
@@ -5775,8 +5881,8 @@ export default function App(){
   };
   const diffColor=(diff)=>{
     const d=parseFloat(diff)||0;
-    if(d>=2.0)return"#4ade80";
-    if(d>=1.75)return"#4ade80";
+    if(d>=2.0)return"#6ee7a0";
+    if(d>=1.75)return"#6ee7a0";
     if(d>=1.5)return"#16A34A";
     return"#15803D";
   };
@@ -5851,7 +5957,7 @@ export default function App(){
       {/* Stats bar */}
       {filtered.length>0&&(
         <div style={{display:"flex",gap:8,marginBottom:10,padding:"8px 12px",background:"#0B1220",borderRadius:8,border:"1px solid #1F2937"}}>
-          {[{l:"Bets",v:filtered.length,c:"#A78BFA"},{l:"Max Diff",v:"+"+topDiff.toFixed(2),c:"#4ade80"},{l:"Cote moy",v:"@"+avgOdds,c:"#F59E0B"}].map(k=>(
+          {[{l:"Bets",v:filtered.length,c:"#A78BFA"},{l:"Max Diff",v:"+"+topDiff.toFixed(2),c:"#6ee7a0"},{l:"Cote moy",v:"@"+avgOdds,c:"#F59E0B"}].map(k=>(
             <div key={k.l} style={{display:"flex",gap:5,alignItems:"center"}}>
               <span style={{fontSize:10,color:"#6B7280"}}>{k.l}:</span>
               <span style={{fontSize:12,fontWeight:700,color:k.c}}>{k.v}</span>
@@ -5933,7 +6039,7 @@ export default function App(){
                   </div>
                   {/* Marché - direction */}
                   <div style={{textAlign:"center"}}>
-                    <span style={{fontSize:11,fontWeight:700,color:isOver?"#4ade80":"#EF4444"}}>{isOver?"▲ OVER":"▼ UNDER"}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:isOver?"#6ee7a0":"#EF4444"}}>{isOver?"▲ OVER":"▼ UNDER"}</span>
                   </div>
                   {/* Book line */}
                   <div style={{textAlign:"center"}}>
@@ -5980,7 +6086,7 @@ export default function App(){
                         + Ajouter
                       </button>
                       <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
-                        style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#4ade80":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                        style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#6ee7a0":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
                         {isHidden?"✓ Réafficher":"✓ Pris"}
                       </button>
                     </div>
@@ -6025,7 +6131,7 @@ export default function App(){
                   <span style={{fontSize:14}}>🏆</span>
                   <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Tournois actifs</span>
                   {Object.values(activeTourneys).filter(t=>t&&!(t.end&&new Date(t.end)<new Date())).length>0&&(
-                    <span style={{background:"#4ade80",color:"#000",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:8}}>
+                    <span style={{background:"#6ee7a0",color:"#000",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:8}}>
                       {Object.values(activeTourneys).filter(t=>t&&!(t.end&&new Date(t.end)<new Date())).length} ACTIF
                     </span>
                   )}
@@ -6065,8 +6171,8 @@ export default function App(){
                       {/* Active indicator */}
                       {hasActive&&(
                         <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px 8px",borderTop:"1px solid rgba(124,58,237,0.12)",background:"rgba(124,58,237,0.04)"}}>
-                          <span style={{width:5,height:5,borderRadius:"50%",background:"#4ade80",boxShadow:"0 0 5px rgba(34,197,94,0.7)",flexShrink:0}}/>
-                          <span style={{fontSize:10,fontWeight:700,color:"#4ade80"}}>ACTIF</span>
+                          <span style={{width:5,height:5,borderRadius:"50%",background:"#6ee7a0",boxShadow:"0 0 5px rgba(34,197,94,0.7)",flexShrink:0}}/>
+                          <span style={{fontSize:10,fontWeight:700,color:"#6ee7a0"}}>ACTIF</span>
                           {t.end&&<span style={{fontSize:10,color:"#6B7280",flex:1}}>fin {new Date(t.end).toLocaleDateString("fr-CA",{day:"numeric",month:"short"})}</span>}
                           <button onClick={()=>setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;})}
                             style={{background:"transparent",border:"none",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600,padding:"0 4px"}}>
@@ -6130,7 +6236,7 @@ export default function App(){
                           </div>
                         </div>
                         <button onClick={()=>toggleBlacklist(key)}
-                          style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8,padding:"5px 10px",color:"#4ade80",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                          style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8,padding:"5px 10px",color:"#6ee7a0",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
                           Restaurer
                         </button>
                       </div>
@@ -6235,7 +6341,7 @@ export default function App(){
                         setBets(prev=>[restored,...prev]);
                         setDeletedBets(prev=>prev.filter((_,idx)=>idx!==i));
                         showToast("Pari restauré ✓");
-                      }} style={{padding:"6px 12px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:7,color:"#4ade80",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",flexShrink:0}}>
+                      }} style={{padding:"6px 12px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:7,color:"#6ee7a0",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",flexShrink:0}}>
                         ↩ Restaurer
                       </button>
                     </div>
@@ -6280,14 +6386,14 @@ export default function App(){
                       {(savedTourneys[game]||[]).map((s,i)=>(
                         <div key={s} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",borderBottom:i<(savedTourneys[game]||[]).length-1?"1px solid #1F2937":"none"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            {activeTourneys[game]?.name===s&&<span style={{width:6,height:6,borderRadius:"50%",background:"#4ade80",boxShadow:"0 0 5px rgba(34,197,94,0.5)"}}/>}
-                            <span style={{fontSize:12,color:activeTourneys[game]?.name===s?"#4ade80":"#E5E7EB",fontWeight:activeTourneys[game]?.name===s?700:400}}>{s}</span>
+                            {activeTourneys[game]?.name===s&&<span style={{width:6,height:6,borderRadius:"50%",background:"#6ee7a0",boxShadow:"0 0 5px rgba(34,197,94,0.5)"}}/>}
+                            <span style={{fontSize:12,color:activeTourneys[game]?.name===s?"#6ee7a0":"#E5E7EB",fontWeight:activeTourneys[game]?.name===s?700:400}}>{s}</span>
                           </div>
                           <div style={{display:"flex",gap:6}}>
                             <button onClick={()=>{
                               setActiveTourneys(prev=>({...prev,[game]:{name:s,end:""}}));
                               setModalTourney(false);showToast("🏆 "+s+" activé");
-                            }} style={{padding:"3px 9px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:6,color:"#4ade80",cursor:"pointer",fontSize:10,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                            }} style={{padding:"3px 9px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:6,color:"#6ee7a0",cursor:"pointer",fontSize:10,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
                               Activer
                             </button>
                             <button onClick={()=>setSavedTourneys(prev=>({...prev,[game]:(prev[game]||[]).filter(x=>x!==s)}))}
@@ -6369,7 +6475,7 @@ export default function App(){
                 <button onClick={()=>{let m=calMonth-1,y=calYear;if(m<0){m=11;y--;}setCalMonth(m);setCalYear(y);setCalSelected(null);}} style={{background:"none",border:"1px solid #1F2937",borderRadius:7,padding:"6px 12px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14,fontWeight:700}}>Prev</button>
                 <div style={{textAlign:"center"}}>
                   <div style={{fontSize:15,fontWeight:700}}>{FR_MONTHS[calMonth]} {calYear}</div>
-                  <div style={{fontSize:11,color:monthProfit>=0?"#4ade80":"#EF4444",fontWeight:600}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(2)}$</div>
+                  <div style={{fontSize:11,color:monthProfit>=0?"#6ee7a0":"#EF4444",fontWeight:600}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(2)}$</div>
                 </div>
                 <button onClick={()=>{let m=calMonth+1,y=calYear;if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);setCalSelected(null);}} style={{background:"none",border:"1px solid #1F2937",borderRadius:7,padding:"6px 12px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14,fontWeight:700}}>Suiv</button>
               </div>
@@ -6401,8 +6507,8 @@ export default function App(){
                     const hasSettled=profit!==undefined;
                     cells.push(
                       <div key={dk} className={"cal-cell"+(isToday?" today":"")+(isSel?" selected":"")} onClick={()=>setCalSelected(isSel?null:dk)}>
-                        <div style={{fontSize:16,fontWeight:isToday?800:600,color:isToday?"#4ade80":(hasSettled||pending)?"#E5E7EB":"#6B7280"}}>{d}</div>
-                        {hasSettled&&<div style={{fontSize:9,fontWeight:700,color:profit>=0?"#4ade80":"#EF4444",lineHeight:1,marginTop:1}}>{profit>=0?"+":""}{profit>=1000?(profit/1000).toFixed(1)+"k":profit.toFixed(0)}$</div>}
+                        <div style={{fontSize:16,fontWeight:isToday?800:600,color:isToday?"#6ee7a0":(hasSettled||pending)?"#E5E7EB":"#6B7280"}}>{d}</div>
+                        {hasSettled&&<div style={{fontSize:9,fontWeight:700,color:profit>=0?"#6ee7a0":"#EF4444",lineHeight:1,marginTop:1}}>{profit>=0?"+":""}{profit>=1000?(profit/1000).toFixed(1)+"k":profit.toFixed(0)}$</div>}
                         {pending>0&&!hasSettled&&<div style={{width:4,height:4,borderRadius:"50%",background:"#3B82F6",marginTop:1}}/>}
                       </div>
                     );
@@ -6417,7 +6523,7 @@ export default function App(){
                   <div>
                     <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>
                       {calSelected.split("-").reverse().join("/")} - {selectedDayBets.length} pari{selectedDayBets.length!==1?"s":""}
-                      {dp!==undefined&&<span style={{marginLeft:8,fontWeight:700,color:dp>=0?"#4ade80":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}$</span>}
+                      {dp!==undefined&&<span style={{marginLeft:8,fontWeight:700,color:dp>=0?"#6ee7a0":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}$</span>}
                     </div>
                     <div className="stat-bloc">
                       {selectedDayBets.map(b=>(
@@ -6430,7 +6536,7 @@ export default function App(){
                             </div>
                           </div>
                           <div style={{textAlign:"right"}}>
-                            <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6"}}>
+                            <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#6ee7a0":b.status==="lost"?"#EF4444":"#3B82F6"}}>
                               {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"$"}
                             </div>
                             <div style={{fontSize:10,color:STATUS_CFG[b.status]?STATUS_CFG[b.status].color:"#9CA3AF"}}>{STATUS_CFG[b.status]?STATUS_CFG[b.status].label:b.status}</div>
@@ -6467,13 +6573,13 @@ export default function App(){
                 <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:8}}>
                   {bookmakers.map(bk=>(
                     <button key={bk} className={"bkchip"+(bulkBK===bk?" on":"")} onClick={()=>setBulkBK(bk===bulkBK?"":bk)}
-                      style={{border:"2px solid "+(bulkBK===bk?"#4ade80":"#1F2937")}}>
+                      style={{border:"2px solid "+(bulkBK===bk?"#6ee7a0":"#1F2937")}}>
                       {bk}
                     </button>
                   ))}
                 </div>
                 <button onClick={applyBulkBK} disabled={!bulkBK}
-                  style={{width:"100%",padding:"11px",background:bulkBK?"linear-gradient(135deg,#4ade80,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkBK?"#0B1220":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                  style={{width:"100%",padding:"11px",background:bulkBK?"linear-gradient(135deg,#6ee7a0,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkBK?"#0B1220":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                   {bulkBK?"Appliquer "+bulkBK+" à "+store.count+" paris":"Sélectionner un bookmaker"}
                 </button>
               </div>
@@ -6563,7 +6669,7 @@ export default function App(){
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <button onClick={()=>{setModalBK(false);setNewBK("");setNewBKPhoto("");}} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
-                <button onClick={saveBookmaker} disabled={!newBK.trim()} style={{padding:"12px",background:newBK.trim()?"linear-gradient(135deg,#4ade80,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:newBK.trim()?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
+                <button onClick={saveBookmaker} disabled={!newBK.trim()} style={{padding:"12px",background:newBK.trim()?"linear-gradient(135deg,#6ee7a0,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:newBK.trim()?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
               </div>
             </div>
           </div>
@@ -6571,10 +6677,23 @@ export default function App(){
 
         {/* ── MODAL ADD PLAYER ── */}
         {modalPlayer&&(
-          <div className="moverlay" onClick={()=>setModalPlayer(false)}>
+          <div className="moverlay" onClick={()=>{setModalPlayer(false);setPform({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});}}>
             <div className="modal" onClick={e=>e.stopPropagation()}>
               <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Ajouter un joueur</div>
-              <input className="ifield" placeholder="Pseudo (ex: faker)" value={pform.name} onChange={e=>setPform(p=>({...p,name:e.target.value}))} style={{marginBottom:8}}/>
+              <div style={{border:"2px dashed #374151",borderRadius:10,padding:16,textAlign:"center",marginBottom:8,cursor:"pointer",background:"#0D1117",position:"relative"}}
+                onClick={()=>document.getElementById("player-photo-input").click()}>
+                <input id="player-photo-input" type="file" accept="image/*" style={{display:"none"}}
+                  onChange={e=>{const f=e.target.files[0];if(f)setPform(p=>({...p,photoFile:f,photoPreview:URL.createObjectURL(f),photoUrl:""}));}}/>
+                {pform.photoPreview
+                  ?<img src={pform.photoPreview} style={{width:64,height:64,borderRadius:10,objectFit:"cover",margin:"0 auto",display:"block",border:"2px solid #7C3AED"}} alt=""/>
+                  :<div style={{fontSize:28,marginBottom:4}}>📷</div>}
+                <div style={{fontSize:11,color:"#6B7280",marginTop:4}}>
+                  {pform.photoPreview?"Changer la photo":"Cliquer pour ajouter une photo"}
+                </div>
+              </div>
+              <input className="ifield" placeholder="https://... (URL photo optionnelle)" value={pform.photoUrl}
+                onChange={e=>setPform(p=>({...p,photoUrl:e.target.value,photoPreview:e.target.value||null,photoFile:null}))} style={{marginBottom:8}}/>
+              <input className="ifield" placeholder="Pseudo *" value={pform.name} onChange={e=>setPform(p=>({...p,name:e.target.value}))} style={{marginBottom:8}}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <select className="ifield" value={pform.game} onChange={e=>setPform(p=>({...p,game:e.target.value,role:""}))}>
                   {ALL_GAMES.map(g=><option key={g} value={g}>{g}</option>)}
@@ -6596,8 +6715,8 @@ export default function App(){
                 <input className="ifield" placeholder="Equipe *" value={pform.team} onChange={e=>setPform(p=>({...p,team:e.target.value}))}/>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <button onClick={()=>setModalPlayer(false)} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
-                <button onClick={savePlayer} disabled={!pform.name||!pform.team} style={{padding:"12px",background:pform.name&&pform.team?"linear-gradient(135deg,#4ade80,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:pform.name&&pform.team?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
+                <button onClick={()=>{setModalPlayer(false);setPform({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});}} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
+                <button onClick={savePlayer} disabled={!pform.name||!pform.team} style={{padding:"12px",background:pform.name&&pform.team?"linear-gradient(135deg,#6ee7a0,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:pform.name&&pform.team?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
               </div>
             </div>
           </div>
@@ -6818,8 +6937,8 @@ export default function App(){
               {/* Status */}
               <div style={{background:supaOk?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.06)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.15)"),borderRadius:10,padding:"12px 14px",marginBottom:14}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  <span style={{width:7,height:7,borderRadius:"50%",background:supaOk?"#4ade80":"#EF4444",boxShadow:"0 0 6px "+(supaOk?"rgba(34,197,94,0.8)":"rgba(239,68,68,0.6)")}}/>
-                  <span style={{fontSize:12,fontWeight:700,color:supaOk?"#4ade80":"#EF4444"}}>{syncing?"Synchronisation…":supaOk?"Connecté à Supabase":"Hors ligne — vérifie ta connexion"}</span>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:supaOk?"#6ee7a0":"#EF4444",boxShadow:"0 0 6px "+(supaOk?"rgba(34,197,94,0.8)":"rgba(239,68,68,0.6)")}}/>
+                  <span style={{fontSize:12,fontWeight:700,color:supaOk?"#6ee7a0":"#EF4444"}}>{syncing?"Synchronisation…":supaOk?"Connecté à Supabase":"Hors ligne — vérifie ta connexion"}</span>
                 </div>
                 <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris en local · sync auto toutes les 5s</div>
               </div>
@@ -6853,12 +6972,12 @@ export default function App(){
                             <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Local (iPhone)</div>
                           </div>
                           <div style={{background:"rgba(34,197,94,0.08)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
-                            <div style={{fontSize:20,fontWeight:800,color:"#4ade80"}}>{integrityReport.remote}</div>
+                            <div style={{fontSize:20,fontWeight:800,color:"#6ee7a0"}}>{integrityReport.remote}</div>
                             <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Supabase (Cloud)</div>
                           </div>
                         </div>
                         {integrityReport.onlyLocal.length===0&&integrityReport.onlyRemote.length===0?(
-                          <div style={{display:"flex",alignItems:"center",gap:6,color:"#4ade80",fontSize:12,fontWeight:700}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6,color:"#6ee7a0",fontSize:12,fontWeight:700}}>
                             ✓ Parfait — local et cloud sont identiques
                           </div>
                         ):(
@@ -6876,7 +6995,7 @@ export default function App(){
                                   </div>)}
                                   {integrityReport.onlyLocal.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyLocal.length-5} autres…</div>}
                                 </div>
-                                <button onClick={()=>{supaPushBets(integrityReport.onlyLocal).then(()=>{showToast(integrityReport.onlyLocal.length+" paris envoyés ✓","#4ade80");setIntegrityReport(null);}).catch(()=>showToast("Erreur envoi","#EF4444"));}}
+                                <button onClick={()=>{supaPushBets(integrityReport.onlyLocal).then(()=>{showToast(integrityReport.onlyLocal.length+" paris envoyés ✓","#6ee7a0");setIntegrityReport(null);}).catch(()=>showToast("Erreur envoi","#EF4444"));}}
                                   style={{width:"100%",padding:"8px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,color:"#F59E0B",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
                                   ↑ Envoyer ces {integrityReport.onlyLocal.length} paris vers le cloud
                                 </button>
@@ -6891,12 +7010,12 @@ export default function App(){
                                   {integrityReport.onlyRemote.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
                                     <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
                                     <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}$ · {b.bookmaker}</span>
-                                    <span style={{color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6",marginLeft:4,fontWeight:600}}>{b.status}</span>
+                                    <span style={{color:b.status==="won"?"#6ee7a0":b.status==="lost"?"#EF4444":"#3B82F6",marginLeft:4,fontWeight:600}}>{b.status}</span>
                                     <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
                                   </div>)}
                                   {integrityReport.onlyRemote.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyRemote.length-5} autres…</div>}
                                 </div>
-                                <button onClick={()=>{const merged=[...bets,...integrityReport.onlyRemote];setBets(merged);localStorage.setItem("v7_bets",JSON.stringify(merged));showToast(integrityReport.onlyRemote.length+" paris récupérés ✓","#4ade80");setIntegrityReport(null);}}
+                                <button onClick={()=>{const merged=[...bets,...integrityReport.onlyRemote];setBets(merged);localStorage.setItem("v7_bets",JSON.stringify(merged));showToast(integrityReport.onlyRemote.length+" paris récupérés ✓","#6ee7a0");setIntegrityReport(null);}}
                                   style={{width:"100%",padding:"8px",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:8,color:"#60A5FA",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
                                   ↓ Récupérer ces {integrityReport.onlyRemote.length} paris depuis le cloud
                                 </button>
@@ -6930,10 +7049,10 @@ export default function App(){
                 setSyncing(true);
                 supaPushBets(bets).then(()=>{
                   setSupaOk(true);
-                  showToast("☁️ "+bets.length+" paris envoyés","#4ade80");
+                  showToast("☁️ "+bets.length+" paris envoyés","#6ee7a0");
                   setSyncing(false);setSupaModal(false);
                 }).catch(e=>{setSyncing(false);setSupaOk(false);showToast("Erreur: "+e.message,"#EF4444");});
-              }} style={{width:"100%",padding:"11px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,color:"#4ade80",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:14}}>
+              }} style={{width:"100%",padding:"11px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,color:"#6ee7a0",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:14}}>
                 ↑ Forcer l'envoi vers le cloud
               </button>
 
