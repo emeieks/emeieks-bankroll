@@ -1315,6 +1315,7 @@ function MesParisView({
   const clearFilters=()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");if(setFTourneys)setFTourneys(new Set());setFDateFrom("");setFDateTo("");};
 
   const filtered=useMemo(()=>bets.filter(b=>{
+    if(b.game==="Casino")return false;
     if(fStatus&&fStatus!=="All"&&b.status!==fStatus)return false;
     if(fGames&&fGames.length>0&&!fGames.includes(b.game))return false;
     if(fBKs&&fBKs.length>0&&!fBKs.includes(b.bookmaker||"")&&!(b.splits||[]).some(sp=>fBKs.includes(sp.bookmaker)))return false;
@@ -3748,56 +3749,26 @@ export default function App(){
             {/* ── CASINO MODE ── */}
             {casinoMode&&(
               <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(245,158,11,0.25)",padding:"14px 16px",marginBottom:10}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                  <span style={{fontSize:16}}>🎰</span>
-                  <span style={{fontSize:13,fontWeight:700,color:"#fbbf24"}}>Mode Casino / Rollover</span>
+                <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Bookmaker</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                  {DEFAULT_BK.map(bk=>(
+                    <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
+                      style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(form.bookmaker===bk?"#f59e0b":"rgba(255,255,255,.08)"),background:form.bookmaker===bk?"rgba(245,158,11,.12)":"rgba(255,255,255,.03)",color:form.bookmaker===bk?"#fbbf24":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                      {bk}
+                    </button>
+                  ))}
                 </div>
-                <div style={{fontSize:12,color:"#9CA3AF",marginBottom:12,lineHeight:1.5}}>
-                  Enregistre une perte de rollover — montant misé sur casino pour débloquer un bonus.
+                <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.04)",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",padding:"10px 14px",marginBottom:10}}>
+                  <span style={{color:"#6B7280",fontSize:14}}>-$</span>
+                  <input type="number" inputMode="decimal" value={form.stake||""} onChange={e=>setForm(f=>({...f,stake:e.target.value}))} placeholder="0"
+                    style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"Inter,sans-serif"}}/>
                 </div>
-                {/* Bookmaker */}
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Bookmaker</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {DEFAULT_BK.map(bk=>(
-                      <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
-                        style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(form.bookmaker===bk?"#f59e0b":"rgba(255,255,255,.08)"),background:form.bookmaker===bk?"rgba(245,158,11,.12)":"rgba(255,255,255,.03)",color:form.bookmaker===bk?"#fbbf24":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                        {bk}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Montant perdu */}
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Montant perdu ($)</div>
-                  <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.04)",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",padding:"10px 14px"}}>
-                    <span style={{color:"#6B7280",fontSize:14}}>-$</span>
-                    <input
-                      type="number" inputMode="decimal"
-                      value={form.stake||""}
-                      onChange={e=>setForm(f=>({...f,stake:e.target.value}))}
-                      placeholder="0"
-                      style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"Inter,sans-serif"}}
-                    />
-                  </div>
-                </div>
-                {/* Note optionnelle */}
-                <div style={{marginBottom:14}}>
-                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Note (optionnel)</div>
-                  <input
-                    value={form.player||""}
-                    onChange={e=>setForm(f=>({...f,player:e.target.value,description:"Rollover casino"}))}
-                    placeholder="ex: Rollover bonus 500$"
-                    style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 14px",color:"#f0f4ff",fontSize:13,fontFamily:"Inter,sans-serif",boxSizing:"border-box",outline:"none"}}
-                  />
-                </div>
-                {/* Bouton ajouter */}
                 <button onClick={()=>{
                   if(!form.stake||!form.bookmaker)return;
                   const amt=parseFloat(form.stake)||0;
                   const newBet={
                     id:Date.now(),updatedAt:Date.now(),
-                    player:form.player||"Casino Rollover",
+                    player:"Casino Rollover",
                     description:"Rollover casino",
                     overUnder:"Under",odds:1,stake:amt,
                     bookmaker:form.bookmaker,
@@ -3813,7 +3784,8 @@ export default function App(){
                   setForm({...EMPTY_FORM});
                   setCasinoMode(false);
                   showToast("Perte casino enregistrée ✓");
-                }} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#d97706,#f59e0b)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                }} disabled={!form.stake||!form.bookmaker}
+                style={{width:"100%",padding:"13px",background:form.stake&&form.bookmaker?"linear-gradient(135deg,#d97706,#f59e0b)":"#1F2937",border:"none",borderRadius:12,color:form.stake&&form.bookmaker?"#fff":"#6B7280",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                   🎰 Enregistrer la perte casino
                 </button>
               </div>
@@ -4603,9 +4575,13 @@ export default function App(){
             </div>
 
             {settled.length>0&&(()=>{
-              const totalStaked=settledFiltered.reduce((s,b)=>s+(b.stake||0),0);
-              const globalROI=totalStaked>0?(totalProfit/totalStaked*100):0;
-              const globalWR=settledFiltered.length>0?(settledFiltered.filter(b=>b.status==="won").length/settledFiltered.length*100):0;
+              const casinoSF=settledFiltered.filter(b=>b.game==="Casino");
+              const nonCasinoSF=settledFiltered.filter(b=>b.game!=="Casino");
+              const casinoLoss=casinoSF.reduce((s,b)=>s+(b.profit||0),0);
+              const totalStaked=nonCasinoSF.reduce((s,b)=>s+(b.stake||0),0);
+              const totalProfitWithCasino=settledFiltered.reduce((s,b)=>s+(b.profit||0),0);
+              const globalROI=totalStaked>0?(totalProfitWithCasino/totalStaked*100):0;
+              const globalWR=nonCasinoSF.length>0?(nonCasinoSF.filter(b=>b.status==="won").length/nonCasinoSF.length*100):0;
               return(
               <div style={{marginBottom:14}}>
                 {/* Ligne 1 — Profit + ROI */}
@@ -4613,8 +4589,8 @@ export default function App(){
                   <div style={{background:"linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.04))",border:"1px solid rgba(34,197,94,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#22c55e,#16a34a)"}}/>
                     <div style={{fontSize:8,color:"#4a6a50",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Profit net</div>
-                    <div style={{fontSize:24,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
-                    <div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{settledFiltered.length} paris résolus</div>
+                    <div style={{fontSize:24,fontWeight:800,color:totalProfitWithCasino>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfitWithCasino>=0?"+":""}{totalProfitWithCasino.toFixed(0)}$</div>
+                    <div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{nonCasinoSF.length} paris · {casinoSF.length>0?casinoLoss.toFixed(0)+"$ casino":""}</div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,rgba(59,130,246,.08),rgba(99,102,241,.04))",border:"1px solid rgba(59,130,246,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#3b82f6,#6366f1)"}}/>
@@ -4628,7 +4604,7 @@ export default function App(){
                   <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"12px 14px"}}>
                     <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Win Rate</div>
                     <div style={{fontSize:24,fontWeight:800,color:globalWR>=55?"#22C55E":globalWR<45?"#EF4444":"#9CA3AF",letterSpacing:-.5,lineHeight:1}}>{globalWR.toFixed(1)}%</div>
-                    <div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{settledFiltered.filter(b=>b.status==="won").length}W · {settledFiltered.filter(b=>b.status==="lost").length}L</div>
+                    <div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{nonCasinoSF.filter(b=>b.status==="won").length}W · {nonCasinoSF.filter(b=>b.status==="lost").length}L</div>
                   </div>
                   <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"12px 14px"}}>
                     <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>{currentStreak>1?"Série en cours":"Meilleur mois"}</div>
@@ -4644,8 +4620,41 @@ export default function App(){
               );
             })()}
 
-
-
+            {/* ── PERTES CASINO PAR BOOKMAKER ── */}
+            {(()=>{
+              const casinoBets=settledFiltered.filter(b=>b.game==="Casino");
+              if(casinoBets.length===0)return null;
+              const totalCasino=casinoBets.reduce((s,b)=>s+(b.profit||0),0);
+              const byBK={};
+              casinoBets.forEach(b=>{
+                const bk=b.bookmaker||"Autre";
+                if(!byBK[bk])byBK[bk]={loss:0,count:0};
+                byBK[bk].loss+=b.profit||0;
+                byBK[bk].count++;
+              });
+              return(
+                <div style={{background:"rgba(245,158,11,0.05)",border:"1px solid rgba(245,158,11,0.15)",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:14}}>🎰</span>
+                      <span style={{fontSize:11,fontWeight:700,color:"#fbbf24",textTransform:"uppercase",letterSpacing:.8}}>Pertes Casino</span>
+                    </div>
+                    <div style={{fontSize:16,fontWeight:800,color:"#EF4444"}}>{totalCasino.toFixed(0)}$</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {Object.entries(byBK).sort((a,b)=>a[1].loss-b[1].loss).map(([bk,{loss,count}])=>(
+                      <div key={bk} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid rgba(255,255,255,0.05)"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{bk}</span>
+                          <span style={{fontSize:10,color:"#6B7280"}}>{count} entrée{count>1?"s":""}</span>
+                        </div>
+                        <span style={{fontSize:13,fontWeight:700,color:"#EF4444"}}>{loss.toFixed(0)}$</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── GRAPHIQUES BANKROLL ── */}
             {settled.length>=2&&(
