@@ -222,7 +222,7 @@ function BankrollChart({points,h=150}){
       {distFromATH>1&&(
         <g>
           <line x1={currentX} y1={currentY-7} x2={currentX} y2={athY+4} stroke="rgba(255,255,255,.12)" strokeWidth="1" strokeDasharray="2,3"/>
-          <text x={currentX+6} y={(currentY+athY)/2+4} fontSize="9" fill="rgba(255,255,255,.4)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"€"}</text>
+          <text x={currentX+6} y={(currentY+athY)/2+4} fontSize="9" fill="rgba(255,255,255,.4)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"$"}</text>
         </g>
       )}
     </svg>
@@ -358,7 +358,7 @@ async function supaUploadAvatar(file, playerName) {
   return filename; // → stocker dans avatar_file
 }
 
-const DEFAULT_BK=["Stake","Roobet","Rainbet","BCGame","Duelbits","Duel","Yeet","Thunderpick","Winna","Thrill","Spartans","Gambana","CrazyBet"];
+const DEFAULT_BK=["Stake","Roobet","Rainbet","BCGame","Duelbits","Duel","Yeet","Thunderpick","Winna","Thrill","Spartans","Gambana"];
 
 const BK_LOGOS={
 "Stake":"data:image/png;base64,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",
@@ -811,7 +811,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
         {ebOdds&&ebStake&&(
           <div style={{textAlign:"center",marginBottom:12,padding:"8px",background:"rgba(34,197,94,0.06)",borderRadius:8,border:"1px solid rgba(34,197,94,0.15)"}}>
             <span style={{fontSize:12,color:"#6B7280"}}>Gain potentiel : </span>
-            <span style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>+{(parseFloat(ebStake||0)*(parseFloat(ebOdds||1)-1)).toFixed(2)}€</span>
+            <span style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>+{(parseFloat(ebStake||0)*(parseFloat(ebOdds||1)-1)).toFixed(2)}$</span>
           </div>
         )}
 
@@ -920,7 +920,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
   const isWon=bet.status==="won";
   const isLost=bet.status==="lost";
   const profitColor=isPending?"#60A5FA":isWon?"#4ade80":"#EF4444";
-  const profitTxt=isPending?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"€";
+  const profitTxt=isPending?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"$";
   const borderCol=isPending?"rgba(255,255,255,0.06)":isWon?"rgba(34,197,94,0.35)":"rgba(248,113,113,0.35)";
   const bkLogo=BK_LOGOS[bet.bookmaker]||bkPhotos[bet.bookmaker]||null;
   // Fix double Over/Under : bet.description contient déjà "Over X Kills" — on affiche seulement description
@@ -962,7 +962,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                 if(!spLogo)return(<span key={i} style={{fontSize:12,fontWeight:700,color:"#7a9cbd",marginLeft:3}}>{sp.bookmaker}</span>);
                   return(<img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:3}}/>);
               })}
-              {bet.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}€</span></>}
+              {bet.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></>}
               {hasPP&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><img src={PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
               {bet.tournament&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>🏆 {bet.tournament.split(" ")[0]}</span></>}
             </div>
@@ -991,17 +991,17 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               <div style={{display:"flex",flexDirection:"column",gap:3}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
                   <span style={{color:"#7a8a9a"}}>{bet.bookmaker}</span>
-                  <span style={{color:"#c8d4e8",fontWeight:600}}>{(bet.stake-(bet.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}€ @{bet.odds}</span>
+                  <span style={{color:"#c8d4e8",fontWeight:600}}>{(bet.stake-(bet.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}$ @{bet.odds}</span>
                 </div>
                 {(bet.splits||[]).map((sp,i)=>(
                   <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
                     <span style={{color:"#7a8a9a"}}>{sp.bookmaker}</span>
-                    <span style={{color:"#c8d4e8",fontWeight:600}}>{sp.stake}€ @{sp.odds}</span>
+                    <span style={{color:"#c8d4e8",fontWeight:600}}>{sp.stake}$ @{sp.odds}</span>
                   </div>
                 ))}
                 <div style={{borderTop:"1px solid rgba(255,255,255,.05)",paddingTop:4,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:11}}>
                   <span style={{color:"#4a5a6e"}}>Total</span>
-                  <span style={{color:"#c8d4e8",fontWeight:700}}>{bet.stake}€</span>
+                  <span style={{color:"#c8d4e8",fontWeight:700}}>{bet.stake}$</span>
                 </div>
               </div>
             </div>
@@ -1063,12 +1063,12 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
               <GameLogo game={bet.game} size={18}/>
               <div style={{minWidth:0}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{bet.player}</div>
-                <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{bet.description} - @{bet.odds} - {bet.stake}€</div>
+                <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{bet.description} - @{bet.odds} - {bet.stake}$</div>
               </div>
             </div>
             <div style={{textAlign:"right",flexShrink:0}}>
               <div style={{fontWeight:700,fontSize:13,color:bet.status==="pending"?"#3B82F6":bet.profit>=0?"#4ade80":"#EF4444"}}>
-                {bet.status==="pending"?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"€"}
+                {bet.status==="pending"?"@"+bet.odds:((bet.profit||0)>=0?"+":" ")+(bet.profit||0).toFixed(2)+"$"}
               </div>
               <div style={{fontSize:10,color:sc.color}}>{sc.label}</div>
             </div>
@@ -1245,10 +1245,10 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
                           </div>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400,fontSize:12}}>— {b.description}</span></div>
-                            <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>@{b.odds} · {b.stake}€ · {b.datetime?String(b.datetime).slice(0,10):""}</div>
+                            <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>@{b.odds} · {b.stake}$ · {b.datetime?String(b.datetime).slice(0,10):""}</div>
                           </div>
                           <div style={{fontSize:13,fontWeight:700,color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6",flexShrink:0}}>
-                            {b.status==="pending"?"@"+b.odds:((b.profit||0)>=0?"+":"")+(b.profit||0).toFixed(0)+"€"}
+                            {b.status==="pending"?"@"+b.odds:((b.profit||0)>=0?"+":"")+(b.profit||0).toFixed(0)+"$"}
                           </div>
                         </div>
                       );
@@ -1401,7 +1401,7 @@ function MesParisView({
             <div style={{width:3,height:18,borderRadius:2,background:"linear-gradient(180deg,#60a5fa,#7C3AED)",flexShrink:0}}/>
             <span style={{fontSize:12,fontWeight:800,color:"#60A5FA",textTransform:"uppercase",letterSpacing:1.5}}>En attente</span>
             <span style={{background:"rgba(59,130,246,.25)",color:"#93c5fd",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:8,border:"1px solid rgba(59,130,246,.3)"}}>{pending.length}</span>
-            <span style={{fontSize:12,color:"#a78bfa",marginLeft:"auto",fontWeight:600}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}€ en jeu</span>
+            <span style={{fontSize:12,color:"#a78bfa",marginLeft:"auto",fontWeight:600}}>{pending.reduce((s,b)=>s+(b.stake||0),0).toFixed(0)}$ en jeu</span>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:2}}>
             {pending.map(b=>(
@@ -1435,12 +1435,12 @@ function MesParisView({
                       <span style={{fontSize:10,color:"#3a5070"}}>·</span>
                       <span style={{fontSize:11,color:wr>=55?"#22c55e":wr>=45?"#f59e0b":"#ef4444",fontWeight:700}}>{wr.toFixed(0)}% WR</span>
                       <span style={{fontSize:10,color:"#3a5070"}}>·</span>
-                      <span style={{fontSize:11,color:staked>0?"#7a9cc4":"#3a5070",fontWeight:500}}>{staked.toFixed(0)}€ misés</span>
+                      <span style={{fontSize:11,color:staked>0?"#7a9cc4":"#3a5070",fontWeight:500}}>{staked.toFixed(0)}$ misés</span>
                     </div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#4ade80":"#f87171",letterSpacing:-.3}}>{profit>=0?"+":""}{profit.toFixed(0)}€</div>
+                      <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#4ade80":"#f87171",letterSpacing:-.3}}>{profit>=0?"+":""}{profit.toFixed(0)}$</div>
                       <div style={{fontSize:11,color:roi>=0?"#22a55a":"#c04040",fontWeight:600}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
                     </div>
                     <span style={{fontSize:11,color:"#4B6080",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}>▼</span>
@@ -1455,7 +1455,7 @@ function MesParisView({
                         <div key={dk} style={{borderTop:di>0?"1px solid #1F2937":"none"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",background:"rgba(10,16,32,.97)",borderTop:"1px solid rgba(255,255,255,.03)"}}>
                             <span style={{fontSize:13,fontWeight:700,color:"#b8c8de"}}>{fmtDay(dk)}</span>
-                            <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#4ade80":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}€</span>
+                            <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#4ade80":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
                           </div>
                           {dayBets.map(b=>(
                             <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
@@ -1576,7 +1576,7 @@ export default function App(){
   const [newBK,setNewBK]=useState("");
   const [newBKPhoto,setNewBKPhoto]=useState("");
   const [bkPhotos,setBkPhotos]=useState({});
-  const DEFAULT_HIDDEN_BKS=["CrazyBet"];
+  const DEFAULT_HIDDEN_BKS=[];
   const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch{return new Set(DEFAULT_HIDDEN_BKS);}});
   const toggleHideBK=bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;});
   const visibleBKs=bookmakers.filter(bk=>!hiddenBKs.has(bk));
@@ -1695,38 +1695,6 @@ export default function App(){
       const sbk=localStorage.getItem("v7_sticky_bk");
       if(sbk){const d=JSON.parse(sbk);setStickyBK(d.active||false);setForm(f=>({...f,bookmaker:d.bk||""}));}
     }catch(e){}
-    // Injecter le pari CrazyBet (-1075€) une seule fois si pas déjà présent
-    if(!localStorage.getItem("v7_crazybet_injected")){
-      const crazyBet={
-        id:1778000000001,
-        updatedAt:Date.now(),
-        player:"CrazyBet",
-        description:"Pertes CrazyBet",
-        overUnder:"",
-        odds:1,
-        stake:1075,
-        bookmaker:"CrazyBet",
-        status:"lost",
-        game:"Autre",
-        league:"",
-        role:"",
-        team:"",
-        datetime:"2026-05-11T12:00",
-        isHeadshot:false,
-        isLive:false,
-        mapTag:"",
-        profit:-1075,
-        tournament:"CrazyBet",
-        splits:[],
-      };
-      setBets(prev=>{
-        if(prev.some(b=>b.id===crazyBet.id))return prev;
-        return [crazyBet,...prev];
-      });
-      // Push vers Supabase
-      setTimeout(()=>supaPushBets([crazyBet]).catch(()=>{}),2000);
-      localStorage.setItem("v7_crazybet_injected","1");
-    }
     setLoaded(true);
   },[]);
 
@@ -2878,7 +2846,7 @@ export default function App(){
                 <div style={{marginBottom:16}}>
                   <div style={{fontSize:9,color:"#4a5568",fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Profit net total</div>
                   <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
-                    <div style={{fontSize:46,fontWeight:900,color:totalProfit>=0?"#22c55e":"#ef4444",letterSpacing:"-2.5px",lineHeight:.9,fontFamily:"Inter,sans-serif",textShadow:totalProfit>=0?"0 0 40px rgba(34,197,94,.4),0 0 80px rgba(34,197,94,.15)":"0 0 40px rgba(239,68,68,.4),0 0 80px rgba(239,68,68,.15)"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                    <div style={{fontSize:46,fontWeight:900,color:totalProfit>=0?"#22c55e":"#ef4444",letterSpacing:"-2.5px",lineHeight:.9,fontFamily:"Inter,sans-serif",textShadow:totalProfit>=0?"0 0 40px rgba(34,197,94,.4),0 0 80px rgba(34,197,94,.15)":"0 0 40px rgba(239,68,68,.4),0 0 80px rgba(239,68,68,.15)"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
 
                   </div>
                 </div>
@@ -2894,7 +2862,7 @@ export default function App(){
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   {[
                     {label:"PARIS TOTAL",value:String(homeSettled.length+pending),sub:homeSettled.filter(b=>b.status==="won").length+"W · "+homeSettled.filter(b=>b.status==="lost").length+"L",color:"#60a5fa",border:"rgba(59,130,246,.2)",glow:"rgba(59,130,246,.07)"},
-                    {label:"PROGRESSION",value:(progression>=0?"+":"")+progression.toFixed(1)+"%",sub:"BK "+bankroll.toFixed(0)+"€",color:progression>=0?"#22c55e":"#ef4444",border:progression>=0?"rgba(34,197,94,.2)":"rgba(239,68,68,.2)",glow:progression>=0?"rgba(34,197,94,.07)":"rgba(239,68,68,.06)"},
+                    {label:"PROGRESSION",value:(progression>=0?"+":"")+progression.toFixed(1)+"%",sub:"BK "+bankroll.toFixed(0)+"$",color:progression>=0?"#22c55e":"#ef4444",border:progression>=0?"rgba(34,197,94,.2)":"rgba(239,68,68,.2)",glow:progression>=0?"rgba(34,197,94,.07)":"rgba(239,68,68,.06)"},
                   ].map(({label,value,sub,color,border,glow})=>(
                     <div key={label} style={{background:"linear-gradient(160deg,rgba(12,18,38,.99),rgba(7,12,26,.99))",border:"1px solid "+border.replace(".2)",".12)").replace(".2,",".12,"),borderRadius:14,padding:"13px",boxShadow:"0 6px 20px rgba(0,0,0,.4)",position:"relative",overflow:"hidden"}}>
                       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 50% 120%,"+glow+",transparent 65%)",pointerEvents:"none"}}/>
@@ -2956,7 +2924,7 @@ export default function App(){
                     const isWon=b.status==="won";
                     const profitColor=isWon?"#4ade80":"#ef4444";
                     const profitVal=b.profit!=null?b.profit:(isWon?(b.stake||0)*(b.odds-1):-(b.stake||0));
-                    const profitTxt=(profitVal>=0?"+":"")+profitVal.toFixed(2)+"€";
+                    const profitTxt=(profitVal>=0?"+":"")+profitVal.toFixed(2)+"$";
                     const bkLogo=BK_LOGOS[b.bookmaker]||bkPhotos[b.bookmaker]||null;
                     const hasPPh=b.ppEdge!=null&&b.ppMapType;
                     const descLine=b.description?b.description.replace(/^(Over|Under)\s/,""):""
@@ -2978,7 +2946,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{b.odds}</span>
                               {(bkLogo||b.bookmaker)&&<span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span>}
                               {bkLogo?(<img src={bkLogo} alt={b.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>):<span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{b.bookmaker}</span>}
-                              {b.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{b.stake}€</span></>}
+                              {b.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{b.stake}$</span></>}
                               {hasPPh&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><img src={PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:b.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{b.ppEdge>0?"+":""}{b.ppEdge}</span></>}
                               {b.tournament&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>🏆 {b.tournament.split(" ")[0]}</span></>}
                             </div>
@@ -3267,7 +3235,7 @@ export default function App(){
                         <div style={{fontSize:14,fontWeight:isToday?800:600,color:isToday?"#4ade80":"#E5E7EB",marginBottom:hasProfit?2:0}}>{d}</div>
                         {hasProfit&&(
                           <div style={{fontSize:9,fontWeight:700,color:isPositive?"#4ade80":"#EF4444",lineHeight:1.1}}>
-                            {isPositive?"+":""}{Math.abs(profit)>=1000?(profit/1000).toFixed(1)+"K":profit.toFixed(0)}€
+                            {isPositive?"+":""}{Math.abs(profit)>=1000?(profit/1000).toFixed(1)+"K":profit.toFixed(0)}$
                           </div>
                         )}
                         {hasPending&&!hasProfit&&<div style={{width:5,height:5,borderRadius:"50%",background:"#3B82F6",margin:"4px auto 0"}}/>}
@@ -3297,7 +3265,7 @@ export default function App(){
                 <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                     <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>{calSelected.split("-").reverse().join("/")} — {selectedDayBets.length} paris</div>
-                    {dp!==undefined&&<span style={{fontWeight:800,fontSize:14,color:dp>=0?"#4ade80":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}€</span>}
+                    {dp!==undefined&&<span style={{fontWeight:800,fontSize:14,color:dp>=0?"#4ade80":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}$</span>}
                   </div>
                   <div style={{background:"#0B1220",borderRadius:10,overflow:"hidden",border:"1px solid #1F2937"}}>
                     {selectedDayBets.map(b=>(
@@ -3311,7 +3279,7 @@ export default function App(){
                         </div>
                         <div style={{textAlign:"right"}}>
                           <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6"}}>
-                            {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"€"}
+                            {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"$"}
                           </div>
                           <div style={{fontSize:10,color:STATUS_CFG[b.status]?STATUS_CFG[b.status].color:"#9CA3AF"}}>{STATUS_CFG[b.status]?STATUS_CFG[b.status].label:b.status}</div>
                         </div>
@@ -3327,7 +3295,7 @@ export default function App(){
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
                 <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Bénéfice du mois</div>
-                <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#4ade80":"#EF4444"}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(0)}€</div>
+                <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#4ade80":"#EF4444"}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(0)}$</div>
               </div>
               <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
                 <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Paris du mois</div>
@@ -3546,7 +3514,7 @@ export default function App(){
                       <div style={{fontSize:10,color:parseFloat(roi)>=0?"#4ade80":"#EF4444"}}>{parseFloat(roi)>=0?"+":""}{roi}% ROI</div>
                     </div>
                     <div style={{fontSize:16,fontWeight:700,color:profit>=0?"#4ade80":"#EF4444"}}>
-                      {profit>=0?"+":""}{profit.toFixed(0)}€
+                      {profit>=0?"+":""}{profit.toFixed(0)}$
                     </div>
                   </div>
                 );
@@ -3565,7 +3533,7 @@ export default function App(){
             {/* ── Filtre Mise min/max ── */}
             <div className="add-card">
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                <span className="add-label">Mise (€)</span>
+                <span className="add-label">Mise ($)</span>
                 {(fMinStake||fMaxStake)&&(
                   <button onClick={()=>{setFMinStake("");setFMaxStake("");}}
                     style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>× Effacer</button>
@@ -3682,7 +3650,7 @@ export default function App(){
                 <div style={{display:"flex",gap:9,marginBottom:14}}>
                   <div className="card" style={{flex:1,padding:"10px 12px"}}>
                     <div style={{fontSize:11,color:"#9CA3AF",marginBottom:2}}>{fs.length} paris</div>
-                    <div style={{fontSize:15,fontWeight:700,color:fp>=0?"#4ade80":"#EF4444"}}>{fp>=0?"+":""}{fp.toFixed(0)}€</div>
+                    <div style={{fontSize:15,fontWeight:700,color:fp>=0?"#4ade80":"#EF4444"}}>{fp>=0?"+":""}{fp.toFixed(0)}$</div>
                   </div>
                   <div className="card" style={{flex:1,padding:"10px 12px"}}>
                     <div style={{fontSize:11,color:"#9CA3AF",marginBottom:2}}>Win Rate</div>
@@ -3823,7 +3791,7 @@ export default function App(){
 
                   {/* Mise */}
                   <div style={{marginBottom:12}}>
-                    <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Mise (€)</div>
+                    <div style={{fontSize:10,color:"#9CA3AF",marginBottom:4,fontWeight:600}}>Mise ($)</div>
                     <div style={{background:"#0D0F1E",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",overflow:"hidden"}}>
                       <NumPad value={duelForm.stake} onChange={v=>setDuelForm(f=>({...f,stake:v}))} placeholder="50" step="1"/>
                     </div>
@@ -3831,7 +3799,7 @@ export default function App(){
                       {[50,62,75,87,100].map(s=>(
                         <button key={s} onClick={()=>setDuelForm(f=>({...f,stake:String(s)}))}
                           style={{padding:"6px 12px",borderRadius:8,border:"1px solid "+(duelForm.stake===String(s)?"#F59E0B":"#1F2937"),background:duelForm.stake===String(s)?"rgba(245,158,11,0.12)":"#111827",color:duelForm.stake===String(s)?"#F59E0B":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                          {s}€
+                          {s}$
                         </button>
                       ))}
                     </div>
@@ -3910,7 +3878,7 @@ export default function App(){
                           {isOn&&<span style={{position:"absolute",top:-7,right:-5,width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,#a78bfa,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 2px 8px rgba(139,92,246,.5)"}}>✓</span>}
                           {bkLogo
                             ?(<img src={bkLogo} alt={bk} style={{width:30,height:30,borderRadius:7,objectFit:"contain"}}/>)
-                            :(<span style={{fontSize:10,fontWeight:600,color:isOn?"#c4b5fd":"#5a6478",letterSpacing:.3}}>{bk.slice(0,4)}</span>)})
+                            :(<span style={{fontSize:10,fontWeight:600,color:isOn?"#c4b5fd":"#5a6478",letterSpacing:.3}}>{bk.slice(0,4)}</span>)}
                         </button>
                       );
                     })}
@@ -4085,7 +4053,7 @@ export default function App(){
                     <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase"}}>Mise</div>
                     <div style={{height:48,borderRadius:12,border:"1px solid rgba(255,255,255,.09)",background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px",overflow:"hidden"}}>
                       <NumPad value={form.stake} onChange={v=>setForm(f=>({...f,stake:v}))} placeholder="75" step="1"/>
-                      <span style={{color:"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>€</span>
+                      <span style={{color:"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>$</span>
                     </div>
                   </div>
                 </div>
@@ -4093,14 +4061,14 @@ export default function App(){
                   {QUICK_STAKES.map(s=>(
                     <button key={s} onClick={()=>setForm(f=>({...f,stake:String(s)}))}
                       style={{height:36,borderRadius:10,border:"1px solid "+(parseFloat(form.stake)===s?"rgba(139,92,246,.6)":"rgba(255,255,255,.1)"),background:parseFloat(form.stake)===s?"rgba(139,92,246,.18)":"rgba(255,255,255,.05)",color:parseFloat(form.stake)===s?"#d4c5ff":"#8892a4",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:parseFloat(form.stake)===s?700:500,boxShadow:parseFloat(form.stake)===s?"0 0 12px rgba(139,92,246,.2)":"none",transition:"all .15s"}}>
-                      {s}€
+                      {s}$
                     </button>
                   ))}
                 </div>
                 {form.odds&&form.stake&&(
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:9,borderTop:"1px solid rgba(255,255,255,0.04)"}}>
                     <span style={{fontSize:11,color:"#5a6478",fontWeight:500}}>Gain potentiel</span>
-                    <span style={{fontSize:16,fontWeight:700,color:"#22c55e"}}>+{(parseFloat(form.stake||0)*(parseFloat(form.odds||1)-1)).toFixed(2)}€</span>
+                    <span style={{fontSize:16,fontWeight:700,color:"#22c55e"}}>+{(parseFloat(form.stake||0)*(parseFloat(form.odds||1)-1)).toFixed(2)}$</span>
                   </div>
                 )}
               </div>
@@ -4458,7 +4426,7 @@ export default function App(){
                               <span style={{width:1,height:26,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
                               <div style={{display:"flex",flexDirection:"column",gap:2}}>
                                 <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>MISE</span>
-                                <span style={{fontSize:14,fontWeight:700,color:"#e4eaf6"}}>{form.stake}€</span>
+                                <span style={{fontSize:14,fontWeight:700,color:"#e4eaf6"}}>{form.stake}$</span>
                               </div>
                               {form.bookmaker&&BK_LOGOS[form.bookmaker]&&(
                                 <><span style={{width:1,height:26,background:"rgba(255,255,255,.06)",flexShrink:0}}/>
@@ -4472,7 +4440,7 @@ export default function App(){
                             {gain&&(
                               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
                                 <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>GAIN POTENTIEL</span>
-                                <span style={{fontSize:17,fontWeight:800,color:"#22e875",textShadow:"0 0 12px rgba(34,232,117,.3)"}}>+{gain}€</span>
+                                <span style={{fontSize:17,fontWeight:800,color:"#22e875",textShadow:"0 0 12px rgba(34,232,117,.3)"}}>+{gain}$</span>
                               </div>
                             )}
                           </div>
@@ -4539,14 +4507,14 @@ export default function App(){
                   <div style={{background:"linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.04))",border:"1px solid rgba(34,197,94,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#22c55e,#16a34a)"}}/>
                     <div style={{fontSize:8,color:"#4a6a50",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Profit net</div>
-                    <div style={{fontSize:24,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                    <div style={{fontSize:24,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
                     <div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{settledFiltered.length} paris résolus</div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,rgba(59,130,246,.08),rgba(99,102,241,.04))",border:"1px solid rgba(59,130,246,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#3b82f6,#6366f1)"}}/>
                     <div style={{fontSize:8,color:"#3a5270",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>ROI global</div>
                     <div style={{fontSize:24,fontWeight:800,color:globalROI>=0?"#60a5fa":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{globalROI>=0?"+":""}{globalROI.toFixed(1)}%</div>
-                    <div style={{fontSize:10,color:"#3a5270",marginTop:4,fontWeight:500}}>{totalStaked.toFixed(0)}€ misés</div>
+                    <div style={{fontSize:10,color:"#3a5270",marginTop:4,fontWeight:500}}>{totalStaked.toFixed(0)}$ misés</div>
                   </div>
                 </div>
                 {/* Ligne 2 — WR + Série/Meilleur mois */}
@@ -4561,7 +4529,7 @@ export default function App(){
                     {currentStreak>1
                       ? <><div style={{fontSize:24,fontWeight:800,color:streakType==="won"?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{currentStreak}</div><div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{streakType==="won"?"victoires":"défaites"} consécutives</div></>
                       : bestMonth
-                        ? <><div style={{fontSize:20,fontWeight:800,color:"#22C55E",letterSpacing:-.3,lineHeight:1}}>+{bestMonth[1].toFixed(0)}€</div><div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{bestMonth[0]}</div></>
+                        ? <><div style={{fontSize:20,fontWeight:800,color:"#22C55E",letterSpacing:-.3,lineHeight:1}}>+{bestMonth[1].toFixed(0)}$</div><div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{bestMonth[0]}</div></>
                         : <div style={{fontSize:20,fontWeight:800,color:"#3a4a5e"}}>—</div>
                     }
                   </div>
@@ -4580,7 +4548,7 @@ export default function App(){
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                     <div>
                       <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:1.2,fontWeight:700,marginBottom:2}}>Bankroll cumulative</div>
-                      <div style={{fontSize:22,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}€</div>
+                      <div style={{fontSize:22,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
                     </div>
                     <div style={{textAlign:"right"}}>
                       <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:1,fontWeight:700,marginBottom:2}}>Paris</div>
@@ -4628,7 +4596,7 @@ export default function App(){
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:11,color:"#9CA3AF"}}>Profit</span>
-                            <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
+                            <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</span>
                           </div>
                         </div>
                         {/* Barre WR */}
@@ -4723,9 +4691,9 @@ export default function App(){
                           {GAMES.map(g=>{
                             const s=stats(edgeMatrix[bk.label][g]);
                             if(!s)return(<span key={g} style={{textAlign:"center",color:"#1a2a3a",fontSize:10}}>—</span>);
-                            return(<div key={g} style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}%</div><div style={{color:s.roi>=0?"#4ade80":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div><div style={{color:s.profit>=0?"#4ade80":"#f87171",fontSize:9}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div></div>);
+                            return(<div key={g} style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}%</div><div style={{color:s.roi>=0?"#4ade80":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</div><div style={{color:s.profit>=0?"#4ade80":"#f87171",fontSize:9}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div></div>);
                           })}
-                          {(()=>{const s=stats(edgeMatrix[bk.label].total);if(!s)return(<span style={{color:"#1a2a3a"}}>—</span>);return(<div style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{color:"#7a9cbd"}}>{s.cnt}p</div><div style={{fontWeight:700,color:s.profit>=0?"#4ade80":"#f87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</div></div>);})()}
+                          {(()=>{const s=stats(edgeMatrix[bk.label].total);if(!s)return(<span style={{color:"#1a2a3a"}}>—</span>);return(<div style={{textAlign:"center",fontSize:10,lineHeight:1.6}}><div style={{color:"#7a9cbd"}}>{s.cnt}p</div><div style={{fontWeight:700,color:s.profit>=0?"#4ade80":"#f87171"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div></div>);})()}
                         </div>
                       ))}
                     </div>
@@ -4736,7 +4704,7 @@ export default function App(){
                         <div key={game+stat} style={{background:"rgba(8,12,24,.99)",border:"1px solid rgba(139,92,246,.2)",borderRadius:14,overflow:"hidden"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"rgba(139,92,246,.05)",borderBottom:"1px solid rgba(139,92,246,.1)"}}><GameLogo game={game} size={14}/><span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>{game}</span><span style={{fontSize:10,color:"#6a5a8e"}}>→ {stat}</span></div>
                           <div style={{display:"grid",gridTemplateColumns:"80px 40px 52px 52px 60px",padding:"5px 12px",borderBottom:"1px solid #0d1628"}}>{["Edge","N","WR","ROI","Profit"].map(h=>(<span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textAlign:h==="Edge"?"left":"center"}}>{h}</span>))}</div>
-                          {EDGE_BUCKETS.map((bk,i)=>{const s=stats(byEdge[bk.label]);if(!s)return null;return(<div key={bk.label} style={{display:"grid",gridTemplateColumns:"80px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:i<EDGE_BUCKETS.length-1?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>{bk.label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span></div>);}) }
+                          {EDGE_BUCKETS.map((bk,i)=>{const s=stats(byEdge[bk.label]);if(!s)return null;return(<div key={bk.label} style={{display:"grid",gridTemplateColumns:"80px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:i<EDGE_BUCKETS.length-1?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>{bk.label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);}) }
                         </div>
                       ))}
                     </div>
@@ -4750,7 +4718,7 @@ export default function App(){
                             <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderBottom:"1px solid rgba(139,92,246,.1)"}}><GameLogo game={game} size={14}/><span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>{game} — {stat}</span></div>
                             {[{label:"Over",s:so,color:"#4ade80"},{label:"Under",s:su,color:"#60a5fa"}].map(({label,s,color})=>{
                               if(!s)return null;
-                              return(<div key={label} style={{display:"grid",gridTemplateColumns:"60px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:label==="Over"?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color}}>{label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span></div>);
+                              return(<div key={label} style={{display:"grid",gridTemplateColumns:"60px 40px 52px 52px 60px",padding:"8px 12px",borderBottom:label==="Over"?"1px solid #0d1628":"none",alignItems:"center"}}><span style={{fontSize:12,fontWeight:700,color}}>{label}</span><span style={{fontSize:11,color:"#6a5a8e",textAlign:"center"}}>{s.cnt}</span><span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span><span style={{fontSize:11,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span><span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",textAlign:"right"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);
                             })}
                           </div>
                         );
@@ -4774,7 +4742,7 @@ export default function App(){
                                     <div style={{fontSize:13,fontWeight:800,color:"#c4b5fd",marginBottom:5}}>Ligne {l.line.toFixed(1)} <span style={{fontSize:9,color:"#4a3a6e"}}>· {l.total.cnt}p</span></div>
                                     {[{label:"Over",s:so,color:"#4ade80"},{label:"Under",s:su,color:"#60a5fa"}].map(({label,s,color})=>{
                                       if(!s)return null;
-                                      return(<div key={label} style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:9,fontWeight:700,color,minWidth:38}}>{label}:</span><span style={{fontSize:10,color:"#6a5a8e"}}>{s.cnt}p</span><span style={{fontSize:10,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}% WR</span><span style={{fontSize:10,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</span><span style={{fontSize:10,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",marginLeft:"auto"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}€</span></div>);
+                                      return(<div key={label} style={{display:"flex",gap:6,alignItems:"center",marginBottom:2}}><span style={{fontSize:9,fontWeight:700,color,minWidth:38}}>{label}:</span><span style={{fontSize:10,color:"#6a5a8e"}}>{s.cnt}p</span><span style={{fontSize:10,fontWeight:700,color:s.wr>=55?"#4ade80":s.wr<45?"#f87171":"#9CA3AF"}}>{s.wr}% WR</span><span style={{fontSize:10,fontWeight:600,color:s.roi>=0?"#4ade80":"#f87171"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}% ROI</span><span style={{fontSize:10,fontWeight:800,color:s.profit>=0?"#4ade80":"#f87171",marginLeft:"auto"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span></div>);
                                     })}
                                   </div>
                                 );
@@ -4809,7 +4777,7 @@ export default function App(){
                         <span style={{fontSize:10,color:"#6B7280"}}>{gs.count} paris</span>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}€</span>
+                        <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}$</span>
   <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>▼</span>
                       </div>
                     </div>
@@ -4861,7 +4829,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {p.count>0?(p.won/p.count*100).toFixed(0):0}% WR</div>
                                 </div>
                               </div>
-                              <span style={{fontWeight:700,fontSize:13,color:p.profit>=0?"#22C55E":"#EF4444"}}>{p.profit>=0?"+":""}{(p.profit||0).toFixed(0)}€</span>
+                              <span style={{fontWeight:700,fontSize:13,color:p.profit>=0?"#22C55E":"#EF4444"}}>{p.profit>=0?"+":""}{(p.profit||0).toFixed(0)}$</span>
                             </div>
                           ))}
                         </>
@@ -4878,7 +4846,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {p.count>0?(p.won/p.count*100).toFixed(0):0}% WR</div>
                                 </div>
                               </div>
-                              <span style={{fontWeight:700,fontSize:13,color:"#f87171"}}>{(p.profit||0).toFixed(0)}€</span>
+                              <span style={{fontWeight:700,fontSize:13,color:"#f87171"}}>{(p.profit||0).toFixed(0)}$</span>
                             </div>
                           ))}
                         </>
@@ -4901,7 +4869,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{m.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:m.profit>=0?"#22C55E":"#EF4444"}}>{m.profit>=0?"+":""}{(m.profit||0).toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:m.profit>=0?"#22C55E":"#EF4444"}}>{m.profit>=0?"+":""}{(m.profit||0).toFixed(0)}$</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -4927,7 +4895,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{r.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:r.profit>=0?"#22C55E":"#EF4444"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:r.profit>=0?"#22C55E":"#EF4444"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -4950,7 +4918,7 @@ export default function App(){
                                   <div style={{fontSize:10,color:"#6B7280"}}>{l.count} paris · {wr.toFixed(0)}% WR</div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:l.profit>=0?"#22C55E":"#EF4444"}}>{l.profit>=0?"+":""}{(l.profit||0).toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:l.profit>=0?"#22C55E":"#EF4444"}}>{l.profit>=0?"+":""}{(l.profit||0).toFixed(0)}$</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -4979,7 +4947,7 @@ export default function App(){
                                   </div>
                                 </div>
                                 <div style={{textAlign:"right"}}>
-                                  <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{(t.profit||0).toFixed(0)}€</div>
+                                  <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{(t.profit||0).toFixed(0)}$</div>
                                   <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
                                 </div>
                               </div>
@@ -5004,7 +4972,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#818CF8",display:"flex",alignItems:"center",gap:4}}>{r.line} <span style={{fontSize:9,color:"#4B5563"}}>›</span></span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
                               <span style={{fontSize:10}}>{r.wr>55?"✅":r.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5020,7 +4988,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#F59E0B"}}>Duels</span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
                               <span style={{fontSize:10}}>{r.wr>55?"✅":r.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5043,7 +5011,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#60A5FA"}}>{label}</span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{s.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:s.wr>55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{s.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</span>
                               <span style={{fontSize:10}}>{s.wr>55?"✅":s.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5059,7 +5027,7 @@ export default function App(){
                               <span style={{fontSize:12,fontWeight:600,color:"#818CF8"}}>{r.line}</span>
                               <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
                               <span style={{fontSize:10}}>{r.wr>55?"✅":r.wr<45?"❌":""}</span>
                             </div>
                           ))}
@@ -5080,7 +5048,7 @@ export default function App(){
                                 </div>
                               </div>
                               <div style={{textAlign:"right"}}>
-                                <div style={{fontWeight:700,fontSize:13,color:gs.liveS.profit>=0?"#22C55E":"#EF4444"}}>{gs.liveS.profit>=0?"+":""}{gs.liveS.profit.toFixed(0)}€</div>
+                                <div style={{fontWeight:700,fontSize:13,color:gs.liveS.profit>=0?"#22C55E":"#EF4444"}}>{gs.liveS.profit>=0?"+":""}{gs.liveS.profit.toFixed(0)}$</div>
                                 <div style={{fontSize:10,color:gs.liveS.roi>=0?"#22C55E":"#EF4444"}}>{gs.liveS.roi>=0?"+":""}{gs.liveS.roi.toFixed(1)}% ROI</div>
                               </div>
                             </div>
@@ -5095,7 +5063,7 @@ export default function App(){
                                 </div>
                               </div>
                               <div style={{textAlign:"right"}}>
-                                <div style={{fontWeight:700,fontSize:13,color:gs.nonLiveS.profit>=0?"#22C55E":"#EF4444"}}>{gs.nonLiveS.profit>=0?"+":""}{gs.nonLiveS.profit.toFixed(0)}€</div>
+                                <div style={{fontWeight:700,fontSize:13,color:gs.nonLiveS.profit>=0?"#22C55E":"#EF4444"}}>{gs.nonLiveS.profit>=0?"+":""}{gs.nonLiveS.profit.toFixed(0)}$</div>
                                 <div style={{fontSize:10,color:gs.nonLiveS.roi>=0?"#22C55E":"#EF4444"}}>{gs.nonLiveS.roi>=0?"+":""}{gs.nonLiveS.roi.toFixed(1)}% ROI</div>
                               </div>
                             </div>
@@ -5110,7 +5078,7 @@ export default function App(){
                                 </div>
                               </div>
                               <div style={{textAlign:"right"}}>
-                                <div style={{fontWeight:700,fontSize:13,color:gs.hsS.profit>=0?"#22C55E":"#EF4444"}}>{gs.hsS.profit>=0?"+":""}{gs.hsS.profit.toFixed(0)}€</div>
+                                <div style={{fontWeight:700,fontSize:13,color:gs.hsS.profit>=0?"#22C55E":"#EF4444"}}>{gs.hsS.profit>=0?"+":""}{gs.hsS.profit.toFixed(0)}$</div>
                                 <div style={{fontSize:10,color:gs.hsS.roi>=0?"#22C55E":"#EF4444"}}>{gs.hsS.roi>=0?"+":""}{gs.hsS.roi.toFixed(1)}% ROI</div>
                               </div>
                             </div>
@@ -5125,7 +5093,7 @@ export default function App(){
                                 </div>
                               </div>
                               <div style={{textAlign:"right"}}>
-                                <div style={{fontWeight:700,fontSize:13,color:gs.hsNonS.profit>=0?"#22C55E":"#EF4444"}}>{gs.hsNonS.profit>=0?"+":""}{gs.hsNonS.profit.toFixed(0)}€</div>
+                                <div style={{fontWeight:700,fontSize:13,color:gs.hsNonS.profit>=0?"#22C55E":"#EF4444"}}>{gs.hsNonS.profit>=0?"+":""}{gs.hsNonS.profit.toFixed(0)}$</div>
                                 <div style={{fontSize:10,color:gs.hsNonS.roi>=0?"#22C55E":"#EF4444"}}>{gs.hsNonS.roi>=0?"+":""}{gs.hsNonS.roi.toFixed(1)}% ROI</div>
                               </div>
                             </div>
@@ -5164,7 +5132,7 @@ export default function App(){
                               <span style={{fontSize:10,color:"#6a5a8e"}}>{t.cnt}p</span>
                               <span style={{fontSize:10,fontWeight:700,color:wr>=55?"#4ade80":wr<45?"#f87171":"#9CA3AF"}}>{wr}% WR</span>
                               <span style={{fontSize:10,fontWeight:600,color:roi>=0?"#4ade80":"#f87171"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</span>
-                              <span style={{fontSize:10,fontWeight:800,color:t.profit>=0?"#4ade80":"#f87171",marginLeft:"auto"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}€</span>
+                              <span style={{fontSize:10,fontWeight:800,color:t.profit>=0?"#4ade80":"#f87171",marginLeft:"auto"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}$</span>
                             </div>
                           );
                         };
@@ -5210,7 +5178,7 @@ export default function App(){
                             </div>
                             <div style={{display:"flex",alignItems:"center",gap:10}}>
                               <span style={{fontSize:11,fontWeight:700,color:wrColor}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:12,fontWeight:700,color:profitColor,minWidth:52,textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}€</span>
+                              <span style={{fontSize:12,fontWeight:700,color:profitColor,minWidth:52,textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
                             </div>
                           </div>
                           <div style={{height:3,borderRadius:2,background:"rgba(255,255,255,.04)",overflow:"hidden"}}>
@@ -5249,7 +5217,7 @@ export default function App(){
                             </div>
                           </div>
                           <div style={{textAlign:"right"}}>
-                            <div style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</div>
+                            <div style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</div>
                             <div style={{fontSize:10,color:bkROI>=0?"#22C55E":"#EF4444"}}>{bkROI>=0?"+":""}{bkROI.toFixed(1)}% ROI</div>
                           </div>
                         </div>
@@ -5355,7 +5323,7 @@ export default function App(){
               </div>
               <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{s.n}p</span>
               <span style={{fontSize:12,fontWeight:700,color:wrc(s.wr),minWidth:44,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
-              <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
+              <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</span>
             </div>
           );
 
@@ -5422,7 +5390,7 @@ export default function App(){
                 <div style={{marginBottom:12,borderRadius:12,overflow:"hidden",border:"1px solid #1A2235"}}>
                   <div style={{fontSize:9,color:"#9CA3AF",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",padding:"9px 12px",background:"#0D1626",borderBottom:"1px solid #1A2235"}}>Global</div>
                   <div style={{display:"flex",justifyContent:"space-around",padding:"14px 12px"}}>
-                    {[{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"€",c:pc(totalP)},{l:"Cote moy.",v:"@"+(betsF.reduce((s,b)=>s+(b.odds||0),0)/betsF.length).toFixed(2),c:"#9CA3AF"}].map(x=>(
+                    {[{l:"WR",v:gWR.toFixed(0)+"%",c:wrc(gWR)},{l:"ROI",v:(gROI>=0?"+":"")+gROI.toFixed(1)+"%",c:pc(gROI)},{l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"$",c:pc(totalP)},{l:"Cote moy.",v:"@"+(betsF.reduce((s,b)=>s+(b.odds||0),0)/betsF.length).toFixed(2),c:"#9CA3AF"}].map(x=>(
                       <div key={x.l} style={{textAlign:"center"}}>
                         <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{x.l}</div>
                         <div style={{fontSize:17,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -5522,7 +5490,7 @@ export default function App(){
                         </div>
                         <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{r.n}p</span>
                         <span style={{fontSize:12,fontWeight:700,color:wrc(r.wr),minWidth:44,textAlign:"right"}}>{r.wr.toFixed(0)}%</span>
-                        <span style={{fontSize:13,fontWeight:800,color:"#EF4444",minWidth:66,textAlign:"right"}}>{(r.profit||0).toFixed(0)}€</span>
+                        <span style={{fontSize:13,fontWeight:800,color:"#EF4444",minWidth:66,textAlign:"right"}}>{(r.profit||0).toFixed(0)}$</span>
                       </div>
                     ))}
                   </div>
@@ -5540,7 +5508,7 @@ export default function App(){
                         </div>
                         <span style={{fontSize:11,color:"#6B7280",minWidth:36,textAlign:"right"}}>{s.n}p</span>
                         <span style={{fontSize:12,fontWeight:700,color:wrc(s.wr),minWidth:44,textAlign:"right"}}>{s.wr.toFixed(0)}%</span>
-                        <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}€</span>
+                        <span style={{fontSize:13,fontWeight:800,color:pc(s.profit),minWidth:66,textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</span>
                       </div>
                     ))}
                   </div>
@@ -5586,7 +5554,7 @@ export default function App(){
                       {ps?(
                         <div>
                           <div style={{display:"flex",justifyContent:"space-around",padding:"14px 12px",borderBottom:"1px solid #1A2235"}}>
-                            {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#4ade80":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#4ade80":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+p(s.profit||0).toFixed(0)+"€",c:ps.profit>=0?"#4ade80":"#EF4444"}].map(x=>(
+                            {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#4ade80":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#4ade80":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+p(s.profit||0).toFixed(0)+"$",c:ps.profit>=0?"#4ade80":"#EF4444"}].map(x=>(
                               <div key={x.l} style={{textAlign:"center"}}>
                                 <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{x.l}</div>
                                 <div style={{fontSize:16,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -5670,7 +5638,7 @@ export default function App(){
                   const wr=Math.round(d.won*100/d.cnt);
                   const roi=d.staked>0?Math.round(d.profit*1000/d.staked)/10:0;
                   if(m==="roi")return{txt:(roi>=0?"+":"")+roi.toFixed(1)+"%",color:roi>=0?"#4ade80":"#f87171"};
-                  if(m==="profit")return{txt:(d.profit>=0?"+":"")+d.profit.toFixed(0)+"€",color:d.profit>=0?"#4ade80":"#f87171"};
+                  if(m==="profit")return{txt:(d.profit>=0?"+":"")+d.profit.toFixed(0)+"$",color:d.profit>=0?"#4ade80":"#f87171"};
                   if(m==="wr")return{txt:wr+"%",color:wr>=55?"#4ade80":wr<45?"#f87171":"#9CA3AF"};
                   if(m==="n")return{txt:String(d.cnt),color:"#7a9cbd"};
                   return{txt:"—",color:"#3a4a5e"};
@@ -5948,8 +5916,8 @@ export default function App(){
                   </div>
                   {/* Nom joueur + équipe + kills/map + logo bookmaker */}
                   <div style={{minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
-                      <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>{b.player||"?"}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"nowrap",minWidth:0}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",flexShrink:0}}>{b.player||"?"}</span>
                       {(()=>{const pi=findPlayer(b.player);const tm=pi?.team||pi?.team_name;if(!tm)return null;return(<><span style={{color:"#3a4e62",fontSize:10,margin:"0 3px",flexShrink:0}}>-</span><span style={{fontSize:11,fontWeight:700,color:"#ffffff",whiteSpace:"nowrap",flexShrink:0}}>{tm}</span></>);})()}
                     </div>
                     <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
@@ -6401,7 +6369,7 @@ export default function App(){
                 <button onClick={()=>{let m=calMonth-1,y=calYear;if(m<0){m=11;y--;}setCalMonth(m);setCalYear(y);setCalSelected(null);}} style={{background:"none",border:"1px solid #1F2937",borderRadius:7,padding:"6px 12px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14,fontWeight:700}}>Prev</button>
                 <div style={{textAlign:"center"}}>
                   <div style={{fontSize:15,fontWeight:700}}>{FR_MONTHS[calMonth]} {calYear}</div>
-                  <div style={{fontSize:11,color:monthProfit>=0?"#4ade80":"#EF4444",fontWeight:600}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(2)}€</div>
+                  <div style={{fontSize:11,color:monthProfit>=0?"#4ade80":"#EF4444",fontWeight:600}}>{monthProfit>=0?"+":""}{monthProfit.toFixed(2)}$</div>
                 </div>
                 <button onClick={()=>{let m=calMonth+1,y=calYear;if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);setCalSelected(null);}} style={{background:"none",border:"1px solid #1F2937",borderRadius:7,padding:"6px 12px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14,fontWeight:700}}>Suiv</button>
               </div>
@@ -6434,7 +6402,7 @@ export default function App(){
                     cells.push(
                       <div key={dk} className={"cal-cell"+(isToday?" today":"")+(isSel?" selected":"")} onClick={()=>setCalSelected(isSel?null:dk)}>
                         <div style={{fontSize:16,fontWeight:isToday?800:600,color:isToday?"#4ade80":(hasSettled||pending)?"#E5E7EB":"#6B7280"}}>{d}</div>
-                        {hasSettled&&<div style={{fontSize:9,fontWeight:700,color:profit>=0?"#4ade80":"#EF4444",lineHeight:1,marginTop:1}}>{profit>=0?"+":""}{profit>=1000?(profit/1000).toFixed(1)+"k":profit.toFixed(0)}€</div>}
+                        {hasSettled&&<div style={{fontSize:9,fontWeight:700,color:profit>=0?"#4ade80":"#EF4444",lineHeight:1,marginTop:1}}>{profit>=0?"+":""}{profit>=1000?(profit/1000).toFixed(1)+"k":profit.toFixed(0)}$</div>}
                         {pending>0&&!hasSettled&&<div style={{width:4,height:4,borderRadius:"50%",background:"#3B82F6",marginTop:1}}/>}
                       </div>
                     );
@@ -6449,7 +6417,7 @@ export default function App(){
                   <div>
                     <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>
                       {calSelected.split("-").reverse().join("/")} - {selectedDayBets.length} pari{selectedDayBets.length!==1?"s":""}
-                      {dp!==undefined&&<span style={{marginLeft:8,fontWeight:700,color:dp>=0?"#4ade80":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}€</span>}
+                      {dp!==undefined&&<span style={{marginLeft:8,fontWeight:700,color:dp>=0?"#4ade80":"#EF4444"}}>{dp>=0?"+":""}{dp.toFixed(2)}$</span>}
                     </div>
                     <div className="stat-bloc">
                       {selectedDayBets.map(b=>(
@@ -6463,7 +6431,7 @@ export default function App(){
                           </div>
                           <div style={{textAlign:"right"}}>
                             <div style={{fontWeight:700,fontSize:13,color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6"}}>
-                              {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"€"}
+                              {b.status==="pending"?"@"+b.odds:(b.profit>=0?"+":"")+(b.profit||0).toFixed(2)+"$"}
                             </div>
                             <div style={{fontSize:10,color:STATUS_CFG[b.status]?STATUS_CFG[b.status].color:"#9CA3AF"}}>{STATUS_CFG[b.status]?STATUS_CFG[b.status].label:b.status}</div>
                           </div>
@@ -6723,17 +6691,17 @@ export default function App(){
                   <div style={{display:"flex",flexDirection:"column",gap:4}}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
                       <span style={{color:"#9CA3AF"}}>{splitModal.bookmaker}</span>
-                      <span style={{color:"#E5E7EB",fontWeight:600}}>{(splitModal.stake-(splitModal.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}€ <span style={{color:"#6B7280"}}>@{splitModal.odds}</span></span>
+                      <span style={{color:"#E5E7EB",fontWeight:600}}>{(splitModal.stake-(splitModal.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}$ <span style={{color:"#6B7280"}}>@{splitModal.odds}</span></span>
                     </div>
                     {(splitModal.splits||[]).map((sp,i)=>(
                       <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
                         <span style={{color:"#9CA3AF"}}>{sp.bookmaker}</span>
-                        <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}€ <span style={{color:"#6B7280"}}>@{sp.odds}</span></span>
+                        <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}$ <span style={{color:"#6B7280"}}>@{sp.odds}</span></span>
                       </div>
                     ))}
                     <div style={{borderTop:"1px solid #1F2937",paddingTop:6,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700}}>
                       <span style={{color:"#6B7280"}}>Total</span>
-                      <span style={{color:"#A78BFA"}}>{splitModal.stake}€</span>
+                      <span style={{color:"#A78BFA"}}>{splitModal.stake}$</span>
                     </div>
                   </div>
                 </div>
@@ -6770,7 +6738,7 @@ export default function App(){
                       style={{marginBottom:0}}/>
                   </div>
                   <div>
-                    <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Mise (€)</div>
+                    <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Mise ($)</div>
                     <input className="ifield" type="number" step="1" placeholder="Ex: 30"
                       value={splitForm.stake} onChange={e=>setSplitForm(f=>({...f,stake:e.target.value}))}
                       style={{marginBottom:0}}/>
@@ -6787,8 +6755,8 @@ export default function App(){
                       {valid.map(({unit,add})=>(
                         <button key={unit} onClick={()=>setSplitForm(f=>({...f,stake:String(add)}))}
                           style={{flex:"1 1 auto",padding:"8px 4px",borderRadius:10,border:"1.5px solid "+(splitForm.stake===String(add)?"#A78BFA":"#1F2937"),background:splitForm.stake===String(add)?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.03)",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",transition:"all .15s"}}>
-                          <div style={{fontSize:12,fontWeight:700,color:splitForm.stake===String(add)?"#A78BFA":"#E5E7EB"}}>{add}€</div>
-                          <div style={{fontSize:9,color:"#6B7280",marginTop:1}}>→{unit}€</div>
+                          <div style={{fontSize:12,fontWeight:700,color:splitForm.stake===String(add)?"#A78BFA":"#E5E7EB"}}>{add}$</div>
+                          <div style={{fontSize:9,color:"#6B7280",marginTop:1}}>→{unit}$</div>
                         </button>
                       ))}
                     </div>
@@ -6796,7 +6764,7 @@ export default function App(){
                 })()}
 
                 {splitForm.stake&&<div style={{fontSize:12,color:"#6B7280",textAlign:"center"}}>
-                  Total → <span style={{color:"#A78BFA",fontWeight:800,fontSize:14}}>{(splitModal.stake+parseFloat(splitForm.stake||0)).toFixed(0)}€</span>
+                  Total → <span style={{color:"#A78BFA",fontWeight:800,fontSize:14}}>{(splitModal.stake+parseFloat(splitForm.stake||0)).toFixed(0)}$</span>
                 </div>}
 
                 {/* Boutons */}
@@ -6823,7 +6791,7 @@ export default function App(){
                       }
                       const newProfit=calcProfit(splitModal.status,newTotalStake,splitModal.odds);
                       setBets(b=>b.map(bet=>bet.id===splitModal.id?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit,updatedAt:Date.now()}:bet));
-                      showToast(splitForm.bookmaker+" "+addStake+"€ · Total "+newTotalStake.toFixed(0)+"€","#A78BFA");
+                      showToast(splitForm.bookmaker+" "+addStake+"$ · Total "+newTotalStake.toFixed(0)+"$","#A78BFA");
                       setSplitModal(null);
                     }}
                     style={{padding:"13px",background:splitForm.bookmaker&&splitForm.stake?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:12,color:splitForm.bookmaker&&splitForm.stake?"#fff":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,boxShadow:splitForm.bookmaker&&splitForm.stake?"0 4px 20px rgba(124,58,237,0.35)":"none",transition:"all .15s"}}>
@@ -6903,7 +6871,7 @@ export default function App(){
                                 <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
                                   {integrityReport.onlyLocal.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
                                     <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
-                                    <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}€ · {b.bookmaker}</span>
+                                    <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}$ · {b.bookmaker}</span>
                                     <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
                                   </div>)}
                                   {integrityReport.onlyLocal.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyLocal.length-5} autres…</div>}
@@ -6922,7 +6890,7 @@ export default function App(){
                                 <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
                                   {integrityReport.onlyRemote.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
                                     <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
-                                    <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}€ · {b.bookmaker}</span>
+                                    <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}$ · {b.bookmaker}</span>
                                     <span style={{color:b.status==="won"?"#4ade80":b.status==="lost"?"#EF4444":"#3B82F6",marginLeft:4,fontWeight:600}}>{b.status}</span>
                                     <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
                                   </div>)}
