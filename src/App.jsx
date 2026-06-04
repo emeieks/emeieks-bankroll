@@ -6081,12 +6081,12 @@ export default function App(){
                           // Calcul ppLine selon ppMapType sélectionné
                           const selPPType=window.__ppTypeSelected?.[betKey]||"";
                           let ppDesc="";
-                          if(selPPType&&b.book_line!=null){
-                            const bkVal=parseFloat(b.book_line);
-                            const edge=ou==="Over"?2.0:2.5;
-                            if(selPPType==="Map 1+2") ppDesc=(Math.round((bkVal*2-edge)*2)/2).toFixed(1)+" Kills";
-                            else if(selPPType==="Map 3") ppDesc=(Math.round((bkVal-1.5)*2)/2).toFixed(1)+" Kills";
-                            else if(selPPType==="Map 1+2+3") ppDesc=(Math.round((bkVal*3-(ou==="Over"?3.0:4.0))*2)/2).toFixed(1)+" Kills";
+                          const ppOrig=b.pp_line_original||b.pp_line_per_map;
+                          if(selPPType&&ppOrig!=null){
+                            const ppBase=parseFloat(ppOrig);
+                            if(selPPType==="Map 1+2") ppDesc=ppBase.toFixed(1)+" Kills";
+                            else if(selPPType==="Map 3") ppDesc=(Math.round((ppBase/2)*2)/2).toFixed(1)+" Kills";
+                            else if(selPPType==="Map 1+2+3") ppDesc=(Math.round((ppBase/2*3)*2)/2).toFixed(1)+" Kills";
                           }
                           setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo,ppMapType:selPPType,ppDescription:ppDesc});
                           setEditingBet(null);
@@ -6108,14 +6108,13 @@ export default function App(){
                       <div style={{display:"flex",gap:5}}>
                         {["Map 1+2","Map 3","Map 1+2+3"].map(t=>{
                           const sel=(window.__ppTypeSelected?.[betKey]||"")=== t;
-                          const bkVal=b.book_line!=null?parseFloat(b.book_line):null;
-                          const ou=b.direction==="OVER"?"Over":"Under";
-                          const edge=ou==="Over"?2.0:2.5;
+                          const ppOrig=b.pp_line_original||b.pp_line_per_map;
+                          const ppBase=ppOrig!=null?parseFloat(ppOrig):null;
                           let ppVal="";
-                          if(bkVal!=null){
-                            if(t==="Map 1+2") ppVal=(Math.round((bkVal*2-edge)*2)/2).toFixed(1);
-                            else if(t==="Map 3") ppVal=(Math.round((bkVal-1.5)*2)/2).toFixed(1);
-                            else if(t==="Map 1+2+3") ppVal=(Math.round((bkVal*3-(ou==="Over"?3.0:4.0))*2)/2).toFixed(1);
+                          if(ppBase!=null){
+                            if(t==="Map 1+2") ppVal=ppBase.toFixed(1);
+                            else if(t==="Map 3") ppVal=(Math.round((ppBase/2)*2)/2).toFixed(1);
+                            else if(t==="Map 1+2+3") ppVal=(Math.round((ppBase/2*3)*2)/2).toFixed(1);
                           }
                           return(
                             <button key={t} onClick={e=>{
