@@ -1617,10 +1617,11 @@ export default function App(){
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [suiviOpen,setSuiviOpen]=useState({tournois:true,bookmakers:false,prizepicks:false});
-  const [ppData,setPpData]=useState([]);
+  const [ppData,setPpData]=useState(()=>{try{const s=localStorage.getItem("v7_pp_data");return s?JSON.parse(s):[];}catch{return[];}});
   const [ppActiveLeague,setPpActiveLeague]=useState("all");
   const [ppActiveTiers,setPpActiveTiers]=useState(new Set(["standard","demon","goblin"]));
   const [ppSearch,setPpSearch]=useState("");
+  const [ppFullscreen,setPpFullscreen]=useState(false);
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [betGroupMode,setBetGroupMode]=useState("jour"); // jour | semaine
@@ -6298,6 +6299,412 @@ export default function App(){
                 </div>
               </div>
             )}
+            {/* ── PRIZEPICKS ── */}
+            {(()=>{
+              // ── Palette premium PrizePicks-inspired ──
+              const PP={
+                bg:"#070913",
+                card:"#0D1020",
+                border:"#1B1E35",
+                hover:"#141933",
+                text:"#FFFFFF",
+                sub:"#A0A8C0",
+                muted:"#6E7690",
+                yellow:"#FFD84D",
+              };
+              const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
+              const ppFiltered=ppData.filter(d=>{
+                if(d.player_combo)return false;
+                if(ppActiveLeague!=="all"&&d.league!==ppActiveLeague)return false;
+                if(!ppActiveTiers.has(d.odds_tier))return false;
+                if(ppSearch){
+                  const q=ppSearch.toLowerCase();
+                  if(!d.player_name.toLowerCase().includes(q)&&!(d.player_team||"").toLowerCase().includes(q)&&!d.stat.toLowerCase().includes(q))return false;
+                }
+                return true;
+              });
+              // Tier : couleur accent uniquement pour demon/goblin, sinon texte blanc
+              const tierAccent=t=>t==="demon"?"#FF6B6B":t==="goblin"?"#4AE68A":null;
+              const leagueLabels={LoL:"LoL",CS2:"CS2",VAL:"VAL",Dota2:"Dota2",NBA:"NBA",NFL:"NFL",MLB:"MLB"};
+              // Formatage heure de début
+              const fmtTime=str=>{
+                if(!str)return null;
+                const d=new Date(str);
+                if(isNaN(d.getTime()))return null;
+                return d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"});
+              };
+              const fmtDate=str=>{
+                if(!str)return null;
+                const d=new Date(str);
+                if(isNaN(d.getTime()))return null;
+                const now=new Date();
+                const isToday=d.toDateString()===now.toDateString();
+                if(isToday)return fmtTime(str);
+                return d.toLocaleDateString("fr-CA",{month:"short",day:"numeric"})+" "+fmtTime(str);
+              };
+              // Stat label : sépare le nombre du texte (ex: "MAPS 1-3 Kills" → "Kills")
+              const statLabel=s=>{
+                const m=s.match(/([A-Za-zéèàûîê\s()+]+)$/);
+                return m?m[1].trim():s;
+              };
+              return(
+              <div style={{marginBottom:8}}>
+                {/* ── Header toggle ── */}
+                <button onClick={()=>setSuiviOpen(s=>({...s,prizepicks:!s.prizepicks}))}
+                  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0D1020",border:`1px solid ${suiviOpen.prizepicks?"#2A2E50":PP.border}`,borderRadius:suiviOpen.prizepicks?"13px 13px 0 0":"13px",padding:"13px 16px",cursor:"pointer",transition:"border-color .2s",fontFamily:"'Inter',sans-serif"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <img src={PP_LOGO_B64} alt="PP" style={{width:20,height:20,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
+                    <span style={{fontSize:13,fontWeight:600,color:PP.text,letterSpacing:-.1}}>PrizePicks</span>
+                    {ppData.length>0&&(
+                      <span style={{fontSize:11,fontWeight:500,color:PP.muted}}>{ppFiltered.length} props</span>
+                    )}
+                  </div>
+                  <span style={{color:PP.muted,fontSize:11,transition:"transform .2s",display:"inline-block",transform:suiviOpen.prizepicks?"rotate(180deg)":"none"}}>▾</span>
+                </button>
+
+                {suiviOpen.prizepicks&&(
+                <div style={{background:PP.bg,border:`1px solid ${PP.border}`,borderTop:"none",borderRadius:"0 0 13px 13px",overflow:"hidden",marginBottom:8}}>
+
+                  {/* ── État vide ── */}
+                  {ppData.length===0?(
+                    <div style={{padding:"40px 20px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+                      <div style={{width:48,height:48,borderRadius:12,background:"#0D1020",border:`1px solid ${PP.border}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        <img src={PP_LOGO_B64} alt="" style={{width:28,height:28,objectFit:"cover",borderRadius:4,opacity:.5}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:600,color:PP.text,marginBottom:4}}>Aucune donnée</div>
+                        <div style={{fontSize:12,color:PP.muted,lineHeight:1.6}}>Importe ton export JSON depuis Apify</div>
+                      </div>
+                      <label style={{marginTop:4,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:8,color:PP.sub,fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"border-color .15s"}}>
+                        <span style={{fontSize:14}}>↑</span> Charger JSON
+                        <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
+                          const file=e.target.files[0];if(!file)return;
+                          const r=new FileReader();
+                          r.onload=ev=>{try{const d=JSON.parse(ev.target.result);const arr=Array.isArray(d)?d:[d];setPpData(arr);try{localStorage.setItem("v7_pp_data",JSON.stringify(arr));}catch{}showToast("✅ "+arr.length+" props chargées","#4AE68A");}catch{showToast("JSON invalide","#EF4444");}};
+                          r.readAsText(file);
+                        }}/>
+                      </label>
+                    </div>
+                  ):(
+                  <>
+                    {/* ── Barre supérieure : résumé + recharger + fullscreen ── */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:`1px solid ${PP.border}`}}>
+                      <div style={{display:"flex",gap:20}}>
+                        {[
+                          {v:ppFiltered.length,l:"Props"},
+                          {v:new Set(ppFiltered.map(d=>d.player_id)).size,l:"Joueurs"},
+                          {v:ppFiltered.filter(d=>d.hot).length,l:"Hot",c:"#FFD84D"},
+                        ].map(({v,l,c})=>(
+                          <div key={l} style={{display:"flex",flexDirection:"column",gap:1}}>
+                            <span style={{fontSize:17,fontWeight:700,color:c||PP.text,letterSpacing:-.5,lineHeight:1}}>{v}</span>
+                            <span style={{fontSize:10,fontWeight:400,color:PP.muted,letterSpacing:.3}}>{l}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        {ppData.length>0&&(
+                          <button onClick={()=>setPpFullscreen(true)}
+                            style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:7,color:PP.sub,fontWeight:500,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"border-color .15s"}}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                            Plein écran
+                          </button>
+                        )}
+                        <label style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:7,color:PP.sub,fontWeight:500,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                          ↑ Recharger
+                          <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
+                            const file=e.target.files[0];if(!file)return;
+                            const r=new FileReader();
+                            r.onload=ev=>{try{const d=JSON.parse(ev.target.result);const arr=Array.isArray(d)?d:[d];setPpData(arr);setPpActiveLeague("all");try{localStorage.setItem("v7_pp_data",JSON.stringify(arr));}catch{}showToast("✅ "+arr.length+" props","#4AE68A");}catch{showToast("JSON invalide","#EF4444");}};
+                            r.readAsText(file);
+                          }}/>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* ── League tabs ── */}
+                    <div style={{display:"flex",overflowX:"auto",scrollbarWidth:"none",borderBottom:`1px solid ${PP.border}`}}>
+                      {ppLeagues.map(lg=>{
+                        const active=ppActiveLeague===lg;
+                        const count=lg==="all"?ppData.length:ppData.filter(d=>d.league===lg).length;
+                        return(
+                          <button key={lg} onClick={()=>setPpActiveLeague(lg)}
+                            style={{flex:"0 0 auto",padding:"11px 16px",background:"transparent",border:"none",borderBottom:`2px solid ${active?"#FFFFFF":"transparent"}`,color:active?PP.text:PP.muted,fontWeight:active?600:400,fontSize:13,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
+                            {lg==="all"?"Tous":(leagueLabels[lg]||lg)}
+                            <span style={{fontSize:11,color:active?PP.sub:PP.muted,fontWeight:400}}>{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* ── Filtres tier + recherche ── */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 14px",borderBottom:`1px solid ${PP.border}`,flexWrap:"wrap"}}>
+                      {["standard","demon","goblin"].map(tier=>{
+                        const active=ppActiveTiers.has(tier);
+                        const ac=tierAccent(tier);
+                        const labels={standard:"Standard",demon:"Demon",goblin:"Goblin"};
+                        return(
+                          <button key={tier} onClick={()=>{
+                            const s=new Set(ppActiveTiers);
+                            if(s.has(tier))s.delete(tier);else s.add(tier);
+                            setPpActiveTiers(s);
+                          }} style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${active?(ac?ac+"55":PP.border+"aa"):PP.border}`,background:active?(ac?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.03)"):"transparent",color:active?(ac||PP.text):PP.muted,fontSize:12,fontWeight:active?500:400,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s",letterSpacing:.1}}>
+                            {labels[tier]}
+                          </button>
+                        );
+                      })}
+                      <input value={ppSearch} onChange={e=>setPpSearch(e.target.value)} placeholder="Rechercher un joueur..."
+                        style={{marginLeft:"auto",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:6,color:PP.text,fontSize:12,fontWeight:400,padding:"6px 11px",outline:"none",width:160,fontFamily:"'Inter',sans-serif"}}/>
+                    </div>
+
+                    {/* ── Grille de cartes ── */}
+                    {ppFiltered.length===0?(
+                      <div style={{padding:"32px",textAlign:"center",color:PP.muted,fontSize:13}}>Aucune prop avec ces filtres</div>
+                    ):(
+                    <div style={{padding:"14px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:10,maxHeight:560,overflowY:"auto",scrollbarWidth:"thin",scrollbarColor:`${PP.border} transparent`}}>
+                      {ppFiltered.map(d=>{
+                        // ── Matching joueur DB ──
+                        const ppNames=(d.player_name||"").split(/\s*\+\s*/);
+                        const matchedPlayer=ppNames.reduce((found,nm)=>{
+                          if(found)return found;
+                          const key=nm.toLowerCase().trim();
+                          return allPlayers[key]||Object.values(allPlayers).find(p=>p.name&&p.name.toLowerCase()===key)||null;
+                        },null);
+                        const dbAvatar=matchedPlayer?getAvatarSrc(matchedPlayer):null;
+                        const initL=(d.player_name||d.player_team||"?")[0].toUpperCase();
+                        const fallbackSvg=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'><rect fill='%230D1020' width='56' height='56' rx='28'/><text x='28' y='37' text-anchor='middle' fill='%23A0A8C0' font-size='20' font-family='Inter,sans-serif' font-weight='600'>${initL}</text></svg>`;
+                        const imgSrc=dbAvatar||fallbackSvg;
+                        // ── Stat : sépare chiffre et label ──
+                        const statLabelText=statLabel(d.stat);
+                        // ── Matchup ──
+                        const matchup=d.description||"";
+                        // ── Heure ──
+                        const gameTime=fmtDate(d.game_start||d.start_time);
+                        // ── Accent tier ──
+                        const ac=tierAccent(d.odds_tier);
+                        return(
+                          <div key={d.projection_id}
+                            style={{
+                              background:"linear-gradient(180deg,#0E1124 0%,#0B0D1B 100%)",
+                              border:`1px solid ${PP.border}`,
+                              borderRadius:14,
+                              overflow:"hidden",
+                              boxShadow:"0 0 0 1px rgba(255,255,255,0.04)",
+                              display:"flex",
+                              flexDirection:"column",
+                              transition:"border-color .18s",
+                              fontFamily:"'Inter',sans-serif",
+                            }}>
+
+                            {/* ── Zone joueur ── */}
+                            <div style={{padding:"18px 16px 0",display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:0}}>
+
+                              {/* Photo */}
+                              <div style={{position:"relative",marginBottom:12}}>
+                                <img src={imgSrc} onError={ev=>{ev.target.src=fallbackSvg;}} alt=""
+                                  style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",background:"#0D1020",border:`1px solid ${PP.border}`,display:"block"}}/>
+                                {d.is_live&&(
+                                  <span style={{position:"absolute",bottom:0,right:0,width:12,height:12,borderRadius:"50%",background:"#4AE68A",border:"2px solid #0B0D1B"}}/>
+                                )}
+                              </div>
+
+                              {/* Équipe · Rôle */}
+                              <div style={{fontSize:12,fontWeight:400,color:PP.muted,letterSpacing:.1,marginBottom:4}}>
+                                {[d.player_team,d.player_position].filter(Boolean).join(" · ")||d.league}
+                              </div>
+
+                              {/* Nom du joueur */}
+                              <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.2,marginBottom:8,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>
+                                {d.player_name||d.player_team||"—"}
+                              </div>
+
+                              {/* Matchup + heure */}
+                              <div style={{fontSize:13,fontWeight:500,color:PP.muted,lineHeight:1.4,marginBottom:2,minHeight:18}}>
+                                {matchup&&<span>{matchup}</span>}
+                              </div>
+                              {gameTime&&(
+                                <div style={{fontSize:12,fontWeight:500,color:PP.yellow,marginBottom:0,letterSpacing:.1}}>{gameTime}</div>
+                              )}
+                            </div>
+
+                            {/* ── Séparateur ── */}
+                            <div style={{margin:"14px 0 0",borderTop:`1px solid ${PP.border}`}}/>
+
+                            {/* ── Statistique principale ── */}
+                            <div style={{padding:"18px 16px 16px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                              {/* Badges discrets */}
+                              <div style={{display:"flex",gap:4,justifyContent:"center",marginBottom:4,minHeight:16}}>
+                                {d.hot&&<span style={{fontSize:10,fontWeight:500,color:PP.yellow,letterSpacing:.2}}>HOT</span>}
+
+                                {d.adjusted_odds&&<span style={{fontSize:10,fontWeight:500,color:PP.muted,letterSpacing:.2}}>ADJ</span>}
+                              </div>
+                              {/* Valeur dominante */}
+                              <div style={{fontSize:36,fontWeight:700,color:ac||PP.text,letterSpacing:-1.5,lineHeight:1}}>
+                                {d.line}
+                              </div>
+                              {/* Label stat discret */}
+                              <div style={{fontSize:13,fontWeight:400,color:PP.muted,letterSpacing:.1,marginTop:2}}>
+                                {statLabelText}
+                              </div>
+                            </div>
+
+                            {/* ── Boutons More / Less ── */}
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:`1px solid ${PP.border}`,marginTop:"auto"}}>
+                              {[
+                                {label:"Less",icon:"↓"},
+                                {label:"More",icon:"↑"},
+                              ].map(({label,icon})=>(
+                                <button key={label}
+                                  style={{padding:"13px 0",background:"transparent",border:"none",borderRight:label==="Less"?`1px solid ${PP.border}`:"none",color:PP.sub,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5,transition:"background .15s",letterSpacing:.1}}>
+                                  <span style={{fontSize:13,opacity:.7}}>{icon}</span>
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    )}
+                  </>
+                  )}
+                </div>
+                )}
+              </div>
+              );
+            })()}
+
+            {/* ── PRIZEPICKS FULLSCREEN ── */}
+            {ppFullscreen&&(()=>{
+              const PP={bg:"#070913",card:"#0D1020",border:"#1B1E35",hover:"#141933",text:"#FFFFFF",sub:"#A0A8C0",muted:"#6E7690",yellow:"#FFD84D"};
+              const tierAccent=t=>t==="demon"?"#FF6B6B":t==="goblin"?"#4AE68A":null;
+              const leagueLabels={LoL:"LoL",CS2:"CS2",VAL:"VAL",Dota2:"Dota2",NBA:"NBA",NFL:"NFL",MLB:"MLB"};
+              const fmtTime=str=>{if(!str)return null;const d=new Date(str);if(isNaN(d.getTime()))return null;return d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"});};
+              const fmtDate=str=>{if(!str)return null;const d=new Date(str);if(isNaN(d.getTime()))return null;const now=new Date();const isToday=d.toDateString()===now.toDateString();if(isToday)return fmtTime(str);return d.toLocaleDateString("fr-CA",{month:"short",day:"numeric"})+" "+fmtTime(str);};
+              const statLabel=s=>{const m=s.match(/([A-Za-zéèàûîê\s()+]+)$/);return m?m[1].trim():s;};
+              const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
+              const ppFiltered=ppData.filter(d=>{
+                if(d.player_combo)return false;
+                if(ppActiveLeague!=="all"&&d.league!==ppActiveLeague)return false;
+                if(!ppActiveTiers.has(d.odds_tier))return false;
+                if(ppSearch){const q=ppSearch.toLowerCase();if(!d.player_name.toLowerCase().includes(q)&&!(d.player_team||"").toLowerCase().includes(q)&&!d.stat.toLowerCase().includes(q))return false;}
+                return true;
+              });
+              return(
+              <div style={{position:"fixed",inset:0,zIndex:9999,background:PP.bg,display:"flex",flexDirection:"column",fontFamily:"'Inter',sans-serif"}}>
+
+                {/* ── Header ── */}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 28px",borderBottom:`1px solid ${PP.border}`,flexShrink:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <img src={PP_LOGO_B64} alt="PP" style={{width:22,height:22,borderRadius:5,objectFit:"cover"}}/>
+                    <span style={{fontSize:15,fontWeight:600,color:PP.text,letterSpacing:-.2}}>PrizePicks</span>
+                    <span style={{fontSize:12,color:PP.muted,fontWeight:400}}>{ppFiltered.length} props</span>
+                  </div>
+                  <div style={{display:"flex",gap:28,alignItems:"center"}}>
+                    {[{v:ppFiltered.length,l:"Props"},{v:new Set(ppFiltered.map(d=>d.player_id)).size,l:"Joueurs"},{v:ppFiltered.filter(d=>d.hot).length,l:"Hot",c:"#FFD84D"}].map(({v,l,c})=>(
+                      <div key={l} style={{textAlign:"center"}}>
+                        <div style={{fontSize:16,fontWeight:700,color:c||PP.text,letterSpacing:-.3,lineHeight:1}}>{v}</div>
+                        <div style={{fontSize:10,color:PP.muted,marginTop:2}}>{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setPpFullscreen(false)}
+                    style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 16px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:8,color:PP.sub,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    Réduire
+                  </button>
+                </div>
+
+                {/* ── Leagues + filtres ── */}
+                <div style={{flexShrink:0,borderBottom:`1px solid ${PP.border}`}}>
+                  <div style={{display:"flex",overflowX:"auto",scrollbarWidth:"none",padding:"0 28px"}}>
+                    {ppLeagues.map(lg=>{
+                      const active=ppActiveLeague===lg;
+                      const count=lg==="all"?ppData.filter(d=>!d.player_combo).length:ppData.filter(d=>!d.player_combo&&d.league===lg).length;
+                      return(
+                        <button key={lg} onClick={()=>setPpActiveLeague(lg)}
+                          style={{flex:"0 0 auto",padding:"12px 18px",background:"transparent",border:"none",borderBottom:`2px solid ${active?"#FFFFFF":"transparent"}`,color:active?PP.text:PP.muted,fontWeight:active?600:400,fontSize:13,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
+                          {lg==="all"?"Tous":(leagueLabels[lg]||lg)}
+                          <span style={{fontSize:11,color:PP.muted,fontWeight:400}}>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 28px"}}>
+                    {["standard","demon","goblin"].map(tier=>{
+                      const active=ppActiveTiers.has(tier);
+                      const ac=tierAccent(tier);
+                      const labels={standard:"Standard",demon:"Demon",goblin:"Goblin"};
+                      return(
+                        <button key={tier} onClick={()=>{const s=new Set(ppActiveTiers);if(s.has(tier))s.delete(tier);else s.add(tier);setPpActiveTiers(s);}}
+                          style={{padding:"6px 14px",borderRadius:6,border:`1px solid ${active?(ac?ac+"55":PP.border+"aa"):PP.border}`,background:"transparent",color:active?(ac||PP.text):PP.muted,fontSize:12,fontWeight:active?500:400,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
+                          {labels[tier]}
+                        </button>
+                      );
+                    })}
+                    <input value={ppSearch} onChange={e=>setPpSearch(e.target.value)} placeholder="Rechercher un joueur..."
+                      style={{marginLeft:"auto",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:6,color:PP.text,fontSize:12,padding:"7px 13px",outline:"none",width:220,fontFamily:"'Inter',sans-serif"}}/>
+                  </div>
+                </div>
+
+                {/* ── Grille 5 colonnes ── */}
+                <div style={{flex:1,overflowY:"auto",padding:"20px 28px",scrollbarWidth:"thin",scrollbarColor:`${PP.border} transparent`}}>
+                  {ppFiltered.length===0?(
+                    <div style={{textAlign:"center",color:PP.muted,fontSize:14,paddingTop:60}}>Aucune prop avec ces filtres</div>
+                  ):(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14}}>
+                    {ppFiltered.map(d=>{
+                      const ppNames=(d.player_name||"").split(/\s*\+\s*/);
+                      const matchedPlayer=ppNames.reduce((found,nm)=>{
+                        if(found)return found;
+                        const key=nm.toLowerCase().trim();
+                        return allPlayers[key]||Object.values(allPlayers).find(p=>p.name&&p.name.toLowerCase()===key)||null;
+                      },null);
+                      const dbAvatar=matchedPlayer?getAvatarSrc(matchedPlayer):null;
+                      const initL=(d.player_name||d.player_team||"?")[0].toUpperCase();
+                      const fallbackSvg=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect fill='%230D1020' width='64' height='64' rx='32'/><text x='32' y='42' text-anchor='middle' fill='%23A0A8C0' font-size='22' font-family='Inter,sans-serif' font-weight='600'>${initL}</text></svg>`;
+                      const imgSrc=dbAvatar||fallbackSvg;
+                      const statLabelText=statLabel(d.stat);
+                      const matchup=d.description||"";
+                      const gameTime=fmtDate(d.game_start||d.start_time);
+                      const ac=tierAccent(d.odds_tier);
+                      return(
+                        <div key={d.projection_id} style={{background:"linear-gradient(180deg,#0E1124 0%,#0B0D1B 100%)",border:`1px solid ${PP.border}`,borderRadius:14,overflow:"hidden",boxShadow:"0 0 0 1px rgba(255,255,255,0.04)",display:"flex",flexDirection:"column",fontFamily:"'Inter',sans-serif"}}>
+                          <div style={{padding:"22px 18px 0",display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center"}}>
+                            <div style={{position:"relative",marginBottom:14}}>
+                              <img src={imgSrc} onError={ev=>{ev.target.src=fallbackSvg;}} alt="" style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",background:"#0D1020",border:`1px solid ${PP.border}`,display:"block"}}/>
+                              {d.is_live&&<span style={{position:"absolute",bottom:1,right:1,width:13,height:13,borderRadius:"50%",background:"#4AE68A",border:"2px solid #0B0D1B"}}/>}
+                            </div>
+                            <div style={{fontSize:12,fontWeight:400,color:PP.muted,marginBottom:5}}>{[d.player_team,d.player_position].filter(Boolean).join(" · ")||d.league}</div>
+                            <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.2,marginBottom:8,width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.player_name||d.player_team||"—"}</div>
+                            {matchup&&<div style={{fontSize:13,fontWeight:500,color:PP.muted,marginBottom:2}}>{matchup}</div>}
+                            {gameTime&&<div style={{fontSize:12,fontWeight:500,color:PP.yellow,letterSpacing:.1}}>{gameTime}</div>}
+                          </div>
+                          <div style={{margin:"16px 0 0",borderTop:`1px solid ${PP.border}`}}/>
+                          <div style={{padding:"20px 18px 18px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:4,minHeight:16}}>
+                              {d.hot&&<span style={{fontSize:10,fontWeight:500,color:PP.yellow}}>HOT</span>}
+                              {d.adjusted_odds&&<span style={{fontSize:10,fontWeight:500,color:PP.muted}}>ADJ</span>}
+                            </div>
+                            <div style={{fontSize:40,fontWeight:700,color:ac||PP.text,letterSpacing:-2,lineHeight:1}}>{d.line}</div>
+                            <div style={{fontSize:13,fontWeight:400,color:PP.muted,marginTop:3}}>{statLabelText}</div>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:`1px solid ${PP.border}`,marginTop:"auto"}}>
+                            {[{label:"Less",icon:"↓"},{label:"More",icon:"↑"}].map(({label,icon})=>(
+                              <button key={label} style={{padding:"14px 0",background:"transparent",border:"none",borderRight:label==="Less"?`1px solid ${PP.border}`:"none",color:PP.sub,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5,letterSpacing:.1}}>
+                                <span style={{fontSize:13,opacity:.7}}>{icon}</span>{label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  )}
+                </div>
+              </div>
+              );
+            })()}
+
             {/* ── BOOKMAKERS ── */}
             <div style={{marginBottom:20}}>
               <button onClick={()=>setSuiviOpen(s=>({...s,bookmakers:!s.bookmakers}))}
@@ -6351,178 +6758,7 @@ export default function App(){
               </button>
             </div>
 
-            {/* ── PRIZEPICKS ── */}
-            {(()=>{
-              const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
-              const ppFiltered=ppData.filter(d=>{
-                if(ppActiveLeague!=="all"&&d.league!==ppActiveLeague)return false;
-                if(!ppActiveTiers.has(d.odds_tier))return false;
-                if(ppSearch){
-                  const q=ppSearch.toLowerCase();
-                  if(!d.player_name.toLowerCase().includes(q)&&!(d.player_team||"").toLowerCase().includes(q)&&!d.stat.toLowerCase().includes(q))return false;
-                }
-                return true;
-              });
-              const tierColor=t=>t==="demon"?"#FF4D6D":t==="goblin"?"#22E85F":"#8B5CF6";
-              const tierDimBg=t=>t==="demon"?"rgba(255,77,109,0.1)":t==="goblin"?"rgba(34,232,95,0.1)":"rgba(139,92,246,0.12)";
-              const tierBorder=t=>t==="demon"?"rgba(255,77,109,0.3)":t==="goblin"?"rgba(34,232,95,0.28)":"rgba(139,92,246,0.32)";
-              const leagueIcons={LoL:"⚔️",CS2:"🔫",VAL:"🎯",Dota2:"🏆",NBA:"🏀",NFL:"🏈",MLB:"⚾"};
-              return(
-              <div style={{marginBottom:8}}>
-                {/* Header toggle */}
-                <button onClick={()=>setSuiviOpen(s=>({...s,prizepicks:!s.prizepicks}))}
-                  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid "+(suiviOpen.prizepicks?"rgba(139,92,246,0.35)":"#1F2937"),borderRadius:suiviOpen.prizepicks?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"all .2s"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <img src={PP_LOGO_B64} alt="PP" style={{width:22,height:22,borderRadius:5,objectFit:"cover"}}/>
-                    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>PrizePicks</span>
-                    {ppData.length>0&&<span style={{background:"rgba(139,92,246,0.15)",color:"#8B5CF6",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8}}>{ppData.length} props</span>}
-                  </div>
-                  <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:suiviOpen.prizepicks?"rotate(180deg)":"none"}}>▼</span>
-                </button>
 
-                {suiviOpen.prizepicks&&(
-                <div style={{background:"#0A0B14",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",overflow:"hidden",marginBottom:8}}>
-
-                  {/* Upload zone ou stats */}
-                  {ppData.length===0?(
-                    <div style={{padding:"24px 16px",textAlign:"center"}}>
-                      <div style={{fontSize:28,marginBottom:8}}>🎮</div>
-                      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",marginBottom:4}}>Aucune donnée PrizePicks</div>
-                      <div style={{fontSize:11,color:"#6B7280",marginBottom:14,lineHeight:1.6}}>Charge ton fichier JSON exporté depuis Apify</div>
-                      <label style={{display:"inline-block",padding:"10px 20px",background:"rgba(139,92,246,0.12)",border:"2px dashed rgba(139,92,246,0.35)",borderRadius:10,color:"#8B5CF6",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                        ↑ Charger JSON
-                        <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
-                          const file=e.target.files[0];if(!file)return;
-                          const r=new FileReader();
-                          r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setPpData(Array.isArray(d)?d:[d]);showToast("✅ "+( Array.isArray(d)?d.length:1)+" props chargées","#22E85F");}catch{showToast("JSON invalide","#EF4444");}};
-                          r.readAsText(file);
-                        }}/>
-                      </label>
-                    </div>
-                  ):(
-                  <>
-                    {/* Top bar : stats + upload */}
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 8px",borderBottom:"1px solid #1F2937",gap:8}}>
-                      <div style={{display:"flex",gap:16}}>
-                        <div style={{textAlign:"center"}}>
-                          <div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:-0.5}}>{ppFiltered.length}</div>
-                          <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Props</div>
-                        </div>
-                        <div style={{textAlign:"center"}}>
-                          <div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:-0.5}}>{new Set(ppFiltered.map(d=>d.player_id)).size}</div>
-                          <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Joueurs</div>
-                        </div>
-                        <div style={{textAlign:"center"}}>
-                          <div style={{fontSize:16,fontWeight:800,color:"#FB923C",letterSpacing:-0.5}}>{ppFiltered.filter(d=>d.hot).length}</div>
-                          <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>🔥 Hot</div>
-                        </div>
-                      </div>
-                      <label style={{padding:"6px 12px",background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,color:"#8B5CF6",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
-                        ↑ Recharger
-                        <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
-                          const file=e.target.files[0];if(!file)return;
-                          const r=new FileReader();
-                          r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setPpData(Array.isArray(d)?d:[d]);setPpActiveLeague("all");showToast("✅ "+(Array.isArray(d)?d.length:1)+" props","#22E85F");}catch{showToast("JSON invalide","#EF4444");}};
-                          r.readAsText(file);
-                        }}/>
-                      </label>
-                    </div>
-
-                    {/* League tabs */}
-                    <div style={{display:"flex",gap:0,overflowX:"auto",scrollbarWidth:"none",borderBottom:"1px solid #1F2937",background:"#0D1117"}}>
-                      {ppLeagues.map(lg=>(
-                        <button key={lg} onClick={()=>setPpActiveLeague(lg)}
-                          style={{padding:"9px 13px",background:"transparent",border:"none",borderBottom:"2px solid "+(ppActiveLeague===lg?"#8B5CF6":"transparent"),color:ppActiveLeague===lg?"#E5E7EB":"#6B7280",fontWeight:ppActiveLeague===lg?700:500,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",transition:"all .15s",display:"flex",alignItems:"center",gap:5}}>
-                          {lg==="all"?"🌐 Tout":(leagueIcons[lg]||"🎮")+" "+lg}
-                          <span style={{background:ppActiveLeague===lg?"rgba(139,92,246,0.2)":"rgba(255,255,255,0.05)",color:ppActiveLeague===lg?"#8B5CF6":"#6B7280",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:6}}>
-                            {lg==="all"?ppData.length:ppData.filter(d=>d.league===lg).length}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Filters row */}
-                    <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",borderBottom:"1px solid #1F2937",flexWrap:"wrap",background:"#0D1117"}}>
-                      {["standard","demon","goblin"].map(tier=>{
-                        const active=ppActiveTiers.has(tier);
-                        const icons={standard:"⚡",demon:"😈",goblin:"👺"};
-                        return(
-                          <button key={tier} onClick={()=>{
-                            const s=new Set(ppActiveTiers);
-                            if(s.has(tier))s.delete(tier);else s.add(tier);
-                            setPpActiveTiers(s);
-                          }} style={{padding:"4px 10px",borderRadius:20,border:"1px solid "+(active?tierBorder(tier):"rgba(255,255,255,0.07)"),background:active?tierDimBg(tier):"transparent",color:active?tierColor(tier):"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
-                            {icons[tier]} {tier.charAt(0).toUpperCase()+tier.slice(1)}
-                          </button>
-                        );
-                      })}
-                      <input value={ppSearch} onChange={e=>setPpSearch(e.target.value)} placeholder="Rechercher..."
-                        style={{marginLeft:"auto",background:"#151C2E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:7,color:"#E5E7EB",fontSize:11,padding:"5px 10px",outline:"none",width:130,fontFamily:"'Inter',sans-serif"}}/>
-                    </div>
-
-                    {/* Cards grid */}
-                    {ppFiltered.length===0?(
-                      <div style={{padding:"24px",textAlign:"center",color:"#4B5563",fontSize:12}}>Aucune prop avec ces filtres</div>
-                    ):(
-                    <div style={{padding:"10px 10px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(195px,1fr))",gap:8,maxHeight:520,overflowY:"auto",scrollbarWidth:"thin",scrollbarColor:"#1F2937 transparent"}}>
-                      {ppFiltered.map(d=>{
-                        const tc=d.odds_tier==="demon"?"demon":d.odds_tier==="goblin"?"goblin":"standard";
-                        const lv=tierColor(d.odds_tier);
-                        // Match joueur PP avec la DB Supabase (par nom, insensible à la casse)
-                        const ppNames=(d.player_name||"").split(/\s*\+\s*/);
-                        const matchedPlayer=ppNames.reduce((found,nm)=>{
-                          if(found)return found;
-                          const key=nm.toLowerCase().trim();
-                          return allPlayers[key]||Object.values(allPlayers).find(p=>p.name&&p.name.toLowerCase()===key)||null;
-                        },null);
-                        const dbAvatar=matchedPlayer?getAvatarSrc(matchedPlayer):null;
-                        const initL=(d.player_name||d.player_team||"?")[0];
-                        const fallback=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'><rect fill='%23151C2E' width='44' height='44' rx='22'/><text x='22' y='30' text-anchor='middle' fill='%239CA3AF' font-size='16' font-family='Inter'>${initL}</text></svg>`;
-                        // Priorité : photo DB → pas de chandail PP
-                        const imgSrc=dbAvatar||fallback;
-                        return(
-                          <div key={d.projection_id} style={{background:"#101625",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,overflow:"hidden",transition:"border-color .15s"}}>
-                            {/* Card header */}
-                            <div style={{padding:"11px 11px 8px",display:"flex",alignItems:"flex-start",gap:8,position:"relative"}}>
-                              <img src={imgSrc} onError={ev=>{ev.target.src=fallback;}} alt="" style={{width:44,height:44,borderRadius:"50%",background:"#151C2E",objectFit:"cover",border:"2px solid rgba(255,255,255,0.07)",flexShrink:0}}/>
-                              <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.player_name||d.player_team||"—"}</div>
-                                <div style={{fontSize:10,color:"#9CA3AF"}}>{d.player_position||""}</div>
-                                <div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>
-                                  <span style={{background:"#151C2E",color:"#9CA3AF",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:700,letterSpacing:.4}}>{d.player_team||d.league}</span>
-                                  {d.duration&&<span style={{background:"#151C2E",color:"rgba(156,163,175,0.5)",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:600}}>{d.duration}</span>}
-                                </div>
-                              </div>
-                              <div style={{position:"absolute",top:8,right:8,display:"flex",flexDirection:"column",gap:2,alignItems:"flex-end"}}>
-                                {d.hot&&<span style={{background:"rgba(251,146,60,0.12)",color:"#FB923C",border:"1px solid rgba(251,146,60,0.25)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>🔥 HOT</span>}
-                                {d.is_live&&<span style={{background:"rgba(34,232,95,0.1)",color:"#22E85F",border:"1px solid rgba(34,232,95,0.28)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>● LIVE</span>}
-                                {d.player_combo&&<span style={{background:"rgba(139,92,246,0.12)",color:"#8B5CF6",border:"1px solid rgba(139,92,246,0.28)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>COMBO</span>}
-                                {d.adjusted_odds&&<span style={{background:"rgba(251,191,36,0.1)",color:"#FBBF24",border:"1px solid rgba(251,191,36,0.22)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>ADJ</span>}
-                              </div>
-                            </div>
-                            {/* Line */}
-                            <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",padding:"9px 11px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:500,maxWidth:100,lineHeight:1.4}}>{d.stat}</div>
-                              <div style={{fontSize:24,fontWeight:900,letterSpacing:-1,color:lv}}>{d.line}</div>
-                            </div>
-                            {/* Tier */}
-                            <div style={{display:"flex",alignItems:"center",gap:4,padding:"0 11px 8px"}}>
-                              <div style={{width:4,height:4,borderRadius:"50%",background:lv}}/>
-                              <span style={{fontSize:9,fontWeight:700,color:lv,letterSpacing:.5}}>{d.odds_tier.toUpperCase()}</span>
-                              {d.description&&<span style={{fontSize:8,color:"rgba(156,163,175,0.3)",marginLeft:"auto"}}>{d.description}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    )}
-                  </>
-                  )}
-                </div>
-                )}
-              </div>
-              );
-            })()}
 
             <div style={{marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
