@@ -333,27 +333,6 @@ async function supaUpsertPlayer(data) {
   return Array.isArray(result) ? result[0] : result;
 }
 
-async function supaUploadPlayerPhoto(file, game, team, playerName) {
-  const slug = playerName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const teamSlug = team.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const gameSlug = game.toLowerCase();
-  const path = gameSlug === 'dota2'
-    ? gameSlug + '/' + slug + '.webp'
-    : gameSlug + '/' + teamSlug + '/' + slug + '.webp';
-  const res = await fetch(SUPA_URL + '/storage/v1/object/players/' + path, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
-      'Content-Type': file.type || 'image/webp',
-      'x-upsert': 'true',
-    },
-    body: file,
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return SUPA_URL + '/storage/v1/object/public/players/' + path;
-}
-
 async function supaDeletePlayer(id) {
   await fetch(SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(id), {
     method: "DELETE",
@@ -409,7 +388,7 @@ const STATUS_CFG={
   won:{label:"Gagné",color:"#6ee7a0",bg:"rgba(34,197,94,0.1)"},
   lost:{label:"Perdu",color:"#EF4444",bg:"rgba(248,113,113,0.1)"},
 };
-const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:""};
+const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 
 function toDateKey(dt){
@@ -1603,7 +1582,7 @@ export default function App(){
   const toggleHideBK=bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;});
   const visibleBKs=bookmakers.filter(bk=>!hiddenBKs.has(bk));
   const [modalPlayer,setModalPlayer]=useState(false);
-  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});
+  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
   const [editingPlayer,setEditingPlayer]=useState(null); // {key, data}
   // Tournois actifs par jeu: {CS2: {name:"PGL Astana 2026", end:"2026-04-10"}, ...}
   const [activeTourneys,setActiveTourneys]=useState({});
@@ -1622,6 +1601,10 @@ export default function App(){
   const [ppActiveTiers,setPpActiveTiers]=useState(new Set(["standard","demon","goblin"]));
   const [ppSearch,setPpSearch]=useState("");
   const [ppFullscreen,setPpFullscreen]=useState(false);
+  const [ppCalcBk,setPpCalcBk]=useState("");
+  const [ppCalcPp,setPpCalcPp]=useState("");
+  const [ppCalcMt,setPpCalcMt]=useState("Map 1+2");
+  const [ppCalcOu,setPpCalcOu]=useState("Over");
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [betGroupMode,setBetGroupMode]=useState("jour"); // jour | semaine
@@ -2679,22 +2662,16 @@ export default function App(){
     showToast("🏆 Tournoi mis à jour ✓");
   }
 
-  const savePlayer=async()=>{
-    if(!pform.name.trim()||!pform.team.trim())return;
+  function savePlayer(){
+    if(!pform.name.trim())return;
     const key=pform.name.toLowerCase().trim();
-    let photoUrl=pform.photoUrl||null;
-    try{
-      if(pform.photoFile){
-        photoUrl=await supaUploadPlayerPhoto(pform.photoFile,pform.game,pform.team,pform.name);
-      }
-      const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team,photo_url:photoUrl,avatar_url:photoUrl};
-      await supaUpsertPlayer({name:key,...data});
-      setPlayers(p=>({...p,[key]:data}));
-      setPform({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});
-      setModalPlayer(false);
-      showToast(pform.name+" ajouté ✓");
-    }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
-  };
+    const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team};
+    supaUpsertPlayer({name:key,...data}).catch(()=>{});
+    setPlayers(p=>({...p,[key.toLowerCase()]:data}));
+    setPform({name:"",game:"LoL",league:"",role:"",team:""});
+    setModalPlayer(false);
+    showToast(pform.name+" ajouté ✓");
+  }
   function saveBookmaker(){
     if(!newBK.trim())return;
     setBookmakers(b=>[...b,newBK.trim()]);
@@ -6067,82 +6044,33 @@ export default function App(){
                 </div>
                 {/* Panel expanded - heure + boutons */}
                 {isExpanded&&(
-                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",flexDirection:"column",gap:8}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:10,color:"#60A5FA",fontWeight:600,flexShrink:0}}>
-                        {matchTime?"🕐 "+matchTime:"Heure non disponible"}
-                      </span>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <button onClick={e=>{
-                          e.stopPropagation();
-                          const bkMap={"Betby":"Betby","Thunderpick":"Thunderpick","betby":"Betby","thunderpick":"Thunderpick"};
-                          const bk=bkMap[b.source]||b.source||"";
-                          const statLabel=b.stat==="headshots"?"HS":"Kills";
-                          const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
-                          const mapTag=b.map!=null?"Map "+b.map:"Map 1";
-                          const ou=b.direction==="OVER"?"Over":"Under";
-                          const gk=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
-                          const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
-                          // Calcul ppLine selon ppMapType sélectionné
-                          const selPPType=window.__ppTypeSelected?.[betKey]||"";
-                          let ppDesc="";
-                          const ppOrig=b.pp_line_original||b.pp_line_per_map;
-                          if(selPPType&&ppOrig!=null){
-                            const ppBase=parseFloat(ppOrig);
-                            if(selPPType==="Map 1+2") ppDesc=ppBase.toFixed(1)+" Kills";
-                            else if(selPPType==="Map 3") ppDesc=(Math.round((ppBase/2)*2)/2).toFixed(1)+" Kills";
-                            else if(selPPType==="Map 1+2+3") ppDesc=(Math.round((ppBase/2*3)*2)/2).toFixed(1)+" Kills";
-                          }
-                          setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo,ppMapType:selPPType,ppDescription:ppDesc});
-                          setEditingBet(null);
-                          setExpandedAnalyseBet(null);
-                          setView("add");
-                        }}
-                          style={{padding:"5px 14px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:7,color:"#A78BFA",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
-                          + Ajouter
-                        </button>
-                        <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
-                          style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#6ee7a0":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
-                          {isHidden?"✓ Réafficher":"✓ Pris"}
-                        </button>
-                      </div>
-                    </div>
-                    {/* PrizePicks cut selector */}
-                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                      <div style={{fontSize:9,fontWeight:700,color:"#6B7280",textTransform:"uppercase",letterSpacing:.8}}>PrizePicks Cut</div>
-                      <div style={{display:"flex",gap:5}}>
-                        {["Map 1+2","Map 3","Map 1+2+3"].map(t=>{
-                          const sel=(window.__ppTypeSelected?.[betKey]||"")=== t;
-                          const ppOrig=b.pp_line_original||b.pp_line_per_map;
-                          const ppBase=ppOrig!=null?parseFloat(ppOrig):null;
-                          let ppVal="";
-                          if(ppBase!=null){
-                            if(t==="Map 1+2") ppVal=ppBase.toFixed(1);
-                            else if(t==="Map 3") ppVal=(Math.round((ppBase/2)*2)/2).toFixed(1);
-                            else if(t==="Map 1+2+3") ppVal=(Math.round((ppBase/2*3)*2)/2).toFixed(1);
-                          }
-                          return(
-                            <button key={t} onClick={e=>{
-                              e.stopPropagation();
-                              if(!window.__ppTypeSelected) window.__ppTypeSelected={};
-                              window.__ppTypeSelected[betKey]=sel?"":t;
-                              setExpandedAnalyseBet(null);
-                              setTimeout(()=>setExpandedAnalyseBet(betKey),10);
-                            }} style={{
-                              flex:1,padding:"5px 4px",borderRadius:7,
-                              background:sel?"rgba(167,139,250,0.2)":"rgba(255,255,255,0.04)",
-                              border:"1px solid "+(sel?"rgba(167,139,250,0.6)":"rgba(255,255,255,0.08)"),
-                              color:sel?"#c4b5fd":"#6B7280",
-                              cursor:"pointer",fontSize:10,fontWeight:700,
-                              fontFamily:"'Inter',sans-serif",
-                              display:"flex",flexDirection:"column",alignItems:"center",gap:1
-                            }}>
-                              <span>{t}</span>
-                              {ppVal&&<span style={{fontSize:9,color:sel?"#a78bfa":"#4B5563",fontWeight:600}}>{ppVal} K</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
+                  <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+                    <span style={{fontSize:10,color:"#60A5FA",fontWeight:600,flexShrink:0}}>
+                      {matchTime?"🕐 "+matchTime:"Heure non disponible"}
+                    </span>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <button onClick={e=>{
+                        e.stopPropagation();
+                        const bkMap={"Betby":"Betby","Thunderpick":"Thunderpick","betby":"Betby","thunderpick":"Thunderpick"};
+                        const bk=bkMap[b.source]||b.source||"";
+                        const statLabel=b.stat==="headshots"?"HS":"Kills";
+                        const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
+                        const mapTag=b.map!=null?"Map "+b.map:"Map 1";
+                        const ou=b.direction==="OVER"?"Over":"Under";
+                        const gk=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+                        const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
+                        setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo});
+                        setEditingBet(null);
+                        setExpandedAnalyseBet(null);
+                        setView("add");
+                      }}
+                        style={{padding:"5px 14px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:7,color:"#A78BFA",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                        + Ajouter
+                      </button>
+                      <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
+                        style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#6ee7a0":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                        {isHidden?"✓ Réafficher":"✓ Pris"}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -6299,7 +6227,6 @@ export default function App(){
                 </div>
               </div>
             )}
-            {/* ── PRIZEPICKS ── */}
             {(()=>{
               // ── Palette premium PrizePicks-inspired ──
               const PP={
@@ -6344,7 +6271,7 @@ export default function App(){
               };
               // Stat label : sépare le nombre du texte (ex: "MAPS 1-3 Kills" → "Kills")
               const statLabel=s=>{
-                const m=s.match(/([A-Za-zéèàûîê\s()+]+)$/);
+                const m=s.match(/([A-Za-z\s()\+\-]+)$/);
                 return m?m[1].trim():s;
               };
               return(
@@ -6562,13 +6489,14 @@ export default function App(){
             })()}
 
             {/* ── PRIZEPICKS FULLSCREEN ── */}
+
             {ppFullscreen&&(()=>{
               const PP={bg:"#070913",card:"#0D1020",border:"#1B1E35",hover:"#141933",text:"#FFFFFF",sub:"#A0A8C0",muted:"#6E7690",yellow:"#FFD84D"};
               const tierAccent=t=>t==="demon"?"#FF6B6B":t==="goblin"?"#4AE68A":null;
               const leagueLabels={LoL:"LoL",CS2:"CS2",VAL:"VAL",Dota2:"Dota2",NBA:"NBA",NFL:"NFL",MLB:"MLB"};
               const fmtTime=str=>{if(!str)return null;const d=new Date(str);if(isNaN(d.getTime()))return null;return d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"});};
               const fmtDate=str=>{if(!str)return null;const d=new Date(str);if(isNaN(d.getTime()))return null;const now=new Date();const isToday=d.toDateString()===now.toDateString();if(isToday)return fmtTime(str);return d.toLocaleDateString("fr-CA",{month:"short",day:"numeric"})+" "+fmtTime(str);};
-              const statLabel=s=>{const m=s.match(/([A-Za-zéèàûîê\s()+]+)$/);return m?m[1].trim():s;};
+              const statLabel=s=>{const m=s.match(/([A-Za-z\s()+-]+)$/);return m?m[1].trim():s;};
               const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
               const ppFiltered=ppData.filter(d=>{
                 if(d.player_combo)return false;
@@ -6686,6 +6614,82 @@ export default function App(){
               );
             })()}
 
+
+            {/* ── PP CALCULATOR ── */}
+            {(()=>{
+              const bkVal = parseFloat(ppCalcBk);
+              const ppVal = parseFloat(ppCalcPp);
+              const mtVal = ppCalcMt;
+              const ouVal = ppCalcOu;
+              const ppPerMap = mtVal==="Map 1+2"?ppVal/2:mtVal==="Map 1+2+3"?ppVal/3:ppVal;
+              const edge = (!isNaN(bkVal)&&!isNaN(ppVal)&&ppVal>0)?(ouVal==="Over"?ppPerMap-bkVal:bkVal-ppPerMap):null;
+              const edgeColor = edge===null?"#4a5a6e":edge>=1.5?"#6ee7a0":edge>=0.75?"#fbbf24":edge>=0?"#f97316":"#f87171";
+              const edgeLabel = edge===null?"":edge>=1.5?"🔥 Excellent":edge>=0.75?"✅ Bon":edge>=0?"⚠️ Faible":"❌ Négatif";
+              return(
+                <div style={{background:"linear-gradient(180deg,rgba(8,10,22,.99),rgba(5,7,18,.99))",borderRadius:13,border:"1px solid rgba(139,92,246,.35)",padding:"13px 14px",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:11}}>
+                    <img src={PP_LOGO_B64} alt="PP" style={{width:18,height:18,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:"#c4b5fd",flex:1}}>Calculator Edge PP</span>
+                    {edge!==null&&<span style={{fontSize:11,fontWeight:800,color:edgeColor}}>{edge>0?"+":""}{edge.toFixed(2)} {edgeLabel}</span>}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:9}}>
+                    {["Map 1+2","Map 3","Map 1+2+3"].map(t=>(
+                      <button key={t} onClick={()=>setPpCalcMt(t)}
+                        style={{padding:"6px 3px",borderRadius:9,border:"1px solid "+(mtVal===t?"rgba(139,92,246,.7)":"rgba(255,255,255,.07)"),background:mtVal===t?"rgba(139,92,246,.15)":"rgba(255,255,255,.02)",color:mtVal===t?"#c4b5fd":"#4a5a6e",fontSize:9,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",lineHeight:1.3}}>
+                        <div>{t}</div>
+                        <div style={{fontSize:8,opacity:.6}}>{t==="Map 1+2"?"Combiné":t==="Map 3"?"Unitaire":"Série"}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}}>
+                    {["Over","Under"].map(o=>(
+                      <button key={o} onClick={()=>setPpCalcOu(o)}
+                        style={{padding:"7px",borderRadius:8,border:"1px solid "+(ouVal===o?(o==="Over"?"rgba(110,231,160,.5)":"rgba(96,165,250,.5)"):"rgba(255,255,255,.06)"),background:ouVal===o?(o==="Over"?"rgba(110,231,160,.08)":"rgba(96,165,250,.08)"):"transparent",color:ouVal===o?(o==="Over"?"#6ee7a0":"#60a5fa"):"#4a5a6e",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                        {o==="Over"?"▲ Over":"▼ Under"}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:edge!==null?9:0}}>
+                    <div>
+                      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:4}}>Ligne BK (kills)</div>
+                      <div style={{background:"rgba(255,255,255,.04)",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",padding:"8px 10px",display:"flex",alignItems:"center",gap:5}}>
+                        <input type="number" inputMode="decimal" step="0.5"
+                          value={ppCalcBk}
+                          onChange={e=>setPpCalcBk(e.target.value)}
+                          placeholder="14.5"
+                          style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:16,fontWeight:700,fontFamily:"Inter,sans-serif",width:"100%"}}/>
+                        <span style={{fontSize:9,color:"#3a4a5e"}}>k</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:4}}>Ligne PP ({mtVal==="Map 1+2"?"M1+2":mtVal==="Map 1+2+3"?"M1+2+3":"M3"})</div>
+                      <div style={{background:"rgba(255,255,255,.04)",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",padding:"8px 10px",display:"flex",alignItems:"center",gap:5}}>
+                        <input type="number" inputMode="decimal" step="0.5"
+                          value={ppCalcPp}
+                          onChange={e=>setPpCalcPp(e.target.value)}
+                          placeholder={ppCalcMt==="Map 1+2"?"29.0":ppCalcMt==="Map 1+2+3"?"43.5":"14.0"}
+                          style={{flex:1,background:"none",border:"none",outline:"none",color:"#c4b5fd",fontSize:16,fontWeight:700,fontFamily:"Inter,sans-serif",width:"100%"}}/>
+                        <span style={{fontSize:9,color:"#3a4a5e"}}>k</span>
+                      </div>
+                    </div>
+                  </div>
+                  {edge!==null&&(
+                    <div style={{padding:"9px 11px",borderRadius:9,background:"rgba(139,92,246,.06)",border:"1px solid rgba(139,92,246,.2)"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <span style={{fontSize:10,color:"#6a5a8e"}}>
+                          {ouVal==="Over"
+                            ?`PP/maps - BK = ${ppPerMap.toFixed(2)} - ${bkVal}`
+                            :`BK - PP/maps = ${bkVal} - ${ppPerMap.toFixed(2)}`}
+                        </span>
+                        <span style={{fontSize:18,fontWeight:900,color:edgeColor}}>{edge>0?"+":""}{edge.toFixed(2)}</span>
+                      </div>
+                      <div style={{fontSize:10,color:edgeColor,fontWeight:700,textAlign:"right",marginTop:2}}>{edgeLabel}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* ── BOOKMAKERS ── */}
             <div style={{marginBottom:20}}>
               <button onClick={()=>setSuiviOpen(s=>({...s,bookmakers:!s.bookmakers}))}
@@ -6738,8 +6742,6 @@ export default function App(){
                 + Ajouter un bookmaker
               </button>
             </div>
-
-
 
             <div style={{marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -7120,23 +7122,10 @@ export default function App(){
 
         {/* ── MODAL ADD PLAYER ── */}
         {modalPlayer&&(
-          <div className="moverlay" onClick={()=>{setModalPlayer(false);setPform({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});}}>
+          <div className="moverlay" onClick={()=>setModalPlayer(false)}>
             <div className="modal" onClick={e=>e.stopPropagation()}>
               <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Ajouter un joueur</div>
-              <div style={{border:"2px dashed #374151",borderRadius:10,padding:16,textAlign:"center",marginBottom:8,cursor:"pointer",background:"#0D1117",position:"relative"}}
-                onClick={()=>document.getElementById("player-photo-input").click()}>
-                <input id="player-photo-input" type="file" accept="image/*" style={{display:"none"}}
-                  onChange={e=>{const f=e.target.files[0];if(f)setPform(p=>({...p,photoFile:f,photoPreview:URL.createObjectURL(f),photoUrl:""}));}}/>
-                {pform.photoPreview
-                  ?<img src={pform.photoPreview} style={{width:64,height:64,borderRadius:10,objectFit:"cover",margin:"0 auto",display:"block",border:"2px solid #7C3AED"}} alt=""/>
-                  :<div style={{fontSize:28,marginBottom:4}}>📷</div>}
-                <div style={{fontSize:11,color:"#6B7280",marginTop:4}}>
-                  {pform.photoPreview?"Changer la photo":"Cliquer pour ajouter une photo"}
-                </div>
-              </div>
-              <input className="ifield" placeholder="https://... (URL photo optionnelle)" value={pform.photoUrl}
-                onChange={e=>setPform(p=>({...p,photoUrl:e.target.value,photoPreview:e.target.value||null,photoFile:null}))} style={{marginBottom:8}}/>
-              <input className="ifield" placeholder="Pseudo *" value={pform.name} onChange={e=>setPform(p=>({...p,name:e.target.value}))} style={{marginBottom:8}}/>
+              <input className="ifield" placeholder="Pseudo (ex: faker)" value={pform.name} onChange={e=>setPform(p=>({...p,name:e.target.value}))} style={{marginBottom:8}}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <select className="ifield" value={pform.game} onChange={e=>setPform(p=>({...p,game:e.target.value,role:""}))}>
                   {ALL_GAMES.map(g=><option key={g} value={g}>{g}</option>)}
@@ -7158,7 +7147,7 @@ export default function App(){
                 <input className="ifield" placeholder="Equipe *" value={pform.team} onChange={e=>setPform(p=>({...p,team:e.target.value}))}/>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <button onClick={()=>{setModalPlayer(false);setPform({name:"",game:"LoL",league:"",role:"",team:"",photoFile:null,photoPreview:null,photoUrl:""});}} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
+                <button onClick={()=>setModalPlayer(false)} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
                 <button onClick={savePlayer} disabled={!pform.name||!pform.team} style={{padding:"12px",background:pform.name&&pform.team?"linear-gradient(135deg,#6ee7a0,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:pform.name&&pform.team?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
               </div>
             </div>
