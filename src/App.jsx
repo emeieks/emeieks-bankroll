@@ -1315,7 +1315,6 @@ function MesParisView({
   const clearFilters=()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");if(setFTourneys)setFTourneys(new Set());setFDateFrom("");setFDateTo("");};
 
   const filtered=useMemo(()=>bets.filter(b=>{
-    if(b.game==="Casino")return false;
     if(fStatus&&fStatus!=="All"&&b.status!==fStatus)return false;
     if(fGames&&fGames.length>0&&!fGames.includes(b.game))return false;
     if(fBKs&&fBKs.length>0&&!fBKs.includes(b.bookmaker||"")&&!(b.splits||[]).some(sp=>fBKs.includes(sp.bookmaker)))return false;
@@ -1567,8 +1566,6 @@ export default function App(){
   const [sessionMode,setSessionMode]=useState(false);
   const [duelMode,setDuelMode]=useState(false);
   const [casinoMode,setCasinoMode]=useState(false);
-  const [casinoEditModal,setCasinoEditModal]=useState(false);
-  const [casinoEditBet,setCasinoEditBet]=useState(null); // {id, bookmaker, amount}
   const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:""});
   const [sessionMaps,setSessionMaps]=useState([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
   const [fGames,setFGames]=useState([]);
@@ -1619,7 +1616,11 @@ export default function App(){
   });
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
-  const [suiviOpen,setSuiviOpen]=useState({tournois:true,bookmakers:false});
+  const [suiviOpen,setSuiviOpen]=useState({tournois:true,bookmakers:false,prizepicks:false});
+  const [ppData,setPpData]=useState([]);
+  const [ppActiveLeague,setPpActiveLeague]=useState("all");
+  const [ppActiveTiers,setPpActiveTiers]=useState(new Set(["standard","demon","goblin"]));
+  const [ppSearch,setPpSearch]=useState("");
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [betGroupMode,setBetGroupMode]=useState("jour"); // jour | semaine
@@ -3751,26 +3752,56 @@ export default function App(){
             {/* ── CASINO MODE ── */}
             {casinoMode&&(
               <div style={{background:"#131525",borderRadius:16,border:"1px solid rgba(245,158,11,0.25)",padding:"14px 16px",marginBottom:10}}>
-                <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Bookmaker</div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-                  {DEFAULT_BK.map(bk=>(
-                    <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
-                      style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(form.bookmaker===bk?"#f59e0b":"rgba(255,255,255,.08)"),background:form.bookmaker===bk?"rgba(245,158,11,.12)":"rgba(255,255,255,.03)",color:form.bookmaker===bk?"#fbbf24":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                      {bk}
-                    </button>
-                  ))}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span style={{fontSize:16}}>🎰</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"#fbbf24"}}>Mode Casino / Rollover</span>
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.04)",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",padding:"10px 14px",marginBottom:10}}>
-                  <span style={{color:"#6B7280",fontSize:14}}>-$</span>
-                  <input type="number" inputMode="decimal" value={form.stake||""} onChange={e=>setForm(f=>({...f,stake:e.target.value}))} placeholder="0"
-                    style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"Inter,sans-serif"}}/>
+                <div style={{fontSize:12,color:"#9CA3AF",marginBottom:12,lineHeight:1.5}}>
+                  Enregistre une perte de rollover — montant misé sur casino pour débloquer un bonus.
                 </div>
+                {/* Bookmaker */}
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Bookmaker</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {DEFAULT_BK.map(bk=>(
+                      <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
+                        style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(form.bookmaker===bk?"#f59e0b":"rgba(255,255,255,.08)"),background:form.bookmaker===bk?"rgba(245,158,11,.12)":"rgba(255,255,255,.03)",color:form.bookmaker===bk?"#fbbf24":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                        {bk}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Montant perdu */}
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Montant perdu ($)</div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.04)",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",padding:"10px 14px"}}>
+                    <span style={{color:"#6B7280",fontSize:14}}>-$</span>
+                    <input
+                      type="number" inputMode="decimal"
+                      value={form.stake||""}
+                      onChange={e=>setForm(f=>({...f,stake:e.target.value}))}
+                      placeholder="0"
+                      style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:18,fontWeight:700,fontFamily:"Inter,sans-serif"}}
+                    />
+                  </div>
+                </div>
+                {/* Note optionnelle */}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,color:"#6B7280",marginBottom:6,fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Note (optionnel)</div>
+                  <input
+                    value={form.player||""}
+                    onChange={e=>setForm(f=>({...f,player:e.target.value,description:"Rollover casino"}))}
+                    placeholder="ex: Rollover bonus 500$"
+                    style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:"10px 14px",color:"#f0f4ff",fontSize:13,fontFamily:"Inter,sans-serif",boxSizing:"border-box",outline:"none"}}
+                  />
+                </div>
+                {/* Bouton ajouter */}
                 <button onClick={()=>{
                   if(!form.stake||!form.bookmaker)return;
                   const amt=parseFloat(form.stake)||0;
                   const newBet={
                     id:Date.now(),updatedAt:Date.now(),
-                    player:"Casino Rollover",
+                    player:form.player||"Casino Rollover",
                     description:"Rollover casino",
                     overUnder:"Under",odds:1,stake:amt,
                     bookmaker:form.bookmaker,
@@ -3786,8 +3817,7 @@ export default function App(){
                   setForm({...EMPTY_FORM});
                   setCasinoMode(false);
                   showToast("Perte casino enregistrée ✓");
-                }} disabled={!form.stake||!form.bookmaker}
-                style={{width:"100%",padding:"13px",background:form.stake&&form.bookmaker?"linear-gradient(135deg,#d97706,#f59e0b)":"#1F2937",border:"none",borderRadius:12,color:form.stake&&form.bookmaker?"#fff":"#6B7280",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                }} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#d97706,#f59e0b)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                   🎰 Enregistrer la perte casino
                 </button>
               </div>
@@ -4577,13 +4607,9 @@ export default function App(){
             </div>
 
             {settled.length>0&&(()=>{
-              const casinoSF=settledFiltered.filter(b=>b.game==="Casino");
-              const nonCasinoSF=settledFiltered.filter(b=>b.game!=="Casino");
-              const casinoLoss=casinoSF.reduce((s,b)=>s+(b.profit||0),0);
-              const totalStaked=nonCasinoSF.reduce((s,b)=>s+(b.stake||0),0);
-              const totalProfitWithCasino=settledFiltered.reduce((s,b)=>s+(b.profit||0),0);
-              const globalROI=totalStaked>0?(totalProfitWithCasino/totalStaked*100):0;
-              const globalWR=nonCasinoSF.length>0?(nonCasinoSF.filter(b=>b.status==="won").length/nonCasinoSF.length*100):0;
+              const totalStaked=settledFiltered.reduce((s,b)=>s+(b.stake||0),0);
+              const globalROI=totalStaked>0?(totalProfit/totalStaked*100):0;
+              const globalWR=settledFiltered.length>0?(settledFiltered.filter(b=>b.status==="won").length/settledFiltered.length*100):0;
               return(
               <div style={{marginBottom:14}}>
                 {/* Ligne 1 — Profit + ROI */}
@@ -4591,8 +4617,8 @@ export default function App(){
                   <div style={{background:"linear-gradient(135deg,rgba(34,197,94,.08),rgba(16,185,129,.04))",border:"1px solid rgba(34,197,94,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#22c55e,#16a34a)"}}/>
                     <div style={{fontSize:8,color:"#4a6a50",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Profit net</div>
-                    <div style={{fontSize:24,fontWeight:800,color:totalProfitWithCasino>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfitWithCasino>=0?"+":""}{totalProfitWithCasino.toFixed(0)}$</div>
-                    <div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{nonCasinoSF.length} paris · {casinoSF.length>0?casinoLoss.toFixed(0)+"$ casino":""}</div>
+                    <div style={{fontSize:24,fontWeight:800,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5,lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
+                    <div style={{fontSize:10,color:"#4a6a50",marginTop:4,fontWeight:500}}>{settledFiltered.length} paris résolus</div>
                   </div>
                   <div style={{background:"linear-gradient(135deg,rgba(59,130,246,.08),rgba(99,102,241,.04))",border:"1px solid rgba(59,130,246,.15)",borderRadius:14,padding:"14px",position:"relative",overflow:"hidden"}}>
                     <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#3b82f6,#6366f1)"}}/>
@@ -4606,7 +4632,7 @@ export default function App(){
                   <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"12px 14px"}}>
                     <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>Win Rate</div>
                     <div style={{fontSize:24,fontWeight:800,color:globalWR>=55?"#22C55E":globalWR<45?"#EF4444":"#9CA3AF",letterSpacing:-.5,lineHeight:1}}>{globalWR.toFixed(1)}%</div>
-                    <div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{nonCasinoSF.filter(b=>b.status==="won").length}W · {nonCasinoSF.filter(b=>b.status==="lost").length}L</div>
+                    <div style={{fontSize:10,color:"#4a5a6e",marginTop:4,fontWeight:500}}>{settledFiltered.filter(b=>b.status==="won").length}W · {settledFiltered.filter(b=>b.status==="lost").length}L</div>
                   </div>
                   <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"12px 14px"}}>
                     <div style={{fontSize:8,color:"#5a6880",textTransform:"uppercase",letterSpacing:1.2,marginBottom:5,fontWeight:700}}>{currentStreak>1?"Série en cours":"Meilleur mois"}</div>
@@ -4622,121 +4648,8 @@ export default function App(){
               );
             })()}
 
-            {/* ── PERTES CASINO PAR BOOKMAKER ── */}
-            {(()=>{
-              const casinoBets=settledFiltered.filter(b=>b.game==="Casino");
-              if(casinoBets.length===0)return null;
-              const totalCasino=casinoBets.reduce((s,b)=>s+(b.profit||0),0);
-              const byBK={};
-              casinoBets.forEach(b=>{
-                const bk=b.bookmaker||"Autre";
-                if(!byBK[bk])byBK[bk]={loss:0,count:0,bets:[]};
-                byBK[bk].loss+=b.profit||0;
-                byBK[bk].count++;
-                byBK[bk].bets.push(b);
-              });
-              return(
-                <div style={{background:"rgba(245,158,11,0.05)",border:"1px solid rgba(245,158,11,0.15)",borderRadius:14,padding:"12px 14px",marginBottom:14}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize:14}}>🎰</span>
-                      <span style={{fontSize:11,fontWeight:700,color:"#fbbf24",textTransform:"uppercase",letterSpacing:.8}}>Pertes Casino</span>
-                    </div>
-                    <div style={{fontSize:16,fontWeight:800,color:"#EF4444"}}>{totalCasino.toFixed(0)}$</div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {Object.entries(byBK).sort((a,b)=>a[1].loss-b[1].loss).map(([bk,{loss,count,bets:bkBets}])=>(
-                      <div key={bk} onClick={()=>{setCasinoEditModal(bk);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,border:"1px solid rgba(255,255,255,0.05)",cursor:"pointer",transition:"all .15s"}}
-                        onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(245,158,11,0.3)"}
-                        onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(255,255,255,0.05)"}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{bk}</span>
-                          <span style={{fontSize:10,color:"#6B7280"}}>{count} entrée{count>1?"s":""}</span>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{fontSize:13,fontWeight:700,color:"#EF4444"}}>{loss.toFixed(0)}$</span>
-                          <span style={{fontSize:10,color:"#6B7280"}}>✏️</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
 
-            {/* ── MODAL EDIT CASINO BETS ── */}
-            {casinoEditModal&&(()=>{
-              const casinoBets=bets.filter(b=>b.game==="Casino"&&(b.bookmaker||"Autre")===casinoEditModal);
-              return(
-                <div className="moverlay" onClick={()=>{setCasinoEditModal(false);setCasinoEditBet(null);}}>
-                  <div className="modal" onClick={e=>e.stopPropagation()}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <span>🎰</span>
-                        <span style={{fontSize:14,fontWeight:700,color:"#fbbf24"}}>{casinoEditModal}</span>
-                      </div>
-                      <button onClick={()=>{setCasinoEditModal(false);setCasinoEditBet(null);}} style={{background:"#1F2937",border:"none",borderRadius:8,color:"#6B7280",fontSize:16,cursor:"pointer",padding:"4px 8px"}}>✕</button>
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"60vh",overflowY:"auto"}}>
-                      {casinoBets.sort((a,b2)=>String(b2.datetime||"").localeCompare(String(a.datetime||""))).map(b=>(
-                        <div key={b.id} style={{background:"#0D1117",borderRadius:10,border:"1px solid #1F2937",padding:"10px 12px"}}>
-                          {casinoEditBet===b.id?(
-                            // Edit mode
-                            <div>
-                              <div style={{fontSize:10,color:"#6B7280",marginBottom:6,textTransform:"uppercase",letterSpacing:.8}}>Montant perdu ($)</div>
-                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                                <div style={{flex:1,display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,.04)",borderRadius:8,border:"1px solid rgba(255,255,255,.08)",padding:"8px 12px"}}>
-                                  <span style={{color:"#6B7280",fontSize:13}}>-$</span>
-                                  <input type="number" inputMode="decimal" id={"casino-edit-"+b.id}
-                                    defaultValue={Math.abs(b.profit||0)}
-                                    style={{flex:1,background:"none",border:"none",outline:"none",color:"#f0f4ff",fontSize:16,fontWeight:700,fontFamily:"Inter,sans-serif"}}/>
-                                </div>
-                                <button onClick={()=>{
-                                  const el=document.getElementById("casino-edit-"+b.id);
-                                  const newAmt=parseFloat(el?.value)||0;
-                                  setBets(prev=>prev.map(x=>x.id===b.id?{...x,stake:newAmt,profit:-newAmt}:x));
-                                  supaUpsertBet({...b,stake:newAmt,profit:-newAmt});
-                                  setCasinoEditBet(null);
-                                  showToast("Modifié ✓");
-                                }} style={{padding:"8px 14px",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:8,color:"#6ee7a0",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
-                                  ✓ Sauv.
-                                </button>
-                                <button onClick={()=>setCasinoEditBet(null)}
-                                  style={{padding:"8px 10px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          ):(
-                            // View mode
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                              <div>
-                                <div style={{fontSize:13,fontWeight:700,color:"#EF4444"}}>-{Math.abs(b.profit||0).toFixed(0)}$</div>
-                                <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>{b.datetime?String(b.datetime).slice(0,10):""}</div>
-                              </div>
-                              <div style={{display:"flex",gap:6}}>
-                                <button onClick={()=>setCasinoEditBet(b.id)}
-                                  style={{padding:"5px 12px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:7,color:"#fbbf24",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                                  ✏️ Éditer
-                                </button>
-                                <button onClick={()=>{
-                                  if(!window.confirm("Supprimer cette entrée ?"))return;
-                                  deleteBet(b.id);
-                                  if(casinoBets.length<=1)setCasinoEditModal(false);
-                                  showToast("Supprimé ✓");
-                                }} style={{padding:"5px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:7,color:"#EF4444",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                                  🗑️
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+
 
             {/* ── GRAPHIQUES BANKROLL ── */}
             {settled.length>=2&&(
@@ -6437,6 +6350,169 @@ export default function App(){
                 + Ajouter un bookmaker
               </button>
             </div>
+
+            {/* ── PRIZEPICKS ── */}
+            {(()=>{
+              const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
+              const ppFiltered=ppData.filter(d=>{
+                if(ppActiveLeague!=="all"&&d.league!==ppActiveLeague)return false;
+                if(!ppActiveTiers.has(d.odds_tier))return false;
+                if(ppSearch){
+                  const q=ppSearch.toLowerCase();
+                  if(!d.player_name.toLowerCase().includes(q)&&!(d.player_team||"").toLowerCase().includes(q)&&!d.stat.toLowerCase().includes(q))return false;
+                }
+                return true;
+              });
+              const tierColor=t=>t==="demon"?"#FF4D6D":t==="goblin"?"#22E85F":"#8B5CF6";
+              const tierDimBg=t=>t==="demon"?"rgba(255,77,109,0.1)":t==="goblin"?"rgba(34,232,95,0.1)":"rgba(139,92,246,0.12)";
+              const tierBorder=t=>t==="demon"?"rgba(255,77,109,0.3)":t==="goblin"?"rgba(34,232,95,0.28)":"rgba(139,92,246,0.32)";
+              const leagueIcons={LoL:"⚔️",CS2:"🔫",VAL:"🎯",Dota2:"🏆",NBA:"🏀",NFL:"🏈",MLB:"⚾"};
+              return(
+              <div style={{marginBottom:8}}>
+                {/* Header toggle */}
+                <button onClick={()=>setSuiviOpen(s=>({...s,prizepicks:!s.prizepicks}))}
+                  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid "+(suiviOpen.prizepicks?"rgba(139,92,246,0.35)":"#1F2937"),borderRadius:suiviOpen.prizepicks?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"all .2s"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <img src={PP_LOGO_B64} alt="PP" style={{width:22,height:22,borderRadius:5,objectFit:"cover"}}/>
+                    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>PrizePicks</span>
+                    {ppData.length>0&&<span style={{background:"rgba(139,92,246,0.15)",color:"#8B5CF6",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8}}>{ppData.length} props</span>}
+                  </div>
+                  <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:suiviOpen.prizepicks?"rotate(180deg)":"none"}}>▼</span>
+                </button>
+
+                {suiviOpen.prizepicks&&(
+                <div style={{background:"#0A0B14",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",overflow:"hidden",marginBottom:8}}>
+
+                  {/* Upload zone ou stats */}
+                  {ppData.length===0?(
+                    <div style={{padding:"24px 16px",textAlign:"center"}}>
+                      <div style={{fontSize:28,marginBottom:8}}>🎮</div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",marginBottom:4}}>Aucune donnée PrizePicks</div>
+                      <div style={{fontSize:11,color:"#6B7280",marginBottom:14,lineHeight:1.6}}>Charge ton fichier JSON exporté depuis Apify</div>
+                      <label style={{display:"inline-block",padding:"10px 20px",background:"rgba(139,92,246,0.12)",border:"2px dashed rgba(139,92,246,0.35)",borderRadius:10,color:"#8B5CF6",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                        ↑ Charger JSON
+                        <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
+                          const file=e.target.files[0];if(!file)return;
+                          const r=new FileReader();
+                          r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setPpData(Array.isArray(d)?d:[d]);showToast("✅ "+( Array.isArray(d)?d.length:1)+" props chargées","#22E85F");}catch{showToast("JSON invalide","#EF4444");}};
+                          r.readAsText(file);
+                        }}/>
+                      </label>
+                    </div>
+                  ):(
+                  <>
+                    {/* Top bar : stats + upload */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 8px",borderBottom:"1px solid #1F2937",gap:8}}>
+                      <div style={{display:"flex",gap:16}}>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:-0.5}}>{ppFiltered.length}</div>
+                          <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Props</div>
+                        </div>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:16,fontWeight:800,color:"#fff",letterSpacing:-0.5}}>{new Set(ppFiltered.map(d=>d.player_id)).size}</div>
+                          <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>Joueurs</div>
+                        </div>
+                        <div style={{textAlign:"center"}}>
+                          <div style={{fontSize:16,fontWeight:800,color:"#FB923C",letterSpacing:-0.5}}>{ppFiltered.filter(d=>d.hot).length}</div>
+                          <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>🔥 Hot</div>
+                        </div>
+                      </div>
+                      <label style={{padding:"6px 12px",background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:8,color:"#8B5CF6",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
+                        ↑ Recharger
+                        <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
+                          const file=e.target.files[0];if(!file)return;
+                          const r=new FileReader();
+                          r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setPpData(Array.isArray(d)?d:[d]);setPpActiveLeague("all");showToast("✅ "+(Array.isArray(d)?d.length:1)+" props","#22E85F");}catch{showToast("JSON invalide","#EF4444");}};
+                          r.readAsText(file);
+                        }}/>
+                      </label>
+                    </div>
+
+                    {/* League tabs */}
+                    <div style={{display:"flex",gap:0,overflowX:"auto",scrollbarWidth:"none",borderBottom:"1px solid #1F2937",background:"#0D1117"}}>
+                      {ppLeagues.map(lg=>(
+                        <button key={lg} onClick={()=>setPpActiveLeague(lg)}
+                          style={{padding:"9px 13px",background:"transparent",border:"none",borderBottom:"2px solid "+(ppActiveLeague===lg?"#8B5CF6":"transparent"),color:ppActiveLeague===lg?"#E5E7EB":"#6B7280",fontWeight:ppActiveLeague===lg?700:500,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",transition:"all .15s",display:"flex",alignItems:"center",gap:5}}>
+                          {lg==="all"?"🌐 Tout":(leagueIcons[lg]||"🎮")+" "+lg}
+                          <span style={{background:ppActiveLeague===lg?"rgba(139,92,246,0.2)":"rgba(255,255,255,0.05)",color:ppActiveLeague===lg?"#8B5CF6":"#6B7280",fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:6}}>
+                            {lg==="all"?ppData.length:ppData.filter(d=>d.league===lg).length}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Filters row */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",borderBottom:"1px solid #1F2937",flexWrap:"wrap",background:"#0D1117"}}>
+                      {["standard","demon","goblin"].map(tier=>{
+                        const active=ppActiveTiers.has(tier);
+                        const icons={standard:"⚡",demon:"😈",goblin:"👺"};
+                        return(
+                          <button key={tier} onClick={()=>{
+                            const s=new Set(ppActiveTiers);
+                            if(s.has(tier))s.delete(tier);else s.add(tier);
+                            setPpActiveTiers(s);
+                          }} style={{padding:"4px 10px",borderRadius:20,border:"1px solid "+(active?tierBorder(tier):"rgba(255,255,255,0.07)"),background:active?tierDimBg(tier):"transparent",color:active?tierColor(tier):"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
+                            {icons[tier]} {tier.charAt(0).toUpperCase()+tier.slice(1)}
+                          </button>
+                        );
+                      })}
+                      <input value={ppSearch} onChange={e=>setPpSearch(e.target.value)} placeholder="Rechercher..."
+                        style={{marginLeft:"auto",background:"#151C2E",border:"1px solid rgba(255,255,255,0.07)",borderRadius:7,color:"#E5E7EB",fontSize:11,padding:"5px 10px",outline:"none",width:130,fontFamily:"'Inter',sans-serif"}}/>
+                    </div>
+
+                    {/* Cards grid */}
+                    {ppFiltered.length===0?(
+                      <div style={{padding:"24px",textAlign:"center",color:"#4B5563",fontSize:12}}>Aucune prop avec ces filtres</div>
+                    ):(
+                    <div style={{padding:"10px 10px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(195px,1fr))",gap:8,maxHeight:520,overflowY:"auto",scrollbarWidth:"thin",scrollbarColor:"#1F2937 transparent"}}>
+                      {ppFiltered.map(d=>{
+                        const tc=d.odds_tier==="demon"?"demon":d.odds_tier==="goblin"?"goblin":"standard";
+                        const lv=tierColor(d.odds_tier);
+                        const initL=(d.player_name||d.player_team||"?")[0];
+                        const fallback=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'><rect fill='%23151C2E' width='44' height='44' rx='22'/><text x='22' y='30' text-anchor='middle' fill='%239CA3AF' font-size='16' font-family='Inter'>${initL}</text></svg>`;
+                        return(
+                          <div key={d.projection_id} style={{background:"#101625",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,overflow:"hidden",transition:"border-color .15s"}}>
+                            {/* Card header */}
+                            <div style={{padding:"11px 11px 8px",display:"flex",alignItems:"flex-start",gap:8,position:"relative"}}>
+                              <img src={d.player_image||fallback} onError={ev=>{ev.target.src=fallback;}} alt="" style={{width:44,height:44,borderRadius:"50%",background:"#151C2E",objectFit:"cover",border:"2px solid rgba(255,255,255,0.07)",flexShrink:0}}/>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.player_name||d.player_team||"—"}</div>
+                                <div style={{fontSize:10,color:"#9CA3AF"}}>{d.player_position||""}</div>
+                                <div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>
+                                  <span style={{background:"#151C2E",color:"#9CA3AF",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:700,letterSpacing:.4}}>{d.player_team||d.league}</span>
+                                  {d.duration&&<span style={{background:"#151C2E",color:"rgba(156,163,175,0.5)",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:600}}>{d.duration}</span>}
+                                </div>
+                              </div>
+                              <div style={{position:"absolute",top:8,right:8,display:"flex",flexDirection:"column",gap:2,alignItems:"flex-end"}}>
+                                {d.hot&&<span style={{background:"rgba(251,146,60,0.12)",color:"#FB923C",border:"1px solid rgba(251,146,60,0.25)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>🔥 HOT</span>}
+                                {d.is_live&&<span style={{background:"rgba(34,232,95,0.1)",color:"#22E85F",border:"1px solid rgba(34,232,95,0.28)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>● LIVE</span>}
+                                {d.player_combo&&<span style={{background:"rgba(139,92,246,0.12)",color:"#8B5CF6",border:"1px solid rgba(139,92,246,0.28)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>COMBO</span>}
+                                {d.adjusted_odds&&<span style={{background:"rgba(251,191,36,0.1)",color:"#FBBF24",border:"1px solid rgba(251,191,36,0.22)",borderRadius:4,padding:"1px 5px",fontSize:8,fontWeight:700}}>ADJ</span>}
+                              </div>
+                            </div>
+                            {/* Line */}
+                            <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",padding:"9px 11px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                              <div style={{fontSize:10,color:"#9CA3AF",fontWeight:500,maxWidth:100,lineHeight:1.4}}>{d.stat}</div>
+                              <div style={{fontSize:24,fontWeight:900,letterSpacing:-1,color:lv}}>{d.line}</div>
+                            </div>
+                            {/* Tier */}
+                            <div style={{display:"flex",alignItems:"center",gap:4,padding:"0 11px 8px"}}>
+                              <div style={{width:4,height:4,borderRadius:"50%",background:lv}}/>
+                              <span style={{fontSize:9,fontWeight:700,color:lv,letterSpacing:.5}}>{d.odds_tier.toUpperCase()}</span>
+                              {d.description&&<span style={{fontSize:8,color:"rgba(156,163,175,0.3)",marginLeft:"auto"}}>{d.description}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    )}
+                  </>
+                  )}
+                </div>
+                )}
+              </div>
+              );
+            })()}
 
             <div style={{marginTop:20}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
