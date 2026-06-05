@@ -6513,7 +6513,7 @@ export default function App(){
                               </div>
 
                               {/* Nom du joueur */}
-                              <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.2,marginBottom:8,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%"}}>
+                              <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.3,marginBottom:8,maxWidth:"100%",textAlign:"center",wordBreak:"break-word",width:"100%"}}>
                                 {d.player_name||d.player_team||"—"}
                               </div>
 
@@ -6547,19 +6547,7 @@ export default function App(){
                               </div>
                             </div>
 
-                            {/* ── Boutons More / Less ── */}
-                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:`1px solid ${PP.border}`,marginTop:"auto"}}>
-                              {[
-                                {label:"Less",icon:"↓"},
-                                {label:"More",icon:"↑"},
-                              ].map(({label,icon})=>(
-                                <button key={label}
-                                  style={{padding:"13px 0",background:"transparent",border:"none",borderRight:label==="Less"?`1px solid ${PP.border}`:"none",color:PP.sub,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5,transition:"background .15s",letterSpacing:.1}}>
-                                  <span style={{fontSize:13,opacity:.7}}>{icon}</span>
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
+
                           </div>
                         );
                       })}
@@ -6675,7 +6663,7 @@ export default function App(){
                               {d.is_live&&<span style={{position:"absolute",bottom:1,right:1,width:13,height:13,borderRadius:"50%",background:"#4AE68A",border:"2px solid #0B0D1B"}}/>}
                             </div>
                             <div style={{fontSize:12,fontWeight:400,color:PP.muted,marginBottom:5}}>{[d.player_team,d.player_position].filter(Boolean).join(" · ")||d.league}</div>
-                            <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.2,marginBottom:8,width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.player_name||d.player_team||"—"}</div>
+                            <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.3,marginBottom:8,width:"100%",textAlign:"center",wordBreak:"break-word"}}>{d.player_name||d.player_team||"—"}</div>
                             {matchup&&<div style={{fontSize:13,fontWeight:500,color:PP.muted,marginBottom:2}}>{matchup}</div>}
                             {gameTime&&<div style={{fontSize:12,fontWeight:500,color:PP.yellow,letterSpacing:.1}}>{gameTime}</div>}
                           </div>
@@ -6687,13 +6675,6 @@ export default function App(){
                             </div>
                             <div style={{fontSize:40,fontWeight:700,color:ac||PP.text,letterSpacing:-2,lineHeight:1}}>{d.line}</div>
                             <div style={{fontSize:13,fontWeight:400,color:PP.muted,marginTop:3}}>{statLabelText}</div>
-                          </div>
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:`1px solid ${PP.border}`,marginTop:"auto"}}>
-                            {[{label:"Less",icon:"↓"},{label:"More",icon:"↑"}].map(({label,icon})=>(
-                              <button key={label} style={{padding:"14px 0",background:"transparent",border:"none",borderRight:label==="Less"?`1px solid ${PP.border}`:"none",color:PP.sub,fontSize:14,fontWeight:500,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5,letterSpacing:.1}}>
-                                <span style={{fontSize:13,opacity:.7}}>{icon}</span>{label}
-                              </button>
-                            ))}
                           </div>
                         </div>
                       );
