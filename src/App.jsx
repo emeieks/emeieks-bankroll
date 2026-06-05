@@ -6468,13 +6468,23 @@ export default function App(){
                       {ppFiltered.map(d=>{
                         const tc=d.odds_tier==="demon"?"demon":d.odds_tier==="goblin"?"goblin":"standard";
                         const lv=tierColor(d.odds_tier);
+                        // Match joueur PP avec la DB Supabase (par nom, insensible à la casse)
+                        const ppNames=(d.player_name||"").split(/\s*\+\s*/);
+                        const matchedPlayer=ppNames.reduce((found,nm)=>{
+                          if(found)return found;
+                          const key=nm.toLowerCase().trim();
+                          return allPlayers[key]||Object.values(allPlayers).find(p=>p.name&&p.name.toLowerCase()===key)||null;
+                        },null);
+                        const dbAvatar=matchedPlayer?getAvatarSrc(matchedPlayer):null;
                         const initL=(d.player_name||d.player_team||"?")[0];
                         const fallback=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'><rect fill='%23151C2E' width='44' height='44' rx='22'/><text x='22' y='30' text-anchor='middle' fill='%239CA3AF' font-size='16' font-family='Inter'>${initL}</text></svg>`;
+                        // Priorité : photo DB → pas de chandail PP
+                        const imgSrc=dbAvatar||fallback;
                         return(
                           <div key={d.projection_id} style={{background:"#101625",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,overflow:"hidden",transition:"border-color .15s"}}>
                             {/* Card header */}
                             <div style={{padding:"11px 11px 8px",display:"flex",alignItems:"flex-start",gap:8,position:"relative"}}>
-                              <img src={d.player_image||fallback} onError={ev=>{ev.target.src=fallback;}} alt="" style={{width:44,height:44,borderRadius:"50%",background:"#151C2E",objectFit:"cover",border:"2px solid rgba(255,255,255,0.07)",flexShrink:0}}/>
+                              <img src={imgSrc} onError={ev=>{ev.target.src=fallback;}} alt="" style={{width:44,height:44,borderRadius:"50%",background:"#151C2E",objectFit:"cover",border:"2px solid rgba(255,255,255,0.07)",flexShrink:0}}/>
                               <div style={{flex:1,minWidth:0}}>
                                 <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.player_name||d.player_team||"—"}</div>
                                 <div style={{fontSize:10,color:"#9CA3AF"}}>{d.player_position||""}</div>
