@@ -4712,9 +4712,10 @@ export default function App(){
                 if(!t||t.cnt===0)return null;
                 const wr=Math.round(t.won*100/t.cnt);
                 const roi=t.staked>0?Math.round(t.profit*1000/t.staked)/10:0;
-                const pu=t.staked>0?Math.round(t.profit*100/t.staked)/100:0;
                 const avgOdds=t.cnt>0?Math.round(t.oddsSum*100/t.cnt)/100:0;
-                return{cnt:t.cnt,wr,roi,profit:t.profit,staked:t.staked,pu,avgOdds};
+                const avgStake=t.cnt>0?Math.round(t.staked/t.cnt):0;
+                const ev=Math.round(((wr/100)*avgOdds-1)*1000)/10;
+                return{cnt:t.cnt,wr,roi,profit:t.profit,staked:t.staked,avgOdds,avgStake,ev};
               };
               const roiColor=r=>r>=15?"#6ee7a0":r>=5?"#a3e4bc":r>=-5?"#fbbf24":r>=-15?"#f97316":"#f87171";
               const roiBg=r=>r>=15?"rgba(110,231,160,.1)":r>=5?"rgba(110,231,160,.05)":r>=-5?"rgba(251,191,36,.05)":r>=-15?"rgba(249,115,22,.06)":"rgba(248,113,113,.08)";
@@ -4745,8 +4746,8 @@ export default function App(){
 
               const tabStyle=(active)=>({padding:"7px 14px",borderRadius:8,border:"1px solid "+(active?"rgba(139,92,246,.6)":"rgba(255,255,255,.07)"),background:active?"rgba(139,92,246,.15)":"transparent",color:active?"#c4b5fd":"#4a5a6e",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0});
 
-              const COLHDR=["Edge","N","Cote","WR","Profit","ROI","P/U"];
-              const GRIDCOLS="58px 36px 44px 44px 56px 54px 52px";
+              const COLHDR=["Edge","N","Cote","WR","ROI","EV","Mise","Profit"];
+              const GRIDCOLS="58px 32px 42px 42px 50px 50px 44px 56px";
 
               const ColHeaders=()=>(
                 <div style={{display:"grid",gridTemplateColumns:GRIDCOLS,padding:"5px 14px",borderBottom:"1px solid #0d1628",background:"rgba(0,0,0,.3)"}}>
@@ -4762,9 +4763,10 @@ export default function App(){
                     <span style={{fontSize:11,color:"#5a6a7e",textAlign:"center"}}>{s.cnt}</span>
                     <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgOdds.toFixed(2)}</span>
                     <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span>
-                    <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
                     <span style={{fontSize:11,fontWeight:700,color:roiColor(s.roi),textAlign:"center"}}>{fmt(s.roi,"%")}</span>
-                    <span style={{fontSize:11,fontWeight:800,color:s.pu>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{fmt(s.pu,"u")}</span>
+                    <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
+                    <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
+                    <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
                   </div>
                 );
               };
@@ -4820,22 +4822,25 @@ export default function App(){
                       <div style={{padding:"9px 14px",background:"rgba(0,0,0,.3)",borderBottom:"1px solid #0d1628"}}>
                         <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd",textTransform:"uppercase",letterSpacing:.8}}>Lignes jouées</span>
                       </div>
-                      <div style={{display:"grid",gridTemplateColumns:"50px 50px 50px 36px 44px 56px 54px",padding:"5px 14px",borderBottom:"1px solid #0d1628",background:"rgba(0,0,0,.3)"}}>
-                        {["O/U","BK","PP","N","WR","Profit","ROI"].map(h=>(<span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.4,textAlign:"center"}}>{h}</span>))}
+                      <div style={{display:"grid",gridTemplateColumns:"40px 44px 44px 28px 38px 38px 44px 44px 40px 54px",padding:"5px 14px",borderBottom:"1px solid #0d1628",background:"rgba(0,0,0,.3)"}}>
+                        {["O/U","BK","PP","N","Cote","WR","ROI","EV","Mise","Profit"].map(h=>(<span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.4,textAlign:"center"}}>{h}</span>))}
                       </div>
                       {sortedLines.length===0&&(<div style={{padding:"16px",textAlign:"center",color:"#3a4a5e",fontSize:12}}>Aucune ligne trouvée</div>)}
                       {sortedLines.map((l,i)=>{
                         const s=calc(l.data);if(!s)return null;
                         const isLast=i===sortedLines.length-1;
                         return(
-                          <div key={l.ou+l.bkLine+l.ppLine} style={{display:"grid",gridTemplateColumns:"50px 50px 50px 36px 44px 56px 54px",padding:"9px 14px",borderBottom:isLast?"none":"1px solid #0d1628",alignItems:"center",background:roiBg(s.roi)}}>
-                            <span style={{fontSize:11,fontWeight:700,color:l.ou==="Over"?"#6ee7a0":"#60a5fa",textAlign:"center"}}>{l.ou}</span>
-                            <span style={{fontSize:13,fontWeight:800,color:"#e0e8f0",textAlign:"center"}}>{l.bkLine.toFixed(1)}</span>
-                            <span style={{fontSize:13,fontWeight:800,color:"#c4b5fd",textAlign:"center"}}>{l.ppLine.toFixed(1)}</span>
+                          <div key={l.ou+l.bkLine+l.ppLine} style={{display:"grid",gridTemplateColumns:"40px 44px 44px 28px 38px 38px 44px 44px 40px 54px",padding:"9px 14px",borderBottom:isLast?"none":"1px solid #0d1628",alignItems:"center",background:roiBg(s.roi)}}>
+                            <span style={{fontSize:10,fontWeight:700,color:l.ou==="Over"?"#6ee7a0":"#60a5fa",textAlign:"center"}}>{l.ou}</span>
+                            <span style={{fontSize:12,fontWeight:800,color:"#e0e8f0",textAlign:"center"}}>{l.bkLine.toFixed(1)}</span>
+                            <span style={{fontSize:12,fontWeight:800,color:"#c4b5fd",textAlign:"center"}}>{l.ppLine.toFixed(1)}</span>
                             <span style={{fontSize:11,color:"#5a6a7e",textAlign:"center"}}>{s.cnt}</span>
+                            <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgOdds.toFixed(2)}</span>
                             <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span>
-                            <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
                             <span style={{fontSize:11,fontWeight:700,color:roiColor(s.roi),textAlign:"center"}}>{fmt(s.roi,"%")}</span>
+                            <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
+                            <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
+                            <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
                           </div>
                         );
                       })}
@@ -4864,7 +4869,8 @@ export default function App(){
                             {gT&&<>
                               <span style={{marginLeft:"auto",fontSize:11,color:"#5a6a7e"}}>{gT.cnt}p</span>
                               <span style={{fontSize:12,fontWeight:700,color:roiColor(gT.roi),marginLeft:6}}>{fmt(gT.roi,"%")} ROI</span>
-                              <span style={{fontSize:12,fontWeight:800,color:gT.pu>=0?"#c4b5fd":"#f87171",marginLeft:6}}>{fmt(gT.pu,"u")}</span>
+                              <span style={{fontSize:12,fontWeight:800,color:gT.ev>=0?"#6ee7a0":"#f87171",marginLeft:6}}>{fmt(gT.ev,"%")} EV</span>
+                              <span style={{fontSize:12,fontWeight:800,color:gT.profit>=0?"#6ee7a0":"#f87171",marginLeft:6}}>{fmt(gT.profit,"$")}</span>
                             </>}
                           </div>
                           <ColHeaders/>
@@ -4881,8 +4887,19 @@ export default function App(){
               };
 
               // ── HEATMAP TAB ──
+              const HEAT_METRICS=[
+                {k:"roi",l:"ROI",fmt:(s)=>fmt(s.roi,"%"),color:(s)=>roiColor(s.roi),bg:(s)=>roiBg(s.roi)},
+                {k:"prog",l:"% Prog",fmt:(s)=>fmt(s.roi,"%"),color:(s)=>roiColor(s.roi),bg:(s)=>roiBg(s.roi)},
+                {k:"profit",l:"Profit",fmt:(s)=>fmt(s.profit,"$"),color:(s)=>s.profit>=0?"#6ee7a0":"#f87171",bg:(s)=>s.profit>=0?"rgba(110,231,160,.07)":"rgba(248,113,113,.08)"},
+                {k:"ev",l:"EV",fmt:(s)=>fmt(s.ev,"%"),color:(s)=>s.ev>=0?"#6ee7a0":"#f87171",bg:(s)=>s.ev>=0?"rgba(110,231,160,.07)":"rgba(248,113,113,.08)"},
+                {k:"wr",l:"WR",fmt:(s)=>s.wr+"%",color:(s)=>s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#fbbf24",bg:(s)=>s.wr>=55?"rgba(110,231,160,.07)":s.wr<45?"rgba(248,113,113,.08)":"rgba(251,191,36,.05)"},
+                {k:"cnt",l:"Paris",fmt:(s)=>String(s.cnt),color:(s)=>"#c4b5fd",bg:(s)=>"rgba(139,92,246,.05)"},
+              ];
+              const heatMetric=ppStatsDrill?.heatMetric||"roi";
+              const setHeatMetric=v=>setPpStatsDrill(prev=>({...(prev||{}),heatMetric:v}));
               const HeatTab=()=>{
                 const heatDrill=ppStatsDrill?.heatDrill||null;
+                const metric=HEAT_METRICS.find(m=>m.k===heatMetric)||HEAT_METRICS[0];
                 if(heatDrill){
                   const {mt,game}=heatDrill;
                   const gameEdges=Object.keys(matrix[mt]?.[game]||{}).map(Number).sort((a,b)=>b-a);
@@ -4902,42 +4919,90 @@ export default function App(){
                     </div>
                   );
                 }
-                const allE=new Set();
-                MAP_TYPES.forEach(mt=>GAMES.forEach(g=>Object.keys(matrix[mt]?.[g]||{}).forEach(e=>allE.add(parseFloat(e)))));
-                const edgeCols=[...allE].sort((a,b)=>a-b);
+                // 4 separate tables by game
                 return(
                   <div>
-                    <div style={{overflowX:"auto",borderRadius:14,border:"1px solid rgba(139,92,246,.2)"}}>
-                      <div style={{minWidth:edgeCols.length*40+140}}>
-                        <div style={{display:"grid",gridTemplateColumns:"140px repeat("+edgeCols.length+",1fr)",background:"rgba(139,92,246,.06)",borderBottom:"1px solid rgba(139,92,246,.15)"}}>
-                          <span style={{fontSize:9,color:"#3a4a5e",fontWeight:700,padding:"6px 10px"}}>Map / Jeu</span>
-                          {edgeCols.map(e=>(<span key={e} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textAlign:"center",padding:"5px 2px"}}>+{e.toFixed(2)}</span>))}
-                        </div>
-                        {MAP_TYPES.map(mt=>GAMES.filter(g=>ppBets.some(b=>b.ppMapType===mt&&b.game===g)).map(game=>(
-                          <div key={mt+game} style={{display:"grid",gridTemplateColumns:"140px repeat("+edgeCols.length+",1fr)",borderBottom:"1px solid #0d1628"}}>
-                            <div onClick={()=>setPpStatsDrill(prev=>({...(prev||{}),heatDrill:{mt,game}}))}
-                              style={{display:"flex",alignItems:"center",gap:6,padding:"7px 10px",borderRight:"1px solid #0d1628",cursor:"pointer",background:"rgba(0,0,0,.2)"}}>
-                              <GameLogo game={game} size={11}/>
-                              <span style={{fontSize:9,color:"#b0bcc8",fontWeight:600,lineHeight:1.3}}>{game}<br/><span style={{color:"#4a5a6e",fontSize:8}}>{mt}</span></span>
-                            </div>
-                            {edgeCols.map(e=>{
-                              const d=matrix[mt]?.[game]?.[e.toFixed(2)];
-                              const s=d?calc(d):null;
-                              return(
-                                <div key={e} onClick={()=>s&&setEdgeDrill({mt,game,edge:e})}
-                                  style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:s?roiBg(s.roi):"transparent",borderRight:"1px solid #0d1628",padding:"4px 2px",cursor:s?"pointer":"default",minHeight:38}}>
-                                  {s?(<><span style={{fontSize:10,fontWeight:800,color:roiColor(s.roi)}}>{fmt(s.roi,"%")}</span><span style={{fontSize:8,color:"#3a4a5e"}}>{s.cnt}p</span></>):(<span style={{fontSize:10,color:"#151e2c"}}>—</span>)}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )))}
+                    {/* Metric selector dropdown */}
+                    <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+                      <div style={{position:"relative",display:"inline-block"}}>
+                        <select value={heatMetric} onChange={e=>setHeatMetric(e.target.value)}
+                          style={{appearance:"none",WebkitAppearance:"none",background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.4)",borderRadius:8,color:"#c4b5fd",fontSize:11,fontWeight:700,padding:"5px 28px 5px 10px",cursor:"pointer",fontFamily:"Inter,sans-serif",outline:"none"}}>
+                          {HEAT_METRICS.map(m=>(<option key={m.k} value={m.k}>{m.l}</option>))}
+                        </select>
+                        <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:"#c4b5fd",fontSize:10}}>▾</span>
                       </div>
                     </div>
-                    <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
-                      {[["#6ee7a0","≥+15%"],["rgba(163,228,188,.8)","+5-15%"],["rgba(251,191,36,.8)","±5%"],["rgba(249,115,22,.8)","-5-15%"],["#f87171","≤-15%"]].map(([col,lbl])=>(
+                    {/* One table per game */}
+                    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                      {GAMES.filter(game=>ppBets.some(b=>b.game===game)).map(game=>{
+                        // Collect all edges for this game across all map types
+                        const gameAllEdges=new Set();
+                        MAP_TYPES.forEach(mt=>Object.keys(matrix[mt]?.[game]||{}).forEach(e=>gameAllEdges.add(parseFloat(e))));
+                        const edgeCols=[...gameAllEdges].sort((a,b)=>a-b);
+                        if(edgeCols.length===0)return null;
+                        return(
+                          <div key={game} style={{borderRadius:14,overflow:"hidden",border:"1px solid rgba(139,92,246,.2)"}}>
+                            {/* Game header */}
+                            {(()=>{
+                              const gTot=mkS();
+                              MAP_TYPES.forEach(mt2=>Object.values(matrix[mt2]?.[game]||{}).forEach(d=>{gTot.cnt+=d.cnt;gTot.won+=d.won;gTot.profit+=d.profit;gTot.staked+=d.staked;gTot.oddsSum+=d.oddsSum;}));
+                              const gS=calc(gTot);
+                              return(
+                                <div style={{display:"flex",alignItems:"center",gap:6,padding:"9px 12px",background:"rgba(139,92,246,.07)",borderBottom:"1px solid rgba(139,92,246,.15)",flexWrap:"wrap"}}>
+                                  <GameLogo game={game} size={16}/>
+                                  <span style={{fontSize:13,fontWeight:800,color:"#e0e8f0"}}>{game}</span>
+                                  {gS&&<>
+                                    <span style={{fontSize:10,color:"#5a6a7e",marginLeft:4}}>{gS.cnt}p</span>
+                                    <span style={{fontSize:11,fontWeight:700,color:roiColor(gS.roi)}}>{fmt(gS.roi,"%")} ROI</span>
+                                    <span style={{fontSize:11,fontWeight:700,color:gS.ev>=0?"#6ee7a0":"#f87171"}}>{fmt(gS.ev,"%")} EV</span>
+                                    <span style={{fontSize:11,fontWeight:800,color:gS.profit>=0?"#6ee7a0":"#f87171",marginLeft:"auto"}}>{fmt(gS.profit,"$")}</span>
+                                  </>}
+                                  {!gS&&<span style={{fontSize:9,color:"#4a5a6e",marginLeft:"auto"}}>{metric.l}</span>}
+                                </div>
+                              );
+                            })()}
+                            <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+                              <table style={{borderCollapse:"collapse",tableLayout:"fixed",width:"max-content",minWidth:"100%"}}>
+                                <thead>
+                                  <tr>
+                                    <th style={{position:"sticky",left:0,zIndex:2,background:"rgba(8,10,20,.98)",width:82,padding:"5px 10px",borderBottom:"1px solid #0d1628",borderRight:"1px solid #0d1628",fontSize:9,color:"#3a4a5e",fontWeight:700,textAlign:"left"}}>Map</th>
+                                    {edgeCols.map(e=>(<th key={e} style={{minWidth:44,padding:"5px 4px",borderBottom:"1px solid #0d1628",borderRight:"1px solid #0d1628",fontSize:8,color:"#3a4a5e",fontWeight:700,textAlign:"center",background:"rgba(0,0,0,.3)"}}>+{e.toFixed(2)}</th>))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {MAP_TYPES.filter(mt=>ppBets.some(b=>b.ppMapType===mt&&b.game===game)).map((mt,ri,arr)=>(
+                                    <tr key={mt}>
+                                      <td style={{position:"sticky",left:0,zIndex:2,background:"rgba(8,10,20,.98)",padding:"7px 10px",borderBottom:ri<arr.length-1?"1px solid #0d1628":"none",borderRight:"1px solid #0d1628"}}>
+                                        <span style={{fontSize:9,color:"#7a9cbd",fontWeight:700,whiteSpace:"nowrap"}}>{mt}</span>
+                                      </td>
+                                      {edgeCols.map(e=>{
+                                        const d=matrix[mt]?.[game]?.[e.toFixed(2)];
+                                        const s=d?calc(d):null;
+                                        const cellBg=s?metric.bg(s):"transparent";
+                                        const cellColor=s?metric.color(s):"#151e2c";
+                                        const cellVal=s?metric.fmt(s):"—";
+                                        return(
+                                          <td key={e} onClick={()=>s&&setEdgeDrill({mt,game,edge:e})}
+                                            style={{background:cellBg,borderRight:"1px solid #0d1628",borderBottom:ri<arr.length-1?"1px solid #0d1628":"none",padding:"5px 3px",cursor:s?"pointer":"default",textAlign:"center",verticalAlign:"middle",minWidth:44}}>
+                                            <div style={{fontSize:11,fontWeight:800,color:cellColor}}>{cellVal}</div>
+                                            {s&&<div style={{fontSize:8,color:"#3a4a5e"}}>{s.cnt}p</div>}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Legend */}
+                    <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {heatMetric==="roi"||heatMetric==="prog"||heatMetric==="ev"?[["#6ee7a0","≥+15%"],["rgba(163,228,188,.8)","+5-15%"],["rgba(251,191,36,.8)","±5%"],["rgba(249,115,22,.8)","-5-15%"],["#f87171","≤-15%"]].map(([col,lbl])=>(
                         <div key={lbl} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:10,height:10,borderRadius:2,background:col}}/><span style={{fontSize:9,color:"#4a5a6e"}}>{lbl}</span></div>
-                      ))}
+                      )):null}
                       <span style={{fontSize:9,color:"#3a4a5e",marginLeft:4}}>· Clique → détail</span>
                     </div>
                   </div>
