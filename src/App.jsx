@@ -1614,6 +1614,7 @@ export default function App(){
   const [statsDrill,setStatsDrill]=useState(null);
   const [ppEdgeDrill,setPpEdgeDrill]=useState(null); // {edge, mapType} or null // {game, league} or null
   const [ppStatsDrill,setPpStatsDrill]=useState(null); // {game, stat, ppLine} navigation state
+  const [ppBetsDrill,setPpBetsDrill]=useState(null); // list of bets to show in drill view
   const [ppStatsTab,setPpStatsTab]=useState("edge"); // "edge" | "stat" | "ou"
   const [ppKillMetric,setPpKillMetric]=useState("roi");
   const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
@@ -4829,18 +4830,66 @@ export default function App(){
                       {sortedLines.map((l,i)=>{
                         const s=calc(l.data);if(!s)return null;
                         const isLast=i===sortedLines.length-1;
+                        // Get the actual bet objects for this line
+                        const matchBets=drillBets.filter(b=>{
+                          const descParts2=(b.description||"").split(" ");
+                          const bkL=parseFloat(descParts2.find(p=>!isNaN(parseFloat(p)))||"");
+                          const ppL=parseFloat(b.ppLine);
+                          return b.overUnder===l.ou&&Math.abs(bkL-l.bkLine)<0.05&&Math.abs(ppL-l.ppLine)<0.05;
+                        });
                         return(
-                          <div key={l.ou+l.bkLine+l.ppLine} style={{display:"grid",gridTemplateColumns:"40px 44px 44px 28px 38px 38px 44px 44px 40px 54px",padding:"9px 14px",borderBottom:isLast?"none":"1px solid #0d1628",alignItems:"center",background:roiBg(s.roi)}}>
-                            <span style={{fontSize:10,fontWeight:700,color:l.ou==="Over"?"#6ee7a0":"#60a5fa",textAlign:"center"}}>{l.ou}</span>
-                            <span style={{fontSize:12,fontWeight:800,color:"#e0e8f0",textAlign:"center"}}>{l.bkLine.toFixed(1)}</span>
-                            <span style={{fontSize:12,fontWeight:800,color:"#c4b5fd",textAlign:"center"}}>{l.ppLine.toFixed(1)}</span>
-                            <span style={{fontSize:11,color:"#5a6a7e",textAlign:"center"}}>{s.cnt}</span>
-                            <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgOdds.toFixed(2)}</span>
-                            <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span>
-                            <span style={{fontSize:11,fontWeight:700,color:roiColor(s.roi),textAlign:"center"}}>{fmt(s.roi,"%")}</span>
-                            <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
-                            <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
-                            <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
+                          <div key={l.ou+l.bkLine+l.ppLine}>
+                            <div onClick={()=>setPpBetsDrill(ppBetsDrill&&ppBetsDrill.key===l.ou+l.bkLine+l.ppLine?null:{key:l.ou+l.bkLine+l.ppLine,bets:matchBets,label:l.ou+" "+l.bkLine.toFixed(1)+" → PP "+l.ppLine.toFixed(1)})}
+                              style={{display:"grid",gridTemplateColumns:"40px 44px 44px 28px 38px 38px 44px 44px 40px 44px 20px",padding:"9px 14px",borderBottom:"none",alignItems:"center",background:roiBg(s.roi),cursor:"pointer"}}>
+                              <span style={{fontSize:10,fontWeight:700,color:l.ou==="Over"?"#6ee7a0":"#60a5fa",textAlign:"center"}}>{l.ou}</span>
+                              <span style={{fontSize:12,fontWeight:800,color:"#e0e8f0",textAlign:"center"}}>{l.bkLine.toFixed(1)}</span>
+                              <span style={{fontSize:12,fontWeight:800,color:"#c4b5fd",textAlign:"center"}}>{l.ppLine.toFixed(1)}</span>
+                              <span style={{fontSize:11,color:"#5a6a7e",textAlign:"center"}}>{s.cnt}</span>
+                              <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgOdds.toFixed(2)}</span>
+                              <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#6ee7a0":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span>
+                              <span style={{fontSize:11,fontWeight:700,color:roiColor(s.roi),textAlign:"center"}}>{fmt(s.roi,"%")}</span>
+                              <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#6ee7a0":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
+                              <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
+                              <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#6ee7a0":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
+                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{ppBetsDrill?.key===l.ou+l.bkLine+l.ppLine?"▲":"▼"}</span>
+                            </div>
+                            {/* Inline bets view */}
+                            {ppBetsDrill?.key===l.ou+l.bkLine+l.ppLine&&matchBets.length>0&&(
+                              <div style={{background:"rgba(0,0,0,.4)",borderTop:"1px solid #0d1628",borderBottom:isLast?"none":"1px solid #0d1628"}}>
+                                {matchBets.map((b,bi)=>{
+                                  const isWon=b.status==="won";
+                                  const bkLogo=BK_LOGOS[b.bookmaker]||bkPhotos[b.bookmaker]||null;
+                                  const profitVal=b.profit!=null?b.profit:(isWon?(b.stake||0)*(b.odds-1):-(b.stake||0));
+                                  return(
+                                    <div key={b.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderTop:bi>0?"1px solid rgba(255,255,255,.04)":"none",borderLeft:"2.5px solid "+(isWon?"#22d97a":"#f43f5e")}}>
+                                      <div style={{width:32,height:32,borderRadius:8,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.04)"}}>
+                                        <GameLogo game={b.game} size={32}/>
+                                      </div>
+                                      <div style={{flex:1,minWidth:0}}>
+                                        <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3,flexWrap:"wrap"}}>
+                                          <span style={{fontWeight:800,fontSize:13,color:"#f0f4ff",textTransform:"capitalize",flexShrink:0}}>{b.player}</span>
+                                          <span style={{color:"#2e3d50",fontSize:10,margin:"0 1px"}}>-</span>
+                                          <span style={{fontSize:11,color:"#8a9eb8",fontWeight:500}}>{(b.description||"").replace(/^(Over|Under)\s/,"")}</span>
+                                          {b.mapTag&&<><span style={{color:"#2e3d50",fontSize:10}}>-</span><span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 4px",borderRadius:3,border:"1px solid rgba(251,191,36,.2)"}}>{b.mapTag}</span></>}
+                                        </div>
+                                        <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap"}}>
+                                          <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>@{b.odds}</span>
+                                          {(bkLogo||b.bookmaker)&&<span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span>}
+                                          {bkLogo?<img src={bkLogo} alt={b.bookmaker} style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>:<span style={{fontSize:11,color:"#7a9cbd"}}>{b.bookmaker}</span>}
+                                          {b.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span><span style={{fontSize:11,color:"#7a9cbd"}}>{b.stake}$</span></>}
+                                          {b.tournament&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span><span style={{fontSize:10,color:"#7a9cbd"}}>🏆 {b.tournament.split(" ")[0]}</span></>}
+                                        </div>
+                                      </div>
+                                      <div style={{flexShrink:0,textAlign:"right"}}>
+                                        <div style={{fontWeight:800,fontSize:13,color:isWon?"#6ee7a0":"#f87171"}}>{profitVal>=0?"+":""}{profitVal.toFixed(0)}$</div>
+                                        <div style={{fontSize:9,color:isWon?"rgba(110,231,160,.5)":"rgba(248,113,113,.5)",fontWeight:700}}>{isWon?"✓ WIN":"✗ LOSS"}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {!isLast&&<div style={{height:1,background:"#0d1628"}}/>}
                           </div>
                         );
                       })}
