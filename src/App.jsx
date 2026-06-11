@@ -161,8 +161,11 @@ function BankrollChart({points,h=150}){
   const up=points[points.length-1].v>=points[0].v;
   const color=up?"#00E676":"#EF4444";
   const glowId="glow_"+Math.abs(points[0].v|0);
-  const yTicks=[min,min+range*0.5,max];
-  const xSamples=[0,Math.floor((points.length-1)/2),points.length-1];
+  // Smart y-ticks: 5 levels with nice round numbers
+  const tickStep=(()=>{const raw=range/4;const mag=Math.pow(10,Math.floor(Math.log10(Math.abs(raw))||0));const nice=[1,2,2.5,5,10];for(const n of nice){if(raw<=n*mag)return n*mag;}return nice[nice.length-1]*mag;})();
+  const tickStart=Math.ceil(yMin/tickStep)*tickStep;
+  const yTicks=[];for(let t=tickStart;t<=yMax+tickStep*0.1;t+=tickStep){if(yTicks.length<8)yTicks.push(Math.round(t));}
+  const xSamples=[0,Math.floor((points.length-1)/3),Math.floor((points.length-1)*2/3),points.length-1];
   // ATH = max val and its position
   const athIdx=vals.indexOf(max);
   const athVal=max;
@@ -195,9 +198,13 @@ function BankrollChart({points,h=150}){
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      {yTicks.map((v,i)=><line key={i} x1={pad.l} y1={py(v)} x2={W-pad.r} y2={py(v)} stroke="rgba(255,255,255,.04)" strokeWidth="1" strokeDasharray="3,5"/>)}
-      {yTicks.map((v,i)=><text key={i} x={pad.l-3} y={py(v)+4} textAnchor="end" fontSize="9" fill="#3a4a5e">{v.toFixed(0)}</text>)}
-      {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#3a4a5e">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
+      {yTicks.filter(v=>py(v)>pad.t&&py(v)<pad.t+cy).map((v,i)=>(
+        <g key={i}>
+          <line x1={pad.l} y1={py(v)} x2={W-pad.r} y2={py(v)} stroke={v===0?"rgba(255,255,255,.12)":"rgba(255,255,255,.05)"} strokeWidth={v===0?"1":"0.8"} strokeDasharray={v===0?"none":"3,6"}/>
+          <text x={pad.l-3} y={py(v)+3.5} textAnchor="end" fontSize="8.5" fill={v===0?"rgba(255,255,255,.25)":v>0?"rgba(0,230,118,.35)":"rgba(239,68,68,.35)"} fontWeight="600">{v>0?"+":""}{v.toFixed(0)}$</text>
+        </g>
+      ))}
+      {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,.18)">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
       {/* Gradient fill */}
       <path d={fillPath} fill="url(#cf)"/>
       {/* Soft underline for depth */}
@@ -2821,11 +2828,10 @@ export default function App(){
                   <div style={{fontSize:7,color:"#3d4d62",letterSpacing:"4px",fontWeight:600,marginTop:1}}>BANKROLL</div>
                 </div>
               </div>
-              {/* Profit net compact */}
+              {/* Profit compact avant Sync */}
               <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontSize:9,color:"#4a5a6e",fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>Profit Net</div>
-                <div style={{fontSize:17,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-.5px",lineHeight:1.1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
-                <div style={{fontSize:9,color:"#4a5a6e"}}>Bankroll: {bankroll.toFixed(0)}$</div>
+                <div style={{fontSize:9,color:"#4a5a6e",fontWeight:600,letterSpacing:.8,textTransform:"uppercase",lineHeight:1}}>Profit</div>
+                <div style={{fontSize:16,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-.5px",lineHeight:1.1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
               </div>
               {/* Sync */}
               <button onClick={()=>setSupaModal(true)}
@@ -2836,7 +2842,8 @@ export default function App(){
             </div>
 
             {/* ── GRAND GRAPHIQUE ── */}
-            <div style={{background:"linear-gradient(160deg,rgba(10,16,32,.99),rgba(7,12,26,.99))",border:"1px solid rgba(99,130,200,.14)",borderRadius:18,padding:"14px 12px 10px",marginBottom:10,boxShadow:"0 10px 40px rgba(0,0,0,.5)"}}>
+            <div style={{background:"linear-gradient(160deg,rgba(10,16,32,.99),rgba(7,12,26,.99))",border:"1px solid rgba(99,130,200,.14)",borderRadius:18,padding:"14px 12px 10px",marginBottom:10,boxShadow:"0 10px 40px rgba(0,0,0,.5)",position:"relative"}}>
+
               <BankrollChart points={chartPointsFiltered} h={220}/>
               {/* Time filter pills */}
               <div style={{display:"flex",gap:5,marginTop:8,alignItems:"center"}}>
@@ -2865,27 +2872,24 @@ export default function App(){
               const roi=settled.length>0&&settled.reduce((s,b)=>s+(b.stake||0),0)>0
                 ?(settled.reduce((s,b)=>s+(b.profit||0),0)/settled.reduce((s,b)=>s+(b.stake||0),0)*100):0;
               return(
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginBottom:10,gridAutoRows:"auto"}}>
                   {/* Paris */}
-                  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid rgba(59,130,246,.15)",borderRadius:14,padding:"12px 10px",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,rgba(59,130,246,.4),transparent)"}}/>
-                    <div style={{fontSize:8,color:"#3d4d60",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:6}}>PARIS</div>
-                    <div style={{fontSize:28,fontWeight:900,color:"#60a5fa",letterSpacing:"-1px",lineHeight:1}}>{settled.length+pending}</div>
-                    <div style={{fontSize:9,color:"#3a4a5a",marginTop:5}}>{pending>0?pending+" en cours":won+"W · "+lost+"L"}</div>
+                  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid rgba(59,130,246,.15)",borderRadius:12,padding:"11px 10px 11px",position:"relative",overflow:"hidden",height:76}}>
+                    <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,rgba(59,130,246,.5),transparent)"}}/>
+                    <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>PARIS</div>
+                    <div style={{fontSize:22,fontWeight:900,color:"#60a5fa",letterSpacing:"-1px",lineHeight:1}}>{settled.length+pending}</div>
                   </div>
                   {/* Progression */}
-                  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(progression>=0?"rgba(34,197,94,.15)":"rgba(239,68,68,.12)"),borderRadius:14,padding:"12px 10px",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,"+(progression>=0?"rgba(34,197,94,.4)":"rgba(239,68,68,.4)")+",transparent)"}}/>
-                    <div style={{fontSize:8,color:"#3d4d60",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:6}}>PROGRESSION</div>
+                  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(progression>=0?"rgba(0,230,118,.18)":"rgba(239,68,68,.15)"),borderRadius:12,padding:"11px 10px 11px",position:"relative",overflow:"hidden",height:76}}>
+                    <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,"+(progression>=0?"rgba(0,230,118,.5)":"rgba(239,68,68,.5)")+",transparent)"}}/>
+                    <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>PROG.</div>
                     <div style={{fontSize:22,fontWeight:900,color:progression>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1}}>{progression>=0?"+":""}{progression.toFixed(1)}%</div>
-                    <div style={{fontSize:9,color:"#3a4a5a",marginTop:5}}>BK: {bankroll.toFixed(0)}$</div>
                   </div>
                   {/* Profit net */}
-                  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(totalProfit>=0?"rgba(34,197,94,.15)":"rgba(239,68,68,.12)"),borderRadius:14,padding:"12px 10px",position:"relative",overflow:"hidden"}}>
-                    <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,"+(totalProfit>=0?"rgba(34,197,94,.4)":"rgba(239,68,68,.4)")+",transparent)"}}/>
-                    <div style={{fontSize:8,color:"#3d4d60",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:6}}>PROFIT NET</div>
+                  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(totalProfit>=0?"rgba(0,230,118,.18)":"rgba(239,68,68,.15)"),borderRadius:12,padding:"11px 10px 11px",position:"relative",overflow:"hidden",height:76}}>
+                    <div style={{position:"absolute",top:0,left:0,right:0,height:1.5,background:"linear-gradient(90deg,transparent,"+(totalProfit>=0?"rgba(0,230,118,.5)":"rgba(239,68,68,.5)")+",transparent)"}}/>
+                    <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>PROFIT</div>
                     <div style={{fontSize:22,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
-                    <div style={{fontSize:9,color:"#3a4a5a",marginTop:5}}>ROI {roi>=0?"+":""}{roi.toFixed(1)}%</div>
                   </div>
                 </div>
               );
@@ -2893,8 +2897,8 @@ export default function App(){
 
             {/* ── CALENDRIER (seul, pleine largeur) ── */}
             <button onClick={()=>setView("calendrier")}
-              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px",background:"rgba(10,16,34,.98)",border:"1px solid rgba(99,130,200,.14)",borderRadius:14,color:"#a78bfa",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:10}}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:9,padding:"17px",background:"rgba(10,16,34,.98)",border:"1px solid rgba(139,92,246,.25)",borderRadius:16,color:"#a78bfa",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:10,boxShadow:"0 2px 20px rgba(139,92,246,.08)"}}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Calendrier
             </button>
 
@@ -2911,30 +2915,34 @@ export default function App(){
                     const profitVal=b.profit!=null?b.profit:(isWon?(b.stake||0)*(b.odds-1):-(b.stake||0));
                     const bkLogo=BK_LOGOS[b.bookmaker]||bkPhotos[b.bookmaker]||null;
                     const hasPPh=b.ppEdge!=null&&b.ppMapType;
-                    const descLine=b.description?b.description.replace(/^(Over|Under) /,""):"";
+                    const descLine=b.description||"";
                     const dateStr=b.datetime?b.datetime.slice(0,10):"";
                     return(
-                      <div key={b.id} onClick={()=>setView("mesparis")} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",cursor:"pointer",borderLeft:"2.5px solid "+(isWon?"#00E676":"#f43f5e")}}>
-                        <div style={{width:36,height:36,borderRadius:9,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.04)"}}>
-                          <GameLogo game={b.game} size={36}/>
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",alignItems:"baseline",gap:5,marginBottom:2}}>
-                            <span style={{fontWeight:800,fontSize:14,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.3px"}}>{b.player}</span>
-                            {descLine&&<span style={{fontSize:11,color:"#6a7a8e",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span>}
-                            {b.mapTag&&<span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 4px",borderRadius:3,border:"1px solid rgba(251,191,36,.2)",flexShrink:0}}>{b.mapTag}</span>}
+                      <div key={b.id} onClick={()=>setView("mesparis")} style={{borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",cursor:"pointer",borderLeft:"2.5px solid "+(isWon?"#00E676":"#f43f5e")}}>
+                        <div style={{display:"flex",alignItems:"center",gap:11,padding:"11px 13px 11px 12px"}}>
+                          <div style={{width:38,height:38,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
+                            <GameLogo game={b.game} size={38}/>
                           </div>
-                          <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap"}}>
-                            <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>@{b.odds}</span>
-                            {(bkLogo||b.bookmaker)&&<span style={{color:"#3a4e62",margin:"0 4px",fontSize:11}}>·</span>}
-                            {bkLogo?(<img src={bkLogo} alt={b.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover"}}/>):<span style={{fontSize:11,color:"#7a9cbd"}}>{b.bookmaker}</span>}
-                            {b.stake&&<><span style={{color:"#3a4e62",margin:"0 4px",fontSize:11}}>·</span><span style={{fontSize:11,color:"#7a9cbd"}}>{b.stake}$</span></>}
-                            {hasPPh&&<><span style={{color:"#3a4e62",margin:"0 4px",fontSize:11}}>·</span><img src={PP_LOGO_B64} alt="PP" style={{width:11,height:11,borderRadius:2,objectFit:"cover",verticalAlign:"middle"}}/><span style={{fontSize:11,color:b.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:2}}>{b.ppEdge>0?"+":""}{b.ppEdge}</span></>}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"wrap"}}>
+                              <span style={{fontWeight:800,fontSize:14,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{b.player}</span>
+                              {b.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",flexShrink:0}}>LIVE</span>}
+                              {descLine&&<><span style={{color:"#2e3d50",fontSize:10,margin:"0 1px",flexShrink:0}}>-</span><span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
+                              {b.mapTag&&<><span style={{color:"#2e3d50",fontSize:10,margin:"0 1px",flexShrink:0}}>-</span><span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.2)",flexShrink:0}}>{b.mapTag}</span></>}
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",flexWrap:"wrap"}}>
+                              <span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>@{b.odds}</span>
+                              {(bkLogo||b.bookmaker)&&<span style={{color:"#3a4e62",margin:"0 5px",fontSize:12}}>·</span>}
+                              {bkLogo?<img src={bkLogo} alt={b.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>:<span style={{fontSize:12,color:"#7a9cbd"}}>{b.bookmaker}</span>}
+                              {b.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12}}>·</span><span style={{fontSize:12,color:"#7a9cbd"}}>{b.stake}$</span></>}
+                              {hasPPh&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12}}>·</span><img src={PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:b.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{b.ppEdge>0?"+":""}{b.ppEdge}</span></>}
+                              {b.tournament&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12}}>·</span><span style={{fontSize:11,color:"#7a9cbd"}}>🏆 {b.tournament.split(" ")[0]}</span></>}
+                            </div>
                           </div>
-                        </div>
-                        <div style={{flexShrink:0,textAlign:"right"}}>
-                          <div style={{fontWeight:800,fontSize:14,color:isWon?"#00E676":"#f87171",letterSpacing:"-.3px"}}>{profitVal>=0?"+":""}{profitVal.toFixed(2)}$</div>
-                          {dateStr&&<div style={{fontSize:9,color:"#3a4a5a",marginTop:2}}>{dateStr}</div>}
+                          <div style={{flexShrink:0,textAlign:"right",minWidth:60}}>
+                            <div style={{fontWeight:800,fontSize:14,color:isWon?"#00E676":"#f87171",letterSpacing:"-.4px",lineHeight:1}}>{profitVal>=0?"+":""}{profitVal.toFixed(2)}$</div>
+                            <div style={{fontSize:8,color:isWon?"rgba(0,230,118,.4)":"rgba(248,113,113,.4)",fontWeight:700,marginTop:3}}>{isWon?"✓ WIN":"✗ LOSS"}</div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -3955,7 +3963,30 @@ export default function App(){
               </div>
               {!form.autoInfo&&(
                 <div style={{background:"rgba(8,14,28,0.9)",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"2px 10px"}}>
-                  <PlayerAC ref={playerACRef} value={form.player} onChange={v=>setForm(f=>({...f,player:v,autoInfo:findPlayer(v)}))} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
+                  <PlayerAC ref={playerACRef} value={form.player} onChange={v=>{
+                    const pi=findPlayer(v);
+                    // Find last bet for this player to pre-fill memory fields
+                    const lastBet=bets.find(b=>b.player&&b.player.toLowerCase()===v.toLowerCase()&&b.status!=="pending");
+                    const memStake=lastBet?.stake?String(lastBet.stake):"";
+                    const memPPType=lastBet?.ppMapType||"";
+                    const memPPDesc=lastBet?.ppDescription||"";
+                    const memBK=lastBet?.bookmaker||"";
+                    const memMapTag=lastBet?.mapTag||"Map 1";
+                    const memOU=lastBet?.overUnder||"";
+                    const memDesc=lastBet?.description||"";
+                    setForm(f=>({
+                      ...f,
+                      player:v,
+                      autoInfo:pi,
+                      stake:f.stake||memStake,
+                      bookmaker:f.bookmaker||memBK,
+                      ppMapType:f.ppMapType||memPPType,
+                      ppDescription:f.ppDescription||memPPDesc,
+                      mapTag:f.mapLocked?f.mapTag:memMapTag,
+                      overUnder:f.overUnder||memOU,
+                      description:f.description||memDesc,
+                    }));
+                  }} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
                 </div>
               )}
               {form.autoInfo&&(
