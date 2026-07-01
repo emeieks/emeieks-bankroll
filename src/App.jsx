@@ -1128,15 +1128,24 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
   const [newDate,setNewDate]=useState("");
   const [newTournament,setNewTournament]=useState("");
   const [newBK,setNewBK]=useState("");
+  const [filterGame,setFilterGame]=useState("all");
   const [saving,setSaving]=useState(false);
+
+  const allGames=useMemo(()=>{
+    const gs=new Set();
+    Object.values(byDay).flat().forEach(b=>{if(b.game)gs.add(b.game);});
+    return["all",...gs];
+  },[byDay]);
 
   const sortedByDay=useMemo(()=>{
     const result={};
     Object.entries(byDay).forEach(([dk,dayBets])=>{
-      result[dk]=[...dayBets].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
+      const filtered=filterGame==="all"?dayBets:dayBets.filter(b=>b.game===filterGame);
+      if(filtered.length>0)
+        result[dk]=[...filtered].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
     });
     return result;
-  },[byDay]);
+  },[byDay,filterGame]);
 
   const toggle=id=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
 
@@ -1193,7 +1202,16 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
         <div style={{flex:1,fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{selected.size>0?selected.size+" sélectionné"+(selected.size>1?"s":""):"Sélectionner des paris"}</div>
         {selected.size>0&&<button onClick={()=>setSelected(new Set())} style={{fontSize:11,color:"#6B7280",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tout désélect.</button>}
       </div>
-      <div style={{padding:"12px 16px",borderBottom:"1px solid #1F2937",flexShrink:0,background:"#0F1829",display:"flex",flexDirection:"column",gap:10,maxHeight:"45vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+      <div style={{padding:"10px 14px",borderBottom:"1px solid #1F2937",flexShrink:0,background:"#0F1829",display:"flex",flexDirection:"column",gap:8}}>
+        {/* Game filter */}
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {allGames.map(g=>(
+            <button key={g} onClick={()=>setFilterGame(g)}
+              style={{padding:"4px 10px",borderRadius:7,border:"1px solid "+(filterGame===g?"rgba(167,139,250,.5)":"rgba(255,255,255,.08)"),background:filterGame===g?"rgba(124,58,237,.15)":"transparent",color:filterGame===g?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              {g==="all"?"Tous":g}
+            </button>
+          ))}
+        </div>
         <div>
           <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Nouvelle date</div>
           <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)} style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark",boxSizing:"border-box"}}/>
@@ -1220,8 +1238,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             {newBK&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:6}}>✓ {newBK}</div>}
           </div>
         )}
-        {canApply&&<button onClick={apply} disabled={saving} style={{width:"100%",padding:"13px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>{saving?"Enregistrement...":"Appliquer aux "+selected.size+" paris"}</button>}
       </div>
+      {canApply&&<div style={{padding:"8px 14px",flexShrink:0,borderBottom:"1px solid #1F2937"}}><button onClick={apply} disabled={saving} style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>{saving?"Enregistrement...":"Appliquer aux "+selected.size+" paris"}</button></div>}
       <div style={{flex:"1 1 0",overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"8px 14px 80px",minHeight:0}}>
         {monthKeys.map(mk=>{
           const days=byMonth[mk]||[];
@@ -4179,12 +4197,12 @@ export default function App(){
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:5,marginBottom:form.odds&&form.stake?9:0}}>
                   {[0.75,1,1.25,1.5,1.75,2].map(u=>{
-                    const s=Math.round(unitValue*u);
+                    const s=unitValue*u;
                     return(
-                      <button key={u} onClick={()=>setForm(f=>({...f,stake:String(s)}))}
+                      <button key={u} onClick={()=>setForm(f=>({...f,stake:Number.isInteger(s)?String(s):s.toFixed(1)}))}
                         style={{height:40,borderRadius:10,border:"1px solid "+(parseFloat(form.stake)===s?"rgba(139,92,246,.6)":"rgba(255,255,255,.1)"),background:parseFloat(form.stake)===s?"rgba(139,92,246,.18)":"rgba(255,255,255,.05)",color:parseFloat(form.stake)===s?"#d4c5ff":"#8892a4",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:parseFloat(form.stake)===s?700:500,boxShadow:parseFloat(form.stake)===s?"0 0 12px rgba(139,92,246,.2)":"none",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,lineHeight:1}}>
                         <span>{u}u</span>
-                        <span style={{fontSize:9,opacity:.7,fontWeight:500}}>{s}$</span>
+                        <span style={{fontSize:9,opacity:.7,fontWeight:500}}>{Number.isInteger(s)?s:s.toFixed(1)}$</span>
                       </button>
                     );
                   })}
