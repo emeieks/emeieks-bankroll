@@ -983,13 +983,16 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
 
       {/* ── Actions déployées ── */}
       {open&&(
-        <div style={{padding:"10px 14px 12px",borderTop:"1px solid rgba(255,255,255,.04)"}}>
-          {/* Date + répartition */}
-          <div style={{fontSize:10,color:"#3d4d5e",marginBottom:10,fontWeight:500}}>
-            {(()=>{const dt=bet.datetime?String(bet.datetime):"";if(!dt||dt.includes("NaN")||!/^\d{4}-\d{2}-\d{2}/.test(dt))return "";const mo=parseInt(dt.slice(5,7))-1;const mn=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][mo]||"";return dt.slice(8,10)+" "+mn+" · "+dt.slice(11,16);})()}
+        <div style={{borderTop:"1px solid rgba(255,255,255,.06)",background:"rgba(5,8,18,.6)"}}>
+
+          {/* Date */}
+          <div style={{padding:"8px 14px 0",fontSize:11,color:"#4a5a6e",fontWeight:600,letterSpacing:.2}}>
+            {(()=>{const dt=bet.datetime?String(bet.datetime):"";if(!dt||dt.includes("NaN")||!/^\d{4}-\d{2}-\d{2}/.test(dt))return "";const mo=parseInt(dt.slice(5,7))-1;const mn=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][mo]||"";return dt.slice(8,10)+" "+mn+" "+dt.slice(0,4)+" · "+dt.slice(11,16);})()}
           </div>
+
+          {/* Répartition BK */}
           {bet.splits&&bet.splits.length>0&&(
-            <div style={{marginBottom:10,background:"rgba(8,14,28,.8)",borderRadius:10,padding:"8px 12px",border:"1px solid rgba(255,255,255,.04)"}}>
+            <div style={{margin:"8px 14px 0",background:"rgba(8,14,28,.8)",borderRadius:10,padding:"8px 12px",border:"1px solid rgba(255,255,255,.05)"}}>
               <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Répartition</div>
               <div style={{display:"flex",flexDirection:"column",gap:3}}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
@@ -1010,38 +1013,45 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
             </div>
           )}
 
-          {/* Statut — boutons principaux */}
-          {isPending&&(
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-              <button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
-                style={{padding:"12px",borderRadius:12,border:"none",background:"rgba(34,197,94,.15)",color:"#00E676",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",borderTop:"2px solid rgba(34,197,94,.3)"}}>✓ Gagné</button>
-              <button onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}}
-                style={{padding:"12px",borderRadius:12,border:"none",background:"rgba(239,68,68,.12)",color:"#f87171",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",borderTop:"2px solid rgba(239,68,68,.25)"}}>✗ Perdu</button>
-            </div>
-          )}
-          {(isWon||isLost)&&(
-            <div style={{display:"flex",gap:8,marginBottom:8}}>
-              {isLost&&<button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
-                style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(34,197,94,.2)",background:"rgba(34,197,94,.07)",color:"#00E676",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✓ Gagné</button>}
-              {isWon&&<button onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}}
-                style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(239,68,68,.2)",background:"rgba(239,68,68,.07)",color:"#f87171",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✗ Perdu</button>}
+          {/* Statut */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"10px 14px 0"}}>
+            <button onClick={()=>{onStatus(bet.id,"won");setOpen(false);}}
+              style={{padding:"13px",borderRadius:12,border:isWon?"none":"1px solid rgba(0,230,118,.2)",background:isWon?"rgba(0,230,118,.18)":"rgba(0,230,118,.05)",color:"#00E676",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",borderTop:isWon?"2px solid #00E676":"none"}}>
+              ✓ Gagné
+            </button>
+            <button onClick={()=>{onStatus(bet.id,"lost");setOpen(false);}}
+              style={{padding:"13px",borderRadius:12,border:isLost?"none":"1px solid rgba(239,68,68,.2)",background:isLost?"rgba(239,68,68,.15)":"rgba(239,68,68,.04)",color:"#f87171",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",borderTop:isLost?"2px solid #f87171":"none"}}>
+              ✗ Perdu
+            </button>
+          </div>
+          {!isPending&&(
+            <div style={{padding:"6px 14px 0"}}>
               <button onClick={()=>{onStatus(bet.id,"pending");setOpen(false);}}
-                style={{flex:1,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,.07)",background:"transparent",color:"#5a6a7e",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>↩ Attente</button>
+                style={{width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,.07)",background:"transparent",color:isPending?"#93c5fd":"#4a5a6e",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                ↩ Remettre en attente
+              </button>
             </div>
           )}
 
-          {/* Actions secondaires — ligne compacte */}
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {/* Actions */}
+          <div style={{display:"flex",gap:7,padding:"8px 14px 12px"}}>
             <button onClick={()=>{onEdit(bet);setOpen(false);}}
-              style={{flex:1,padding:"8px 0",borderRadius:9,border:"1px solid rgba(255,255,255,.07)",background:"transparent",color:"#6a7a8a",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+              style={{flex:1,padding:"11px 0",borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.04)",color:"#9CA3AF",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:13}}>
+              Modifier
+            </button>
             <button onClick={()=>{onDuplicate(bet);setOpen(false);}}
-              style={{flex:1,padding:"8px 0",borderRadius:9,border:"1px solid rgba(255,255,255,.07)",background:"transparent",color:"#6a7a8a",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Dupliquer</button>
+              style={{flex:1,padding:"11px 0",borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.04)",color:"#9CA3AF",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:13}}>
+              Dupliquer
+            </button>
             <button onClick={()=>{onSplit(bet);setOpen(false);}}
-              style={{flex:1,padding:"8px 0",borderRadius:9,border:"1px solid rgba(124,58,237,.25)",background:"rgba(124,58,237,.07)",color:"#a78bfa",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+ BK</button>
+              style={{flex:1,padding:"11px 0",borderRadius:10,border:"1px solid rgba(167,139,250,.3)",background:"rgba(124,58,237,.08)",color:"#a78bfa",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600,fontSize:13}}>
+              + BK
+            </button>
             {!confirmDel
               ?(<button onClick={()=>setConfirmDel(true)}
-                  style={{padding:"8px 10px",borderRadius:9,border:"1px solid rgba(239,68,68,.2)",background:"transparent",color:"#5a3030",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>🗑</button>)
-              :(<button onClick={()=>{onDelete(bet.id);}} style={{padding:"8px 10px",borderRadius:9,border:"none",background:"#EF4444",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕</button>)
+                  style={{width:44,padding:"11px 0",borderRadius:10,border:"1px solid rgba(239,68,68,.2)",background:"transparent",color:"#5a3030",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:16}}>🗑</button>)
+              :(<button onClick={()=>{onDelete(bet.id);}}
+                  style={{flex:1,padding:"11px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"#fff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:13}}>Confirmer</button>)
             }
           </div>
         </div>
@@ -1551,7 +1561,8 @@ export default function App(){
   const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
   const [stickyBK,setStickyBK]=useState(false);
   const [lockedStatus,setLockedStatus]=useState(null);
-  const [view,setView]=useState("home");
+  const [view,setViewRaw]=useState("home");
+  const setView=v=>{setViewRaw(v);setTimeout(()=>{try{window.scrollTo({top:0,behavior:"instant"});}catch{}},0);};
   const [loaded,setLoaded]=useState(false);
   // Les joueurs viennent uniquement de Supabase — pas de localStorage
   const [toast,setToast]=useState(null);
@@ -4028,7 +4039,6 @@ export default function App(){
                       ppDescription:f.ppDescription||memPPDesc,
                       mapTag:f.mapLocked?f.mapTag:memMapTag,
                       overUnder:f.overUnder||memOU,
-                      description:f.description||memDesc,
                     }));
                   }} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
                 </div>
@@ -4191,18 +4201,20 @@ export default function App(){
                     </div>
                   </div>
                 </div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                  <span style={{fontSize:9,color:"#4a5468",fontWeight:700,letterSpacing:.8,textTransform:"uppercase"}}>Mise rapide (unités)</span>
-                  <span style={{fontSize:10,color:"#7a6aae",fontWeight:600}}>1u = {unitValue.toFixed(0)}$ · BK {bkTier.toFixed(0)}$</span>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <span style={{fontSize:9,color:"#4a5468",fontWeight:700,letterSpacing:.8,textTransform:"uppercase"}}>Mise rapide</span>
+                  <span style={{fontSize:10,color:"#7a6aae",fontWeight:600}}>1u = {unitValue.toFixed(0)}$ · Palier {bkTier.toFixed(0)}$</span>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:5,marginBottom:form.odds&&form.stake?9:0}}>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:form.odds&&form.stake?9:0}}>
                   {[0.75,1,1.25,1.5,1.75,2].map(u=>{
                     const s=unitValue*u;
+                    const sStr=Number.isInteger(s)?String(s):s.toFixed(1);
+                    const isActive=parseFloat(form.stake)===s;
                     return(
-                      <button key={u} onClick={()=>setForm(f=>({...f,stake:Number.isInteger(s)?String(s):s.toFixed(1)}))}
-                        style={{height:40,borderRadius:10,border:"1px solid "+(parseFloat(form.stake)===s?"rgba(139,92,246,.6)":"rgba(255,255,255,.1)"),background:parseFloat(form.stake)===s?"rgba(139,92,246,.18)":"rgba(255,255,255,.05)",color:parseFloat(form.stake)===s?"#d4c5ff":"#8892a4",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:parseFloat(form.stake)===s?700:500,boxShadow:parseFloat(form.stake)===s?"0 0 12px rgba(139,92,246,.2)":"none",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,lineHeight:1}}>
-                        <span>{u}u</span>
-                        <span style={{fontSize:9,opacity:.7,fontWeight:500}}>{Number.isInteger(s)?s:s.toFixed(1)}$</span>
+                      <button key={u} onClick={()=>setForm(f=>({...f,stake:sStr}))}
+                        style={{height:52,borderRadius:12,border:"1px solid "+(isActive?"rgba(139,92,246,.65)":"rgba(255,255,255,.09)"),background:isActive?"rgba(139,92,246,.2)":"rgba(255,255,255,.03)",color:isActive?"#d4c5ff":"#8892a4",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:isActive?"0 0 16px rgba(139,92,246,.25)":"none",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+                        <span style={{fontSize:13,fontWeight:isActive?800:600,letterSpacing:"-.3px"}}>{u}u</span>
+                        <span style={{fontSize:11,fontWeight:500,color:isActive?"#c4b5fd":"#5a6478"}}>{sStr}$</span>
                       </button>
                     );
                   })}
