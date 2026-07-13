@@ -1723,7 +1723,11 @@ export default function App(){
   const [sortByMap,setSortByMap]=useState(false);
   const [fPlayer,setFPlayer]=useState("");
   const allTourneys=useMemo(()=>[...new Set(bets.map(b=>b.tournament).filter(Boolean))].sort(),[bets]);
-  const onSave=useCallback(b=>{setBets(prev=>prev.map(p=>p.id===b.id?b:p));supaPushBets([b]).catch(()=>{});try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[b.id]={tournament:b.tournament};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch{};},[setBets,supaPushBets]);
+  const onSave=useCallback(function(b){
+    setBets(function(prev){return prev.map(function(p){return p.id===b.id?b:p;});});
+    if(supaPushBets)supaPushBets([b]).catch(function(){});
+    try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[b.id]={tournament:b.tournament};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch(e){}
+  },[setBets,supaPushBets]);
 
   const [fStatus,setFStatus]=useState("All");
   const [fTourneys,setFTourneys]=useState(new Set()); // Set vide = tous
@@ -3368,6 +3372,7 @@ export default function App(){
             calcProfit={calcProfit}
             fPlayer={fPlayer} setFPlayer={setFPlayer}
             sortByMap={sortByMap} setSortByMap={setSortByMap}
+            supaPushBets={supaPushBets}
           />
         )}
         {view==="calendrier"&&(
