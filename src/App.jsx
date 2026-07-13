@@ -632,11 +632,13 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
     clearTimeout(debounceRef.current);
     debounceRef.current=setTimeout(()=>{
       onChange(v);
-      // Auto-select only if exactly 1 match
+      // Auto-select only if exactly 1 match and not already exact
       const q=v.toLowerCase().trim();
       if(q.length>=2){
         const matches=Object.keys(allPlayers).filter(k=>k.startsWith(q));
-        if(matches.length===1){
+        // Only auto-select if 1 result AND that result is longer than what was typed
+        // (if user typed the exact name, don't auto-select something else)
+        if(matches.length===1&&matches[0]!==q){
           const key=matches[0];
           setInputVal(key);onChange(key);setOpen(false);
           addRecentPlayer(key);setRecents(getRecentPlayers());
@@ -1001,7 +1003,7 @@ const APP_ICON="";
   fav.rel='icon';fav.href=APP_ICON;
   document.head.appendChild(fav);
 })();
-const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ}){
+const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[]}){
   const [open,setOpen]=useState(false);
   const [confirmDel,setConfirmDel]=useState(false);
   const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
@@ -1573,7 +1575,7 @@ function MesParisView({
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:2}}>
             {pending.map(b=>(
-              <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+              <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys}/>
             ))}
           </div>
         </div>
@@ -1626,7 +1628,7 @@ function MesParisView({
                             <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#00E676":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
                           </div>
                           {dayBets.map(b=>(
-                            <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                            <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys}/>
                           ))}
                         </div>
                       );
@@ -1720,6 +1722,8 @@ export default function App(){
   const [fBKs,setFBKs]=useState([]);
   const [sortByMap,setSortByMap]=useState(false);
   const [fPlayer,setFPlayer]=useState("");
+  const allTourneys=useMemo(()=>[...new Set(bets.map(b=>b.tournament).filter(Boolean))].sort(),[bets]);
+  const onSave=useCallback(b=>{setBets(prev=>prev.map(p=>p.id===b.id?b:p));supaPushBets([b]).catch(()=>{});try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[b.id]={tournament:b.tournament};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch{};},[setBets,supaPushBets]);
 
   const [fStatus,setFStatus]=useState("All");
   const [fTourneys,setFTourneys]=useState(new Set()); // Set vide = tous
@@ -3873,7 +3877,7 @@ export default function App(){
             <div className="stat-bloc">
               {filteredBets.length===0&&<div style={{padding:"18px 15px",color:"#6B7280",fontSize:13}}>Aucun pari</div>}
               {filteredBets.slice(0,(filtresPage)*FILTRES_PER_PAGE).map(b=>(
-                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>
+                <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys}/>
               ))}
             </div>
             {filteredBets.length>filtresPage*FILTRES_PER_PAGE&&(
@@ -4393,7 +4397,7 @@ export default function App(){
 
 
             {/* ── 6b. PRIZEPICKS ── */}
-            {!duelMode&&!sessionMode&&(()=>{
+            {!duelMode&&(()=>{
               const game=form.autoInfo?.game;
               // PP type = type de ligne PP uniquement, sans lien avec mapTag du pari
               // Map 1+2 : stats cumulées 2 maps → ligne × 2 avec edge
@@ -4483,7 +4487,7 @@ export default function App(){
                   {/* Header */}
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                     <span style={{fontSize:13,fontWeight:700,color:"#c4b5fd",letterSpacing:.2}}>PrizePicks</span>
-                    <button onClick={()=>setForm(f=>({...f,ppMapType:f.ppMapType==="IGNORE"?"":(!f.ppMapType||f.ppMapType==="IGNORE")?"IGNORE":f.ppMapType}))}
+                    <button onClick={()=>setForm(f=>({...f,ppMapType:f.ppMapType==="HIDE"?"":"HIDE"}))}
                       style={{marginLeft:4,padding:"2px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.04)",color:"#4a5a6e",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                       Ignorer
                     </button>
@@ -4731,6 +4735,18 @@ export default function App(){
                       </div>
                     </div>
                   )}
+
+                  {/* PP edge alert */}
+                  {(()=>{
+                    const ppEdge=form.ppEdge;
+                    if(ppEdge==null||ppEdge>=0||form.ppMapType==="HIDE")return null;
+                    return(
+                      <div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}}>
+                        <span>⚠️</span>
+                        <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Edge PP négatif ({ppEdge>0?"+":""}{ppEdge.toFixed(2)}) — EV-</span>
+                      </div>
+                    );
+                  })()}
 
                   <button onClick={sessionMode?addSession:addBet} disabled={isDisabled}
                     style={{
@@ -5510,7 +5526,7 @@ export default function App(){
                       )}
 
                       {/* Ligues */}
-                      {gs.leagues.length>0&&(
+                      {gs.leagues.length>0&&game!=="CS2"&&game!=="Dota2"&&game!=="LoL"&&game!=="Valorant"&&(
                         <>
                           <div style={{fontSize:11,color:"#A78BFA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"14px 14px 6px",borderBottom:"1px solid rgba(124,58,237,0.2)",fontFamily:"'Inter',sans-serif",borderTop:"1px solid #1F2937"}}>Ligues</div>
                           {gs.leagues.map(l=>{
@@ -5870,7 +5886,7 @@ export default function App(){
             const map=b.mapTag||"Sans tag",bk=b.bookmaker||"Autre";
             const rawRole=b.role||"Inconnu";
             // Normalize LoL roles to 5 standard positions
-            const LOL_ROLE_MAP={"Top":"Top Laner","Toplaner":"Top Laner","Toplaner":"Top Laner","Jungle":"Jungler","Jng":"Jungler","Mid":"Mid Laner","Midlaner":"Mid Laner","Adc":"Bot Laner","Bot":"Bot Laner","Carry":"Bot Laner","Botlaner":"Bot Laner","Sup":"Support","Supp":"Support"};
+            const LOL_ROLE_MAP={"Top":"Top Laner","Toplaner":"Top Laner","Top laner":"Top Laner","Top Laner":"Top Laner","Jungle":"Jungler","Jng":"Jungler","Jngl":"Jungler","Jungler":"Jungler","Mid":"Mid Laner","Midlaner":"Mid Laner","Mid laner":"Mid Laner","Mid Laner":"Mid Laner","Adc":"Bot Laner","Bot":"Bot Laner","Carry":"Bot Laner","Botlaner":"Bot Laner","Bot laner":"Bot Laner","Bot Laner":"Bot Laner","Support":"Support","Sup":"Support","Supp":"Support","Bot Support":"Support","Marksman":"Bot Laner","Roamer":"Support"};
             const role=(b.game==="LoL"||b.game==="Valorant")?
               (LOL_ROLE_MAP[rawRole]||LOL_ROLE_MAP[rawRole.charAt(0).toUpperCase()+rawRole.slice(1).toLowerCase()]||rawRole):rawRole;
             const mo=b.datetime?String(b.datetime).slice(0,7):"?";
