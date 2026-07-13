@@ -1251,13 +1251,13 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
 
   const sortedByDay=useMemo(()=>{
     const result={};
-    Object.entries(byDay).forEach(([dk,dayBets])=>{
+    Object.entries(allByDay).forEach(([dk,dayBets])=>{
       const filtered=filterGame==="all"?dayBets:dayBets.filter(b=>b.game===filterGame);
       if(filtered.length>0)
         result[dk]=[...filtered].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
     });
     return result;
-  },[byDay,filterGame]);
+  },[allByDay,filterGame]);
 
   const toggle=id=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
 
@@ -1353,8 +1353,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       </div>
       {canApply&&<div style={{padding:"8px 14px",flexShrink:0,borderBottom:"1px solid #1F2937"}}><button onClick={apply} disabled={saving} style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>{saving?"Enregistrement...":"Appliquer aux "+selected.size+" paris"}</button></div>}
       <div style={{flex:"1 1 0",overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"8px 14px 80px",minHeight:0}}>
-        {monthKeys.map(mk=>{
-          const days=byMonth[mk]||[];
+        {allMonthKeys.map(mk=>{
+          const days=allByMonth[mk]||[];
           return(
             <div key={mk} style={{marginBottom:14}}>
               <div style={{fontSize:13,fontWeight:800,color:"#6B7280",textTransform:"uppercase",letterSpacing:.8,padding:"8px 0 6px"}}>{mk}</div>
@@ -4483,6 +4483,10 @@ export default function App(){
                   {/* Header */}
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                     <span style={{fontSize:13,fontWeight:700,color:"#c4b5fd",letterSpacing:.2}}>PrizePicks</span>
+                    <button onClick={()=>setForm(f=>({...f,ppMapType:f.ppMapType==="IGNORE"?"":(!f.ppMapType||f.ppMapType==="IGNORE")?"IGNORE":f.ppMapType}))}
+                      style={{marginLeft:4,padding:"2px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.04)",color:"#4a5a6e",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                      Ignorer
+                    </button>
                     {/* Quick PP button */}
                     {baseKills&&form.overUnder&&form.ppMapType&&(
                       <button onClick={quickPP}
