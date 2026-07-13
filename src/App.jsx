@@ -354,9 +354,9 @@ function ProfitChart({points,h=110}){
 const AVATARS_BUCKET = SUPA_URL + "/storage/v1/object/public/avatars/";
 
 function getAvatarSrc(player) {
-  if (player?.photo_url) return player.photo_url;
-  if (player?.avatar_url) return player.avatar_url;
-  if (player?.avatar_file) return AVATARS_BUCKET + encodeURIComponent(player.avatar_file);
+  if ((player&&player.photo_url)) return player.photo_url;
+  if ((player&&player.avatar_url)) return player.avatar_url;
+  if ((player&&player.avatar_file)) return AVATARS_BUCKET + encodeURIComponent(player.avatar_file);
   return null; // → afficher les initiales
 }
 
@@ -742,7 +742,7 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
                     style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:8,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif",fontWeight:600}}>
                     ✎ Éd.
                   </button>
-                  {isCustom&&<button onClick={()=>{if(players[key]?.id){supaDeletePlayer(players[key].id).catch(()=>{});}setPlayers(p=>{const n={...p};delete n[key];return n;});}}
+                  {isCustom&&<button onClick={()=>{if(players[key]&&players[key].id){supaDeletePlayer(players[key].id).catch(()=>{});}setPlayers(p=>{const n={...p};delete n[key];return n;});}}
                     style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11}}>
                     ×
                   </button>}
@@ -778,7 +778,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
   else if(ebGame==="Dota2") ebOpts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
   else ebOpts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
   // Extract current kills line: "Over 14.5 Kills" → "14.5 Kills"
-  const ebDescParts=bet.description?.split(" ")||[];
+  const ebDescParts=bet.description&&bet.description.split(" ")||[];
   const initKills=ebDescParts.length>=2?ebDescParts.slice(1).join(" "):"";
   if(initKills&&!ebOpts.includes(initKills))ebOpts=[initKills,...ebOpts];
 
@@ -814,7 +814,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
   const fieldStyle={width:"100%",background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 12px",color:"#E5E7EB",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:600,outline:"none",boxSizing:"border-box"};
 
   function save(){
-    const newDesc=ebOU+" "+(ebLine||initKills||bet.description?.split(" ").slice(1).join(" ")||"");
+    const newDesc=ebOU+" "+(ebLine||initKills||bet.description&&bet.description.split(" ").slice(1).join(" ")||"");
     const odds=parseFloat(ebOdds)||bet.odds;
     const stake=parseFloat(ebStake)||bet.stake;
     onSave({...bet,
@@ -929,7 +929,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
                 Aucun
               </button>
               {ebTourneyOptions.map(t=>{
-                const isActive=activeTourneys[ebGame]?.name===t&&(!activeTourneys[ebGame].end||new Date(activeTourneys[ebGame].end)>=new Date());
+                const isActive=activeTourneys[ebGame]&&activeTourneys[ebGame].name===t&&(!activeTourneys[ebGame].end||new Date(activeTourneys[ebGame].end)>=new Date());
                 return(
                   <button key={t} onClick={()=>setEbTournament(t)}
                     style={{padding:"6px 11px",borderRadius:8,border:"1.5px solid "+(ebTournament===t?"#F59E0B":"#1F2937"),background:ebTournament===t?"rgba(245,158,11,0.12)":"transparent",color:ebTournament===t?"#F59E0B":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4}}>
@@ -1955,7 +1955,7 @@ export default function App(){
   useEffect(()=>{
     if(!loaded)return;
     // Éviter de re-pusher ce qu on vient de puller
-    const key=bets.length+":"+( bets[0]?.id||"" );
+    const key=bets.length+":"+( bets[0]&&bets[0].id||"" );
     if(lastPulledRef.current===key)return;
     const t=setTimeout(async()=>{
       try{
@@ -2036,7 +2036,7 @@ export default function App(){
         }catch{}
       }
       // Marquer comme pull pour éviter re-push automatique
-      lastPulledRef.current=merged.length+":"+(merged[0]?.id||"");
+      lastPulledRef.current=merged.length+":"+(merged[0]&&merged[0].id||"");
       // Re-apply any remaining overrides on top of merged data
       const ovRaw2=localStorage.getItem("v7_overrides");
       const ov2=ovRaw2?JSON.parse(ovRaw2):{};
@@ -3372,7 +3372,6 @@ export default function App(){
             calcProfit={calcProfit}
             fPlayer={fPlayer} setFPlayer={setFPlayer}
             sortByMap={sortByMap} setSortByMap={setSortByMap}
-            supaPushBets={supaPushBets}
           />
         )}
         {view==="calendrier"&&(
@@ -3967,7 +3966,7 @@ export default function App(){
                       <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Joueur 1</div>
                       <PlayerAC value={duelForm.player1} onChange={v=>setDuelForm(f=>({...f,player1:v,winner:""}))} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{}}/>
                       {duelForm.player1&&findPlayer(duelForm.player1)&&(
-                        <div style={{marginTop:4,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player1).game]?.accent||"#A78BFA",fontWeight:600}}>
+                        <div style={{marginTop:4,fontSize:10,color:(GAME_CFG[findPlayer(duelForm.player1).game]&&GAME_CFG[findPlayer(duelForm.player1).game].accent)||"#A78BFA",fontWeight:600}}>
                           {findPlayer(duelForm.player1).team}
                         </div>
                       )}
@@ -3977,7 +3976,7 @@ export default function App(){
                       <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Joueur 2</div>
                       <PlayerAC value={duelForm.player2} onChange={v=>setDuelForm(f=>({...f,player2:v,winner:""}))} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{}}/>
                       {duelForm.player2&&findPlayer(duelForm.player2)&&(
-                        <div style={{marginTop:4,fontSize:10,color:GAME_CFG[findPlayer(duelForm.player2).game]?.accent||"#A78BFA",fontWeight:600}}>
+                        <div style={{marginTop:4,fontSize:10,color:(GAME_CFG[findPlayer(duelForm.player2).game]&&GAME_CFG[findPlayer(duelForm.player2).game].accent)||"#A78BFA",fontWeight:600}}>
                           {findPlayer(duelForm.player2).team}
                         </div>
                       )}
@@ -4122,13 +4121,13 @@ export default function App(){
                     const pi=findPlayer(v);
                     // Find last bet for this player to pre-fill memory fields
                     const lastBet=bets.find(b=>b.player&&b.player.toLowerCase()===v.toLowerCase()&&b.status!=="pending");
-                    const memStake=lastBet?.stake?String(lastBet.stake):"";
-                    const memPPType=lastBet?.ppMapType||"";
-                    const memPPDesc=lastBet?.ppDescription||"";
-                    const memBK=lastBet?.bookmaker||"";
-                    const memMapTag=lastBet?.mapTag||"Map 1";
-                    const memOU=lastBet?.overUnder||"";
-                    const memDesc=lastBet?.description||"";
+                    const memStake=(lastBet&&lastBet.stake)?String(lastBet.stake):"";
+                    const memPPType=(lastBet&&lastBet.ppMapType)||"";
+                    const memPPDesc=(lastBet&&lastBet.ppDescription)||"";
+                    const memBK=(lastBet&&lastBet.bookmaker)||"";
+                    const memMapTag=(lastBet&&lastBet.mapTag)||"Map 1";
+                    const memOU=(lastBet&&lastBet.overUnder)||"";
+                    const memDesc=(lastBet&&lastBet.description)||"";
                     setForm(f=>({
                       ...f,
                       player:v,
@@ -4211,7 +4210,7 @@ export default function App(){
 
                   {/* ── Bouton Changer ── */}
                   <div style={{padding:"12px 12px 12px 0",display:"flex",alignItems:"flex-start",flexShrink:0}}>
-                    <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current?.focus(),50);}}
+                    <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
                       style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(139,92,246,.3)",color:"#9d7bef",fontWeight:500,fontSize:11,background:"rgba(139,92,246,.05)",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
                       Changer
                     </button>
@@ -4403,7 +4402,7 @@ export default function App(){
 
             {/* ── 6b. PRIZEPICKS ── */}
             {!duelMode&&(()=>{
-              const game=form.autoInfo?.game;
+              const game=form.autoInfo&&form.autoInfo.game;
               // PP type = type de ligne PP uniquement, sans lien avec mapTag du pari
               // Map 1+2 : stats cumulées 2 maps → ligne × 2 avec edge
               // Map 3 : stats map unitaire → ligne directe avec edge réduit
@@ -4618,7 +4617,7 @@ export default function App(){
                   </button>
                 ))}
               </div>
-              {lockedStatus&&<div style={{fontSize:10,color:"#F59E0B",marginTop:6,fontWeight:600}}>🔒 "{STATUS_CFG[lockedStatus]?.label}" verrouillé</div>}
+              {lockedStatus&&<div style={{fontSize:10,color:"#F59E0B",marginTop:6,fontWeight:600}}>🔒 "{STATUS_CFG[lockedStatus]&&STATUS_CFG[lockedStatus].label}" verrouillé</div>}
             </div>
 
             {/* ── CTA ── */}
@@ -4660,19 +4659,19 @@ export default function App(){
                           return(
                             <div style={{width:90,height:90,flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden",borderRadius:10}}>
                               {/* Logo équipe en filigrane */}
-                              {form.autoInfo?.team_logo_url&&(
+                              {(form.autoInfo&&form.autoInfo.team_logo_url)&&(
                                 <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"75%",height:"75%",objectFit:"contain",opacity:.1,zIndex:0,pointerEvents:"none"}}/>
                               )}
                               <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",height:"80%",background:"radial-gradient(ellipse at 50% 100%,rgba(124,58,237,.3),transparent 70%)",zIndex:0,pointerEvents:"none"}}/>
                               {src?(
-                                <img src={src} alt={form.autoInfo?.name||form.player} style={{position:"relative",zIndex:1,width:"100%",height:"100%",objectFit:"contain",objectPosition:"bottom center",filter:"drop-shadow(0 0 8px rgba(124,58,237,.35))"}}/>
+                                <img src={src} alt={(form.autoInfo&&form.autoInfo.name)||form.player} style={{position:"relative",zIndex:1,width:"100%",height:"100%",objectFit:"contain",objectPosition:"bottom center",filter:"drop-shadow(0 0 8px rgba(124,58,237,.35))"}}/>
                               ):(
                                 <div style={{position:"relative",zIndex:1,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:700,color:"#a78bfa",textTransform:"uppercase"}}>
-                                  {(form.autoInfo?.name||form.player).charAt(0)}
+                                  {((form.autoInfo&&form.autoInfo.name)||form.player).charAt(0)}
                                 </div>
                               )}
                               {/* Badge logo équipe en bas à droite */}
-                              {form.autoInfo?.team_logo_url&&(
+                              {(form.autoInfo&&form.autoInfo.team_logo_url)&&(
                                 <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{position:"absolute",bottom:2,right:2,width:18,height:18,objectFit:"contain",zIndex:3,filter:"drop-shadow(0 1px 3px rgba(0,0,0,.8))"}}/>
                               )}
                             </div>
@@ -4682,8 +4681,8 @@ export default function App(){
                         <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:5}}>
                           {/* Ligne 1 : nom joueur (principal) */}
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <span style={{fontSize:18,fontWeight:800,color:"#f0f4ff",letterSpacing:-.4,lineHeight:1}}>{form.autoInfo?.name||form.player}</span>
-                            {form.autoInfo?.team_logo_url&&(
+                            <span style={{fontSize:18,fontWeight:800,color:"#f0f4ff",letterSpacing:-.4,lineHeight:1}}>{(form.autoInfo&&form.autoInfo.name)||form.player}</span>
+                            {(form.autoInfo&&form.autoInfo.team_logo_url)&&(
                               <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{width:14,height:14,objectFit:"contain",opacity:.7,flexShrink:0}}/>
                             )}
                           </div>
@@ -5047,7 +5046,7 @@ export default function App(){
               });
 
               // edgeDrill state: {mt, game, edge} or null
-              const edgeDrill=ppStatsDrill?.edgeDrill||null;
+              const edgeDrill=(ppStatsDrill&&ppStatsDrill.edgeDrill)||null;
               const setEdgeDrill=v=>setPpStatsDrill(prev=>({...(prev||{}),edgeDrill:v,heatDrill:null}));
 
               const tabStyle=(active)=>({padding:"7px 14px",borderRadius:8,border:"1px solid "+(active?"rgba(139,92,246,.6)":"rgba(255,255,255,.07)"),background:active?"rgba(139,92,246,.15)":"transparent",color:active?"#c4b5fd":"#4a5a6e",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0});
@@ -5156,10 +5155,10 @@ export default function App(){
                               <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#00E676":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
                               <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
                               <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#00E676":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
-                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{ppBetsDrill?.key===l.ou+l.bkLine+l.ppLine?"▲":"▼"}</span>
+                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{(ppBetsDrill&&ppBetsDrill.key)===l.ou+l.bkLine+l.ppLine?"▲":"▼"}</span>
                             </div>
                             {/* Inline bets view */}
-                            {ppBetsDrill?.key===l.ou+l.bkLine+l.ppLine&&matchBets.length>0&&(
+                            {(ppBetsDrill&&ppBetsDrill.key)===l.ou+l.bkLine+l.ppLine&&matchBets.length>0&&(
                               <div style={{background:"rgba(0,0,0,.4)",borderTop:"1px solid #0d1628",borderBottom:isLast?"none":"1px solid #0d1628"}}>
                                 {matchBets.map((b,bi)=>{
                                   const isWon=b.status==="won";
@@ -5249,14 +5248,14 @@ export default function App(){
                 {k:"wr",l:"WR",fmt:(s)=>s.wr+"%",color:(s)=>s.wr>=55?"#00E676":s.wr<45?"#f87171":"#fbbf24",bg:(s)=>s.wr>=55?"rgba(110,231,160,.07)":s.wr<45?"rgba(248,113,113,.08)":"rgba(251,191,36,.05)"},
                 {k:"cnt",l:"Paris",fmt:(s)=>String(s.cnt),color:(s)=>"#c4b5fd",bg:(s)=>"rgba(139,92,246,.05)"},
               ];
-              const heatMetric=ppStatsDrill?.heatMetric||"roi";
+              const heatMetric=(ppStatsDrill&&ppStatsDrill.heatMetric)||"roi";
               const setHeatMetric=v=>setPpStatsDrill(prev=>({...(prev||{}),heatMetric:v}));
               const HeatTab=()=>{
-                const heatDrill=ppStatsDrill?.heatDrill||null;
+                const heatDrill=(ppStatsDrill&&ppStatsDrill.heatDrill)||null;
                 const metric=HEAT_METRICS.find(m=>m.k===heatMetric)||HEAT_METRICS[0];
                 if(heatDrill){
                   const {mt,game}=heatDrill;
-                  const gameEdges=Object.keys(matrix[mt]?.[game]||{}).map(Number).sort((a,b)=>b-a);
+                  const gameEdges=Object.keys(((matrix[mt]&&matrix[mt][game])||{})).map(Number).sort((a,b)=>b-a);
                   return(
                     <div>
                       <button onClick={()=>setPpStatsDrill(prev=>({...(prev||{}),heatDrill:null}))}
@@ -5291,7 +5290,7 @@ export default function App(){
                       {GAMES.filter(game=>ppBets.some(b=>b.game===game)).map(game=>{
                         // Collect all edges for this game across all map types
                         const gameAllEdges=new Set();
-                        MAP_TYPES.forEach(mt=>Object.keys(matrix[mt]?.[game]||{}).forEach(e=>gameAllEdges.add(parseFloat(e))));
+                        MAP_TYPES.forEach(mt=>Object.keys(((matrix[mt]&&matrix[mt][game])||{})).forEach(e=>gameAllEdges.add(parseFloat(e))));
                         const edgeCols=[...gameAllEdges].sort((a,b)=>a-b);
                         if(edgeCols.length===0)return null;
                         return(
@@ -5299,7 +5298,7 @@ export default function App(){
                             {/* Game header */}
                             {(()=>{
                               const gTot=mkS();
-                              MAP_TYPES.forEach(mt2=>Object.values(matrix[mt2]?.[game]||{}).forEach(d=>{gTot.cnt+=d.cnt;gTot.won+=d.won;gTot.profit+=d.profit;gTot.staked+=d.staked;gTot.oddsSum+=d.oddsSum;}));
+                              MAP_TYPES.forEach(mt2=>Object.values((matrix[mt2]&&matrix[mt2][game])||{}).forEach(d=>{gTot.cnt+=d.cnt;gTot.won+=d.won;gTot.profit+=d.profit;gTot.staked+=d.staked;gTot.oddsSum+=d.oddsSum;}));
                               const gS=calc(gTot);
                               return(
                                 <div style={{display:"flex",alignItems:"center",gap:6,padding:"9px 12px",background:"rgba(139,92,246,.07)",borderBottom:"1px solid rgba(139,92,246,.15)",flexWrap:"wrap"}}>
@@ -5330,7 +5329,7 @@ export default function App(){
                                         <span style={{fontSize:9,color:"#7a9cbd",fontWeight:700,whiteSpace:"nowrap"}}>{mt}</span>
                                       </td>
                                       {edgeCols.map(e=>{
-                                        const d=matrix[mt]?.[game]?.[e.toFixed(2)];
+                                        const d=matrix[mt]&&matrix[mt][game]&&matrix[mt][game][e.toFixed(2)];
                                         const s=d?calc(d):null;
                                         const cellBg=s?metric.bg(s):"transparent";
                                         const cellColor=s?metric.color(s):"#151e2c";
@@ -6273,7 +6272,7 @@ export default function App(){
                   if(m==="n")return{txt:String(d.cnt),color:"#7a9cbd"};
                   return{txt:"—",color:"#3a4a5e"};
                 };
-                const colLabel=METRICS2.find(mx=>mx.k===metric2)?.label||"ROI";
+                const colLabel=METRICS2.find(function(mx){return mx.k===metric2;})&&HEAT_METRICS.find(function(mx){return mx.k===metric2;}).label||"ROI";
                 const hasOver=sortedLines(overByLine).length>0;
                 const hasUnder=sortedLines(underByLine).length>0;
                 if(!hasOver&&!hasUnder)return null;
@@ -6376,8 +6375,8 @@ export default function App(){
       return ta.localeCompare(tb);
     }
     if(analyseSort==="team"){
-      const ta=findPlayer(a.player)?.team||"zzz";
-      const tb=findPlayer(b.player)?.team||"zzz";
+      const ta=(findPlayer(a.player)&&findPlayer(a.player).team)||"zzz";
+      const tb=(findPlayer(b.player)&&findPlayer(b.player).team)||"zzz";
       return ta.localeCompare(tb)||a.player.localeCompare(b.player);
     }
     return (b.diff||0)-(a.diff||0);
@@ -6385,17 +6384,17 @@ export default function App(){
   const topDiff=filtered.length>0?Math.max(...filtered.map(b=>b.diff||0)):0;
   const avgOdds=filtered.length>0?(filtered.reduce((s,b)=>s+(b.odds||0),0)/filtered.length).toFixed(2):0;
   const sportColor=(sport)=>{
-    if(sport?.includes("CS")||sport==="CS2")return"#F0A500";
-    if(sport?.includes("Legend")||sport==="LoL")return"#C89B3C";
-    if(sport?.includes("Dota"))return"#C23C2A";
-    if(sport?.includes("Valor"))return"#FF4655";
+    if(sport&&sport.includes("CS")||sport==="CS2")return"#F0A500";
+    if(sport&&sport.includes("Legend")||sport==="LoL")return"#C89B3C";
+    if(sport&&sport.includes("Dota"))return"#C23C2A";
+    if(sport&&sport.includes("Valor"))return"#FF4655";
     return"#9CA3AF";
   };
   const sportEmoji=(sport)=>{
-    if(sport?.includes("CS")||sport==="CS2")return"🎯";
-    if(sport?.includes("Legend")||sport==="LoL")return"⚔️";
-    if(sport?.includes("Dota"))return"🏆";
-    if(sport?.includes("Valor"))return"🔺";
+    if(sport&&sport.includes("CS")||sport==="CS2")return"🎯";
+    if(sport&&sport.includes("Legend")||sport==="LoL")return"⚔️";
+    if(sport&&sport.includes("Dota"))return"🏆";
+    if(sport&&sport.includes("Valor"))return"🔺";
     return"🎮";
   };
   const bkShortName=(source)=>{
@@ -6521,7 +6520,7 @@ export default function App(){
           }).map((b,i)=>{
             const isOver=b.direction==="OVER";
             const sc=sportColor(b.sport);
-            const gameKey=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+            const gameKey=b.sport&&sport.includes("CS")?"CS2":b.sport&&sport.includes("Legend")?"LoL":b.sport&&sport.includes("Dota")?"Dota2":b.sport&&sport.includes("Valor")?"Valorant":null;
             const bkName=bkShortName(b.source);
             const matchTime=b.match_time||b.start_time||null;
             const betKey=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
@@ -6548,7 +6547,7 @@ export default function App(){
                   <div style={{minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"nowrap",minWidth:0}}>
                       <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",flexShrink:0}}>{b.player||"?"}</span>
-                      {(()=>{const pi=findPlayer(b.player);const tm=pi?.team||pi?.team_name;if(!tm)return null;return(<><span style={{color:"#3a4e62",fontSize:10,margin:"0 3px",flexShrink:0}}>-</span><span style={{fontSize:11,fontWeight:700,color:"#ffffff",whiteSpace:"nowrap",flexShrink:0}}>{tm}</span></>);})()}
+                      {(()=>{const pi=findPlayer(b.player);const tm=(pi&&pi.team)||(pi&&pi.team_name);if(!tm)return null;return(<><span style={{color:"#3a4e62",fontSize:10,margin:"0 3px",flexShrink:0}}>-</span><span style={{fontSize:11,fontWeight:700,color:"#ffffff",whiteSpace:"nowrap",flexShrink:0}}>{tm}</span></>);})()}
                     </div>
                     <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
                       <span style={{fontSize:10,color:"#A78BFA",fontWeight:600}}>{b.stat==="kills"?"Kills":b.stat==="headshots"?"HS":b.stat||"kills"}</span>
@@ -6599,7 +6598,7 @@ export default function App(){
                         const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
                         const mapTag=b.map!=null?"Map "+b.map:"Map 1";
                         const ou=b.direction==="OVER"?"Over":"Under";
-                        const gk=b.sport?.includes("CS")?"CS2":b.sport?.includes("Legend")?"LoL":b.sport?.includes("Dota")?"Dota2":b.sport?.includes("Valor")?"Valorant":null;
+                        const gk=b.sport&&sport.includes("CS")?"CS2":b.sport&&sport.includes("Legend")?"LoL":b.sport&&sport.includes("Dota")?"Dota2":b.sport&&sport.includes("Valor")?"Valorant":null;
                         const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
                         setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo});
                         setEditingBet(null);
@@ -7300,8 +7299,8 @@ export default function App(){
                       {(savedTourneys[game]||[]).map((s,i)=>(
                         <div key={s} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",borderBottom:i<(savedTourneys[game]||[]).length-1?"1px solid #1F2937":"none"}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            {activeTourneys[game]?.name===s&&<span style={{width:6,height:6,borderRadius:"50%",background:"#00E676",boxShadow:"0 0 5px rgba(34,197,94,0.5)"}}/>}
-                            <span style={{fontSize:12,color:activeTourneys[game]?.name===s?"#00E676":"#E5E7EB",fontWeight:activeTourneys[game]?.name===s?700:400}}>{s}</span>
+                            {activeTourneys[game]&&activeTourneys[game].name===s&&<span style={{width:6,height:6,borderRadius:"50%",background:"#00E676",boxShadow:"0 0 5px rgba(34,197,94,0.5)"}}/>}
+                            <span style={{fontSize:12,color:activeTourneys[game]&&activeTourneys[game].name===s?"#00E676":"#E5E7EB",fontWeight:activeTourneys[game]&&activeTourneys[game].name===s?700:400}}>{s}</span>
                           </div>
                           <div style={{display:"flex",gap:6}}>
                             <button onClick={()=>{
@@ -7361,7 +7360,7 @@ export default function App(){
                 const items=[];
                 navItems.forEach((n,idx)=>{
                   if(idx===mid){
-                    items.push(<button key="add-fab" onClick={()=>{setView("add");setTimeout(()=>playerACRef.current?.focus(),80);}}
+                    items.push(<button key="add-fab" onClick={()=>{setView("add");setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),80);}}
                       style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 16px rgba(124,58,237,0.45)",flexShrink:0,transform:view==="add"?"scale(0.93)":"scale(1)",transition:"transform .15s ease",marginBottom:4}}>
                       <span style={{fontSize:30,color:"#fff",lineHeight:1,marginTop:-1}}>+</span>
                     </button>);
