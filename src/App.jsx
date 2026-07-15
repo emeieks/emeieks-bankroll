@@ -754,7 +754,7 @@ function BulkRoleChanger({allPlayers,setPlayers,onSaveBulk}){
 }
 
 // ── PlayerSearchPanel ──────────────────────────────────────────────────────
-function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blacklist,toggleBlacklist}){
+function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blacklist,toggleBlacklist,onSaveBulk}){
   const [pSearch,setPSearch]=useState("");
   const filtered=useMemo(function(){
     const q=pSearch.toLowerCase().trim();
@@ -1292,6 +1292,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
   const [filterGame,setFilterGame]=useState("all");
   const [saving,setSaving]=useState(false);
   const [searchTournament,setSearchTournament]=useState("");
+  const [tourneyOpen,setTourneyOpen]=useState(false);
 
   const allGames=useMemo(function(){
     const gs=new Set();
@@ -1303,7 +1304,10 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
     const result={};
     Object.entries(allByDay).forEach(([dk,dayBets])=>{
       var filtered=filterGame==="all"?dayBets:dayBets.filter(b=>b.game===filterGame);
-      if(searchTournament)filtered=filtered.filter(function(b){return b.tournament===searchTournament;});
+      if(searchTournament){
+        if(searchTournament==="__NONE__")filtered=filtered.filter(function(b){return !b.tournament;});
+        else filtered=filtered.filter(function(b){return b.tournament===searchTournament;});
+      }
       if(filtered.length>0)
         result[dk]=[...filtered].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
     });
@@ -1318,7 +1322,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
     setSelected(prev=>{const n=new Set(prev);if(allSel){ids.forEach(id=>n.delete(id));}else{ids.forEach(id=>n.add(id));}return n;});
   };
 
-  const canApply=selected.size>0&&(newDate||newTournament||newBK);
+  const canApply=selected.size>0&&(newDate||newTournament||newBK||searchTournament);
 
   const apply=function(){
     if(!canApply)return;
@@ -1395,15 +1399,39 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             bets.forEach(function(b){if(!b.tournament)return;if(!byGame[b.game])byGame[b.game]=new Set();byGame[b.game].add(b.tournament);});
             const options=[];
             (games.length>0?games:Object.keys(byGame)).forEach(function(g){(byGame[g]||new Set()).forEach(function(t){options.push({game:g,tournament:t});});});
-            const GAME_ICONS={"CS2":"🎮","LoL":"⚔️","Dota2":"🛡","Valorant":"🎯"};
+            const GAME_ICONS={"CS2":"[CS2]","LoL":"[LoL]","Dota2":"[Dota2]","Valorant":"[Val]"};
+            var allOpts=[{game:"",tournament:"__AUCUN__",label:"📅 Sans tournoi",val:"__AUCUN__"}].concat(options.map(function(o){return{game:o.game,tournament:o.tournament,label:o.tournament,val:o.tournament};}));
+            var selected_opt=allOpts.find(function(o){return o.val===newTournament;})||null;
             return(
-              <select value={newTournament} onChange={e=>setNewTournament(e.target.value)}
-                style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box",cursor:"pointer"}}>
-                <option value="">— Choisir un tournoi —</option>
-                <option value="__AUCUN__">📅 Sans tournoi (retirer le tournoi)</option>
-                <option disabled>──────────────</option>
-                {options.map(function(o,i){return <option key={i} value={o.tournament}>{GAME_ICONS[o.game]||"🏆"} [{o.game}] {o.tournament}</option>;})}
-              </select>
+              <div style={{position:"relative"}}>
+                {/* Trigger button */}
+                <button onClick={function(){setTourneyOpen(function(v){return !v;});}}
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:10,border:"1px solid "+(newTournament?"rgba(167,139,250,.5)":"#1F2937"),background:"#0B1220",color:newTournament?"#c4b5fd":"#6B7280",fontSize:13,fontWeight:newTournament?700:400,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+                  {selected_opt&&selected_opt.game?<GameLogo game={selected_opt.game} size={16}/>:selected_opt&&selected_opt.val==="__AUCUN__"?<span>📅</span>:null}
+                  <span style={{flex:1}}>{selected_opt?selected_opt.label:"— Choisir un tournoi —"}</span>
+                  <span style={{fontSize:10,color:"#4a5a6e"}}>{tourneyOpen?"▲":"▼"}</span>
+                </button>
+                {/* Dropdown list */}
+                {tourneyOpen&&(
+                  <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#0d1528",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,zIndex:999,maxHeight:200,overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}>
+                    <button onClick={function(){setNewTournament("");setTourneyOpen(false);}}
+                      style={{width:"100%",padding:"9px 12px",display:"flex",alignItems:"center",gap:8,border:"none",borderBottom:"1px solid rgba(255,255,255,.05)",background:"transparent",color:"#4a5a6e",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+                      — Aucun —
+                    </button>
+                    {allOpts.map(function(o,i){
+                      var isOn=newTournament===o.val;
+                      return(
+                        <button key={i} onClick={function(){setNewTournament(o.val);setTourneyOpen(false);}}
+                          style={{width:"100%",padding:"9px 12px",display:"flex",alignItems:"center",gap:8,border:"none",borderBottom:i<allOpts.length-1?"1px solid rgba(255,255,255,.04)":"none",background:isOn?"rgba(124,58,237,.15)":"transparent",color:isOn?"#c4b5fd":"#E5E7EB",fontSize:12,fontWeight:isOn?700:400,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+                          {o.game?<GameLogo game={o.game} size={15}/>:<span style={{fontSize:13}}>{o.val==="__AUCUN__"?"📅":""}</span>}
+                          <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.label}</span>
+                          {isOn&&<span style={{color:"#a78bfa",fontSize:11}}>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })()}
         </div>
@@ -1425,21 +1453,22 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             {newBK&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:6}}>✓ {newBK}</div>}
           </div>
         )}
-        {/* Rechercher: filter bet list by tournament */}
-        {newTournament&&newTournament!=="__AUCUN__"&&(
-          <div style={{marginTop:8,padding:"8px 0 0"}}>
-            <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Recherche rapide</div>
-            <button onClick={function(){setSearchTournament(st=>st===newTournament?"":newTournament);}}
-              style={{width:"100%",padding:"10px",borderRadius:10,border:"1px solid "+(searchTournament===newTournament?"rgba(251,191,36,.5)":"rgba(255,255,255,.1)"),background:searchTournament===newTournament?"rgba(251,191,36,.1)":"rgba(255,255,255,.04)",color:searchTournament===newTournament?"#fbbf24":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-              🔍 {searchTournament===newTournament?"Afficher tous les paris":"Voir uniquement: "+newTournament}
-            </button>
-            {searchTournament===newTournament&&(
-              <div style={{fontSize:11,color:"#fbbf24",marginTop:5,textAlign:"center"}}>
-                {sortedByDay&&Object.values(sortedByDay).flat().filter(function(b){return b.tournament===newTournament;}).length} paris trouvés
-              </div>
-            )}
-          </div>
-        )}
+        {/* Rechercher: filtre la liste */}
+        <div style={{marginTop:8}}>
+          <button onClick={function(){
+            var t=newTournament==="__AUCUN__"?"__NONE__":newTournament;
+            setSearchTournament(function(st){return st===t?"":t;});
+          }}
+            style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:searchTournament?"rgba(239,68,68,.15)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            🔍 {searchTournament?"✕ Annuler la recherche":"Rechercher"}
+          </button>
+          {searchTournament&&(
+            <div style={{fontSize:11,color:"#fbbf24",marginTop:5,textAlign:"center"}}>
+              {Object.values(sortedByDay).flat().length} paris trouvés
+              {searchTournament==="__NONE__"?" sans tournoi":newTournament?" · "+newTournament:""}
+            </div>
+          )}
+        </div>
       </div>
       {selected.size>0&&<div style={{padding:"8px 14px",flexShrink:0,borderBottom:"1px solid #1F2937"}}>
         {!canApply&&<div style={{fontSize:11,color:"#fbbf24",marginBottom:6,textAlign:"center"}}>Choisis une date, un tournoi ou un bookmaker ci-dessus</div>}
