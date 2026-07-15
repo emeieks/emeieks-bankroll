@@ -711,15 +711,15 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 function BulkRoleChanger({allPlayers,setPlayers}){
   const [fromRole,setFromRole]=useState("");
   const [toRole,setToRole]=useState("");
-  const STD_ROLES=["Top","Jungle","Mid","Bot","Support"];
+  const STD_ROLES=["Top","Jungle","Mid","Bot","Support","Top Laner","Jungler","Mid Laner","Bot Laner"];
   const allRoles=[...new Set(Object.values(allPlayers).filter(function(p){return p.game==="LoL"&&p.role;}).map(function(p){return p.role;}))].sort();
-  const affected=fromRole?Object.entries(allPlayers).filter(function(e){var p=e[1];return p.game==="LoL"&&p.role===fromRole;}).length:0;
+  const affected=fromRole?Object.entries(allPlayers).filter(function(e){var p=e[1];return p.role===fromRole;}).length:0;
   function applyBulk(){
     if(!fromRole||!toRole||fromRole===toRole)return;
     var updated=Object.assign({},allPlayers);
     Object.entries(allPlayers).forEach(function(e){
       var k=e[0],p=e[1];
-      if(p.game==="LoL"&&p.role===fromRole){updated[k]=Object.assign({},p,{role:toRole});}
+      if(p.role===fromRole){updated[k]=Object.assign({},p,{role:toRole});}
     });
     setPlayers(updated);
     setFromRole("");setToRole("");
@@ -727,7 +727,7 @@ function BulkRoleChanger({allPlayers,setPlayers}){
   if(allRoles.length===0)return null;
   return(
     <div style={{marginTop:10,background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.2)",borderRadius:12,padding:"10px 12px"}}>
-      <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>⚡ Changer rôle en masse (LoL)</div>
+      <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>⚡ Changer rôle en masse</div>
       <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
         <select value={fromRole} onChange={function(e){setFromRole(e.target.value);}}
           style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 8px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}>
@@ -807,28 +807,7 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
       )}
       {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
 {!pSearch&&<BulkRoleChanger allPlayers={allPlayers} setPlayers={setPlayers}/>}
-      {!pSearch&&(()=>{
-        const STD=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
-        const STD_SET=new Set(STD);
-        const bad=Object.entries(allPlayers).filter(([,p])=>p.game==="LoL"&&p.role&&!STD_SET.has(p.role)).slice(0,15);
-        if(bad.length===0)return null;
-        return(
-          <div style={{marginTop:10,background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:12,padding:"10px 12px"}}>
-            <div style={{fontSize:10,color:"#f87171",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>⚠️ Rôles LoL non-standard ({bad.length})</div>
-            {bad.map(([key,p])=>(
-              <div key={key} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-                <span style={{fontSize:12,color:"#E5E7EB",flex:1,textTransform:"capitalize"}}>{key}</span>
-                <span style={{fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)",padding:"1px 6px",borderRadius:5}}>{p.role||"—"}</span>
-                <select defaultValue="" onChange={e=>{const v=e.target.value;if(!v)return;setEditingPlayer({key,data:{...p,name:key,role:v}});}}
-                  style={{fontSize:10,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,color:"#9CA3AF",padding:"2px 4px",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  <option value="">Changer…</option>
-                  {STD.map(r=><option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+
     </div>
   );
 }
@@ -1347,7 +1326,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       const time=b.datetime?String(b.datetime).slice(11,16):"12:00";
       const newDatetime=newDate?newDate+"T"+time:b.datetime;
       const newSettledAt=b.status!=="pending"&&newDate?new Date(newDatetime).getTime():(b.settledAt||null);
-      const nb={...b,datetime:newDatetime,settledAt:newSettledAt,...(newTournament?{tournament:newTournament}:{}),...(newBK?{bookmaker:newBK}:{})};
+      const nt=newTournament==="__AUCUN__"?"":newTournament;
+      const nb={...b,datetime:newDatetime,settledAt:newSettledAt,...(newTournament?{tournament:nt}:{}),...(newBK?{bookmaker:newBK}:{})};
       toSync.push(nb);
       return nb;
     });
@@ -1399,7 +1379,25 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
         </div>
         <div>
           <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Tournoi</div>
-          <input type="text" value={newTournament} onChange={e=>setNewTournament(e.target.value)} placeholder="ex: MSI 2026, LEC Spring…" style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+          {(()=>{
+            // Build list of tournaments from selected bets grouped by game
+            const selBets=[...selected].map(id=>bets.find(b=>b.id===id)).filter(Boolean);
+            const games=[...new Set(selBets.map(b=>b.game).filter(Boolean))];
+            // All tournaments from those games
+            const byGame={};
+            bets.forEach(function(b){if(!b.tournament)return;if(!byGame[b.game])byGame[b.game]=new Set();byGame[b.game].add(b.tournament);});
+            const options=[];
+            (games.length>0?games:Object.keys(byGame)).forEach(function(g){(byGame[g]||new Set()).forEach(function(t){options.push({game:g,tournament:t});});});
+            const GAME_ICONS={"CS2":"🎮","LoL":"⚔️","Dota2":"🛡","Valorant":"🎯"};
+            return(
+              <select value={newTournament} onChange={e=>setNewTournament(e.target.value)}
+                style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box",cursor:"pointer"}}>
+                <option value="">— Choisir un tournoi —</option>
+                <option value="__AUCUN__">📅 Retirer le tournoi</option>
+                {options.map(function(o,i){return <option key={i} value={o.tournament}>{GAME_ICONS[o.game]||"🏆"} [{o.game}] {o.tournament}</option>;})}
+              </select>
+            );
+          })()}
         </div>
         {bookmakers.length>0&&(
           <div>
@@ -3884,14 +3882,14 @@ export default function App(){
             })()}
 
             {/* Tournoi — apparaît si un jeu est sélectionné */}
-            {fGames.length>0&&(()=>{
+            {(()=>{
               const tourneysForGame=[...new Set(
                 bets
-                  .filter(b=>fGames.includes(b.game)&&b.tournament)
+                  .filter(b=>(fGames.length===0||fGames.includes(b.game))&&b.tournament)
                   .map(b=>b.tournament)
               )];
               // Add "Hors tournoi" if any bets have no tournament
-              const hasHors=bets.filter(b=>fGames.includes(b.game)&&!b.tournament).length>0;
+              const hasHors=bets.filter(b=>(fGames.length===0||fGames.includes(b.game))&&!b.tournament).length>0;
               const allOptions=[...(hasHors?["Hors tournoi"]:[]),...tourneysForGame];
               if(allOptions.length===0)return null;
               const toggleT=(t)=>setFTourneys(prev=>{
