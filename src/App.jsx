@@ -707,6 +707,51 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 });
 
 
+// ── BulkRoleChanger ──────────────────────────────────────────────────────────
+function BulkRoleChanger({allPlayers,setPlayers}){
+  const [fromRole,setFromRole]=useState("");
+  const [toRole,setToRole]=useState("");
+  const STD_ROLES=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
+  const allRoles=[...new Set(Object.values(allPlayers).filter(function(p){return p.game==="LoL"&&p.role;}).map(function(p){return p.role;}))].sort();
+  const affected=fromRole?Object.entries(allPlayers).filter(function(e){var p=e[1];return p.game==="LoL"&&p.role===fromRole;}).length:0;
+  function applyBulk(){
+    if(!fromRole||!toRole||fromRole===toRole)return;
+    var updated=Object.assign({},allPlayers);
+    Object.entries(allPlayers).forEach(function(e){
+      var k=e[0],p=e[1];
+      if(p.game==="LoL"&&p.role===fromRole){updated[k]=Object.assign({},p,{role:toRole});}
+    });
+    setPlayers(updated);
+    setFromRole("");setToRole("");
+  }
+  if(allRoles.length===0)return null;
+  return(
+    <div style={{marginTop:10,background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.2)",borderRadius:12,padding:"10px 12px"}}>
+      <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>⚡ Changer rôle en masse (LoL)</div>
+      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+        <select value={fromRole} onChange={function(e){setFromRole(e.target.value);}}
+          style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 8px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}>
+          <option value="">De (rôle actuel)…</option>
+          {allRoles.map(function(r){
+            var cnt=Object.values(allPlayers).filter(function(p){return p.role===r&&p.game==="LoL";}).length;
+            return <option key={r} value={r}>{r} ({cnt})</option>;
+          })}
+        </select>
+        <span style={{color:"#4a5a6e",fontSize:14}}>→</span>
+        <select value={toRole} onChange={function(e){setToRole(e.target.value);}}
+          style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 8px",color:"#c4b5fd",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}>
+          <option value="">Vers…</option>
+          {STD_ROLES.map(function(r){return <option key={r} value={r}>{r}</option>;})}
+        </select>
+        <button onClick={applyBulk} disabled={!fromRole||!toRole||fromRole===toRole}
+          style={{padding:"6px 14px",borderRadius:8,border:"none",background:(!fromRole||!toRole||fromRole===toRole)?"rgba(255,255,255,.05)":"rgba(124,58,237,.5)",color:(!fromRole||!toRole||fromRole===toRole)?"#4a5a6e":"#fff",fontWeight:700,fontSize:12,cursor:(!fromRole||!toRole||fromRole===toRole)?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
+          Appliquer ({affected})
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── PlayerSearchPanel ──────────────────────────────────────────────────────
 function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blacklist,toggleBlacklist}){
   const [pSearch,setPSearch]=useState("");
@@ -761,6 +806,7 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
         </div>
       )}
       {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
+{!pSearch&&<BulkRoleChanger allPlayers={allPlayers} setPlayers={setPlayers}/>}
       {!pSearch&&(()=>{
         const STD=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
         const STD_SET=new Set(STD);
@@ -1024,7 +1070,7 @@ const APP_ICON="";
   fav.rel='icon';fav.href=APP_ICON;
   document.head.appendChild(fav);
 })();
-const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[]}){
+const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
   const [open,setOpen]=useState(false);
   const [confirmDel,setConfirmDel]=useState(false);
   const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
@@ -1107,7 +1153,10 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                 onChange={function(e){if(onSave)onSave(Object.assign({},bet,{tournament:e.target.value,updatedAt:Date.now()}));}}
                 style={{background:"rgba(18,12,30,.98)",border:"1px solid rgba(251,191,36,.3)",borderRadius:7,padding:"3px 8px",color:"#fbbf24",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",minWidth:90,maxWidth:180,cursor:"pointer"}}>
                 <option value="">— Aucun —</option>
-                {(allTourneys||[]).map(function(t){return <option key={t} value={t}>{t}</option>;})}
+                {((savedTourneys&&savedTourneys[bet.game]&&savedTourneys[bet.game].length>0)
+                  ?(savedTourneys[bet.game])
+                  :(allTourneys||[]).filter(function(t){return !bet.game||(bets&&bets.some?true:true);}))
+                  .map(function(t){return <option key={t} value={t}>{t}</option>;})}
               </select>
             </div>
           </div>
@@ -1371,7 +1420,10 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
           </div>
         )}
       </div>
-      {canApply&&<div style={{padding:"8px 14px",flexShrink:0,borderBottom:"1px solid #1F2937"}}><button onClick={apply} disabled={saving} style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>{saving?"Enregistrement...":"Appliquer aux "+selected.size+" paris"}</button></div>}
+      {selected.size>0&&<div style={{padding:"8px 14px",flexShrink:0,borderBottom:"1px solid #1F2937"}}>
+        {!canApply&&<div style={{fontSize:11,color:"#fbbf24",marginBottom:6,textAlign:"center"}}>Choisis une date, un tournoi ou un bookmaker ci-dessus</div>}
+        <button onClick={apply} disabled={!canApply||saving} style={{width:"100%",padding:"12px",background:canApply?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.05)",border:canApply?"none":"1px solid rgba(255,255,255,.1)",borderRadius:12,color:canApply?"#fff":"#4a5a6e",fontWeight:800,fontSize:14,cursor:canApply?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>{saving?"Enregistrement...":"Appliquer aux "+selected.size+" paris"}</button>
+      </div>}
       <div style={{flex:"1 1 0",overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"8px 14px 80px",minHeight:0}}>
         {allMonthKeys.map(mk=>{
           const days=allByMonth[mk]||[];
@@ -1600,7 +1652,7 @@ function MesParisView({
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:2}}>
             {pending.map(b=>(
-              <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys}/>
+              <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
             ))}
           </div>
         </div>
@@ -1653,7 +1705,7 @@ function MesParisView({
                             <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#00E676":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
                           </div>
                           {dayBets.map(b=>(
-                            <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys}/>
+                            <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
                           ))}
                         </div>
                       );
