@@ -711,7 +711,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 function BulkRoleChanger({allPlayers,setPlayers}){
   const [fromRole,setFromRole]=useState("");
   const [toRole,setToRole]=useState("");
-  const STD_ROLES=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
+  const STD_ROLES=["Top","Jungle","Mid","Bot","Support"];
   const allRoles=[...new Set(Object.values(allPlayers).filter(function(p){return p.game==="LoL"&&p.role;}).map(function(p){return p.role;}))].sort();
   const affected=fromRole?Object.entries(allPlayers).filter(function(e){var p=e[1];return p.game==="LoL"&&p.role===fromRole;}).length:0;
   function applyBulk(){
@@ -1449,7 +1449,10 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
                             {isSel&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:900}}>✓</span>}
                           </div>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400,fontSize:12}}>— {b.description}</span></div>
+                            <div style={{display:"flex",alignItems:"center",gap:6,overflow:"hidden"}}>
+                              <GameLogo game={b.game} size={16}/>
+                              <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6B7280",fontWeight:400,fontSize:12}}>— {b.description}</span></span>
+                            </div>
                             <div style={{fontSize:11,color:"#6B7280",marginTop:2}}>@{b.odds} · {b.stake}$ · {b.datetime?String(b.datetime).slice(0,10):""}</div>
                           </div>
                           <div style={{fontSize:13,fontWeight:700,color:b.status==="won"?"#00E676":b.status==="lost"?"#EF4444":"#3B82F6",flexShrink:0}}>
@@ -1943,6 +1946,9 @@ export default function App(){
               avatar_file: p.avatar_file || null,
             };
           });
+          // Migrate roles to short form
+          var RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle","Support":"Support","Sup":"Support","Supp":"Support"};
+          Object.keys(obj).forEach(function(k){var r=obj[k].role;if(r&&RMIG[r])obj[k]=Object.assign({},obj[k],{role:RMIG[r]});});
           setPlayers(obj);
         }
       }).catch(function(){});
