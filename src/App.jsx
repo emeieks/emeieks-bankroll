@@ -2523,7 +2523,7 @@ export default function App(){
       // Positions
       const rm={};
       gb.forEach(b=>{
-        const k=b.role||"Inconnu";
+        const k=normalizeRole(b.role||"")||"Inconnu";
         if(!rm[k])rm[k]={role:k,count:0,won:0,profit:0,staked:0};
         rm[k].count++;rm[k].profit+=b.profit;rm[k].staked+=b.stake;
         if(b.status==="won")rm[k].won++;
@@ -2708,11 +2708,7 @@ export default function App(){
     }).sort((a,b2)=>{
       if(a.status==="pending"&&b2.status!=="pending")return -1;
       if(b2.status==="pending"&&a.status!=="pending")return 1;
-      // Both settled: most recently settled first
-      if(a.status!=="pending"&&b2.status!=="pending"){
-        const sa=a.settledAt||0,sb=b2.settledAt||0;
-        if(sa!==sb)return sb-sa;
-      }
+      // Sort by datetime (when bet was placed), not updatedAt
       return (String(b2.datetime||"")).localeCompare(String(a.datetime||""));
     });
   },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
@@ -3895,7 +3891,9 @@ export default function App(){
                   <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                     <button className={"fchip "+(fLeague==="All"?"on":"")} onClick={()=>setFLeague("All")}>Toutes</button>
                     {leagues.map(l=>(
-                      <button key={l} className={"fchip "+(fLeague===l?"on":"")} onClick={()=>setFLeague(fLeague===l?"All":l)}>{l}</button>
+                      <button key={l} className={"fchip "+(fLeague===l?"on":"")} onClick={()=>setFLeague(fLeague===l?"All":l)} style={{display:"flex",alignItems:"center",gap:5}}>
+                        <LeagueLogo league={l} size={14}/>{l}
+                      </button>
                     ))}
                   </div>
                 );
@@ -3909,7 +3907,7 @@ export default function App(){
                   🔴 Live
                 </button>
                 <button className={"fchip "+(fHeadshot?"on":"")} onClick={()=>setFHeadshot(v=>!v)} style={{display:"flex",alignItems:"center",gap:5}}>
-                  💀 Headshot
+                  <img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",filter:"brightness(0) invert(1)",opacity:.8}}/> Headshot
                 </button>
               </div>
             </div>
@@ -5030,7 +5028,7 @@ export default function App(){
                   <div>
                     <div style={{fontSize:9,color:"#6a5a3e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Headshots</div>
                     <div style={{display:"flex",gap:4}}>
-                      {[["all","Tous"],["yes","✓ HS"],["no","✗ HS"]].map(([v,l])=>(
+                      {[["all","Tous"],["yes",<span style={{display:"flex",alignItems:"center",gap:3}}><img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:11,height:11,objectFit:"contain",filter:"brightness(0) invert(1)"}}/> HS</span>],["no","✗ HS"]].map(([v,l])=>(
                         <button key={v} onClick={()=>setTestFilter(f=>({...f,headshot:v}))}
                           style={{flex:1,padding:"4px 0",borderRadius:7,border:"1px solid "+(testFilter.headshot===v?"rgba(251,191,36,.4)":"rgba(255,255,255,.07)"),background:testFilter.headshot===v?"rgba(251,191,36,.1)":"transparent",color:testFilter.headshot===v?"#fbbf24":"#4a5a6e",fontSize:10,fontWeight:testFilter.headshot===v?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>
                       ))}
@@ -5765,7 +5763,9 @@ export default function App(){
                             return(
                               <div key={t.name} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"tourney",filterValue:t.name})} style={{cursor:"pointer"}}>
                                 <div style={{display:"flex",alignItems:"center",gap:7}}>
-                                  <span style={{fontSize:12}}>{t.name==="Hors tournoi"?"📅":"🏆"}</span>
+                                  {t.name==="Hors tournoi"
+                                    ?<span style={{fontSize:12}}>📅</span>
+                                    :<LeagueLogo league={t.name} size={18}/>}
                                   <div>
                                     <div style={{display:"flex",alignItems:"center",gap:5}}>
                                       <div style={{fontWeight:600,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
@@ -6091,7 +6091,7 @@ export default function App(){
           betsF.forEach(b=>{
             const isO=b.overUnder==="Over",isU=b.overUnder==="Under";
             const map=b.mapTag||"Sans tag",bk=b.bookmaker||"Autre";
-            const rawRole=normalizeRole(b.role||"")||"Inconnu";
+            const rawRole=normalizeRole(b.role||"");const roleKey=rawRole||"Inconnu";
             // Normalize LoL roles to 5 standard positions
             const LOL_ROLE_MAP={"Top":"Top Laner","Toplaner":"Top Laner","Top laner":"Top Laner","Top Laner":"Top Laner","Jungle":"Jungler","Jng":"Jungler","Jngl":"Jungler","Jungler":"Jungler","Mid":"Mid Laner","Midlaner":"Mid Laner","Mid laner":"Mid Laner","Mid Laner":"Mid Laner","Adc":"Bot Laner","Bot":"Bot Laner","Carry":"Bot Laner","Botlaner":"Bot Laner","Bot laner":"Bot Laner","Bot Laner":"Bot Laner","Support":"Support","Sup":"Support","Supp":"Support","Bot Support":"Support","Marksman":"Bot Laner","Roamer":"Support"};
             const role=(b.game==="LoL"||b.game==="Valorant")?
