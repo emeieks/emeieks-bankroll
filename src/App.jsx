@@ -761,32 +761,26 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
         </div>
       )}
       {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
-      {!pSearch&&(function(){
-        var STD=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
-        var STD_SET=new Set(STD);
-        var bad=Object.entries(allPlayers).filter(function(e){var p=e[1];return p.game==="LoL"&&p.role&&!STD_SET.has(p.role);}).slice(0,15);
+      {!pSearch&&(()=>{
+        const STD=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
+        const STD_SET=new Set(STD);
+        const bad=Object.entries(allPlayers).filter(([,p])=>p.game==="LoL"&&p.role&&!STD_SET.has(p.role)).slice(0,15);
         if(bad.length===0)return null;
-        return React.createElement("div",{style:{marginTop:10,background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:12,padding:"10px 12px"}},
-          React.createElement("div",{style:{fontSize:10,color:"#f87171",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}},"⚠️ Rôles LoL non-standard ("+bad.length+")"),
-          bad.map(function(entry){
-            var key=entry[0],p=entry[1];
-            return React.createElement("div",{key:key,style:{display:"flex",alignItems:"center",gap:8,marginBottom:5}},
-              React.createElement("span",{style:{fontSize:12,color:"#E5E7EB",flex:1,textTransform:"capitalize"}},key),
-              React.createElement("span",{style:{fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)",padding:"1px 6px",borderRadius:5}},p.role||"—"),
-              React.createElement("select",{
-                defaultValue:"",
-                onChange:function(e){
-                  var v=e.target.value;
-                  if(!v)return;
-                  setEditingPlayer({key:key,data:Object.assign({},p,{name:key,role:v})});
-                },
-                style:{fontSize:10,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,color:"#9CA3AF",padding:"2px 4px",cursor:"pointer",fontFamily:"Inter,sans-serif"}
-              },
-                React.createElement("option",{value:""},"Changer…"),
-                STD.map(function(r){return React.createElement("option",{key:r,value:r},r);})
-              )
-            );
-          })
+        return(
+          <div style={{marginTop:10,background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:12,padding:"10px 12px"}}>
+            <div style={{fontSize:10,color:"#f87171",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>⚠️ Rôles LoL non-standard ({bad.length})</div>
+            {bad.map(([key,p])=>(
+              <div key={key} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+                <span style={{fontSize:12,color:"#E5E7EB",flex:1,textTransform:"capitalize"}}>{key}</span>
+                <span style={{fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)",padding:"1px 6px",borderRadius:5}}>{p.role||"—"}</span>
+                <select defaultValue="" onChange={e=>{const v=e.target.value;if(!v)return;setEditingPlayer({key,data:{...p,name:key,role:v}});}}
+                  style={{fontSize:10,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,color:"#9CA3AF",padding:"2px 4px",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                  <option value="">Changer…</option>
+                  {STD.map(r=><option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
         );
       })()}
     </div>
@@ -1108,16 +1102,13 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
             {/* Tournament inline edit */}
             <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:"auto"}}>
               <span style={{fontSize:11,color:"#fbbf24"}}>🏆</span>
-              <input
-                defaultValue={bet.tournament||""}
-                onBlur={e=>{
-                  const v=e.target.value.trim();
-                  if(v===bet.tournament)return;
-                  if(onSave)onSave({...bet,tournament:v,updatedAt:Date.now()});
-                }}
-                placeholder="Tournoi…"
-                style={{background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.2)",borderRadius:7,padding:"3px 8px",color:"#fbbf24",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",minWidth:80,maxWidth:140}}
-              />
+              <select
+                value={bet.tournament||""}
+                onChange={function(e){if(onSave)onSave(Object.assign({},bet,{tournament:e.target.value,updatedAt:Date.now()}));}}
+                style={{background:"rgba(18,12,30,.98)",border:"1px solid rgba(251,191,36,.3)",borderRadius:7,padding:"3px 8px",color:"#fbbf24",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",minWidth:90,maxWidth:180,cursor:"pointer"}}>
+                <option value="">— Aucun —</option>
+                {(allTourneys||[]).map(function(t){return <option key={t} value={t}>{t}</option>;})}
+              </select>
             </div>
           </div>
 
@@ -1298,7 +1289,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
 
   const canApply=selected.size>0&&(newDate||newTournament||newBK);
 
-  const apply=()=>{
+  const apply=function(){
     if(!canApply)return;
     setSaving(true);
     const toSync=[];
@@ -1452,6 +1443,15 @@ function MesParisView({
   const FR_MONTHS_SHORT=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
   const fmtDay=dk=>{if(!dk||dk==="?")return "Date inconnue";try{const [y,m,d]=dk.split("-").map(Number);const wd=new Date(y,m-1,d).getDay();return FR_DAYS[wd]+" "+d+" "+FR_MONTHS_SHORT[m-1];}catch(e){return dk;}};
   const fmtMonth=mk=>{if(!mk||mk==="?")return "?";try{const [y,m]=mk.split("-").map(Number);return FR_MONTHS[m-1]+" "+y;}catch(e){return mk;}};
+  const {allByDay,allByMonth,allMonthKeys}=useMemo(function(){
+    var abd={};
+    bets.forEach(function(b){var dk=getDateKey(b);if(!abd[dk])abd[dk]=[];abd[dk].push(b);});
+    var adk=Object.keys(abd).sort(function(a,z){return z.localeCompare(a);});
+    var abm={};
+    adk.forEach(function(dk){var mk2=dk==="?"?"?":dk.slice(0,7);if(!abm[mk2])abm[mk2]=[];abm[mk2].push(dk);});
+    var amk=Object.keys(abm).sort(function(a,z){return z.localeCompare(a);});
+    return{allByDay:abd,allByMonth:abm,allMonthKeys:amk};
+  },[bets]);
 
   const activeFilters=fGames.length+fBKs.length+(fMinOdds?1:0)+(fMaxOdds?1:0)+(fMinStake?1:0)+(fMaxStake?1:0)+(fMapFilter&&fMapFilter!=="all"?1:0)+(fDuel?1:0)+(fLive?1:0)+(fHeadshot?1:0)+(fStatus&&fStatus!=="All"?1:0)+(fOverUnder&&fOverUnder!=="All"?1:0)+(fRole&&fRole!=="All"?1:0)+(fLeague&&fLeague!=="All"?1:0)+(fTourneys&&fTourneys.size>0?1:0)+(fDateFrom?1:0)+(fDateTo?1:0);
   const clearFilters=()=>{setFGames([]);setFBKs([]);setFMinOdds("");setFMaxOdds("");setFMinStake("");setFMaxStake("");setFMapFilter("all");setFDuel(false);setFLive(false);setFHeadshot(false);setFStatus("All");setFOverUnder("All");setFRole("All");setFLeague("All");if(setFTourneys)setFTourneys(new Set());setFDateFrom("");setFDateTo("");};
@@ -1498,15 +1498,6 @@ function MesParisView({
     const monthKeys=Object.keys(byMonth).sort((a,z)=>z.localeCompare(a));
     return{dayKeys,byDay,monthKeys,byMonth};
   },[settled]);
-  const {allByDay,allByMonth,allMonthKeys}=useMemo(function(){
-    const allByDay={};
-    bets.forEach(b=>{const dk=getDateKey(b);if(!allByDay[dk])allByDay[dk]=[];allByDay[dk].push(b);});
-    const allDayKeys=Object.keys(allByDay).sort((a,z)=>z.localeCompare(a));
-    const allByMonth={};
-    allDayKeys.forEach(dk=>{const mk=dk==="?"?"?":dk.slice(0,7);if(!allByMonth[mk])allByMonth[mk]=[];allByMonth[mk].push(dk);});
-    const allMonthKeys=Object.keys(allByMonth).sort((a,z)=>z.localeCompare(a));
-    return{allByDay,allByMonth,allMonthKeys};
-  },[bets]);
 
   useEffect(()=>{
     if(monthKeys.length>2){
@@ -3172,7 +3163,7 @@ export default function App(){
                   </button>
                 </div>
                 <div style={{background:"rgba(10,16,32,.99)",borderRadius:14,border:"1px solid rgba(99,130,200,.1)",overflow:"hidden"}}>
-                  {bets.filter(b=>b.status!=="pending").slice(0,6).map((b,i)=>{
+                  {[...bets].filter(b=>b.status!=="pending").sort(function(a,b2){return String(b2.datetime||b2.updatedAt||0).localeCompare(String(a.datetime||a.updatedAt||0));}).slice(0,6).map(function(b,i){
                     const isWon=b.status==="won";
                     const profitVal=b.profit!=null?b.profit:(isWon?(b.stake||0)*(b.odds-1):-(b.stake||0));
                     const bkLogo=BK_LOGOS[b.bookmaker]||bkPhotos[b.bookmaker]||null;
@@ -4784,10 +4775,10 @@ export default function App(){
                   {(function(){
                     var ppEdge=form.ppEdge;
                     if(ppEdge==null||ppEdge>=0||form.ppMapType==="HIDE")return null;
-                    return React.createElement("div",{style:{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}},
-                      React.createElement("span",null,"⚠️"),
-                      React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#f87171"}},"Edge PP négatif ("+(ppEdge>0?"+":"")+ppEdge.toFixed(2)+") — EV-")
-                    );
+                    return(<div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}}>
+                      <span>⚠️</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Edge PP négatif ({ppEdge>0?"+":""}{ppEdge.toFixed(2)}) — EV-</span>
+                    </div>);
                   })()}
                   <button onClick={sessionMode?addSession:addBet} disabled={isDisabled}
                     style={{
