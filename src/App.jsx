@@ -708,7 +708,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 
 
 // ── BulkRoleChanger ──────────────────────────────────────────────────────────
-function BulkRoleChanger({allPlayers,setPlayers}){
+function BulkRoleChanger({allPlayers,setPlayers,onSaveBulk}){
   const [fromRole,setFromRole]=useState("");
   const [toRole,setToRole]=useState("");
   const STD_ROLES=["Top","Jungle","Mid","Bot","Support","Top Laner","Jungler","Mid Laner","Bot Laner"];
@@ -722,6 +722,7 @@ function BulkRoleChanger({allPlayers,setPlayers}){
       if(p.role===fromRole){updated[k]=Object.assign({},p,{role:toRole});}
     });
     setPlayers(updated);
+    if(onSaveBulk)onSaveBulk(fromRole,toRole,updated);
     setFromRole("");setToRole("");
   }
   if(allRoles.length===0)return null;
@@ -806,7 +807,7 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
         </div>
       )}
       {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
-{!pSearch&&<BulkRoleChanger allPlayers={allPlayers} setPlayers={setPlayers}/>}
+{!pSearch&&<BulkRoleChanger allPlayers={allPlayers} setPlayers={setPlayers} onSaveBulk={onSaveBulk}/>}
 
     </div>
   );
@@ -1290,6 +1291,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
   const [newBK,setNewBK]=useState("");
   const [filterGame,setFilterGame]=useState("all");
   const [saving,setSaving]=useState(false);
+  const [searchTournament,setSearchTournament]=useState("");
 
   const allGames=useMemo(function(){
     const gs=new Set();
@@ -1300,12 +1302,13 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
   const sortedByDay=useMemo(function(){
     const result={};
     Object.entries(allByDay).forEach(([dk,dayBets])=>{
-      const filtered=filterGame==="all"?dayBets:dayBets.filter(b=>b.game===filterGame);
+      var filtered=filterGame==="all"?dayBets:dayBets.filter(b=>b.game===filterGame);
+      if(searchTournament)filtered=filtered.filter(function(b){return b.tournament===searchTournament;});
       if(filtered.length>0)
         result[dk]=[...filtered].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
     });
     return result;
-  },[allByDay,filterGame]);
+  },[allByDay,filterGame,searchTournament]);
 
   const toggle=id=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
 
@@ -1393,7 +1396,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
               <select value={newTournament} onChange={e=>setNewTournament(e.target.value)}
                 style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box",cursor:"pointer"}}>
                 <option value="">— Choisir un tournoi —</option>
-                <option value="__AUCUN__">📅 Retirer le tournoi</option>
+                <option value="__AUCUN__">📅 Sans tournoi (retirer tournoi)</option>
+                <option value="" disabled>──────────────</option>
                 {options.map(function(o,i){return <option key={i} value={o.tournament}>{GAME_ICONS[o.game]||"🏆"} [{o.game}] {o.tournament}</option>;})}
               </select>
             );
@@ -1415,6 +1419,21 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
               })}
             </div>
             {newBK&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:6}}>✓ {newBK}</div>}
+          </div>
+        )}
+        {/* Rechercher: filter bet list by tournament */}
+        {newTournament&&newTournament!=="__AUCUN__"&&(
+          <div style={{marginTop:8,padding:"8px 0 0"}}>
+            <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Recherche rapide</div>
+            <button onClick={function(){setSearchTournament(st=>st===newTournament?"":newTournament);}}
+              style={{width:"100%",padding:"10px",borderRadius:10,border:"1px solid "+(searchTournament===newTournament?"rgba(251,191,36,.5)":"rgba(255,255,255,.1)"),background:searchTournament===newTournament?"rgba(251,191,36,.1)":"rgba(255,255,255,.04)",color:searchTournament===newTournament?"#fbbf24":"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              🔍 {searchTournament===newTournament?"Afficher tous les paris":"Voir uniquement: "+newTournament}
+            </button>
+            {searchTournament===newTournament&&(
+              <div style={{fontSize:11,color:"#fbbf24",marginTop:5,textAlign:"center"}}>
+                {sortedByDay&&Object.values(sortedByDay).flat().filter(function(b){return b.tournament===newTournament;}).length} paris trouvés
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -3853,34 +3872,7 @@ export default function App(){
               </div>
             </div>
 
-            {/* ── Filtre Tournoi (tous jeux) ── */}
-            {(()=>{
-              const allTourneys=[...new Set(bets.filter(b=>b.tournament).map(b=>b.tournament))];
-              const hasHors=bets.some(b=>!b.tournament);
-              const opts=[...(hasHors?["Hors tournoi"]:[]),...allTourneys];
-              if(opts.length===0)return null;
-              const toggleT=(t)=>setFTourneys(prev=>{const n=new Set(prev);if(n.has(t))n.delete(t);else n.add(t);return n;});
-              return(
-                <div className="add-card">
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <span className="add-label">Tournoi</span>
-                    {fTourneys.size>0&&<button onClick={()=>setFTourneys(new Set())} style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>× Effacer ({fTourneys.size})</button>}
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {opts.map(t=>{
-                      const isOn=fTourneys.has(t);
-                      return(
-                        <button key={t} onClick={()=>toggleT(t)}
-                          style={{padding:"5px 11px",borderRadius:8,border:"1.5px solid "+(isOn?"#7C3AED":"#1F2937"),background:isOn?"rgba(124,58,237,0.12)":"transparent",color:isOn?"#A78BFA":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
-                          {t==="Hors tournoi"?"📅 Sans tournoi":"🏆 "+t}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
+            
             {/* Tournoi — apparaît si un jeu est sélectionné */}
             {(()=>{
               const tourneysForGame=[...new Set(
@@ -6800,7 +6792,7 @@ export default function App(){
             </div>}
             </div>
 
-            <PlayerSearchPanel allPlayers={allPlayers} custom={players} setPlayers={setPlayers} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist}/>
+            <PlayerSearchPanel allPlayers={allPlayers} custom={players} setPlayers={setPlayers} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist} onSaveBulk={function(fromRole,toRole,updated){Object.entries(updated).forEach(function(e){var k=e[0],p=e[1];if(p.role===toRole&&allPlayers[k]&&allPlayers[k].role===fromRole){supaUpsertPlayer({name:k,...p}).catch(function(){});}});}}/>
             <div style={{fontSize:11,color:"#6B7280",textAlign:"center",padding:12}}>
               Recherche un joueur pour l'éditer (équipe, rôle, ligue)
             </div>
