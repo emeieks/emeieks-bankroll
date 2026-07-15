@@ -1446,6 +1446,13 @@ function MesParisView({
     return true;
   }),[bets,fStatus,fGames,fBKs,fOverUnder,fRole,fLeague,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fDuel,fLive,fHeadshot]);
 
+  const allTourneys=useMemo(()=>[...new Set(bets.map(b=>b.tournament).filter(Boolean))].sort(),[bets]);
+  const onSave=useCallback(function(b){
+    setBets(function(prev){return prev.map(function(p){return p.id===b.id?b:p;});});
+    if(supaPushBets)supaPushBets([b]).catch(function(){});
+    try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[b.id]={tournament:b.tournament};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch(e){}
+  },[setBets,supaPushBets]);
+
   const pending=useMemo(function(){
     const mapN=m=>{if(!m)return 0;const nums=(m||"").match(/\d+/g);return nums?Math.max(...nums.map(Number)):0;};
     return filtered.filter(b=>b.status==="pending").sort((a,b2)=>{
@@ -1722,12 +1729,6 @@ export default function App(){
   const [fBKs,setFBKs]=useState([]);
   const [sortByMap,setSortByMap]=useState(false);
   const [fPlayer,setFPlayer]=useState("");
-  const allTourneys=useMemo(()=>[...new Set(bets.map(b=>b.tournament).filter(Boolean))].sort(),[bets]);
-  const onSave=useCallback(function(b){
-    setBets(function(prev){return prev.map(function(p){return p.id===b.id?b:p;});});
-    if(supaPushBets)supaPushBets([b]).catch(function(){});
-    try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[b.id]={tournament:b.tournament};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch(e){}
-  },[setBets,supaPushBets]);
 
   const [fStatus,setFStatus]=useState("All");
   const [fTourneys,setFTourneys]=useState(new Set()); // Set vide = tous
