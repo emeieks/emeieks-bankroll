@@ -635,9 +635,8 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
       // Auto-select only if exactly 1 match and not already exact
       const q=v.toLowerCase().trim();
       if(q.length>=2){
-        const matches=Object.keys(allPlayers).filter(k=>k.startsWith(q));
-        // Only auto-select if 1 result AND that result is longer than what was typed
-        // (if user typed the exact name, don't auto-select something else)
+        var matches=Object.keys(allPlayers).filter(function(k){return k.startsWith(q);});
+        // Only auto-select if exactly 1 match and input is not already a complete name
         if(matches.length===1&&matches[0]!==q){
           const key=matches[0];
           setInputVal(key);onChange(key);setOpen(false);
@@ -762,6 +761,34 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
         </div>
       )}
       {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
+      {!pSearch&&(function(){
+        var STD=["Top Laner","Jungler","Mid Laner","Bot Laner","Support"];
+        var STD_SET=new Set(STD);
+        var bad=Object.entries(allPlayers).filter(function(e){var p=e[1];return p.game==="LoL"&&p.role&&!STD_SET.has(p.role);}).slice(0,15);
+        if(bad.length===0)return null;
+        return React.createElement("div",{style:{marginTop:10,background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:12,padding:"10px 12px"}},
+          React.createElement("div",{style:{fontSize:10,color:"#f87171",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}},"⚠️ Rôles LoL non-standard ("+bad.length+")"),
+          bad.map(function(entry){
+            var key=entry[0],p=entry[1];
+            return React.createElement("div",{key:key,style:{display:"flex",alignItems:"center",gap:8,marginBottom:5}},
+              React.createElement("span",{style:{fontSize:12,color:"#E5E7EB",flex:1,textTransform:"capitalize"}},key),
+              React.createElement("span",{style:{fontSize:11,color:"#f87171",background:"rgba(239,68,68,.1)",padding:"1px 6px",borderRadius:5}},p.role||"—"),
+              React.createElement("select",{
+                defaultValue:"",
+                onChange:function(e){
+                  var v=e.target.value;
+                  if(!v)return;
+                  setEditingPlayer({key:key,data:Object.assign({},p,{name:key,role:v})});
+                },
+                style:{fontSize:10,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,color:"#9CA3AF",padding:"2px 4px",cursor:"pointer",fontFamily:"Inter,sans-serif"}
+              },
+                React.createElement("option",{value:""},"Changer…"),
+                STD.map(function(r){return React.createElement("option",{key:r,value:r},r);})
+              )
+            );
+          })
+        );
+      })()}
     </div>
   );
 }
@@ -4754,6 +4781,14 @@ export default function App(){
                     );
                   })()}
 
+                  {(function(){
+                    var ppEdge=form.ppEdge;
+                    if(ppEdge==null||ppEdge>=0||form.ppMapType==="HIDE")return null;
+                    return React.createElement("div",{style:{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}},
+                      React.createElement("span",null,"⚠️"),
+                      React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#f87171"}},"Edge PP négatif ("+(ppEdge>0?"+":"")+ppEdge.toFixed(2)+") — EV-")
+                    );
+                  })()}
                   <button onClick={sessionMode?addSession:addBet} disabled={isDisabled}
                     style={{
                       width:"100%",height:60,
