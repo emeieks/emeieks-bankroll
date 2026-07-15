@@ -1369,12 +1369,16 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       <div style={{padding:"10px 14px",borderBottom:"1px solid #1F2937",flexShrink:0,background:"#0F1829",display:"flex",flexDirection:"column",gap:8}}>
         {/* Game filter */}
         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {allGames.map(g=>(
-            <button key={g} onClick={()=>setFilterGame(g)}
-              style={{padding:"4px 10px",borderRadius:7,border:"1px solid "+(filterGame===g?"rgba(167,139,250,.5)":"rgba(255,255,255,.08)"),background:filterGame===g?"rgba(124,58,237,.15)":"transparent",color:filterGame===g?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-              {g==="all"?"Tous":g}
-            </button>
-          ))}
+          {allGames.map(function(g){
+            var on=filterGame===g;
+            return(
+              <button key={g} onClick={function(){setFilterGame(g);}}
+                style={{padding:"4px 10px",borderRadius:7,border:"1px solid "+(on?"rgba(167,139,250,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",gap:5}}>
+                {g!=="all"&&<GameLogo game={g} size={13}/>}
+                {g==="all"?"Tous":g}
+              </button>
+            );
+          })}
         </div>
         <div>
           <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Nouvelle date</div>
@@ -1396,8 +1400,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
               <select value={newTournament} onChange={e=>setNewTournament(e.target.value)}
                 style={{width:"100%",background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box",cursor:"pointer"}}>
                 <option value="">— Choisir un tournoi —</option>
-                <option value="__AUCUN__">📅 Sans tournoi (retirer tournoi)</option>
-                <option value="" disabled>──────────────</option>
+                <option value="__AUCUN__">📅 Sans tournoi (retirer le tournoi)</option>
+                <option disabled>──────────────</option>
                 {options.map(function(o,i){return <option key={i} value={o.tournament}>{GAME_ICONS[o.game]||"🏆"} [{o.game}] {o.tournament}</option>;})}
               </select>
             );
