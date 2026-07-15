@@ -1304,7 +1304,7 @@ function NavIconSuivi({active}){
 }
 
 // ── SelectionModal — sélection multiple + date + tournoi ────────────────────
-function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,bookmakers=[],BK_LOGOS={},bkPhotos={}}){
+function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={}}){
   const [selected,setSelected]=useState(new Set());
   const [newDate,setNewDate]=useState("");
   const [newTournament,setNewTournament]=useState("");
@@ -1480,6 +1480,7 @@ function MesParisView({
   calcProfit,
   fPlayer,setFPlayer,
   sortByMap,setSortByMap,
+  savedTourneys={},
 }){
   const [collapsedMonths,setCollapsedMonths]=useState(new Set());
   const [selectOpen,setSelectOpen]=useState(false); // separate overlay
@@ -1723,6 +1724,7 @@ function MesParisView({
       {selectOpen&&(
         <SelectionModal
           bets={bets}
+          allByDay={allByDay} allByMonth={allByMonth} allMonthKeys={allMonthKeys}
           onClose={()=>setSelectOpen(false)}
           setBets={setBets}
           supaPushBets={supaPushBets}
@@ -3444,6 +3446,7 @@ export default function App(){
             calcProfit={calcProfit}
             fPlayer={fPlayer} setFPlayer={setFPlayer}
             sortByMap={sortByMap} setSortByMap={setSortByMap}
+            savedTourneys={savedTourneys}
           />
         )}
         {view==="calendrier"&&(
