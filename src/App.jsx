@@ -32,7 +32,7 @@ const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 // ── Players DB functions → voir section "Players DB (Supabase only)" ci-dessous ──
 
-async function supaFetch(path, opts={}) {
+async function supaFetch(path, opts) { opts=opts||{};
   const res = await fetch(SUPA_URL + path, {
     method: opts.method || "GET",
     headers: {
@@ -451,7 +451,7 @@ const BK_LOGOS={
 const ALL_GAMES=["LoL","Dota2","CS2","Valorant"];
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
-const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5","Map 5"];
+const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
 const QUICK_STAKES=[50,62,75,87,100];
 const GAME_CFG={
   LoL:{accent:"#C89B3C",bg:"rgba(200,155,60,0.08)",border:"rgba(200,155,60,0.25)",logo:"https://mtgryzsovqiolinobbjw.supabase.co/storage/v1/object/public/players/game-logos/lol.png"},
@@ -957,7 +957,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
         <div style={{marginBottom:16}}>
           <span style={labelStyle}>Map</span>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {["Map 1","Map 2","Map 3","Map 4","Map 5","Map 5"].map(m=>(
+            {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=>(
               <button key={m} onClick={()=>setEbMap(m)}
                 style={{padding:"7px 12px",borderRadius:8,border:"1.5px solid "+(ebMap===m?"#F59E0B":"#1F2937"),background:ebMap===m?"rgba(245,158,11,0.1)":"transparent",color:ebMap===m?"#F59E0B":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
                 {m}
@@ -1050,6 +1050,62 @@ const APP_ICON="";
   fav.rel='icon';fav.href=APP_ICON;
   document.head.appendChild(fav);
 })();
+// ── Normalize role to canonical short form ──────────────────────────────────
+function normalizeRole(r){
+  if(!r)return r;
+  var MAP={
+    "top laner":"Top","toplaner":"Top","top laners":"Top",
+    "bot laner":"Bot","botlaner":"Bot","bot laners":"Bot","adc":"Bot","carry":"Bot","marksman":"Bot",
+    "mid laner":"Mid","midlaner":"Mid","mid laners":"Mid",
+    "jungler":"Jungle","jng":"Jungle","jngl":"Jungle",
+    "sup":"Support","supp":"Support",
+  };
+  return MAP[r.toLowerCase().trim()]||r;
+}
+
+
+// ── LeagueLogo component ────────────────────────────────────────────────────
+function LeagueLogo({league,size=18}){
+  if(!league)return null;
+  // Normalize league name to key
+  var KEY_MAP={
+    "LCK":"LCK","LPL":"LPL","LEC":"LEC","LCS":"LCS",
+    "Americas":"Americas","EMEA":"EMEA","Pacific":"Pacific",
+    "VCT Americas":"Americas","VCT EMEA":"EMEA","VCT Pacific":"Pacific",
+    "LCK CL":"LCK","LEC Stage":"LEC","EWC":"EWC","Esports World Cup":"EWC","esports world cup":"EWC",
+    "PGL":"PGL","ESL":"ESL","IEM":"IEM","BLAST":"BLAST",
+    "DreamLeague":"DreamLeague","Dream League":"DreamLeague",
+    "Riyadh Masters":"Riyadh Masters","The International":"TheInternational","TI":"TheInternational",
+    "XSE Pro League":"XSE Pro League","XSE":"XSE Pro League",
+    "Stake Ranked":"Stake Ranked","MSI":"MSI","Mid-Season Invitational":"MSI",
+    "Valorant Champions":"Valorant Champions","VCT Champions":"Valorant Champions",
+  };
+  var lc=league.toLowerCase();
+  // Exact match first
+  var key=KEY_MAP[league]||KEY_MAP[lc]||null;
+  if(!key){
+    // Keyword matching for tournament names
+    if(lc.includes("world cup")||lc.includes("ewc"))key="EWC";
+    else if(lc.includes("the international")||lc==="ti"||lc.includes("ti ")&&lc.includes("dota"))key="TheInternational";
+    else if(lc.includes("riyadh"))key="Riyadh Masters";
+    else if(lc.includes("dreamleague")||lc.includes("dream league"))key="DreamLeague";
+    else if(lc.includes("iem")||lc.includes("intel extreme"))key="IEM";
+    else if(lc.includes("pgl"))key="PGL";
+    else if(lc.includes("blast"))key="BLAST";
+    else if(lc.includes("esl"))key="ESL";
+    else if(lc.includes("xse pro")||lc.includes("xse"))key="XSE Pro League";
+    else if(lc.includes("stake ranked")||lc.includes("ranked by starladder"))key="Stake Ranked";
+    else if(lc.includes("msi")||lc.includes("mid-season")||lc.includes("mid season"))key="MSI";
+    else if(lc.includes("valorant champions")||lc.includes("vct champions"))key="Valorant Champions";
+    else if(lc.includes("worlds")||lc.includes("world championship")||lc.includes("world 20"))key="LCK";
+    else key=Object.keys(KEY_MAP).find(function(k){return league.toLowerCase().includes(k.toLowerCase());})||null;
+  }
+  var src=key?LEAGUE_LOGOS[key]:null;
+  if(!src)return <span style={{fontSize:size*0.65,color:"#4a5a6e",fontWeight:700,lineHeight:1}}>{league.slice(0,3).toUpperCase()}</span>;
+  return <img src={src} alt={league} style={{width:size,height:size,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>;
+}
+
+
 // ── League logos ─────────────────────────────────────────────────────────
 const HEADSHOT_LOGO_B64="data:image/png;base64,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";
 const LEAGUE_LOGOS={
@@ -1360,6 +1416,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
   const [searchBK,setSearchBK]=useState("");
   const [searchStatus,setSearchStatus]=useState("");
   const [searchDate,setSearchDate]=useState("");
+  const [searchLive,setSearchLive]=useState(false);
+  const [searchHasPP,setSearchHasPP]=useState(false);
 
   const allGames=useMemo(function(){
     const gs=new Set();
@@ -1378,11 +1436,30 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       if(searchBK)filtered=filtered.filter(function(b){return b.bookmaker===searchBK;});
       if(searchStatus)filtered=filtered.filter(function(b){return b.status===searchStatus;});
       if(searchDate)filtered=filtered.filter(function(b){return b.datetime&&String(b.datetime).slice(0,10)===searchDate;});
+      if(searchLive)filtered=filtered.filter(function(b){return b.isLive;});
+      if(searchHasPP)filtered=filtered.filter(function(b){return b.ppEdge!=null&&b.ppEdge!==0;});
       if(filtered.length>0)
         result[dk]=[...filtered].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
     });
     return result;
-  },[allByDay,filterGame,searchTournament,searchBK,searchStatus,searchDate]);
+  },[allByDay,filterGame,searchTournament,searchBK,searchStatus,searchDate,searchLive,searchHasPP]);
+
+  const removePP=function(){
+    setSaving(true);
+    var toSync=[];
+    var updated=bets.map(function(b){
+      if(!selected.has(b.id))return b;
+      var nb=Object.assign({},b,{ppEdge:null,ppLine:null,ppMapType:null,updatedAt:Date.now()});
+      toSync.push(nb);
+      return nb;
+    });
+    setBets(updated);
+    if(supaPushBets&&toSync.length)supaPushBets(toSync).catch(function(){});
+    try{var stored=JSON.parse(localStorage.getItem("v7_bets")||"[]");var ids=new Set(toSync.map(function(b){return b.id;}));var merged=stored.map(function(b){return ids.has(b.id)?toSync.find(function(n){return n.id===b.id;})||b:b;});localStorage.setItem("v7_bets",JSON.stringify(merged));}catch(e){}
+    setSaving(false);
+    setSelected(new Set());
+    onClose();
+  };
 
   const toggle=id=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
 
@@ -1392,7 +1469,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
     setSelected(prev=>{const n=new Set(prev);if(allSel){ids.forEach(id=>n.delete(id));}else{ids.forEach(id=>n.add(id));}return n;});
   };
 
-  const canApply=selected.size>0&&(newDate||newTournament||newBK||searchTournament);
+  const canApply=selected.size>0&&(newDate||newTournament||newBK);
 
   const apply=function(){
     if(!canApply)return;
@@ -1523,6 +1600,17 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             {newBK&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:6}}>✓ {newBK}</div>}
           </div>
         )}
+        {/* Live + PP filters */}
+        <div style={{display:"flex",gap:6,marginBottom:8}}>
+          <button onClick={function(){setSearchLive(function(v){return !v;});}}
+            style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+(searchLive?"rgba(251,113,133,.5)":"rgba(255,255,255,.07)"),background:searchLive?"rgba(251,113,133,.1)":"transparent",color:searchLive?"#fb7185":"#6B7280",fontSize:11,fontWeight:searchLive?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+            🔴 Live seulement
+          </button>
+          <button onClick={function(){setSearchHasPP(function(v){return !v;});}}
+            style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+(searchHasPP?"rgba(167,139,250,.5)":"rgba(255,255,255,.07)"),background:searchHasPP?"rgba(124,58,237,.1)":"transparent",color:searchHasPP?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:searchHasPP?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+            <img src={PP_LOGO_B64} style={{width:12,height:12,objectFit:"contain",verticalAlign:"middle",marginRight:4}}/>PP Edge
+          </button>
+        </div>
         {/* Status filter */}
         <div>
           <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Résultat</div>
@@ -1545,6 +1633,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             setSearchTournament(t);
             setSearchBK(newBK||"");
             setSearchDate(newDate||"");
+            setSearchLive(false);
+            setSearchHasPP(false);
           }}
             style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:searchTournament?"rgba(239,68,68,.15)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             {searchTournament||searchBK||searchDate?"✕ Annuler":"Rechercher"}
@@ -1555,7 +1645,9 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
               {searchTournament==="__NONE__"?" · sans tournoi":searchTournament?" · "+searchTournament:""}
               {searchBK?" · "+searchBK:""}
               {searchDate?" · "+searchDate:""}
-              <button onClick={function(){setSearchTournament("");setSearchBK("");setSearchDate("");setSearchStatus("");}}
+              {searchLive?" · 🔴 Live":""}
+              {searchHasPP?" · PP Edge":""}
+              <button onClick={function(){setSearchTournament("");setSearchBK("");setSearchDate("");setSearchStatus("");setSearchLive(false);setSearchHasPP(false);}}
                 style={{marginLeft:8,fontSize:10,color:"#f87171",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕ Effacer</button>
             </div>
           )}
@@ -1939,7 +2031,7 @@ export default function App(){
   const [sessionMode,setSessionMode]=useState(false);
   const [duelMode,setDuelMode]=useState(false);
   const [casinoMode,setCasinoMode]=useState(false);
-  const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:""});
+  const [duelForm,setDuelForm]=useState({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:"",mapTag:"Map 1",isLive:false,datetime:"",ppMapType:"",ppLine_player1:"",ppLine_player2:""});
   const [sessionMaps,setSessionMaps]=useState([{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW},{...EMPTY_MAP_ROW}]);
   const [fGames,setFGames]=useState([]);
   const [fBKs,setFBKs]=useState([]);
@@ -2959,7 +3051,7 @@ export default function App(){
     const duelBK=duelForm.bookmaker;
     setBets(b=>[bet,...b]);
     supaPushBets([bet]).catch(function(){});
-    setDuelForm({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:duelForm.bookmaker,mapTag:"Map 1",isLive:false,datetime:""});
+    setDuelForm({player1:"",player2:"",odds:"",stake:"",winner:"",bookmaker:duelForm.bookmaker,mapTag:"Map 1",isLive:false,datetime:"",ppMapType:"",ppLine_player1:"",ppLine_player2:""});
     showToast("Duel enregistré ⚔️");
     if(duelBK){setFBKs(prev=>prev.includes(duelBK)?prev:[...prev,duelBK]);}
     setView("mesparis");
@@ -4231,6 +4323,36 @@ export default function App(){
                       ))}
                     </div>
                   </div>
+
+                  {/* PP kills Duel */}
+                  <div style={{marginTop:10,background:"rgba(139,92,246,.06)",border:"1px solid rgba(139,92,246,.15)",borderRadius:10,padding:"10px 12px"}}>
+                    <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>PrizePicks — Lignes kills</div>
+                    <div style={{display:"flex",gap:5,marginBottom:8}}>
+                      {["Map 1+2","Map 3","Map 1+2+3"].map(function(mt){
+                        var on=duelForm.ppMapType===mt;
+                        return <button key={mt} onClick={function(){setDuelForm(function(f){return Object.assign({},f,{ppMapType:on?"":mt});});}}
+                          style={{flex:1,padding:"5px 0",borderRadius:7,border:"1px solid "+(on?"rgba(139,92,246,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#4a5a6e",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{mt}</button>;
+                      })}
+                    </div>
+                    {duelForm.ppMapType&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      {["player1","player2"].map(function(p){
+                        var kills=parseFloat(duelForm[p+"_kills"])||null;
+                        var ppLine=parseFloat(duelForm["ppLine_"+p])||null;
+                        var edge=kills!==null&&ppLine!==null?ppLine-kills:null;
+                        var col=edge>=1?"#00E676":edge>=0?"#fbbf24":"#f87171";
+                        return(
+                          <div key={p}>
+                            <div style={{fontSize:9,color:"#4a5a6e",marginBottom:3}}>{p==="player1"?duelForm.player1||"P1":duelForm.player2||"P2"}</div>
+                            <input type="number" inputMode="decimal" step="0.5" value={duelForm["ppLine_"+p]||""}
+                              onChange={function(e){var v=e.target.value;setDuelForm(function(f){var u={};u["ppLine_"+p]=v;return Object.assign({},f,u);});}}
+                              placeholder="Ligne PP…"
+                              style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"6px 8px",color:"#c4b5fd",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+                            {edge!==null&&<div style={{fontSize:11,fontWeight:700,color:col,marginTop:3}}>Edge: {edge>=0?"+":""}{edge.toFixed(2)}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>}
+                  </div>
                 </div>
 
                 {/* CTA Duel */}
@@ -4952,6 +5074,19 @@ export default function App(){
                       <span>⚠️</span>
                       <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Edge PP négatif ({ppEdge>0?"+":""}{ppEdge.toFixed(2)}) — EV-</span>
                     </div>);
+                  })()}
+                  {(function(){
+                    var odds=parseFloat(form.odds)||0;
+                    var k=(form.player||"").toLowerCase().trim();
+                    var playerBets=(allBetsByPlayer&&allBetsByPlayer[k])||[];
+                    if(playerBets.length>=5&&odds>1){
+                      var wr=playerBets.filter(function(b){return b.status==="won";}).length/playerBets.length;
+                      var ev=wr*odds-1;
+                      if(ev<0)return(<div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}}>
+                        <span>⚠️</span><span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>EV négatif {(ev*100).toFixed(1)}% sur {k}</span>
+                      </div>);
+                    }
+                    return null;
                   })()}
                   <button onClick={sessionMode?addSession:addBet} disabled={isDisabled}
                     style={{
@@ -8185,60 +8320,27 @@ export default function App(){
     </div>
   );
 
-// ── Normalize role to canonical short form ──────────────────────────────────
-function normalizeRole(r){
-  if(!r)return r;
-  var MAP={
-    "top laner":"Top","toplaner":"Top","top laners":"Top",
-    "bot laner":"Bot","botlaner":"Bot","bot laners":"Bot","adc":"Bot","carry":"Bot","marksman":"Bot",
-    "mid laner":"Mid","midlaner":"Mid","mid laners":"Mid",
-    "jungler":"Jungle","jng":"Jungle","jngl":"Jungle",
-    "sup":"Support","supp":"Support",
-  };
-  return MAP[r.toLowerCase().trim()]||r;
-}
 
 
 
-// ── LeagueLogo component ────────────────────────────────────────────────────
-function LeagueLogo({league,size=18}){
-  if(!league)return null;
-  // Normalize league name to key
-  var KEY_MAP={
-    "LCK":"LCK","LPL":"LPL","LEC":"LEC","LCS":"LCS",
-    "Americas":"Americas","EMEA":"EMEA","Pacific":"Pacific",
-    "VCT Americas":"Americas","VCT EMEA":"EMEA","VCT Pacific":"Pacific",
-    "LCK CL":"LCK","LEC Stage":"LEC","EWC":"EWC","Esports World Cup":"EWC","esports world cup":"EWC",
-    "PGL":"PGL","ESL":"ESL","IEM":"IEM","BLAST":"BLAST",
-    "DreamLeague":"DreamLeague","Dream League":"DreamLeague",
-    "Riyadh Masters":"Riyadh Masters","The International":"TheInternational","TI":"TheInternational",
-    "XSE Pro League":"XSE Pro League","XSE":"XSE Pro League",
-    "Stake Ranked":"Stake Ranked","MSI":"MSI","Mid-Season Invitational":"MSI",
-    "Valorant Champions":"Valorant Champions","VCT Champions":"Valorant Champions",
-  };
-  var lc=league.toLowerCase();
-  // Exact match first
-  var key=KEY_MAP[league]||KEY_MAP[lc]||null;
-  if(!key){
-    // Keyword matching for tournament names
-    if(lc.includes("world cup")||lc.includes("ewc"))key="EWC";
-    else if(lc.includes("the international")||lc==="ti"||lc.includes("ti ")&&lc.includes("dota"))key="TheInternational";
-    else if(lc.includes("riyadh"))key="Riyadh Masters";
-    else if(lc.includes("dreamleague")||lc.includes("dream league"))key="DreamLeague";
-    else if(lc.includes("iem")||lc.includes("intel extreme"))key="IEM";
-    else if(lc.includes("pgl"))key="PGL";
-    else if(lc.includes("blast"))key="BLAST";
-    else if(lc.includes("esl"))key="ESL";
-    else if(lc.includes("xse pro")||lc.includes("xse"))key="XSE Pro League";
-    else if(lc.includes("stake ranked")||lc.includes("ranked by starladder"))key="Stake Ranked";
-    else if(lc.includes("msi")||lc.includes("mid-season")||lc.includes("mid season"))key="MSI";
-    else if(lc.includes("valorant champions")||lc.includes("vct champions"))key="Valorant Champions";
-    else if(lc.includes("worlds")||lc.includes("world championship")||lc.includes("world 20"))key="LCK";
-    else key=Object.keys(KEY_MAP).find(function(k){return league.toLowerCase().includes(k.toLowerCase());})||null;
+
+
+// ── ErrorBoundary — prevents full black screen on JS crash ─────────────────
+class ErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(e){return{hasError:true,error:e};}
+  componentDidCatch(e,info){console.error("BettingTracker crash:",e,info);}
+  render(){
+    if(this.state.hasError){
+      return React.createElement("div",{style:{padding:24,color:"#f87171",fontFamily:"Inter,sans-serif",background:"#0a0f1e",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
+        React.createElement("div",{style:{fontSize:24}},"⚠️"),
+        React.createElement("div",{style:{fontSize:16,fontWeight:700}},"Erreur de rendu"),
+        React.createElement("div",{style:{fontSize:12,color:"#6B7280",maxWidth:300,textAlign:"center"}},(this.state.error&&this.state.error.message)||"Erreur inconnue"),
+        React.createElement("button",{onClick:()=>this.setState({hasError:false,error:null}),style:{padding:"10px 20px",background:"#7C3AED",border:"none",borderRadius:10,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}},"Réessayer")
+      );
+    }
+    return this.props.children;
   }
-  var src=key?LEAGUE_LOGOS[key]:null;
-  if(!src)return <span style={{fontSize:size*0.65,color:"#4a5a6e",fontWeight:700,lineHeight:1}}>{league.slice(0,3).toUpperCase()}</span>;
-  return <img src={src} alt={league} style={{width:size,height:size,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>;
 }
 
 }
