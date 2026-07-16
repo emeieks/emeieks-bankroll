@@ -6810,7 +6810,7 @@ export default function App(){
                   if(m==="n")return{txt:String(d.cnt),color:"#7a9cbd"};
                   return{txt:"—",color:"#3a4a5e"};
                 };
-                const colLabel=METRICS2.find(function(mx){return mx.k===metric2;})&&HEAT_METRICS.find(function(mx){return mx.k===metric2;}).label||"ROI";
+                const colLabel=METRICS2.find(function(mx){return mx.k===metric2;})?METRICS2.find(function(mx){return mx.k===metric2;}).label:"ROI";
                 const hasOver=sortedLines(overByLine).length>0;
                 const hasUnder=sortedLines(underByLine).length>0;
                 if(!hasOver&&!hasUnder)return null;
