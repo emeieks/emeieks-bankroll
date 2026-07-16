@@ -2128,7 +2128,7 @@ export default function App(){
   const [savedTourneys,setSavedTourneys]=useState({
     CS2:["PGL Astana 2026","IEM Rio 2026","BLAST Rivals 2026","PGL Bucharest 2026","ESL Pro League S24","BLAST Open Fall 2026","IEM Cologne Major 2026","Esports World Cup 2026"],
     Dota2:["ESL One 2026","PGL Wallachia S3","Riyadh Masters 2026","The International 2026","BetBoom Dacha 2026"],
-    LoL:["Worlds 2026","MSI 2026","LEC Spring 2026","LCK Summer 2026"],
+    LoL:["Worlds 2026","MSI 2026","LEC Spring 2026","LCK Summer 2026","Esports World Cup"],
     Valorant:["VCT Masters 2026","Champions 2026","VCT Americas 2026","VCT EMEA 2026"],
   });
   const [confirmDelete,setConfirmDelete]=useState(false);
