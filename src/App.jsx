@@ -1223,6 +1223,12 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                   </span>
                 </>);
               })()}
+              {/* League for LoL/Valorant when no active tournament */}
+              {bet.league&&(bet.game==="LoL"||bet.game==="Valorant")&&!bet.tournament&&(
+                <><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span>
+                <LeagueLogo league={bet.league} size={13}/>
+                <span style={{fontSize:11,fontWeight:600,color:"#7a9cbd",marginLeft:3}}>{bet.league}</span></>
+              )}
             </div>
           </div>
 
@@ -1404,7 +1410,7 @@ function NavIconSuivi({active}){
 }
 
 // ── SelectionModal — sélection multiple + date + tournoi ────────────────────
-function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={}}){
+function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={}}){
   const [selected,setSelected]=useState(new Set());
   const [newDate,setNewDate]=useState("");
   const [newTournament,setNewTournament]=useState("");
@@ -1560,9 +1566,15 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             // Build list of tournaments from selected bets grouped by game
             const selBets=[...selected].map(id=>bets.find(b=>b.id===id)).filter(Boolean);
             const games=[...new Set(selBets.map(b=>b.game).filter(Boolean))];
-            // All tournaments from those games
+            // All tournaments: from bets + from savedTourneys
             const byGame={};
             bets.forEach(function(b){if(!b.tournament)return;if(!byGame[b.game])byGame[b.game]=new Set();byGame[b.game].add(b.tournament);});
+            // Also add savedTourneys
+            Object.entries(savedTourneys||{}).forEach(function(e){
+              var g=e[0],ts=e[1];
+              if(!byGame[g])byGame[g]=new Set();
+              (ts||[]).forEach(function(t){byGame[g].add(t);});
+            });
             const options=[];
             (games.length>0?games:Object.keys(byGame)).forEach(function(g){(byGame[g]||new Set()).forEach(function(t){options.push({game:g,tournament:t});});});
             const GAME_ICONS={"CS2":"[CS2]","LoL":"[LoL]","Dota2":"[Dota2]","Valorant":"[Val]"};
@@ -2020,6 +2032,7 @@ function MesParisView({
           bookmakers={bookmakers}
           BK_LOGOS={BK_LOGOS}
           bkPhotos={bkPhotos}
+          savedTourneys={savedTourneys}
         />
       )}
     </div>
@@ -4405,10 +4418,10 @@ export default function App(){
                     </div>
                   </div>
 
-                  {/* Map */}
+                  {/* Map + Live */}
                   <div>
                     <div style={{fontSize:10,color:"#9CA3AF",marginBottom:6,fontWeight:600}}>Map</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                       {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=>(
                         <button key={m} onClick={()=>setDuelForm(f=>({...f,mapTag:m}))}
                           style={{padding:"7px 14px",borderRadius:20,border:"1.5px solid "+(duelForm.mapTag===m?"#F59E0B":"#1F2937"),background:duelForm.mapTag===m?"rgba(245,158,11,0.1)":"transparent",color:duelForm.mapTag===m?"#F59E0B":"#6B7280",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
@@ -4416,6 +4429,10 @@ export default function App(){
                         </button>
                       ))}
                     </div>
+                    <button onClick={()=>setDuelForm(f=>({...f,isLive:!f.isLive}))}
+                      style={{width:"100%",padding:"9px",borderRadius:10,border:"1.5px solid "+(duelForm.isLive?"#fb7185":"#1F2937"),background:duelForm.isLive?"rgba(251,113,133,0.12)":"transparent",color:duelForm.isLive?"#fb7185":"#6B7280",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                      {duelForm.isLive?<><span style={{width:8,height:8,borderRadius:"50%",background:"#fb7185",display:"inline-block"}}/>LIVE — En cours</> : "🔴 Marquer comme Live"}
+                    </button>
                   </div>
 
                   {/* PP kills Duel */}
