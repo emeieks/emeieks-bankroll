@@ -1754,6 +1754,7 @@ function MesParisView({
   fBKs,setFBKs,setView,supaPushBets,supaDeleteManyBets,supaDeleteOneBet,setDeletedBets,BK_LOGOS,
   fGames,setFGames,fStatus,setFStatus,fOverUnder,setFOverUnder,
   fMinOdds,setFMinOdds,fMaxOdds,setFMaxOdds,fMinStake,setFMinStake,fMaxStake,setFMaxStake,
+  fMinPP,setFMinPP,fMaxPP,setFMaxPP,
   fMapFilter,setFMapFilter,fDuel,setFDuel,fLive,setFLive,fHeadshot,setFHeadshot,
   fRole,setFRole,fLeague,setFLeague,fTourneys,setFTourneys,fDateFrom,setFDateFrom,fDateTo,setFDateTo,
   calcProfit,
@@ -1802,8 +1803,12 @@ function MesParisView({
     if(fDuel&&!(b.description&&b.description.includes("Duel")))return false;
     if(fLive&&!b.isLive)return false;
     if(fHeadshot&&!b.isHeadshot)return false;
+    if(fTourneys&&fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
+    if(fPlayer&&!(b.player||"").toLowerCase().includes(fPlayer.toLowerCase()))return false;
+    if(fMinPP!==""&&(b.ppEdge==null||b.ppEdge<parseFloat(fMinPP)))return false;
+    if(fMaxPP!==""&&(b.ppEdge==null||b.ppEdge>parseFloat(fMaxPP)))return false;
     return true;
-  }),[bets,fStatus,fGames,fBKs,fOverUnder,fRole,fLeague,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fDuel,fLive,fHeadshot]);
+  }),[bets,fStatus,fGames,fBKs,fOverUnder,fRole,fLeague,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fDuel,fLive,fHeadshot,fTourneys,fPlayer,fMinPP,fMaxPP]);
 
   const allTourneys=useMemo(()=>[...new Set(bets.map(b=>b.tournament).filter(Boolean))].sort(),[bets]);
   const onSave=useCallback(function(b){
@@ -2094,6 +2099,8 @@ export default function App(){
   const [fMaxOdds,setFMaxOdds]=useState("");
   const [fMinStake,setFMinStake]=useState("");
   const [fMaxStake,setFMaxStake]=useState("");
+  const [fMinPP,setFMinPP]=useState("");
+  const [fMaxPP,setFMaxPP]=useState("");
   const [fMapFilter,setFMapFilter]=useState("all");
   const [deletedBets,setDeletedBets]=useState([]);
   const [showCorbeille,setShowCorbeille]=useState(false);
@@ -3706,6 +3713,10 @@ export default function App(){
             fMaxOdds={fMaxOdds} setFMaxOdds={setFMaxOdds}
             fMinStake={fMinStake} setFMinStake={setFMinStake}
             fMaxStake={fMaxStake} setFMaxStake={setFMaxStake}
+            fMinPP={fMinPP} setFMinPP={setFMinPP}
+            fMaxPP={fMaxPP} setFMaxPP={setFMaxPP}
+            fTourneys={fTourneys} setFTourneys={setFTourneys}
+            fPlayer={fPlayer} setFPlayer={setFPlayer}
             fMapFilter={fMapFilter} setFMapFilter={setFMapFilter}
             fDuel={fDuel} setFDuel={setFDuel}
             fLive={fLive} setFLive={setFLive}
@@ -4129,6 +4140,46 @@ export default function App(){
               </div>
             </div>
 
+
+            {/* PP Edge filter */}
+            <div className="add-card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <span style={{display:"flex",alignItems:"center",gap:6}}>
+                  <img src={PP_LOGO_B64} style={{width:14,height:14,objectFit:"contain",verticalAlign:"middle"}}/>
+                  <span className="add-label" style={{marginBottom:0}}>PP Edge</span>
+                </span>
+                {(fMinPP!==""||fMaxPP!=="")&&(
+                  <button onClick={()=>{setFMinPP("");setFMaxPP("");}}
+                    style={{fontSize:10,color:"#EF4444",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>× Effacer</button>
+                )}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:4}}>Min (ex: 0)</div>
+                  <input type="number" step="0.01" placeholder="ex: 0"
+                    value={fMinPP} onChange={e=>setFMinPP(e.target.value)}
+                    className="ifield" style={{marginBottom:0,fontSize:14}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"#6B7280",marginBottom:4}}>Max (ex: 1)</div>
+                  <input type="number" step="0.01" placeholder="ex: 1"
+                    value={fMaxPP} onChange={e=>setFMaxPP(e.target.value)}
+                    className="ifield" style={{marginBottom:0,fontSize:14}}/>
+                </div>
+              </div>
+              {(fMinPP!==""||fMaxPP!=="")&&(()=>{
+                const inR=filteredBets.filter(b=>b.status!=="pending"&&b.ppEdge!=null);
+                if(inR.length===0)return <div style={{fontSize:11,color:"#6B7280",marginTop:6}}>Aucun bet PP dans cette plage</div>;
+                const profit=inR.reduce((s,b)=>s+(b.profit||0),0);
+                const wr=inR.length>0?((inR.filter(b=>b.status==="won").length/inR.length)*100).toFixed(0):0;
+                return(
+                  <div style={{background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.15)",borderRadius:8,padding:"7px 10px",marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontSize:11,color:"#9CA3AF"}}>{inR.length} paris PP · {wr}% WR</div>
+                    <div style={{fontSize:14,fontWeight:700,color:profit>=0?"#00E676":"#EF4444"}}>{profit>=0?"+":""}{profit.toFixed(0)}$</div>
+                  </div>
+                );
+              })()}
+            </div>
             
             {/* Tournoi — apparaît si un jeu est sélectionné */}
             {(()=>{
