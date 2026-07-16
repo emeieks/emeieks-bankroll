@@ -1418,6 +1418,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
   const [searchDate,setSearchDate]=useState("");
   const [searchLive,setSearchLive]=useState(false);
   const [searchHasPP,setSearchHasPP]=useState(false);
+  const [searchHeadshot,setSearchHeadshot]=useState(false);
+  const [searchMap,setSearchMap]=useState("");
 
   const allGames=useMemo(function(){
     const gs=new Set();
@@ -1438,11 +1440,13 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       if(searchDate)filtered=filtered.filter(function(b){return b.datetime&&String(b.datetime).slice(0,10)===searchDate;});
       if(searchLive)filtered=filtered.filter(function(b){return b.isLive;});
       if(searchHasPP)filtered=filtered.filter(function(b){return b.ppEdge!=null&&b.ppEdge!==0;});
+      if(searchHeadshot)filtered=filtered.filter(function(b){return b.isHeadshot;});
+      if(searchMap)filtered=filtered.filter(function(b){return b.mapTag===searchMap;});
       if(filtered.length>0)
         result[dk]=[...filtered].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
     });
     return result;
-  },[allByDay,filterGame,searchTournament,searchBK,searchStatus,searchDate,searchLive,searchHasPP]);
+  },[allByDay,filterGame,searchTournament,searchBK,searchStatus,searchDate,searchLive,searchHasPP,searchHeadshot,searchMap]);
 
   const removePP=function(){
     setSaving(true);
@@ -1600,16 +1604,27 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             {newBK&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:6}}>✓ {newBK}</div>}
           </div>
         )}
-        {/* Live + PP filters */}
-        <div style={{display:"flex",gap:6,marginBottom:8}}>
-          <button onClick={function(){setSearchLive(function(v){return !v;});}}
-            style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+(searchLive?"rgba(251,113,133,.5)":"rgba(255,255,255,.07)"),background:searchLive?"rgba(251,113,133,.1)":"transparent",color:searchLive?"#fb7185":"#6B7280",fontSize:11,fontWeight:searchLive?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-            🔴 Live seulement
-          </button>
-          <button onClick={function(){setSearchHasPP(function(v){return !v;});}}
-            style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+(searchHasPP?"rgba(167,139,250,.5)":"rgba(255,255,255,.07)"),background:searchHasPP?"rgba(124,58,237,.1)":"transparent",color:searchHasPP?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:searchHasPP?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-            <img src={PP_LOGO_B64} style={{width:12,height:12,objectFit:"contain",verticalAlign:"middle",marginRight:4}}/>PP Edge
-          </button>
+        {/* Live / PP / Headshot row */}
+        <div style={{display:"flex",gap:5,marginBottom:6}}>
+          {[
+            {k:"live",l:"Live",icon:<span style={{width:8,height:8,borderRadius:"50%",background:"#fb7185",display:"inline-block",marginRight:4}}/>,active:searchLive,col:"#fb7185",border:"rgba(251,113,133,.4)",bg:"rgba(251,113,133,.1)",toggle:function(){setSearchLive(function(v){return !v;});}},
+            {k:"pp",icon:<img src={PP_LOGO_B64} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle"}}/>,l:"PP Edge",active:searchHasPP,col:"#c4b5fd",border:"rgba(167,139,250,.4)",bg:"rgba(124,58,237,.1)",toggle:function(){setSearchHasPP(function(v){return !v;});}},
+            {k:"hs",icon:<img src={HEADSHOT_LOGO_B64} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",filter:"brightness(0) invert(1)"}}/>,l:"Headshot",active:searchHeadshot,col:"#fbbf24",border:"rgba(251,191,36,.4)",bg:"rgba(251,191,36,.1)",toggle:function(){setSearchHeadshot(function(v){return !v;});}},
+          ].map(function(f){return(
+            <button key={f.k} onClick={f.toggle}
+              style={{flex:1,padding:"7px 4px",borderRadius:8,border:"1px solid "+(f.active?f.border:"rgba(255,255,255,.07)"),background:f.active?f.bg:"transparent",color:f.active?f.col:"#6B7280",fontSize:10,fontWeight:f.active?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+              {f.icon}{f.l}
+            </button>
+          );})}</div>
+        {/* Map filter */}
+        <div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
+          {["","Map 1","Map 2","Map 3","Map 4","Map 5"].map(function(m){
+            var on=searchMap===m;
+            return <button key={m||"all"} onClick={function(){setSearchMap(on?"":m);}}
+              style={{padding:"4px 10px",borderRadius:7,border:"1px solid "+(on?"rgba(167,139,250,.4)":"rgba(255,255,255,.06)"),background:on?"rgba(124,58,237,.12)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:10,fontWeight:on?700:400,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              {m||"Toutes maps"}
+            </button>;
+          })}
         </div>
         {/* Status filter */}
         <div>
@@ -1633,21 +1648,18 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             setSearchTournament(t);
             setSearchBK(newBK||"");
             setSearchDate(newDate||"");
-            setSearchLive(false);
-            setSearchHasPP(false);
           }}
-            style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:searchTournament?"rgba(239,68,68,.15)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {searchTournament||searchBK||searchDate?"✕ Annuler":"Rechercher"}
+            style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            "Rechercher"
           </button>
-          {(searchTournament||searchBK||searchDate)&&(
+          {(searchTournament||searchBK||searchDate||searchLive||searchHasPP||searchHeadshot||searchMap)&&(
             <div style={{fontSize:11,color:"#fbbf24",marginTop:5,textAlign:"center"}}>
               {Object.values(sortedByDay).flat().length} paris trouvés
               {searchTournament==="__NONE__"?" · sans tournoi":searchTournament?" · "+searchTournament:""}
               {searchBK?" · "+searchBK:""}
               {searchDate?" · "+searchDate:""}
-              {searchLive?" · 🔴 Live":""}
-              {searchHasPP?" · PP Edge":""}
-              <button onClick={function(){setSearchTournament("");setSearchBK("");setSearchDate("");setSearchStatus("");setSearchLive(false);setSearchHasPP(false);}}
+              {searchLive?" · Live":""}{searchHasPP?" · PP":""}{searchHeadshot?" · HS":""}{searchMap?" · "+searchMap:""}
+              <button onClick={function(){setSearchTournament("");setSearchBK("");setSearchDate("");setSearchStatus("");setSearchLive(false);setSearchHasPP(false);setSearchHeadshot(false);setSearchMap("");}}
                 style={{marginLeft:8,fontSize:10,color:"#f87171",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕ Effacer</button>
             </div>
           )}
