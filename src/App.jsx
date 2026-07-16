@@ -2170,7 +2170,13 @@ export default function App(){
   const [ppEdgeDrill,setPpEdgeDrill]=useState(null); // {edge, mapType} or null // {game, league} or null
   const [ppStatsDrill,setPpStatsDrill]=useState(null); // {game, stat, ppLine} navigation state
   const [ppBetsDrill,setPpBetsDrill]=useState(null); // list of bets to show in drill view
-  const [ppStatsTab,setPpStatsTab]=useState("edge"); // "edge" | "stat" | "ou"
+  const [ppStatsTab,setPpStatsTab]=useState("edge");
+  const [ppOU,setPpOU]=useState("");
+  const [ppMapFilter,setPpMapFilter]=useState("");
+  const [ppSortByCount,setPpSortByCount]=useState(false);
+  const [ppFilterOpen,setPpFilterOpen]=useState(false);
+  const [ppOUApplied,setPpOUApplied]=useState("");
+  const [ppMapFilterApplied,setPpMapFilterApplied]=useState("");
   const [ppKillMetric,setPpKillMetric]=useState("roi");
   const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
   const [analyseBets,setAnalyseBets]=useState([]);
@@ -5489,19 +5495,26 @@ export default function App(){
               const GAMES=["CS2","Dota2","LoL","Valorant"].filter(g=>ppBets.some(b=>b.game===g));
               const MAP_TYPES=["Map 1+2","Map 3","Map 1+2+3"];
 
+              // Apply filters to ppBets for matrix
+              const ppBetsFiltered=ppBets.filter(function(b){
+                if(ppOUApplied&&b.overUnder!==ppOUApplied)return false;
+                if(ppMapFilterApplied&&b.mapTag!==ppMapFilterApplied)return false;
+                return true;
+              });
               // matrix[mt][game][edgeKey] = stats
               const matrix={};
               MAP_TYPES.forEach(mt=>{matrix[mt]={};GAMES.forEach(g=>{matrix[mt][g]={};});});
-              ppBets.forEach(b=>{
+              ppBetsFiltered.forEach(b=>{
                 const mt=b.ppMapType;if(!matrix[mt])return;
                 const g=b.game||"?";if(!matrix[mt][g])return;
                 const rawE=b.ppEdge!=null?b.ppEdge:0;
                 const e=mt==="Map 1+2+3"?snapE6(rawE):snapE(rawE);
-                if(e<0)return; // only positive edges
+                if(e<0)return;
                 const key=e.toFixed(2);
                 if(!matrix[mt][g][key])matrix[mt][g][key]=mkS();
                 addS(matrix[mt][g][key],b);
               });
+              const ppBetsForDisplay=ppBetsFiltered;
 
               // edgeDrill state: {mt, game, edge} or null
               const edgeDrill=(ppStatsDrill&&ppStatsDrill.edgeDrill)||null;
@@ -5667,7 +5680,7 @@ export default function App(){
                 return(
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {gamesInMt.map(game=>{
-                      const gameEdges=Object.keys(matrix[mt][game]).map(Number).sort((a,b)=>b-a);
+                      const gameEdges=Object.keys(matrix[mt][game]).map(Number).sort(ppSortByCount?function(a,b){return (matrix[mt][game][b]&&matrix[mt][game][b].count||0)-(matrix[mt][game][a]&&matrix[mt][game][a].count||0);}:function(a,b){return b-a;});
                       if(gameEdges.length===0)return null;
                       const tot=mkS();
                       gameEdges.forEach(e=>{const d=matrix[mt][game][e.toFixed(2)];if(d){tot.cnt+=d.cnt;tot.won+=d.won;tot.profit+=d.profit;tot.staked+=d.staked;tot.oddsSum+=d.oddsSum;}});
@@ -5713,7 +5726,7 @@ export default function App(){
                 const metric=HEAT_METRICS.find(m=>m.k===heatMetric)||HEAT_METRICS[0];
                 if(heatDrill){
                   const {mt,game}=heatDrill;
-                  const gameEdges=Object.keys(((matrix[mt]&&matrix[mt][game])||{})).map(Number).sort((a,b)=>b-a);
+                  const gameEdges=Object.keys(((matrix[mt]&&matrix[mt][game])||{})).map(Number).sort(ppSortByCount?function(a,b){var m=(matrix[mt]&&matrix[mt][game])||{};return (m[b]&&m[b].count||0)-(m[a]&&m[a].count||0);}:function(a,b){return b-a;});
                   return(
                     <div>
                       <button onClick={()=>setPpStatsDrill(prev=>({...(prev||{}),heatDrill:null}))}
@@ -5825,8 +5838,73 @@ export default function App(){
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                     <img src={PP_LOGO_B64} alt="PP" style={{width:20,height:20,borderRadius:5,objectFit:"cover",flexShrink:0}}/>
                     <span style={{fontSize:13,fontWeight:700,color:"#c4b5fd",flex:1}}>Analyse PrizePicks</span>
-                    <span style={{fontSize:9,color:"#4a3a6e"}}>{ppBets.length} paris PP</span>
+                    <span style={{fontSize:9,color:"#4a3a6e"}}>{ppBetsFiltered?ppBetsFiltered.length:ppBets.length} paris PP{(ppOUApplied||ppMapFilterApplied)?" (filtré)":""}</span>
                   </div>
+                  {/* PP filters dropdown */}
+                  {(function(){
+                    var activeCount=(ppOUApplied?1:0)+(ppMapFilterApplied?1:0)+(ppSortByCount?1:0);
+                    return(
+                      <div style={{marginBottom:8}}>
+                        <button onClick={function(){setPpFilterOpen(function(v){return !v;});}}
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderRadius:9,border:"1px solid "+(ppFilterOpen||activeCount>0?"rgba(167,139,250,.4)":"rgba(255,255,255,.08)"),background:ppFilterOpen||activeCount>0?"rgba(124,58,237,.12)":"transparent",color:activeCount>0?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",width:"100%",justifyContent:"space-between"}}>
+                          <span style={{display:"flex",alignItems:"center",gap:6}}>
+                            ⚙️ Filtres PP
+                            {ppOUApplied&&<span style={{fontSize:9,background:"rgba(167,139,250,.3)",color:"#c4b5fd",padding:"1px 6px",borderRadius:4,fontWeight:700}}>{ppOUApplied}</span>}
+                            {ppMapFilterApplied&&<span style={{fontSize:9,background:"rgba(96,165,250,.3)",color:"#93c5fd",padding:"1px 6px",borderRadius:4,fontWeight:700}}>{ppMapFilterApplied}</span>}
+                            {ppSortByCount&&<span style={{fontSize:9,background:"rgba(251,191,36,.2)",color:"#fbbf24",padding:"1px 6px",borderRadius:4,fontWeight:700}}>N↓</span>}
+                          </span>
+                          <span style={{fontSize:10,opacity:.5}}>{ppFilterOpen?"▲":"▼"}</span>
+                        </button>
+                        {ppFilterOpen&&(
+                          <div style={{marginTop:6,padding:"12px",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.2)",borderRadius:10}}>
+                            {/* Over / Under */}
+                            <div style={{marginBottom:10}}>
+                              <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Direction</div>
+                              <div style={{display:"flex",gap:5}}>
+                                {[{k:"",l:"Tous"},{k:"Over",l:"Over"},{k:"Under",l:"Under"}].map(function(o){
+                                  var on=ppOU===o.k;
+                                  return <button key={o.k} onClick={function(){setPpOU(o.k);}}
+                                    style={{flex:1,padding:"6px 0",borderRadius:7,border:"1px solid "+(on?"rgba(167,139,250,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.2)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{o.l}</button>;
+                                })}
+                              </div>
+                            </div>
+                            {/* Map filter */}
+                            <div style={{marginBottom:10}}>
+                              <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Map jouée</div>
+                              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                                {["","Map 1","Map 2","Map 3","Map 4","Map 5"].map(function(m){
+                                  var on=ppMapFilter===m;
+                                  return <button key={m||"all"} onClick={function(){setPpMapFilter(on?"":m);}}
+                                    style={{padding:"5px 10px",borderRadius:7,border:"1px solid "+(on?"rgba(96,165,250,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(59,130,246,.2)":"transparent",color:on?"#93c5fd":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{m||"Toutes"}</button>;
+                                })}
+                              </div>
+                            </div>
+                            {/* Sort */}
+                            <div>
+                              <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Tri des lignes</div>
+                              <div style={{display:"flex",gap:5}}>
+                                {[{k:false,l:"Edge ↓"},{k:true,l:"N ↓ (plus de paris en haut)"}].map(function(s){
+                                  var on=ppSortByCount===s.k;
+                                  return <button key={s.l} onClick={function(){setPpSortByCount(s.k);}}
+                                    style={{flex:1,padding:"6px 0",borderRadius:7,border:"1px solid "+(on?"rgba(251,191,36,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(251,191,36,.12)":"transparent",color:on?"#fbbf24":"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{s.l}</button>;
+                                })}
+                              </div>
+                            </div>
+                            <div style={{display:"flex",gap:6,marginTop:10}}>
+                              {(ppOUApplied||ppMapFilterApplied)&&<button onClick={function(){setPpOU("");setPpMapFilter("");setPpOUApplied("");setPpMapFilterApplied("");setPpSortByCount(false);}}
+                                style={{flex:1,padding:"8px",borderRadius:7,border:"1px solid rgba(239,68,68,.2)",background:"transparent",color:"#f87171",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                                Réinitialiser
+                              </button>}
+                              <button onClick={function(){setPpOUApplied(ppOU);setPpMapFilterApplied(ppMapFilter);setPpFilterOpen(false);}}
+                                style={{flex:1,padding:"8px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                                ✓ Appliquer
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div style={{display:"flex",gap:5,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
                     {[{k:"Map 1+2",l:"Map 1+2"},{k:"Map 3",l:"Map 3"},{k:"Map 1+2+3",l:"Map 1+2+3"},{k:"heat",l:"🔥 Heatmap"}].map(t=>(
                       <button key={t.k} onClick={()=>{setPpStatsTab(t.k);setPpStatsDrill(null);}} style={tabStyle(ppStatsTab===t.k)}>{t.l}</button>
