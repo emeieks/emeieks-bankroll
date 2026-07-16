@@ -1465,6 +1465,21 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
     onClose();
   };
 
+  // ── One-click: remove PP from ALL live bets ──
+  const removeAllLivePP=function(){
+    var livePPbets=bets.filter(function(b){return b.isLive&&(b.ppEdge!=null||b.ppMapType);});
+    if(livePPbets.length===0){alert("Aucun pari live avec PP Edge trouvé.");return;}
+    if(!window.confirm("Supprimer le PP edge sur "+livePPbets.length+" paris live ?"))return;
+    setSaving(true);
+    var toSync=livePPbets.map(function(b){return Object.assign({},b,{ppEdge:null,ppLine:null,ppMapType:null,updatedAt:Date.now()});});
+    var ids=new Set(toSync.map(function(b){return b.id;}));
+    setBets(function(prev){return prev.map(function(b){return ids.has(b.id)?toSync.find(function(n){return n.id===b.id;})||b:b;});});
+    if(supaPushBets&&toSync.length)supaPushBets(toSync).catch(function(){});
+    try{var stored=JSON.parse(localStorage.getItem("v7_bets")||"[]");var merged=stored.map(function(b){return ids.has(b.id)?toSync.find(function(n){return n.id===b.id;})||b:b;});localStorage.setItem("v7_bets",JSON.stringify(merged));}catch(e){}
+    setSaving(false);
+    onClose();
+  };
+
   const toggle=id=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
 
   const toggleDay=dk=>{
@@ -1604,7 +1619,23 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             {newBK&&<div style={{fontSize:11,color:"#A78BFA",fontWeight:600,marginTop:6}}>✓ {newBK}</div>}
           </div>
         )}
-        {/* Live / PP / Headshot row */}
+        {/* ── Action rapide: supprimer PP de tous les bets live ── */}
+        {(function(){
+          var livePPcount=bets.filter(function(b){return b.isLive&&(b.ppEdge!=null||b.ppMapType);}).length;
+          if(livePPcount===0)return null;
+          return(
+            <div style={{marginBottom:10,padding:"10px 12px",background:"rgba(251,113,133,.08)",border:"1px solid rgba(251,113,133,.25)",borderRadius:12,display:"flex",alignItems:"center",gap:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#fb7185"}}>🔴 {livePPcount} paris live avec PP Edge</div>
+                <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Supprimer le PP edge en 1 clic</div>
+              </div>
+              <button onClick={removeAllLivePP} disabled={saving}
+                style={{padding:"8px 14px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#fb7185,#f87171)",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0,whiteSpace:"nowrap"}}>
+                Tout supprimer
+              </button>
+            </div>
+          );
+        })()}
         <div style={{display:"flex",gap:5,marginBottom:6}}>
           {[
             {k:"live",l:"Live",icon:<span style={{width:8,height:8,borderRadius:"50%",background:"#fb7185",display:"inline-block",marginRight:4}}/>,active:searchLive,col:"#fb7185",border:"rgba(251,113,133,.4)",bg:"rgba(251,113,133,.1)",toggle:function(){setSearchLive(function(v){return !v;});}},
@@ -4342,28 +4373,39 @@ export default function App(){
                     <div style={{display:"flex",gap:5,marginBottom:8}}>
                       {["Map 1+2","Map 3","Map 1+2+3"].map(function(mt){
                         var on=duelForm.ppMapType===mt;
-                        return <button key={mt} onClick={function(){setDuelForm(function(f){return Object.assign({},f,{ppMapType:on?"":mt});});}}
+                        return <button key={mt} onClick={function(){setDuelForm(function(f){return Object.assign({},f,{ppMapType:on?"":mt,ppLine_player1:"",ppLine_player2:""});});}}
                           style={{flex:1,padding:"5px 0",borderRadius:7,border:"1px solid "+(on?"rgba(139,92,246,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#4a5a6e",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{mt}</button>;
                       })}
                     </div>
-                    {duelForm.ppMapType&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      {["player1","player2"].map(function(p){
-                        var kills=parseFloat(duelForm[p+"_kills"])||null;
-                        var ppLine=parseFloat(duelForm["ppLine_"+p])||null;
-                        var edge=kills!==null&&ppLine!==null?ppLine-kills:null;
-                        var col=edge>=1?"#00E676":edge>=0?"#fbbf24":"#f87171";
-                        return(
-                          <div key={p}>
-                            <div style={{fontSize:9,color:"#4a5a6e",marginBottom:3}}>{p==="player1"?duelForm.player1||"P1":duelForm.player2||"P2"}</div>
-                            <input type="number" inputMode="decimal" step="0.5" value={duelForm["ppLine_"+p]||""}
-                              onChange={function(e){var v=e.target.value;setDuelForm(function(f){var u={};u["ppLine_"+p]=v;return Object.assign({},f,u);});}}
-                              placeholder="Ligne PP…"
-                              style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"6px 8px",color:"#c4b5fd",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
-                            {edge!==null&&<div style={{fontSize:11,fontWeight:700,color:col,marginTop:3}}>Edge: {edge>=0?"+":""}{edge.toFixed(2)}</div>}
-                          </div>
-                        );
-                      })}
-                    </div>}
+                    {duelForm.ppMapType&&(function(){
+                      // Build options based on map type
+                      var ranges={"Map 1+2":[0.5,42.5],"Map 3":[0.5,24.0],"Map 1+2+3":[0.5,60.5]};
+                      var r=ranges[duelForm.ppMapType]||[0.5,42.5];
+                      var opts=[];
+                      for(var v=r[0];v<=r[1];v=Math.round((v+0.5)*10)/10)opts.push(v);
+                      return(
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                          {["player1","player2"].map(function(p){
+                            var ppLine=parseFloat(duelForm["ppLine_"+p])||null;
+                            var kills=parseFloat(duelForm[p])||null;
+                            var edge=kills!==null&&ppLine!==null?ppLine-kills:null;
+                            var col=edge>=1?"#00E676":edge>=0?"#fbbf24":"#f87171";
+                            return(
+                              <div key={p}>
+                                <div style={{fontSize:9,color:"#4a5a6e",marginBottom:4}}>{p==="player1"?duelForm.player1||"P1":duelForm.player2||"P2"}</div>
+                                <select value={duelForm["ppLine_"+p]||""}
+                                  onChange={function(e){var v=e.target.value;setDuelForm(function(f){var u={};u["ppLine_"+p]=v;return Object.assign({},f,u);});}}
+                                  style={{width:"100%",background:"rgba(18,12,30,.98)",border:"1px solid rgba(139,92,246,.3)",borderRadius:8,padding:"7px 8px",color:"#c4b5fd",fontSize:13,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer",boxSizing:"border-box"}}>
+                                  <option value="">Ligne…</option>
+                                  {opts.map(function(v){return <option key={v} value={v}>{v.toFixed(1)}</option>;})}
+                                </select>
+                                {edge!==null&&<div style={{fontSize:11,fontWeight:700,color:col,marginTop:4}}>Edge: {edge>=0?"+":""}{edge.toFixed(2)}</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -4728,7 +4770,7 @@ export default function App(){
 
 
             {/* ── 6b. PRIZEPICKS ── */}
-            {!duelMode&&(()=>{
+            {!duelMode&&!form.isLive&&(()=>{
               const game=form.autoInfo&&form.autoInfo.game;
               // PP type = type de ligne PP uniquement, sans lien avec mapTag du pari
               // Map 1+2 : stats cumulées 2 maps → ligne × 2 avec edge
