@@ -8703,13 +8703,13 @@ function PPRatioCompiler(){
   function loadData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}catch(e){return{};}}
   function saveDataToStorage(d){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}}
 
-  const [game,setGame]=React.useState("CS2");
-  const [mt,setMt]=React.useState("12");
-  const [rows,setRows]=React.useState([{player:"",anchor:"",comp:""}]);
-  const [allData,setAllData]=React.useState(loadData);
-  const [open,setOpen]=React.useState(false);
-  const [uploadImgs,setUploadImgs]=React.useState({img12:null,img3:null});
-  const [analyzing,setAnalyzing]=React.useState(false);
+  const [game,setGame]=useState("CS2");
+  const [mt,setMt]=useState("12");
+  const [rows,setRows]=useState([{player:"",anchor:"",comp:""}]);
+  const [allData,setAllData]=useState(loadData);
+  const [open,setOpen]=useState(false);
+  const [uploadImgs,setUploadImgs]=useState({img12:null,img3:null});
+  const [analyzing,setAnalyzing]=useState(false);
 
   async function analyzePhotos(){
     if(!uploadImgs.img12&&!uploadImgs.img3)return;
