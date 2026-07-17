@@ -7800,10 +7800,12 @@ export default function App(){
               )}
             </div>
 
+            {/* ── PP BOARD ANALYZER ── */}
+            <PPRatioCompiler/>
+
           </div>
         )}
 
-        {/* ── MODAL AJOUTER TOURNOI ── */}
         {modalTourney&&(()=>{
           const game=modalTourney;
           const cfg=GAME_CFG[game]||{};
@@ -8541,6 +8543,478 @@ class ErrorBoundary extends React.Component{
     }
     return this.props.children;
   }
+}
+
+
+// ── PP Board Analyzer ────────────────────────────────────────────────────────
+function PPBoardAnalyzer(){
+  const [gameFilter,setGameFilter]=React.useState("CS2");
+  const [img12,setImg12]=React.useState(null);
+  const [img3,setImg3]=React.useState(null);
+  const [rows,setRows]=React.useState([]);
+  const [loading,setLoading]=React.useState(false);
+  const [error,setError]=React.useState("");
+  const [open,setOpen]=React.useState(false);
+
+  function handleFile(e,which){
+    var file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var b64=ev.target.result.split(",")[1];
+      var data={b64:b64,mime:file.type,url:ev.target.result};
+      if(which==="12")setImg12(data);else setImg3(data);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function analyze(){
+    if(!img12&&!img3)return;
+    setLoading(true);setError("");setRows([]);
+    var content12=img12?[{type:"image",source:{type:"base64",media_type:img12.mime,data:img12.b64}}]:[];
+    var content3=img3?[{type:"image",source:{type:"base64",media_type:img3.mime,data:img3.b64}}]:[];
+    var prompt="Analyse ces boards PrizePicks pour "+gameFilter+"."+(img12?" IMAGE 1=Map 1+2.":"")+(img3?" IMAGE 2=Map 3.":"")+' Retourne UNIQUEMENT ce JSON sans markdown: {"map12":[{"player":"Nom","line":30.5}],"map3":[{"player":"Nom","line":15.5}]}';
+    try{
+      var resp=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:[...content12,...content3,{type:"text",text:prompt}]}]})
+      });
+      var data=await resp.json();
+      var raw=(data.content&&data.content[0]&&data.content[0].text)||"";
+      var clean=raw.replace(/```json|```/g,"").trim();
+      var parsed=JSON.parse(clean);
+      var map12=parsed.map12||[];
+      var map3=parsed.map3||[];
+      var lookup={};
+      map3.forEach(function(p){lookup[p.player.toLowerCase()]=p.line;});
+      var result=[];
+      map12.forEach(function(p){
+        var th=Math.round(p.line/2*10)/10;
+        var actual=lookup[p.player.toLowerCase()]||null;
+        var diff=actual!==null?Math.round((actual-th)*100)/100:null;
+        result.push({player:p.player,line12:p.line,theoretical:th,map3:actual,diff:diff});
+      });
+      map3.forEach(function(p){
+        var found=result.find(function(r){return r.player.toLowerCase()===p.player.toLowerCase();});
+        if(!found)result.push({player:p.player,line12:null,theoretical:null,map3:p.line,diff:null});
+      });
+      result.sort(function(a,b){return (b.line12||0)-(a.line12||0);});
+      setRows(result);
+    }catch(e){setError("Erreur: "+e.message);}
+    setLoading(false);
+  }
+
+  var inputStyle={width:"100%",background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:9,padding:"9px 12px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer"};
+  var diffCol=function(d){return d===null?"#6B7280":d>=1?"#00E676":d<=-1?"#f87171":"#9CA3AF";};
+
+  return(
+    <div style={{margin:"0 0 24px",padding:"0 16px"}}>
+      <button onClick={function(){setOpen(function(v){return !v;});}}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <img src={PP_LOGO_B64} style={{width:18,height:18,objectFit:"contain",borderRadius:4}}/>
+          <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>PP Board Analyzer</span>
+          <span style={{background:"rgba(124,58,237,.15)",color:"#a78bfa",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:6}}>Comparer Map1+2 vs Map3</span>
+        </div>
+        <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+      </button>
+
+      {open&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"16px"}}>
+        {/* Game filter */}
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {["CS2","Dota2","LoL","Valorant"].map(function(g){
+            var on=gameFilter===g;
+            return <button key={g} onClick={function(){setGameFilter(g);}}
+              style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:8,border:"1px solid "+(on?"rgba(124,58,237,.5)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              <GameLogo game={g} size={13}/>{g}
+            </button>;
+          })}
+        </div>
+
+        {/* Upload row */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          {[{id:"up12",label:"Board Map 1+2",which:"12",img:img12,clear:function(){setImg12(null);}},
+            {id:"up3",label:"Board Map 3",which:"3",img:img3,clear:function(){setImg3(null);}}].map(function(u){
+            return <div key={u.id}>
+              <div style={{fontSize:10,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:5}}>{u.label}</div>
+              {u.img?(
+                <div style={{position:"relative"}}>
+                  <img src={u.img.url} style={{width:"100%",maxHeight:120,objectFit:"contain",borderRadius:8,border:"1px solid rgba(124,58,237,.2)"}}/>
+                  <button onClick={u.clear} style={{position:"absolute",top:4,right:4,background:"rgba(239,68,68,.8)",border:"none",borderRadius:"50%",width:20,height:20,color:"#fff",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                </div>
+              ):(
+                <label style={{display:"block",border:"2px dashed rgba(124,58,237,.3)",borderRadius:9,padding:"20px 10px",textAlign:"center",cursor:"pointer",background:"rgba(124,58,237,.04)"}}>
+                  <input type="file" accept="image/*" style={{display:"none"}} onChange={function(e){handleFile(e,u.which);}}/>
+                  <div style={{fontSize:18,marginBottom:4}}>📸</div>
+                  <div style={{fontSize:10,color:"#6B7280"}}>Upload photo</div>
+                </label>
+              )}
+            </div>;
+          })}
+        </div>
+
+        <button onClick={analyze} disabled={loading||(!img12&&!img3)}
+          style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:(!img12&&!img3)||loading?"rgba(255,255,255,.05)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:(!img12&&!img3)||loading?"#4a5a6e":"#fff",fontWeight:700,fontSize:13,cursor:(!img12&&!img3)||loading?"default":"pointer",fontFamily:"Inter,sans-serif",marginBottom:12}}>
+          {loading?"⏳ Analyse en cours...":"Analyser →"}
+        </button>
+
+        {error&&<div style={{padding:"8px 12px",background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#f87171",fontSize:11,marginBottom:10}}>{error}</div>}
+
+        {rows.length>0&&<div>
+          <div style={{fontSize:11,fontWeight:700,color:"#c4b5fd",marginBottom:8}}>{rows.length} joueurs analysés</div>
+          <div style={{overflowX:"auto",borderRadius:10,border:"1px solid rgba(139,92,246,.2)"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead>
+                <tr style={{background:"rgba(124,58,237,.15)"}}>
+                  {["Joueur","Line 1+2","Théo /map","Map 3 PP","Diff","Signal"].map(function(h){
+                    return <th key={h} style={{padding:"8px 10px",textAlign:"left",fontSize:9,fontWeight:700,color:"#7a6a9e",textTransform:"uppercase",letterSpacing:.6,whiteSpace:"nowrap"}}>{h}</th>;
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(function(r,i){
+                  var dc=diffCol(r.diff);
+                  var signal=r.diff===null?"—":r.diff>=1?<span style={{background:"rgba(0,230,118,.12)",color:"#00E676",padding:"2px 7px",borderRadius:5,fontSize:10,fontWeight:700}}>Over Map3</span>:r.diff<=-1?<span style={{background:"rgba(248,113,113,.12)",color:"#f87171",padding:"2px 7px",borderRadius:5,fontSize:10,fontWeight:700}}>Under Map3</span>:<span style={{color:"#9CA3AF",fontSize:10}}>Cohérent</span>;
+                  return(
+                    <tr key={i} style={{borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                      <td style={{padding:"9px 10px",fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{r.player}</td>
+                      <td style={{padding:"9px 10px",fontWeight:700,color:"#c4b5fd"}}>{r.line12!==null?r.line12:"—"}</td>
+                      <td style={{padding:"9px 10px",color:"#6B7280"}}>{r.theoretical!==null?r.theoretical:"—"}</td>
+                      <td style={{padding:"9px 10px",fontWeight:700,color:"#c4b5fd"}}>{r.map3!==null?r.map3:"—"}</td>
+                      <td style={{padding:"9px 10px",fontWeight:700,color:dc}}>{r.diff!==null?(r.diff>0?"+":"")+r.diff:"—"}</td>
+                      <td style={{padding:"9px 10px"}}>{signal}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+      </div>}
+    </div>
+  );
+}
+
+
+// ── PPRatioCompiler ─────────────────────────────────────────────────────────
+function PPRatioCompiler(){
+  const STORAGE_KEY="v7_pp_ratios";
+  function loadData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}catch(e){return{};}}
+  function saveDataToStorage(d){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}}
+
+  const [game,setGame]=React.useState("CS2");
+  const [mt,setMt]=React.useState("12");
+  const [rows,setRows]=React.useState([{player:"",anchor:"",comp:""}]);
+  const [allData,setAllData]=React.useState(loadData);
+  const [open,setOpen]=React.useState(false);
+  const [uploadImgs,setUploadImgs]=React.useState({img12:null,img3:null});
+  const [analyzing,setAnalyzing]=React.useState(false);
+
+  async function analyzePhotos(){
+    if(!uploadImgs.img12&&!uploadImgs.img3)return;
+    setAnalyzing(true);
+    var content12=uploadImgs.img12?[{type:"image",source:{type:"base64",media_type:uploadImgs.img12.mime,data:uploadImgs.img12.b64}}]:[];
+    var content3=uploadImgs.img3?[{type:"image",source:{type:"base64",media_type:uploadImgs.img3.mime,data:uploadImgs.img3.b64}}]:[];
+    var prompt="Analyse ces boards PrizePicks pour "+game+". "+(uploadImgs.img12?"IMAGE 1 = Map 1+2. ":"")+(uploadImgs.img3?"IMAGE 2 = Map 3. ":"")+'Retourne UNIQUEMENT ce JSON sans markdown: {"map12":[{"player":"Nom","line":30.5}],"map3":[{"player":"Nom","line":15.5}]}. Inclus TOUS les joueurs visibles.';
+    try{
+      var resp=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:[...content12,...content3,{type:"text",text:prompt}]}]})
+      });
+      var data=await resp.json();
+      var raw=(data.content&&data.content[0]&&data.content[0].text)||"";
+      var parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
+      var map12=parsed.map12||[];
+      var map3=parsed.map3||[];
+      var lookup={};
+      map3.forEach(function(p){lookup[p.player.toLowerCase()]=p.line;});
+      var newRows=map12.map(function(p){
+        var comp=lookup[p.player.toLowerCase()];
+        return{player:p.player,anchor:String(p.line),comp:comp!==undefined?String(comp):""};
+      });
+      // Add map3-only players
+      map3.forEach(function(p){
+        if(!map12.find(function(m){return m.player.toLowerCase()===p.player.toLowerCase();})){
+          newRows.push({player:p.player,anchor:"",comp:String(p.line)});
+        }
+      });
+      if(newRows.length>0)setRows(newRows);
+    }catch(e){alert("Erreur analyse: "+e.message);}
+    setAnalyzing(false);
+  }
+
+  var MT_LABELS={"12":"Map 1+2","3":"Map 3","123":"Map 1+2+3"};
+  var MT_DIVISOR={"12":2,"3":0.5,"123":3};
+  var MT_COMP_LABEL={"12":"Map 3","3":"Map 1+2","123":"Map 3"};
+
+  function getKey(){return game+"_"+mt;}
+
+  function getBuckets(){return(allData[getKey()])||[];}
+
+  function addRow(){setRows(function(r){return r.concat({player:"",anchor:"",comp:""});});}
+
+  function updateRow(i,field,val){
+    setRows(function(prev){
+      var n=prev.map(function(r,idx){return idx===i?Object.assign({},r,{[field]:val}):r;});
+      return n;
+    });
+  }
+
+  function save(){
+    var newEntries=rows.filter(function(r){return r.anchor!=="";}).map(function(r){
+      return{player:r.player||"?",anchor:parseFloat(r.anchor),comp:r.comp!==""?parseFloat(r.comp):null,date:new Date().toLocaleDateString("fr-CA"),ts:Date.now()};
+    });
+    if(!newEntries.length)return;
+    var updated=Object.assign({},allData);
+    var key=getKey();
+    updated[key]=(updated[key]||[]).concat(newEntries);
+    setAllData(updated);
+    saveDataToStorage(updated);
+    setRows([{player:"",anchor:"",comp:""}]);
+  }
+
+  function removeEntry(ts){
+    var updated=Object.assign({},allData);
+    var key=getKey();
+    updated[key]=(updated[key]||[]).filter(function(e){return e.ts!==ts;});
+    setAllData(updated);
+    saveDataToStorage(updated);
+  }
+
+  function clearAll(){
+    if(!window.confirm("Vider toutes les données "+game+" "+MT_LABELS[mt]+" ?"))return;
+    var updated=Object.assign({},allData);
+    delete updated[getKey()];
+    setAllData(updated);
+    saveDataToStorage(updated);
+  }
+
+  var buckets=getBuckets();
+  var divisor=MT_DIVISOR[mt];
+  var compLabel=MT_COMP_LABEL[mt];
+
+  // Build frequency table
+  var freq={};
+  var allComps=new Set();
+  buckets.forEach(function(d){
+    var ak=d.anchor.toFixed(1);
+    if(!freq[ak])freq[ak]={total:0,values:{}};
+    freq[ak].total++;
+    if(d.comp!==null){
+      var ck=d.comp.toFixed(1);
+      freq[ak].values[ck]=(freq[ak].values[ck]||0)+1;
+      allComps.add(d.comp);
+    }
+  });
+  var anchorLines=Object.keys(freq).map(Number).sort(function(a,b){return b-a;});
+  var compCols=[...allComps].sort(function(a,b){return a-b;});
+
+  var inputStyle={background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 9px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"};
+  var pillStyle=function(on){return{padding:"5px 11px",borderRadius:7,border:"1px solid "+(on?"rgba(124,58,237,.5)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"};};
+
+  return(
+    <div style={{margin:"0 0 24px",padding:"0 16px"}}>
+      {/* Toggle */}
+      <button onClick={function(){setOpen(function(v){return !v;});}}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <img src={PP_LOGO_B64} style={{width:18,height:18,objectFit:"contain",borderRadius:4}}/>
+          <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>PP Ratio Compiler</span>
+          <span style={{background:"rgba(124,58,237,.12)",color:"#a78bfa",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:6}}>{Object.values(allData).reduce(function(s,a){return s+(a&&a.length||0);},0)} entrées</span>
+        </div>
+        <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+      </button>
+
+      {open&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"16px"}}>
+
+        {/* Game + MapType */}
+        <div style={{display:"flex",gap:5,marginBottom:8,flexWrap:"wrap"}}>
+          {["CS2","Dota2","LoL","Valorant"].map(function(g){
+            return <button key={g} onClick={function(){setGame(g);}} style={pillStyle(game===g)}>
+              <GameLogo game={g} size={12}/> {g}
+            </button>;
+          })}
+        </div>
+        <div style={{display:"flex",gap:5,marginBottom:14}}>
+          {["12","3","123"].map(function(k){
+            return <button key={k} onClick={function(){setMt(k);}} style={Object.assign({},pillStyle(mt===k),{fontSize:10})}>
+              {MT_LABELS[k]}
+            </button>;
+          })}
+        </div>
+
+        {/* Input rows */}
+        <div style={{background:"rgba(0,0,0,.2)",borderRadius:10,padding:"12px",marginBottom:12}}>
+
+          {/* Photo upload mode */}
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:8}}>📸 Upload photos du board PP</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              {[{key:"img12",label:"Map 1+2"},{key:"img3",label:"Map 3"}].map(function(u){
+                var imgData=uploadImgs[u.key];
+                return <div key={u.key}>
+                  <div style={{fontSize:9,color:"#4a5a6e",marginBottom:4}}>{u.label}</div>
+                  {imgData?(
+                    <div style={{position:"relative"}}>
+                      <img src={imgData.url} style={{width:"100%",maxHeight:100,objectFit:"contain",borderRadius:7,border:"1px solid rgba(124,58,237,.2)"}}/>
+                      <button onClick={function(){setUploadImgs(function(p){var n=Object.assign({},p);n[u.key]=null;return n;});}} style={{position:"absolute",top:3,right:3,background:"rgba(239,68,68,.8)",border:"none",borderRadius:"50%",width:18,height:18,color:"#fff",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                    </div>
+                  ):(
+                    <label style={{display:"block",border:"2px dashed rgba(124,58,237,.25)",borderRadius:8,padding:"14px 8px",textAlign:"center",cursor:"pointer",background:"rgba(124,58,237,.03)"}}>
+                      <input type="file" accept="image/*" style={{display:"none"}} onChange={function(e){
+                        var file=e.target.files&&e.target.files[0];
+                        if(!file)return;
+                        var reader=new FileReader();
+                        var key=u.key;
+                        reader.onload=function(ev){
+                          var b64=ev.target.result.split(",")[1];
+                          setUploadImgs(function(p){var n=Object.assign({},p);n[key]={b64:b64,mime:file.type,url:ev.target.result};return n;});
+                        };
+                        reader.readAsDataURL(file);
+                      }}/>
+                      <div style={{fontSize:16,marginBottom:2}}>📸</div>
+                      <div style={{fontSize:10,color:"#6B7280"}}>{u.label}</div>
+                    </label>
+                  )}
+                </div>;
+              })}
+            </div>
+            <button onClick={analyzePhotos} disabled={analyzing||(!uploadImgs.img12&&!uploadImgs.img3)}
+              style={{width:"100%",padding:"9px",borderRadius:8,border:"none",background:(!uploadImgs.img12&&!uploadImgs.img3)||analyzing?"rgba(255,255,255,.05)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:(!uploadImgs.img12&&!uploadImgs.img3)||analyzing?"#4a5a6e":"#fff",fontWeight:700,fontSize:12,cursor:(!uploadImgs.img12&&!uploadImgs.img3)||analyzing?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
+              {analyzing?"⏳ Analyse Claude...":"Analyser photos → remplir tableau"}
+            </button>
+          </div>
+
+          <div style={{borderTop:"1px solid rgba(255,255,255,.06)",marginBottom:10,paddingTop:10}}>
+            <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:8}}>✏️ Ou entre manuellement</div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 24px",gap:6,marginBottom:6}}>
+            <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>Joueur</div>
+            <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>{MT_LABELS[mt]}</div>
+            <div style={{fontSize:9,color:"#c4b5fd",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>{compLabel}</div>
+            <div/>
+          </div>
+          {rows.map(function(r,i){
+            return <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 24px",gap:6,marginBottom:6,alignItems:"center"}}>
+              <input value={r.player} onChange={function(e){updateRow(i,"player",e.target.value);}} placeholder="Nom" style={Object.assign({},inputStyle,{width:"100%"})}/>
+              <input type="number" step="0.5" value={r.anchor} onChange={function(e){updateRow(i,"anchor",e.target.value);}} placeholder="ex: 30.5" style={Object.assign({},inputStyle,{width:"100%",color:"#c4b5fd"})}/>
+              <input type="number" step="0.5" value={r.comp} onChange={function(e){updateRow(i,"comp",e.target.value);}} placeholder="ex: 15" style={Object.assign({},inputStyle,{width:"100%",color:"#00E676"})}/>
+              <button onClick={function(){setRows(function(p){return p.filter(function(_,j){return j!==i;});});}} style={{background:"none",border:"none",color:"#4a5a6e",cursor:"pointer",fontSize:14}}>×</button>
+            </div>;
+          })}
+          <div style={{display:"flex",gap:8,marginTop:8}}>
+            <button onClick={addRow} style={{flex:1,padding:"7px",borderRadius:7,border:"1px dashed rgba(124,58,237,.25)",background:"transparent",color:"#7C3AED",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+ Joueur</button>
+            <button onClick={save} disabled={!rows.some(function(r){return r.anchor!=="";} )}
+              style={{flex:2,padding:"7px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              Enregistrer ({rows.filter(function(r){return r.anchor!=="";}).length})
+            </button>
+          </div>
+        </div>
+
+        {/* Frequency table */}
+        {buckets.length===0?(
+          <div style={{textAlign:"center",padding:"24px",color:"#3a4a5e",fontSize:12}}>
+            Aucune donnée pour {game} {MT_LABELS[mt]}<br/>
+            <span style={{fontSize:10}}>Ajoute des entrées ci-dessus pour compiler les ratios</span>
+          </div>
+        ):(
+          <>
+          {/* Stats bar */}
+          {(function(){
+            var withComp=buckets.filter(function(d){return d.comp!==null;});
+            if(!withComp.length)return null;
+            var diffs=withComp.map(function(d){return d.comp-d.anchor/divisor;});
+            var avg=diffs.reduce(function(s,v){return s+v;},0)/diffs.length;
+            var exact=diffs.filter(function(d){return Math.abs(d)<0.01;}).length;
+            var higher=diffs.filter(function(d){return d>0.01;}).length;
+            var lower=diffs.filter(function(d){return d<-0.01;}).length;
+            return <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+              {[
+                {v:withComp.length,l:"Paires",c:"#c4b5fd"},
+                {v:(avg>0?"+":"")+avg.toFixed(2),l:"Diff moy.",c:avg>0.05?"#00E676":avg<-0.05?"#f87171":"#9CA3AF"},
+                {v:exact,l:"Exact",c:"#9CA3AF"},
+                {v:higher,l:compLabel+" haut",c:"#00E676"},
+                {v:lower,l:compLabel+" bas",c:"#f87171"},
+              ].map(function(s){return <div key={s.l} style={{background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.12)",borderRadius:7,padding:"5px 10px"}}>
+                <div style={{fontSize:14,fontWeight:800,color:s.c}}>{s.v}</div>
+                <div style={{fontSize:9,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+              </div>;})}
+            </div>;
+          })()}
+
+          {/* Frequency grid */}
+          <div style={{overflowX:"auto",borderRadius:10,border:"1px solid rgba(139,92,246,.2)",marginBottom:12}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+              <thead>
+                <tr style={{background:"rgba(0,0,0,.3)"}}>
+                  <th style={{padding:"8px 10px",textAlign:"left",fontSize:9,fontWeight:700,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.6,whiteSpace:"nowrap"}}>{MT_LABELS[mt]}</th>
+                  <th style={{padding:"8px 10px",textAlign:"center",fontSize:9,fontWeight:700,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.6}}>Théo</th>
+                  <th style={{padding:"8px 10px",textAlign:"center",fontSize:9,fontWeight:700,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.6}}>N</th>
+                  {compCols.map(function(c){
+                    return <th key={c} style={{padding:"8px 8px",textAlign:"center",fontSize:10,fontWeight:700,color:"#c4b5fd",whiteSpace:"nowrap"}}>{c.toFixed(1)}</th>;
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {anchorLines.map(function(al){
+                  var ak=al.toFixed(1);
+                  var bucket=freq[ak];
+                  var theo=(al/divisor).toFixed(2);
+                  var maxCnt=Math.max.apply(null,Object.values(bucket.values).concat([1]));
+                  return <tr key={al} style={{borderTop:"1px solid rgba(255,255,255,.03)"}}>
+                    <td style={{padding:"9px 10px"}}><span style={{fontSize:14,fontWeight:800,color:"#c4b5fd"}}>{al.toFixed(1)}</span></td>
+                    <td style={{padding:"9px 10px",textAlign:"center",color:"#4a5a6e",fontSize:11}}>{theo}</td>
+                    <td style={{padding:"9px 10px",textAlign:"center",color:"#7a9cbd",fontWeight:600}}>{bucket.total}</td>
+                    {compCols.map(function(c){
+                      var ck=c.toFixed(1);
+                      var cnt=bucket.values[ck]||0;
+                      var pct=bucket.total>0?Math.round(cnt/bucket.total*100):0;
+                      var delta=c-al/divisor;
+                      var dc=delta>0.01?"#00E676":delta<-0.01?"#f87171":"#9CA3AF";
+                      var deltaStr=delta>0.01?"+"+delta.toFixed(2):delta<-0.01?delta.toFixed(2):"≈0";
+                      if(cnt===0)return <td key={c} style={{padding:"9px 8px",textAlign:"center",color:"#1a2a3a"}}>—</td>;
+                      var bg=cnt===maxCnt?"rgba(124,58,237,.25)":pct>=20?"rgba(124,58,237,.1)":"rgba(124,58,237,.04)";
+                      return <td key={c} style={{padding:"6px 8px",textAlign:"center"}}>
+                        <div style={{background:bg,borderRadius:7,padding:"4px 6px",display:"inline-flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:36}}>
+                          <span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>{cnt}×</span>
+                          <span style={{fontSize:9,color:"#6B7280"}}>{pct}%</span>
+                          <span style={{fontSize:9,fontWeight:700,color:dc}}>{deltaStr}</span>
+                        </div>
+                      </td>;
+                    })}
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* History */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>Historique ({buckets.length})</span>
+            <button onClick={clearAll} style={{fontSize:10,color:"#f87171",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>🗑 Vider</button>
+          </div>
+          <div style={{maxHeight:160,overflowY:"auto"}}>
+            {[...buckets].reverse().slice(0,30).map(function(d){
+              var theo=(d.anchor/divisor).toFixed(2);
+              var diff=d.comp!==null?d.comp-d.anchor/divisor:null;
+              var dc=diff===null?"#6B7280":diff>0.01?"#00E676":diff<-0.01?"#f87171":"#9CA3AF";
+              return <div key={d.ts} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.03)",fontSize:11}}>
+                <span style={{color:"#E5E7EB",fontWeight:600,minWidth:70,textTransform:"capitalize"}}>{d.player}</span>
+                <span style={{color:"#c4b5fd",fontWeight:700}}>{d.anchor.toFixed(1)}</span>
+                <span style={{color:"#4a5a6e"}}>→ théo {theo}</span>
+                {d.comp!==null&&<><span style={{color:"#00E676",fontWeight:700}}>{d.comp.toFixed(1)}</span><span style={{color:dc,fontWeight:700}}>{diff>0?"+":""}{diff!==null?diff.toFixed(2):""}</span></>}
+                <span style={{color:"#2a3a4e",fontSize:9,marginLeft:"auto"}}>{d.date}</span>
+                <button onClick={function(){removeEntry(d.ts);}} style={{background:"none",border:"none",color:"#3a4a5e",cursor:"pointer",fontSize:12}}>×</button>
+              </div>;
+            })}
+          </div>
+          </>
+        )}
+      </div>}
+    </div>
+  );
 }
 
 }
