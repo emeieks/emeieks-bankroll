@@ -7922,6 +7922,7 @@ export default function App(){
             </div>
 
             {/* ── PP BOARD ANALYZER ── */}
+            <PPReferenceTable/>
             <PPRatioCompiler/>
 
           </div>
@@ -8817,6 +8818,97 @@ function PPBoardAnalyzer(){
   );
 }
 
+
+
+// ── PPReferenceTable ─────────────────────────────────────────────────────────
+function PPReferenceTable(){
+  const [open,setOpen]=useState(false);
+  const [game,setGame]=useState("LoL");
+
+  const DATA={
+    "LoL":[
+      {pp12:"3.5 – 4.5",map3:"1.5",under:"Under 2.5"},
+      {pp12:"5 – 5.5",map3:"2.5",under:"Under 3.5"},
+      {pp12:"6 – 7.5",map3:"3.5",under:"Under 4.5"},
+      {pp12:"8 – 9.5",map3:"4.5",under:"Under 5.5"},
+      {pp12:"10 – 11.5",map3:"5.5",under:"Under 6.5"},
+      {pp12:"12 – 12.5",map3:"6.5",under:"Under 7.5"},
+    ],
+    "Dota2":[
+      {pp12:"10 – 10.5",map3:"5",under:"Under 6.5"},
+      {pp12:"11 – 13",map3:"5.5 – 6",under:"Under 7.5"},
+      {pp12:"13.5 – 14.5",map3:"6.5 – 7",under:"Under 8.5"},
+      {pp12:"15 – 16.5",map3:"7.5 – 8",under:"Under 9.5"},
+      {pp12:"17 – 18.5",map3:"8.5 – 9",under:"Under 10.5"},
+    ],
+    "CS2/Valorant":[
+      {pp12:"23 – 24.5",map3:"11.5 – 12",under:"Under 13.5"},
+      {pp12:"25 – 26.5",map3:"12.5 – 13",under:"Under 14.5"},
+      {pp12:"27 – 28.5",map3:"13.5 – 14",under:"Under 15.5"},
+      {pp12:"29 – 30.5",map3:"14.5 – 15",under:"Under 16.5"},
+      {pp12:"31 – 32.5",map3:"15.5 – 16",under:"Under 17.5"},
+      {pp12:"33 – 34.5",map3:"16.5 – 17",under:"Under 18.5"},
+      {pp12:"35 – 36.5",map3:"17.5 – 18",under:"Under 19.5"},
+    ],
+  };
+
+  const games=Object.keys(DATA);
+  var rows=DATA[game]||[];
+
+  var gameColors={"LoL":"#6366f1","Dota2":"#ef4444","CS2/Valorant":"#f97316"};
+  var col=gameColors[game]||"#c4b5fd";
+
+  return(
+    <div style={{margin:"0 0 16px",padding:"0 16px"}}>
+      <button onClick={function(){setOpen(function(v){return !v;});}}
+        style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <img src={PP_LOGO_B64} style={{width:18,height:18,objectFit:"contain",borderRadius:4}}/>
+          <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Table de Référence PP</span>
+          <span style={{background:"rgba(124,58,237,.12)",color:"#a78bfa",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:6}}>Map 1+2 → Map 3</span>
+        </div>
+        <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+      </button>
+
+      {open&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+        {/* Game selector */}
+        <div style={{display:"flex",gap:5,marginBottom:12}}>
+          {games.map(function(g){
+            var on=game===g;
+            var gc=gameColors[g]||"#c4b5fd";
+            return <button key={g} onClick={function(){setGame(g);}}
+              style={{flex:1,padding:"7px 6px",borderRadius:8,border:"1px solid "+(on?"rgba("+( g==="LoL"?"99,102,241":g==="Dota2"?"239,68,68":"249,115,22")+",.4)":"rgba(255,255,255,.07)"),background:on?"rgba("+(g==="LoL"?"99,102,241":g==="Dota2"?"239,68,68":"249,115,22")+",.12)":"transparent",color:on?gc:"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+              {g==="LoL"&&<GameLogo game="LoL" size={13}/>}
+              {g==="Dota2"&&<GameLogo game="Dota2" size={13}/>}
+              {g==="CS2/Valorant"&&<><GameLogo game="CS2" size={11}/><span style={{color:"#4a5a6e",fontSize:9}}>|</span><GameLogo game="Valorant" size={11}/></>}
+              {g}
+            </button>;
+          })}
+        </div>
+
+        {/* Table */}
+        <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",background:"rgba(0,0,0,.4)"}}>
+            {["PP Map 1+2","Map 3 estimée","Under intéressant"].map(function(h){
+              return <div key={h} style={{padding:"8px 10px",fontSize:9,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.6,textAlign:"center",borderRight:"1px solid rgba(255,255,255,.04)"}}>{h}</div>;
+            })}
+          </div>
+          {rows.map(function(r,i){
+            return <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2===0?"transparent":"rgba(255,255,255,.01)"}}>
+              <div style={{padding:"10px 10px",textAlign:"center",fontSize:13,fontWeight:700,color:"#fbbf24",borderRight:"1px solid rgba(255,255,255,.04)"}}>{r.pp12}</div>
+              <div style={{padding:"10px 10px",textAlign:"center",fontSize:13,fontWeight:600,color:"#9CA3AF",borderRight:"1px solid rgba(255,255,255,.04)"}}>{r.map3}</div>
+              <div style={{padding:"10px 10px",textAlign:"center",fontSize:13,fontWeight:700,color:"#60a5fa"}}>{r.under}</div>
+            </div>;
+          })}
+        </div>
+
+        <div style={{marginTop:8,fontSize:10,color:"#3a4a5e",textAlign:"center"}}>
+          Source: analyse PP historique · Under = ligne Map3 PP − 1 kill
+        </div>
+      </div>}
+    </div>
+  );
+}
 
 // ── PPRatioCompiler ─────────────────────────────────────────────────────────
 function PPRatioCompiler(){
