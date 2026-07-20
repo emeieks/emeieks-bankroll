@@ -2172,6 +2172,7 @@ export default function App(){
   const [statsChartMode,setStatsChartMode]=useState("line");
   const [playersExpanded,setPlayersExpanded]=useState(null);
   const [playerSortKey,setPlayerSortKey]=useState("profit");
+  const [playerMinBets,setPlayerMinBets]=useState(1);
   const [testingOpen,setTestingOpen]=useState(false);
   const [testFilter,setTestFilter]=useState({games:new Set(["CS2","LoL","Dota2","Valorant"]),headshot:"all",live:"all",oddsMin:"",oddsMax:""});
   const [candleTF,setCandleTF]=useState("day");
@@ -6084,7 +6085,7 @@ export default function App(){
                         var showAll=playersExpanded===game;
                         var allP=gs.allPlayers||[];
                         var sortKey=playerSortKey||"profit";
-                        var sorted=[...allP].sort(function(a,b){
+                        var sorted=[...allP].filter(function(p){return p.count>=playerMinBets;}).sort(function(a,b){
                           if(sortKey==="profit")return b.profit-a.profit;
                           if(sortKey==="count")return b.count-a.count;
                           if(sortKey==="wr")return (b.count>0?b.won/b.count:0)-(a.count>0?a.won/a.count:0);
@@ -6097,12 +6098,20 @@ export default function App(){
                             <span>🏆 {showAll?"Top 50":"Top 5"} joueurs</span>
                             <span style={{fontSize:10,color:"#4a5a6e"}}>{showAll?"▲ Réduire":"Voir 50 →"}</span>
                           </div>
-                          {showAll&&<div style={{display:"flex",gap:5,padding:"8px 14px",borderBottom:"1px solid #1F2937"}}>
+                          {showAll&&<div style={{display:"flex",gap:5,padding:"8px 14px",borderBottom:"1px solid #1F2937",flexWrap:"wrap",alignItems:"center"}}>
                             {[{k:"profit",l:"Profit"},{k:"count",l:"Paris"},{k:"wr",l:"WR%"}].map(function(s){
                               var on=sortKey===s.k;
                               return <button key={s.k} onClick={function(e){e.stopPropagation();setPlayerSortKey(s.k);}}
                                 style={{padding:"3px 10px",borderRadius:6,border:"1px solid "+(on?"rgba(0,230,118,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(0,230,118,.1)":"transparent",color:on?"#00E676":"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{s.l}</button>;
                             })}
+                            <div style={{width:1,height:14,background:"rgba(255,255,255,.08)",margin:"0 2px"}}/>
+                            <span style={{fontSize:9,color:"#4a5a6e",fontWeight:600}}>Min paris:</span>
+                            {[1,3,5,10,20].map(function(n){
+                              var on=playerMinBets===n;
+                              return <button key={n} onClick={function(e){e.stopPropagation();setPlayerMinBets(n);}}
+                                style={{padding:"3px 9px",borderRadius:6,border:"1px solid "+(on?"rgba(167,139,250,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.12)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{n}+</button>;
+                            })}
+                            <span style={{fontSize:10,color:"#4a5a6e",marginLeft:4}}>{sorted.length} joueurs</span>
                           </div>}
                           {displayList.map(function(p,i){
                             var wr=p.count>0?(p.won/p.count*100).toFixed(0):0;
