@@ -1421,7 +1421,7 @@ function NavIconSuivi({active}){
 }
 
 // ── SelectionModal — sélection multiple + date + tournoi ────────────────────
-function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={}}){
+function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={},onAfterPush}){
   const [selected,setSelected]=useState(new Set());
   const [newDate,setNewDate]=useState("");
   const [newTournament,setNewTournament]=useState("");
@@ -1475,7 +1475,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       return nb;
     });
     setBets(updated);
-    if(supaPushBets&&toSync.length)supaPushBets(toSync).catch(function(){});
+    if(supaPushBets&&toSync.length){supaPushBets(toSync).catch(function(){});if(onAfterPush)onAfterPush();}
     try{var stored=JSON.parse(localStorage.getItem("v7_bets")||"[]");var ids=new Set(toSync.map(function(b){return b.id;}));var merged=stored.map(function(b){return ids.has(b.id)?toSync.find(function(n){return n.id===b.id;})||b:b;});localStorage.setItem("v7_bets",JSON.stringify(merged));}catch(e){}
     setSaving(false);
     setSelected(new Set());
@@ -1585,6 +1585,13 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
               var g=e[0],ts=e[1];
               if(!byGame[g])byGame[g]=new Set();
               (ts||[]).forEach(function(t){byGame[g].add(t);});
+            });
+            // Add leagues as tournament options for LoL/Valorant
+            bets.forEach(function(b){
+              if((b.game==="LoL"||b.game==="Valorant")&&b.league&&!b.tournament){
+                if(!byGame[b.game])byGame[b.game]=new Set();
+                byGame[b.game].add(b.league);
+              }
             });
             const options=[];
             (games.length>0?games:Object.keys(byGame)).forEach(function(g){(byGame[g]||new Set()).forEach(function(t){options.push({game:g,tournament:t});});});
@@ -1721,7 +1728,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
       </div>
       {selected.size>0&&<div style={{padding:"8px 14px",flexShrink:0,borderBottom:"1px solid #1F2937"}}>
         {!canApply&&<div style={{fontSize:11,color:"#fbbf24",marginBottom:6,textAlign:"center"}}>Choisis une date, un tournoi ou un bookmaker ci-dessus</div>}
-        <button onClick={apply} disabled={!canApply||saving} style={{width:"100%",padding:"12px",background:canApply?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.05)",border:canApply?"none":"1px solid rgba(255,255,255,.1)",borderRadius:12,color:canApply?"#fff":"#4a5a6e",fontWeight:800,fontSize:14,cursor:canApply?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1}}>{saving?"Enregistrement...":"Appliquer aux "+selected.size+" paris"}</button>
+        <button onClick={apply} disabled={!canApply||saving} style={{width:"100%",padding:"12px",background:canApply?"linear-gradient(135deg,#F97316,#EA580C)":"rgba(255,255,255,.05)",border:canApply?"none":"1px solid rgba(255,255,255,.1)",borderRadius:12,color:canApply?"#fff":"#4a5a6e",fontWeight:800,fontSize:14,cursor:canApply?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1,boxShadow:canApply?"0 4px 16px rgba(249,115,22,.3)":"none"}}>{saving?"Enregistrement...":"✓ Appliquer aux "+selected.size+" paris"}</button>
       </div>}
       <div style={{flex:"1 1 0",overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"8px 14px 80px",minHeight:0}}>
         {allMonthKeys.map(mk=>{
@@ -1784,6 +1791,7 @@ function MesParisView({
   fPlayer,setFPlayer,
   sortByMap,setSortByMap,
   savedTourneys={},
+  onMarkPush,
 }){
   const [collapsedMonths,setCollapsedMonths]=useState(new Set());
   const [selectOpen,setSelectOpen]=useState(false); // separate overlay
@@ -1826,7 +1834,7 @@ function MesParisView({
     if(fDuel&&!(b.description&&b.description.includes("Duel")))return false;
     if(fLive&&!b.isLive)return false;
     if(fHeadshot&&!b.isHeadshot)return false;
-    if(fTourneys&&fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
+    if(fTourneys&&fTourneys.size>0&&!fTourneys.has(effectiveTournament(b)||"Hors tournoi"))return false;
     if(fPlayer&&!(b.player||"").toLowerCase().includes(fPlayer.toLowerCase()))return false;
     if(fMinPP!==""&&(b.ppEdge==null||b.ppEdge<parseFloat(fMinPP)))return false;
     if(fMaxPP!==""&&(b.ppEdge==null||b.ppEdge>parseFloat(fMaxPP)))return false;
@@ -2044,6 +2052,7 @@ function MesParisView({
           BK_LOGOS={BK_LOGOS}
           bkPhotos={bkPhotos}
           savedTourneys={savedTourneys}
+          onAfterPush={function(){if(onMarkPush)onMarkPush();}}
         />
       )}
     </div>
@@ -2377,6 +2386,8 @@ export default function App(){
 
   // ── Supabase: pull — Supabase est la source de vérité ───────────────────
   const pullFromSupa=useCallback(async function(silentArg){
+    // Block pull for 15s after a push to avoid race condition
+    if(Date.now()-lastPushRef.current<15000){setSyncing(false);return;}
     setSyncing(true);
     try{
       // 1. Pousser les overrides locaux vers Supabase (changements manuels en attente)
@@ -3769,6 +3780,7 @@ export default function App(){
             fPlayer={fPlayer} setFPlayer={setFPlayer}
             sortByMap={sortByMap} setSortByMap={setSortByMap}
             savedTourneys={savedTourneys}
+            onMarkPush={function(){lastPushRef.current=Date.now();}}
           />
         )}
         {view==="calendrier"&&(
@@ -4241,11 +4253,11 @@ export default function App(){
             {(()=>{
               const tourneysForGame=[...new Set(
                 bets
-                  .filter(b=>(fGames.length===0||fGames.includes(b.game))&&b.tournament)
-                  .map(b=>b.tournament)
+                  .filter(b=>(fGames.length===0||fGames.includes(b.game))&&effectiveTournament(b))
+                  .map(b=>effectiveTournament(b))
               )];
-              // Add "Hors tournoi" if any bets have no tournament
-              const hasHors=bets.filter(b=>(fGames.length===0||fGames.includes(b.game))&&!b.tournament).length>0;
+              // Add "Hors tournoi" if any bets have no effective tournament
+              const hasHors=bets.filter(b=>(fGames.length===0||fGames.includes(b.game))&&!effectiveTournament(b)).length>0;
               const allOptions=[...(hasHors?["Hors tournoi"]:[]),...tourneysForGame];
               if(allOptions.length===0)return null;
               const toggleT=(t)=>setFTourneys(prev=>{
@@ -6526,7 +6538,7 @@ export default function App(){
           let betsF=settled.filter(b=>(!game||b.game===game)&&(!league||b.league===league));
           if(filterType==="role")betsF=betsF.filter(b=>(b.role||"Inconnu")===filterValue);
           if(filterType==="map")betsF=betsF.filter(b=>(b.mapTag||"Sans tag")===filterValue);
-          if(filterType==="tourney")betsF=betsF.filter(b=>(b.tournament||"Hors tournoi")===filterValue);
+          if(filterType==="tourney")betsF=betsF.filter(b=>(effectiveTournament(b)||"Hors tournoi")===filterValue);
           if(filterType==="bk")betsF=betsF.filter(b=>(b.bookmaker||"Autre")===filterValue);
           if(filterType==="kill")betsF=betsF.filter(b=>b.description&&b.description.includes(filterValue));
           if(filterType==="player")betsF=betsF.filter(b=>b.player&&b.player.toLowerCase()===filterValue.toLowerCase());
@@ -9240,6 +9252,14 @@ function PPRatioCompiler(){
       </div>}
     </div>
   );
+}
+
+
+// ── effectiveTournament: league counts as tournament for LoL/Valorant ────────
+function effectiveTournament(b){
+  if(b.tournament)return b.tournament;
+  if((b.game==="LoL"||b.game==="Valorant")&&b.league)return b.league;
+  return null;
 }
 
 }
