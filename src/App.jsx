@@ -2374,6 +2374,7 @@ export default function App(){
   // Auto-push : déclenché seulement par un vrai changement local (ajout/modif/suppression)
   // NE PAS push après un pull (sinon boucle infinie ordi↔iOS)
   const lastPulledRef=useRef(null);
+  const lastPushRef=useRef(0);
   useEffect(()=>{
     if(!loaded)return;
     // Éviter de re-pusher ce qu on vient de puller
