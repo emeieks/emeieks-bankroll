@@ -1588,9 +1588,10 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
             });
             // Add leagues as tournament options for LoL/Valorant
             bets.forEach(function(b){
-              if((b.game==="LoL"||b.game==="Valorant")&&b.league&&!b.tournament){
+              var effT=effectiveTournament(b);
+              if((b.game==="LoL"||b.game==="Valorant")&&effT&&!b.tournament){
                 if(!byGame[b.game])byGame[b.game]=new Set();
-                byGame[b.game].add(b.league);
+                byGame[b.game].add(effT);
               }
             });
             const options=[];
@@ -1834,7 +1835,7 @@ function MesParisView({
     if(fDuel&&!(b.description&&b.description.includes("Duel")))return false;
     if(fLive&&!b.isLive)return false;
     if(fHeadshot&&!b.isHeadshot)return false;
-    if(fTourneys&&fTourneys.size>0&&!fTourneys.has(effectiveTournament(b)||"Hors tournoi"))return false;
+    if(fTourneys&&fTourneys.size>0&&!fTourneys.has(effectiveTournament(b,allPlayers)||"Hors tournoi"))return false;
     if(fPlayer&&!(b.player||"").toLowerCase().includes(fPlayer.toLowerCase()))return false;
     if(fMinPP!==""&&(b.ppEdge==null||b.ppEdge<parseFloat(fMinPP)))return false;
     if(fMaxPP!==""&&(b.ppEdge==null||b.ppEdge>parseFloat(fMaxPP)))return false;
@@ -4253,11 +4254,11 @@ export default function App(){
             {(()=>{
               const tourneysForGame=[...new Set(
                 bets
-                  .filter(b=>(fGames.length===0||fGames.includes(b.game))&&effectiveTournament(b))
-                  .map(b=>effectiveTournament(b))
+                  .filter(b=>(fGames.length===0||fGames.includes(b.game))&&effectiveTournament(b,allPlayers))
+                  .map(b=>effectiveTournament(b,allPlayers))
               )];
               // Add "Hors tournoi" if any bets have no effective tournament
-              const hasHors=bets.filter(b=>(fGames.length===0||fGames.includes(b.game))&&!effectiveTournament(b)).length>0;
+              const hasHors=bets.filter(b=>(fGames.length===0||fGames.includes(b.game))&&!effectiveTournament(b,allPlayers)).length>0;
               const allOptions=[...(hasHors?["Hors tournoi"]:[]),...tourneysForGame];
               if(allOptions.length===0)return null;
               const toggleT=(t)=>setFTourneys(prev=>{
@@ -6538,7 +6539,7 @@ export default function App(){
           let betsF=settled.filter(b=>(!game||b.game===game)&&(!league||b.league===league));
           if(filterType==="role")betsF=betsF.filter(b=>(b.role||"Inconnu")===filterValue);
           if(filterType==="map")betsF=betsF.filter(b=>(b.mapTag||"Sans tag")===filterValue);
-          if(filterType==="tourney")betsF=betsF.filter(b=>(effectiveTournament(b)||"Hors tournoi")===filterValue);
+          if(filterType==="tourney")betsF=betsF.filter(b=>(effectiveTournament(b,allPlayers)||"Hors tournoi")===filterValue);
           if(filterType==="bk")betsF=betsF.filter(b=>(b.bookmaker||"Autre")===filterValue);
           if(filterType==="kill")betsF=betsF.filter(b=>b.description&&b.description.includes(filterValue));
           if(filterType==="player")betsF=betsF.filter(b=>b.player&&b.player.toLowerCase()===filterValue.toLowerCase());
@@ -9256,9 +9257,17 @@ function PPRatioCompiler(){
 
 
 // ── effectiveTournament: league counts as tournament for LoL/Valorant ────────
-function effectiveTournament(b){
+function effectiveTournament(b,allPlayers){
   if(b.tournament)return b.tournament;
-  if((b.game==="LoL"||b.game==="Valorant")&&b.league)return b.league;
+  // For LoL/Valorant: use league from bet, or from player data
+  if(b.game==="LoL"||b.game==="Valorant"){
+    if(b.league)return b.league;
+    // Try to get league from allPlayers
+    if(allPlayers&&b.player){
+      var pi=allPlayers[(b.player||"").toLowerCase().trim()];
+      if(pi&&pi.league)return pi.league;
+    }
+  }
   return null;
 }
 
