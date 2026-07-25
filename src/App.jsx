@@ -1075,6 +1075,22 @@ function normalizeRole(r,game){
 }
 
 
+// ── effectiveTournament: league counts as tournament for LoL/Valorant ────────
+function effectiveTournament(b,allPlayers){
+  if(b.tournament)return b.tournament;
+  // For LoL/Valorant: use league from bet, or from player data
+  if(b.game==="LoL"||b.game==="Valorant"){
+    if(b.league)return b.league;
+    // Try to get league from allPlayers
+    if(allPlayers&&b.player){
+      var pi=allPlayers[(b.player||"").toLowerCase().trim()];
+      if(pi&&pi.league)return pi.league;
+    }
+  }
+  return null;
+}
+
+
 // ── LeagueLogo component ────────────────────────────────────────────────────
 function LeagueLogo({league,size=18}){
   if(!league)return null;
@@ -9261,19 +9277,7 @@ function PPRatioCompiler(){
 }
 
 
-// ── effectiveTournament: league counts as tournament for LoL/Valorant ────────
-function effectiveTournament(b,allPlayers){
-  if(b.tournament)return b.tournament;
-  // For LoL/Valorant: use league from bet, or from player data
-  if(b.game==="LoL"||b.game==="Valorant"){
-    if(b.league)return b.league;
-    // Try to get league from allPlayers
-    if(allPlayers&&b.player){
-      var pi=allPlayers[(b.player||"").toLowerCase().trim()];
-      if(pi&&pi.league)return pi.league;
-    }
-  }
-  return null;
-}
+
+
 
 }
