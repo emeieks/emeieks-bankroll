@@ -2741,7 +2741,12 @@ export default function App(){
       // Tournois pour ce jeu
       const tm={};
       gb.forEach(b=>{
-        const k=b.tournament||"Hors tournoi";
+        var effT=b.tournament;
+        if(!effT&&(b.game==="LoL"||b.game==="Valorant")){
+          effT=b.league;
+          if(!effT&&allPlayers){var pi=allPlayers[(b.player||"").toLowerCase().trim()];if(pi&&pi.league)effT=pi.league;}
+        }
+        const k=effT||"Hors tournoi";
         if(!tm[k])tm[k]={name:k,count:0,won:0,profit:0,staked:0};
         tm[k].count++;tm[k].profit+=b.profit;tm[k].staked+=b.stake;
         if(b.status==="won")tm[k].won++;
@@ -2789,7 +2794,7 @@ export default function App(){
       result[game]={count:gb.length,won,profit,staked,oddsSum,wr:gb.length>0?won/gb.length*100:0,roi:staked>0?profit/staked*100:0,avgOdds:gb.length>0?oddsSum/gb.length:0,topP,worstP,allPlayers:allPSorted,roles,leagues,maps,tourneys,kills:killsArr,hs:hsArr,liveS,nonLiveS,hsS,hsNonS,duels:duelsArr,overS,underS};
     });
     return result;
-  },[settledFiltered]);
+  },[settledFiltered,allPlayers]);
 
   const {bestMonth,worstMonth}=useMemo(function(){
     const byMo={};
@@ -2890,7 +2895,7 @@ export default function App(){
       if(fMapFilter&&fMapFilter!=="all"&&(b.mapTag||"none")!==fMapFilter)return false;
       if(fRole!=="All"&&normalizeRole(b.role||"")!==normalizeRole(fRole,b.game))return false;
       if(fLeague!=="All"&&b.league!==fLeague)return false;
-      if(fTourneys.size>0&&!fTourneys.has(b.tournament||"Hors tournoi"))return false;
+      if(fTourneys.size>0&&!fTourneys.has(effectiveTournament(b,allPlayers)||"Hors tournoi"))return false;
       return true;
     }).sort((a,b2)=>{
       if(a.status==="pending"&&b2.status!=="pending")return -1;
