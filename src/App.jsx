@@ -6521,34 +6521,35 @@ export default function App(){
             {/* ── COTES PAR TRANCHES ── */}
             {oddsRangeStats.length>0&&(
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Cotes par tranches</div>
-                <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                  {(()=>{
-                    const maxCount = Math.max(...oddsRangeStats.map(r=>r.count));
-                    return oddsRangeStats.map(r=>{
-                      const barW = maxCount>0 ? (r.count/maxCount*100) : 0;
-                      const profitColor = r.profit>=0?"#22C55E":"#EF4444";
-                      const wrColor = r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
-                      return(
-                        <div key={r.label} style={{background:"rgba(255,255,255,.02)",borderRadius:10,padding:"9px 12px",border:"1px solid rgba(255,255,255,.04)"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8",minWidth:60}}>{r.label}</span>
-                              <span style={{fontSize:10,color:"#4a5a6e"}}>{r.count} paris</span>
-                            </div>
-                            <div style={{display:"flex",alignItems:"center",gap:10}}>
-                              <span style={{fontSize:11,fontWeight:700,color:wrColor}}>{r.wr.toFixed(0)}%</span>
-                              <span style={{fontSize:12,fontWeight:700,color:profitColor,minWidth:52,textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
-                            </div>
-                          </div>
-                          <div style={{height:3,borderRadius:2,background:"rgba(255,255,255,.04)",overflow:"hidden"}}>
-                            <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"rgba(34,197,94,.5)":"rgba(239,68,68,.5)",borderRadius:2,transition:"width .4s ease"}}/>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
+                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Cotes par tranches</div>
+                {/* En-têtes colonnes */}
+                <div style={{display:"grid",gridTemplateColumns:"72px 1fr 44px 58px",gap:"0 8px",padding:"0 4px",marginBottom:4}}>
+                  <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Tranche</span>
+                  <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Paris</span>
+                  <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:"center"}}>WR%</span>
+                  <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:"right"}}>Profit</span>
                 </div>
+                {(()=>{
+                  const maxCount=Math.max(...oddsRangeStats.map(r=>r.count));
+                  return oddsRangeStats.map(r=>{
+                    const barW=maxCount>0?(r.count/maxCount*100):0;
+                    const profitColor=r.profit>=0?"#22C55E":"#EF4444";
+                    const wrColor=r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
+                    return(
+                      <div key={r.label} style={{display:"grid",gridTemplateColumns:"72px 1fr 44px 58px",gap:"0 8px",alignItems:"center",padding:"5px 4px",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+                        <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+                            <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"#22C55E":"#EF4444",borderRadius:2,opacity:.7}}/>
+                          </div>
+                          <span style={{fontSize:9,color:"#4a5a6e",whiteSpace:"nowrap",minWidth:32}}>{r.count}p</span>
+                        </div>
+                        <span style={{fontSize:12,fontWeight:700,color:wrColor,textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
+                        <span style={{fontSize:12,fontWeight:700,color:profitColor,textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -6630,13 +6631,22 @@ export default function App(){
                   <div className="stat-bloc">
                     {displayList.map((p,i)=>{
                       const wr=p.count>0?(p.won/p.count*100):0;
+                      const matchedPlayer=allPlayers[p.player.toLowerCase()]||Object.values(allPlayers).find(pl=>pl.name&&pl.name.toLowerCase()===p.player.toLowerCase())||null;
+                      const avatarSrc=matchedPlayer?getAvatarSrc(matchedPlayer):null;
                       return(
                         <div key={p.player} className="stat-row">
                           <div style={{display:"flex",alignItems:"center",gap:9}}>
-                            <span style={{fontSize:11,color:i<3?"#fbbf24":"#6B7280",fontWeight:700,width:20,textAlign:"center"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
-                            <GameLogo game={p.game} size={16}/>
+                            <span style={{fontSize:11,color:i<3?"#fbbf24":"#6B7280",fontWeight:700,width:18,textAlign:"center",flexShrink:0}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
+                            {/* Photo joueur */}
+                            {avatarSrc
+                              ?<img src={avatarSrc} alt={p.player} style={{width:34,height:34,borderRadius:"50%",objectFit:"cover",border:"1.5px solid rgba(167,139,250,.3)",flexShrink:0}}/>
+                              :<div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0,textTransform:"uppercase"}}>{p.player[0]}</div>
+                            }
                             <div>
-                              <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
+                              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                <span style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</span>
+                                <GameLogo game={p.game} size={14}/>
+                              </div>
                               <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {wr.toFixed(0)}% WR</div>
                             </div>
                           </div>
@@ -6656,35 +6666,49 @@ export default function App(){
             })()}
 
             {statsTab==="tournois"&&(()=>{
-              const tm={};
+              const byGame={};
               ALL_GAMES.forEach(game=>{
                 const gs=perGameStats[game];
                 if(!gs)return;
-                (gs.tourneys||[]).forEach(t=>{
-                  const k=t.name;
-                  if(!tm[k])tm[k]={name:k,game,count:0,won:0,profit:0,staked:0};
-                  tm[k].count+=t.count;tm[k].won+=t.won;tm[k].profit+=t.profit;tm[k].staked+=t.staked;
-                });
+                const list=(gs.tourneys||[]).map(t=>({...t,game}));
+                if(list.length>0)byGame[game]=list.sort((a,b)=>b.profit-a.profit);
               });
-              const sorted=Object.values(tm).sort((a,b)=>b.profit-a.profit);
-              if(sorted.length===0)return <div style={{fontSize:12,color:"#4a5a6e",textAlign:"center",padding:"30px 0"}}>Aucun tournoi pour l'instant</div>;
+              const hasAny=Object.keys(byGame).length>0;
+              if(!hasAny)return <div style={{fontSize:12,color:"#4a5a6e",textAlign:"center",padding:"30px 0"}}>Aucun tournoi pour l'instant</div>;
+              const GAME_ACCENT={CS2:"#F97316",Dota2:"#EF4444",LoL:"#A78BFA",Valorant:"#EF4444"};
               return(
-                <div className="stat-bloc">
-                  {sorted.map(t=>{
-                    const wr=t.count>0?(t.won/t.count*100):0;
-                    const roi=t.staked>0?(t.profit/t.staked*100):0;
+                <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                  {ALL_GAMES.filter(g=>byGame[g]).map(game=>{
+                    const list=byGame[game];
+                    const accent=GAME_ACCENT[game]||"#A78BFA";
                     return(
-                      <div key={t.name} className="stat-row">
-                        <div style={{display:"flex",alignItems:"center",gap:9}}>
-                          {t.name==="Hors tournoi"?<span style={{fontSize:14}}>📅</span>:<LeagueLogo league={t.name} size={20}/>}
-                          <div>
-                            <div style={{fontWeight:700,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
-                            <div style={{fontSize:10,color:"#6B7280"}}>{t.count} paris · {wr.toFixed(0)}% WR</div>
-                          </div>
+                      <div key={game}>
+                        {/* Header jeu */}
+                        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8,paddingBottom:6,borderBottom:`1.5px solid ${accent}33`}}>
+                          <GameLogo game={game} size={16}/>
+                          <span style={{fontSize:12,fontWeight:800,color:accent,textTransform:"uppercase",letterSpacing:1}}>{game}</span>
+                          <span style={{fontSize:10,color:"#4a5a6e",marginLeft:"auto"}}>{list.reduce((s,t)=>s+t.count,0)} paris</span>
                         </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}$</div>
-                          <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
+                        <div className="stat-bloc">
+                          {list.map(t=>{
+                            const wr=t.count>0?(t.won/t.count*100):0;
+                            const roi=t.staked>0?(t.profit/t.staked*100):0;
+                            return(
+                              <div key={t.name} className="stat-row">
+                                <div style={{display:"flex",alignItems:"center",gap:9}}>
+                                  {t.name==="Hors tournoi"?<span style={{fontSize:14}}>📅</span>:<LeagueLogo league={t.name} size={20}/>}
+                                  <div>
+                                    <div style={{fontWeight:700,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
+                                    <div style={{fontSize:10,color:"#6B7280"}}>{t.count} paris · {wr.toFixed(0)}% WR</div>
+                                  </div>
+                                </div>
+                                <div style={{textAlign:"right"}}>
+                                  <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}$</div>
+                                  <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
