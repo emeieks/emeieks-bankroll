@@ -711,51 +711,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 });
 
 
-// ── BulkRoleChanger ──────────────────────────────────────────────────────────
-function BulkRoleChanger({allPlayers,setPlayers,onSaveBulk}){
-  const [fromRole,setFromRole]=useState("");
-  const [toRole,setToRole]=useState("");
-  const STD_ROLES=["Top","Jungle","Mid","Bot","Support","Top Laner","Jungler","Mid Laner","Bot Laner"];
-  const allRoles=[...new Set(Object.values(allPlayers).filter(function(p){return p.game==="LoL"&&p.role;}).map(function(p){return p.role;}))].sort();
-  const affected=fromRole?Object.entries(allPlayers).filter(function(e){var p=e[1];return p.role===fromRole;}).length:0;
-  function applyBulk(){
-    if(!fromRole||!toRole||fromRole===toRole)return;
-    var updated=Object.assign({},allPlayers);
-    Object.entries(allPlayers).forEach(function(e){
-      var k=e[0],p=e[1];
-      if(p.role===fromRole){updated[k]=Object.assign({},p,{role:toRole});}
-    });
-    setPlayers(updated);
-    if(onSaveBulk)onSaveBulk(fromRole,toRole,updated);
-    setFromRole("");setToRole("");
-  }
-  if(allRoles.length===0)return null;
-  return(
-    <div style={{marginTop:10,background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.2)",borderRadius:12,padding:"10px 12px"}}>
-      <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>⚡ Changer rôle en masse</div>
-      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-        <select value={fromRole} onChange={function(e){setFromRole(e.target.value);}}
-          style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 8px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}>
-          <option value="">De (rôle actuel)…</option>
-          {allRoles.map(function(r){
-            var cnt=Object.values(allPlayers).filter(function(p){return p.role===r&&p.game==="LoL";}).length;
-            return <option key={r} value={r}>{r} ({cnt})</option>;
-          })}
-        </select>
-        <span style={{color:"#4a5a6e",fontSize:14}}>→</span>
-        <select value={toRole} onChange={function(e){setToRole(e.target.value);}}
-          style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 8px",color:"#c4b5fd",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}>
-          <option value="">Vers…</option>
-          {STD_ROLES.map(function(r){return <option key={r} value={r}>{r}</option>;})}
-        </select>
-        <button onClick={applyBulk} disabled={!fromRole||!toRole||fromRole===toRole}
-          style={{padding:"6px 14px",borderRadius:8,border:"none",background:(!fromRole||!toRole||fromRole===toRole)?"rgba(255,255,255,.05)":"rgba(124,58,237,.5)",color:(!fromRole||!toRole||fromRole===toRole)?"#4a5a6e":"#fff",fontWeight:700,fontSize:12,cursor:(!fromRole||!toRole||fromRole===toRole)?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
-          Appliquer ({affected})
-        </button>
-      </div>
-    </div>
-  );
-}
+
 
 // ── PlayerSearchPanel ──────────────────────────────────────────────────────
 function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blacklist,toggleBlacklist,onSaveBulk}){
@@ -811,7 +767,7 @@ function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blackl
         </div>
       )}
       {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
-{!pSearch&&<BulkRoleChanger allPlayers={allPlayers} setPlayers={setPlayers} onSaveBulk={onSaveBulk}/>}
+
 
     </div>
   );
@@ -1286,14 +1242,35 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
             <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:"auto"}}>
               <span style={{fontSize:11,color:"#fbbf24"}}>🏆</span>
               <select
-                value={bet.tournament||""}
-                onChange={function(e){if(onSave)onSave(Object.assign({},bet,{tournament:e.target.value,updatedAt:Date.now()}));}}
+                value={bet.tournament||bet.league||""}
+                onChange={function(e){
+                  const val=e.target.value;
+                  // Si c'est une ligue (LCK/LEC/etc), met à jour league et vide tournament
+                  const lolLeagues=["LCK","LEC","LCS","LPL"];
+                  const valLeagues=["Americas","EMEA","Pacific"];
+                  const isLeague=lolLeagues.includes(val)||valLeagues.includes(val);
+                  if(isLeague){if(onSave)onSave(Object.assign({},bet,{league:val,tournament:"",updatedAt:Date.now()}));}
+                  else{if(onSave)onSave(Object.assign({},bet,{tournament:val,updatedAt:Date.now()}));}
+                }}
                 style={{background:"rgba(18,12,30,.98)",border:"1px solid rgba(251,191,36,.3)",borderRadius:7,padding:"3px 8px",color:"#fbbf24",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",minWidth:90,maxWidth:180,cursor:"pointer"}}>
                 <option value="">— Aucun —</option>
+                {/* Ligues selon le jeu */}
+                {(bet.game==="LoL")&&<optgroup label="Ligues">
+                  {["LCK","LEC","LCS","LPL"].map(l=><option key={l} value={l}>{l}</option>)}
+                </optgroup>}
+                {(bet.game==="Valorant")&&<optgroup label="Ligues">
+                  {["Americas","EMEA","Pacific"].map(l=><option key={l} value={l}>{l}</option>)}
+                </optgroup>}
+                {/* Tournois du suivi */}
                 {((savedTourneys&&savedTourneys[bet.game]&&savedTourneys[bet.game].length>0)
                   ?(savedTourneys[bet.game])
-                  :(allTourneys||[]).filter(function(t){return !bet.game||(bets&&bets.some?true:true);}))
-                  .map(function(t){return <option key={t} value={t}>{t}</option>;})}
+                  :(allTourneys||[]))
+                  .length>0&&<optgroup label="Tournois">
+                  {((savedTourneys&&savedTourneys[bet.game]&&savedTourneys[bet.game].length>0)
+                    ?(savedTourneys[bet.game])
+                    :(allTourneys||[]))
+                    .map(function(t){return <option key={t} value={t}>{t}</option>;})}
+                </optgroup>}
               </select>
             </div>
           </div>
@@ -5582,8 +5559,8 @@ export default function App(){
                 const ev=Math.round(((wr/100)*avgOdds-1)*1000)/10;
                 return{cnt:t.cnt,wr,roi,profit:t.profit,staked:t.staked,avgOdds,avgStake,ev};
               };
-              const roiColor=r=>r>=15?"#00E676":r>=5?"#a3e4bc":r>=-5?"#fbbf24":r>=-15?"#f97316":"#f87171";
-              const roiBg=r=>r>=15?"rgba(110,231,160,.1)":r>=5?"rgba(110,231,160,.05)":r>=-5?"rgba(251,191,36,.05)":r>=-15?"rgba(249,115,22,.06)":"rgba(248,113,113,.08)";
+              const roiColor=r=>r>=15?"#00E676":r>=5?"#4ade80":r>=-5?"#fbbf24":r>=-15?"#f97316":"#f87171";
+              const roiBg=r=>r>=15?"rgba(0,230,118,.18)":r>=5?"rgba(74,222,128,.1)":r>=-5?"rgba(251,191,36,.08)":r>=-15?"rgba(249,115,22,.12)":"rgba(248,113,113,.14)";
               function snapE(e){return Math.round(e*4)/4;}
               function snapE6(e){return Math.round(e*6)/6;}
               const fmt=(v,unit)=>(v>=0?"+":"-")+Math.abs(unit==="$"?Math.round(v):unit==="%"?Math.abs(v).toFixed(1):Math.abs(v).toFixed(2))+(unit||"");
@@ -5631,7 +5608,7 @@ export default function App(){
                 if(!s)return null;
                 return(
                   <div onClick={onClick} style={{display:"grid",gridTemplateColumns:GRIDCOLS,padding:"9px 14px",borderBottom:noLine?"none":"1px solid #0d1628",alignItems:"center",background:roiBg(s.roi),cursor:onClick?"pointer":"default"}}>
-                    <span style={{fontSize:isEdge?15:13,fontWeight:900,color:s.roi>=0?"#c4b5fd":"#9a7aae"}}>{label}</span>
+                    <span style={{fontSize:isEdge?15:13,fontWeight:900,color:"#FFFFFF"}}>{label}</span>
                     <span style={{fontSize:11,color:"#5a6a7e",textAlign:"center"}}>{s.cnt}</span>
                     <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgOdds.toFixed(2)}</span>
                     <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#00E676":s.wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{s.wr}%</span>
@@ -5776,7 +5753,11 @@ export default function App(){
                 return(
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {gamesInMt.map(game=>{
-                      const gameEdges=Object.keys(matrix[mt][game]).map(Number).sort(ppSortByCount?function(a,b){return (matrix[mt][game][b]&&matrix[mt][game][b].count||0)-(matrix[mt][game][a]&&matrix[mt][game][a].count||0);}:function(a,b){return b-a;});
+                      const gameEdges=Object.keys(matrix[mt][game]).map(Number).sort(function(a,b){
+                        const cntA=matrix[mt][game][a.toFixed(2)]?matrix[mt][game][a.toFixed(2)].cnt:0;
+                        const cntB=matrix[mt][game][b.toFixed(2)]?matrix[mt][game][b.toFixed(2)].cnt:0;
+                        return cntB-cntA;
+                      });
                       if(gameEdges.length===0)return null;
                       const tot=mkS();
                       gameEdges.forEach(e=>{const d=matrix[mt][game][e.toFixed(2)];if(d){tot.cnt+=d.cnt;tot.won+=d.won;tot.profit+=d.profit;tot.staked+=d.staked;tot.oddsSum+=d.oddsSum;}});
@@ -6086,10 +6067,61 @@ export default function App(){
                     );
                   })()}
                   <div style={{display:"flex",gap:5,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-                    {[{k:"Map 1+2",l:"Map 1+2"},{k:"Map 3",l:"Map 3"},{k:"Map 1+2+3",l:"Map 1+2+3"},{k:"heat",l:"🔥 Heatmap"}].map(t=>(
+                    {[{k:"combiner",l:"⚡ Combiner"},{k:"Map 1+2",l:"Map 1+2"},{k:"Map 3",l:"Map 3"},{k:"Map 1+2+3",l:"Map 1+2+3"},{k:"heat",l:"🔥 Heatmap"}].map(t=>(
                       <button key={t.k} onClick={()=>{setPpStatsTab(t.k);setPpStatsDrill(null);}} style={tabStyle(ppStatsTab===t.k)}>{t.l}</button>
                     ))}
                   </div>
+                  {ppStatsTab==="combiner"&&(()=>{
+                    // Combine Map 1+2 + Map 3 stats per game per edge
+                    const combined={};
+                    GAMES.forEach(game=>{
+                      combined[game]={};
+                      ["Map 1+2","Map 3"].forEach(mt=>{
+                        if(!matrix[mt]||!matrix[mt][game])return;
+                        Object.entries(matrix[mt][game]).forEach(([eKey,d])=>{
+                          if(!combined[game][eKey])combined[game][eKey]=mkS();
+                          if(d){combined[game][eKey].cnt+=d.cnt;combined[game][eKey].won+=d.won;combined[game][eKey].profit+=d.profit;combined[game][eKey].staked+=d.staked;combined[game][eKey].oddsSum+=d.oddsSum;}
+                        });
+                      });
+                    });
+                    const gamesWithData=GAMES.filter(g=>Object.keys(combined[g]||{}).length>0);
+                    if(gamesWithData.length===0)return <div style={{padding:24,textAlign:"center",color:"#3a4a5e",fontSize:13}}>Aucun pari Map 1+2 ou Map 3</div>;
+                    return(
+                      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                        {gamesWithData.map(game=>{
+                          const gameEdges=Object.keys(combined[game]).map(Number).sort((a,b)=>combined[game][b.toFixed(2)].cnt-combined[game][a.toFixed(2)].cnt);
+                          const tot=mkS();
+                          gameEdges.forEach(e=>{const d=combined[game][e.toFixed(2)];if(d){tot.cnt+=d.cnt;tot.won+=d.won;tot.profit+=d.profit;tot.staked+=d.staked;tot.oddsSum+=d.oddsSum;}});
+                          const gT=calc(tot);
+                          return(
+                            <div key={game} style={{background:"rgba(6,10,20,.99)",border:"1px solid rgba(139,92,246,.2)",borderRadius:16,overflow:"hidden"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:"rgba(139,92,246,.06)",borderBottom:"1px solid rgba(139,92,246,.15)"}}>
+                                <GameLogo game={game} size={20}/>
+                                <span style={{fontSize:14,fontWeight:800,color:"#e0e8f0"}}>{game}</span>
+                                <span style={{fontSize:10,color:"#5a6a7e",marginLeft:4}}>Map 1+2 + Map 3</span>
+                                {gT&&<>
+                                  <span style={{marginLeft:"auto",fontSize:11,color:"#5a6a7e"}}>{gT.cnt}p</span>
+                                  <span style={{fontSize:12,fontWeight:700,color:roiColor(gT.roi),marginLeft:6}}>{fmt(gT.roi,"%")} ROI</span>
+                                  <span style={{fontSize:12,fontWeight:800,color:gT.profit>=0?"#00E676":"#f87171",marginLeft:6}}>{fmt(gT.profit,"$")}</span>
+                                </>}
+                              </div>
+                              <ColHeaders/>
+                              {gameEdges.map((e,i)=>{
+                                const s=calc(combined[game][e.toFixed(2)]);
+                                if(!s)return null;
+                                return(
+                                  <div key={e}>
+                                    <StatRow s={s} label={"+"+e.toFixed(2)} isEdge={true} noLine={i===gameEdges.length-1}/>
+                                    {i<gameEdges.length-1&&<div style={{height:1,background:"#0d1628"}}/>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                   {ppStatsTab==="Map 1+2"&&(<MapTab mt="Map 1+2"/>)}
                   {ppStatsTab==="Map 3"&&(<MapTab mt="Map 3"/>)}
                   {ppStatsTab==="Map 1+2+3"&&(<MapTab mt="Map 1+2+3"/>)}
@@ -8126,7 +8158,7 @@ export default function App(){
 
             {/* ── PP BOARD ANALYZER ── */}
             <PPReferenceTable/>
-            <PPRatioCompiler/>
+
 
           </div>
         )}
