@@ -449,6 +449,10 @@ const BK_LOGOS={
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const ALL_GAMES=["LoL","Dota2","CS2","Valorant"];
+const LEAGUES_BY_GAME={
+  LoL:["LCK","LEC","LCS","LPL"],
+  Valorant:["Americas","EMEA","Pacific"],
+};
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
 const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
@@ -2380,6 +2384,9 @@ export default function App(){
     // Éviter de re-pusher ce qu on vient de puller
     const key=bets.length+":"+( bets[0]&&bets[0].id||"" );
     if(lastPulledRef.current===key)return;
+    // Éviter de re-pusher si on vient de pousser via addBet (race condition iOS)
+    const timeSincePush=Date.now()-lastPushRef.current;
+    if(timeSincePush<5000)return;
     const t=setTimeout(async()=>{
       try{
         // Appliquer les overrides avant push pour garantir que les dates/bookmakers
@@ -3102,7 +3109,14 @@ export default function App(){
       ppLine:ppFinalLine||null,
       ppEdge:ppEdge,
     };
-    setBets(b=>[newBet,...b]);
+    setBets(b=>{
+      const updated=[newBet,...b];
+      // Write to localStorage immediately to prevent stale reads
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
+      return updated;
+    });
+    // Mark push time to block auto-pull for 15s
+    lastPushRef.current=Date.now();
     // Push immédiat vers Supabase (pas d'attente du debounce)
     supaPushBets([newBet]).catch(function(){});
     const addedBK=form.bookmaker;
@@ -3136,7 +3150,12 @@ export default function App(){
       updatedAt:now+i,
     }));
     const sessionBK=form.bookmaker;
-    setBets(b=>[...newBets,...b]);
+    setBets(b=>{
+      const updated=[...newBets,...b];
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
+      return updated;
+    });
+    lastPushRef.current=Date.now();
     // Push immédiat vers Supabase
     supaPushBets(newBets).catch(function(){});
     setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
@@ -4113,10 +4132,6 @@ export default function App(){
             <div className="add-card">
               <span className="add-label">Ligue</span>
               {(()=>{
-                const LEAGUES_BY_GAME={
-                  LoL:["LCK","LEC","LCS","LPL"],
-                  Valorant:["Americas","EMEA","Pacific"],
-                };
                 let leagues=[];
                 if(fGames.length>0){
                   fGames.forEach(g=>{if(LEAGUES_BY_GAME[g])leagues=[...new Set([...leagues,...LEAGUES_BY_GAME[g]])]});
@@ -4626,9 +4641,15 @@ export default function App(){
             {!duelMode&&<>
             {/* ── 2. JOUEUR ── */}
             <div style={{background:"linear-gradient(180deg,rgba(14,20,38,.98),rgba(8,12,24,.99))",borderRadius:18,border:"1px solid rgba(139,92,246,.2)",padding:"11px 12px 10px",marginBottom:8,boxShadow:"0 8px 24px rgba(0,0,0,.2)"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:700,color:"#ccd3e4",letterSpacing:.2,marginBottom:10}}>
-                
-                Joueur
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:700,color:"#ccd3e4",letterSpacing:.2}}>
+                  
+                  Joueur
+                </div>
+                <button onClick={()=>{setPform({name:"",game:"LoL",league:"",role:"",team:""});setModalPlayer(true);}}
+                  style={{padding:"3px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#6B7280",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+                  + Ajouter un joueur
+                </button>
               </div>
               {!form.autoInfo&&(
                 <div style={{background:"rgba(8,14,28,0.9)",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"2px 10px"}}>
@@ -8292,10 +8313,17 @@ export default function App(){
               <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Ajouter un joueur</div>
               <input className="ifield" placeholder="Pseudo (ex: faker)" value={pform.name} onChange={e=>setPform(p=>({...p,name:e.target.value}))} style={{marginBottom:8}}/>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                <select className="ifield" value={pform.game} onChange={e=>setPform(p=>({...p,game:e.target.value,role:""}))}>
+                <select className="ifield" value={pform.game} onChange={e=>setPform(p=>({...p,game:e.target.value,role:"",league:""}))}>
                   {ALL_GAMES.map(g=><option key={g} value={g}>{g}</option>)}
                 </select>
-                <input className="ifield" placeholder="Ligue (opt.)" value={pform.league} onChange={e=>setPform(p=>({...p,league:e.target.value}))}/>
+                {LEAGUES_BY_GAME[pform.game]?(
+                  <select className="ifield" value={pform.league} onChange={e=>setPform(p=>({...p,league:e.target.value}))}>
+                    <option value="">Ligue...</option>
+                    {LEAGUES_BY_GAME[pform.game].map(l=><option key={l} value={l}>{l}</option>)}
+                  </select>
+                ):(
+                  <input className="ifield" placeholder="Ligue (opt.)" value={pform.league} onChange={e=>setPform(p=>({...p,league:e.target.value}))}/>
+                )}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
                 <select className="ifield" value={pform.role} onChange={e=>setPform(p=>({...p,role:e.target.value}))}>
@@ -8338,9 +8366,17 @@ export default function App(){
 
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                 <select className="ifield" value={editingPlayer.data.game}
-                  onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,game:e.target.value,role:""}}))}>{ALL_GAMES.map(g=><option key={g} value={g}>{g}</option>)}</select>
-                <input className="ifield" placeholder="Ligue (opt.)" value={editingPlayer.data.league||""}
-                  onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,league:e.target.value}}))}/>
+                  onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,game:e.target.value,role:"",league:""}}))}>{ALL_GAMES.map(g=><option key={g} value={g}>{g}</option>)}</select>
+                {LEAGUES_BY_GAME[editingPlayer.data.game]?(
+                  <select className="ifield" value={editingPlayer.data.league||""}
+                    onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,league:e.target.value}}))}>
+                    <option value="">Ligue...</option>
+                    {LEAGUES_BY_GAME[editingPlayer.data.game].map(l=><option key={l} value={l}>{l}</option>)}
+                  </select>
+                ):(
+                  <input className="ifield" placeholder="Ligue (opt.)" value={editingPlayer.data.league||""}
+                    onChange={e=>setEditingPlayer(ep=>({...ep,data:{...ep.data,league:e.target.value}}))}/>
+                )}
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
                 <select className="ifield" value={editingPlayer.data.role||""}
