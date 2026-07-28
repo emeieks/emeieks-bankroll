@@ -2198,6 +2198,7 @@ export default function App(){
   const [ppCalcMt,setPpCalcMt]=useState("Map 1+2");
   const [ppCalcOu,setPpCalcOu]=useState("Over");
   const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
+  const [statsTab,setStatsTab]=useState("apercu"); // apercu | jeux | joueurs | tournois | plus
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [statsChartMode,setStatsChartMode]=useState("line");
   const [playersExpanded,setPlayersExpanded]=useState(null);
@@ -5330,23 +5331,23 @@ export default function App(){
         {/* ── STATS ── */}
         {view==="statistiques"&&(
           <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:1.5,color:"#dce8ff"}}>Statistiques</div>
-              <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                <button onClick={()=>setTestingOpen(v=>!v)}
-                style={{background:testingOpen?"rgba(251,191,36,.15)":"transparent",border:"1px solid "+(testingOpen?"rgba(251,191,36,.4)":"rgba(255,255,255,.08)"),borderRadius:8,padding:"5px 9px",color:testingOpen?"#fbbf24":"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:700}}>
-                🧪 Test
-              </button>
-              <button onClick={exportCSV} style={{background:"transparent",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"5px 9px",color:"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600}}>CSV</button>
-                <button onClick={exportJSON} style={{background:"transparent",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"5px 9px",color:"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600}}>💾</button>
-                <label style={{background:"transparent",border:"1px solid rgba(255,255,255,.08)",borderRadius:8,padding:"5px 9px",color:"#4a5a6e",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:10,fontWeight:600}}>
-                  📂<input type="file" accept=".json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
-                </label>
-              </div>
+            <div style={{fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:1.5,color:"#dce8ff",marginBottom:14}}>Statistiques</div>
+
+            {/* ── TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS ── */}
+            <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+              {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"plus",l:"Plus"}].map(t=>{
+                const on=statsTab===t.k;
+                return(
+                  <button key={t.k} onClick={()=>setStatsTab(t.k)}
+                    style={{background:"none",border:"none",padding:"0 0 10px",color:on?"#A78BFA":"#6B7280",fontSize:12,fontWeight:800,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap",borderBottom:"2px solid "+(on?"#A78BFA":"transparent"),transition:"all .15s"}}>
+                    {t.l}
+                  </button>
+                );
+              })}
             </div>
 
             {/* ── TESTING PANEL ── */}
-            {testingOpen&&(
+            {statsTab==="plus"&&testingOpen&&(
               <div style={{marginBottom:14,padding:12,background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:14}}>
                 <div style={{fontSize:10,color:"#fbbf24",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:10}}>🧪 Mode Test — filtre les stats</div>
                 {/* Games */}
@@ -5405,6 +5406,23 @@ export default function App(){
               </div>
             )}
 
+            {statsTab==="plus"&&(
+              <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
+                <button onClick={()=>setTestingOpen(v=>!v)}
+                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:testingOpen?"rgba(251,191,36,.1)":"#111827",border:"1px solid "+(testingOpen?"rgba(251,191,36,.4)":"#1F2937"),borderRadius:12,padding:"12px 14px",color:testingOpen?"#fbbf24":"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
+                  🧪 Mode Test
+                  <span style={{fontSize:11,opacity:.6}}>{testingOpen?"▲":"▼"}</span>
+                </button>
+                <button onClick={exportCSV} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}>📊 Exporter en CSV</button>
+                <button onClick={exportJSON} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}>💾 Exporter en JSON</button>
+                <label style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
+                  📂 Importer un JSON
+                  <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
+                </label>
+              </div>
+            )}
+
+            {statsTab==="apercu"&&<>
             {settled.length>0&&(()=>{
               const totalStaked=settledFiltered.reduce((s,b)=>s+(b.stake||0),0);
               const globalROI=totalStaked>0?(totalProfit/totalStaked*100):0;
@@ -6079,7 +6097,9 @@ export default function App(){
                 </div>
               );
             })()}
+            </>}
 
+            {statsTab==="jeux"&&<>
             {/* ── PAR JEU — accordéons regroupés ── */}
             {ALL_GAMES.map(game=>{
               const gs=perGameStats[game];
@@ -6568,9 +6588,112 @@ export default function App(){
                 </div>
               </div>
             )}
+            </>}
+
+            {statsTab==="joueurs"&&(()=>{
+              const pm={};
+              ALL_GAMES.forEach(game=>{
+                const gs=perGameStats[game];
+                if(!gs)return;
+                (gs.allPlayers||[]).forEach(p=>{
+                  const k=p.player;
+                  if(!pm[k])pm[k]={player:k,game,count:0,won:0,profit:0};
+                  pm[k].count+=p.count;pm[k].won+=p.won;pm[k].profit+=p.profit;
+                });
+              });
+              const all=Object.values(pm).filter(p=>p.count>=playerMinBets);
+              const sortKey=playerSortKey||"profit";
+              const sorted=[...all].sort((a,b)=>{
+                if(sortKey==="count")return b.count-a.count;
+                if(sortKey==="wr")return (b.count>0?b.won/b.count:0)-(a.count>0?a.won/a.count:0);
+                return b.profit-a.profit;
+              });
+              if(sorted.length===0)return <div style={{fontSize:12,color:"#4a5a6e",textAlign:"center",padding:"30px 0"}}>Aucun joueur pour l'instant</div>;
+              const showAll=playersExpanded==="ALL_TAB";
+              const displayList=showAll?sorted.slice(0,100):sorted.slice(0,20);
+              return(
+                <div>
+                  <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+                    {[{k:"profit",l:"Profit"},{k:"count",l:"Paris"},{k:"wr",l:"WR%"}].map(s=>{
+                      const on=sortKey===s.k;
+                      return <button key={s.k} onClick={()=>setPlayerSortKey(s.k)}
+                        style={{padding:"5px 12px",borderRadius:8,border:"1px solid "+(on?"rgba(167,139,250,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.12)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{s.l}</button>;
+                    })}
+                    <div style={{width:1,height:14,background:"rgba(255,255,255,.08)",margin:"0 2px"}}/>
+                    <span style={{fontSize:9,color:"#4a5a6e",fontWeight:600}}>Min paris:</span>
+                    {[1,3,5,10,20].map(n=>{
+                      const on=playerMinBets===n;
+                      return <button key={n} onClick={()=>setPlayerMinBets(n)}
+                        style={{padding:"4px 10px",borderRadius:7,border:"1px solid "+(on?"rgba(167,139,250,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.12)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{n}+</button>;
+                    })}
+                  </div>
+                  <div className="stat-bloc">
+                    {displayList.map((p,i)=>{
+                      const wr=p.count>0?(p.won/p.count*100):0;
+                      return(
+                        <div key={p.player} className="stat-row">
+                          <div style={{display:"flex",alignItems:"center",gap:9}}>
+                            <span style={{fontSize:11,color:i<3?"#fbbf24":"#6B7280",fontWeight:700,width:20,textAlign:"center"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
+                            <GameLogo game={p.game} size={16}/>
+                            <div>
+                              <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
+                              <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {wr.toFixed(0)}% WR</div>
+                            </div>
+                          </div>
+                          <span style={{fontWeight:700,fontSize:13,color:p.profit>=0?"#22C55E":"#EF4444"}}>{p.profit>=0?"+":""}{p.profit.toFixed(0)}$</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {sorted.length>20&&(
+                    <button onClick={()=>setPlayersExpanded(showAll?null:"ALL_TAB")}
+                      style={{width:"100%",marginTop:8,padding:"9px",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                      {showAll?"▲ Réduire":"Voir plus →"}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {statsTab==="tournois"&&(()=>{
+              const tm={};
+              ALL_GAMES.forEach(game=>{
+                const gs=perGameStats[game];
+                if(!gs)return;
+                (gs.tourneys||[]).forEach(t=>{
+                  const k=t.name;
+                  if(!tm[k])tm[k]={name:k,game,count:0,won:0,profit:0,staked:0};
+                  tm[k].count+=t.count;tm[k].won+=t.won;tm[k].profit+=t.profit;tm[k].staked+=t.staked;
+                });
+              });
+              const sorted=Object.values(tm).sort((a,b)=>b.profit-a.profit);
+              if(sorted.length===0)return <div style={{fontSize:12,color:"#4a5a6e",textAlign:"center",padding:"30px 0"}}>Aucun tournoi pour l'instant</div>;
+              return(
+                <div className="stat-bloc">
+                  {sorted.map(t=>{
+                    const wr=t.count>0?(t.won/t.count*100):0;
+                    const roi=t.staked>0?(t.profit/t.staked*100):0;
+                    return(
+                      <div key={t.name} className="stat-row">
+                        <div style={{display:"flex",alignItems:"center",gap:9}}>
+                          {t.name==="Hors tournoi"?<span style={{fontSize:14}}>📅</span>:<LeagueLogo league={t.name} size={20}/>}
+                          <div>
+                            <div style={{fontWeight:700,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
+                            <div style={{fontSize:10,color:"#6B7280"}}>{t.count} paris · {wr.toFixed(0)}% WR</div>
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontWeight:700,fontSize:13,color:t.profit>=0?"#22C55E":"#EF4444"}}>{t.profit>=0?"+":""}{t.profit.toFixed(0)}$</div>
+                          <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
-
 
 
         {/* ── STATS DRILL-DOWN ── */}
