@@ -453,6 +453,28 @@ const LEAGUES_BY_GAME={
   LoL:["LCK","LEC","LCS","LPL"],
   Valorant:["Americas","EMEA","Pacific"],
 };
+
+// ── LoL Role Logos ──────────────────────────────────────────────────────────
+const LOL_ROLE_TOP="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzFhMTQxMCIvPjxwb2x5Z29uIHBvaW50cz0iMCwwIDQyLDAgNDIsMTIgMTIsMTIgMTIsNDIgMCw0MiIgZmlsbD0iI0M4OUIzQyIvPjxwb2x5Z29uIHBvaW50cz0iMTAwLDEwMCA1OCwxMDAgNTgsODggODgsODggODgsNTggMTAwLDU4IiBmaWxsPSIjMmEyNDIwIi8+PHBvbHlnb24gcG9pbnRzPSIxMDAsMCAxMDAsNDIgODgsNDIgODgsMTIgNTgsMTIgNTgsMCIgZmlsbD0iIzJhMjQyMCIvPjxwb2x5Z29uIHBvaW50cz0iMCwxMDAgMCw1OCAxMiw1OCAxMiw4OCA0Miw4OCA0MiwxMDAiIGZpbGw9IiMyYTI0MjAiLz48cmVjdCB4PSIyMiIgeT0iMjIiIHdpZHRoPSI1NiIgaGVpZ2h0PSI1NiIgZmlsbD0iI0M4OUIzQyIvPjxyZWN0IHg9IjM0IiB5PSIzNCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMWExNDEwIi8+PC9zdmc+";
+const LOL_ROLE_MID="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzFhMTQxMCIvPjxyZWN0IHg9IjYiIHk9IjYiIHdpZHRoPSI4OCIgaGVpZ2h0PSI4OCIgZmlsbD0iIzJhMjQyMCIvPjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9IjY4IiBoZWlnaHQ9IjY4IiBmaWxsPSIjMWExNDEwIi8+PHBvbHlnb24gcG9pbnRzPSIxNiw2MiA2MiwxNiA4NCwxNiA4NCwzOCAzOCw4NCAxNiw4NCIgZmlsbD0iI0M4OUIzQyIvPjwvc3ZnPg==";
+const LOL_ROLE_BOT="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzFhMTQxMCIvPjxwb2x5Z29uIHBvaW50cz0iMCwwIDMwLDAgMzAsMTIgMTIsMTIgMTIsMzAgMCwzMCIgZmlsbD0iI0M4OUIzQyIvPjxwb2x5Z29uIHBvaW50cz0iMTAwLDAgMTAwLDMwIDg4LDMwIDg4LDEyIDcwLDEyIDcwLDAiIGZpbGw9IiNDODlCM0MiLz48cG9seWdvbiBwb2ludHM9IjAsMTAwIDAsNzAgMTIsNzAgMTIsODggMzAsODggMzAsMTAwIiBmaWxsPSIjQzg5QjNDIi8+PHBvbHlnb24gcG9pbnRzPSIxMDAsMTAwIDcwLDEwMCA3MCw4OCA4OCw4OCA4OCw3MCAxMDAsNzAiIGZpbGw9IiNDODlCM0MiLz48cG9seWdvbiBwb2ludHM9IjUwLDE0IDg2LDUwIDUwLDg2IDE0LDUwIiBmaWxsPSIjQzg5QjNDIi8+PHBvbHlnb24gcG9pbnRzPSI1MCwyOCA3Miw1MCA1MCw3MiAyOCw1MCIgZmlsbD0iIzFhMTQxMCIvPjwvc3ZnPg==";
+const LOL_ROLE_SUP="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzBhMGEwYSIvPjxwb2x5Z29uIHBvaW50cz0iNTAsMTAgNjQsMjYgNTAsMzYgMzYsMjYiIGZpbGw9IiNDODlCM0MiLz48cG9seWdvbiBwb2ludHM9IjM2LDI2IDYsMjAgNiw0MiAzNiw0OCIgZmlsbD0iI0M4OUIzQyIvPjxwb2x5Z29uIHBvaW50cz0iNjQsMjYgOTQsMjAgOTQsNDIgNjQsNDgiIGZpbGw9IiNDODlCM0MiLz48cG9seWdvbiBwb2ludHM9IjYsMjAgMTgsMzQgMjIsNDIgNiw0MiIgZmlsbD0iIzhhNjgyMCIvPjxwb2x5Z29uIHBvaW50cz0iOTQsMjAgODIsMzQgNzgsNDIgOTQsNDIiIGZpbGw9IiM4YTY4MjAiLz48cG9seWdvbiBwb2ludHM9IjQ0LDM2IDU2LDM2IDUzLDYwIDUwLDY0IDQ3LDYwIiBmaWxsPSIjQzg5QjNDIi8+PHBvbHlnb24gcG9pbnRzPSI0NCwzNiA1NiwzNiA1Myw0NCA0Nyw0NCIgZmlsbD0iIzhhNjgyMCIvPjxwb2x5Z29uIHBvaW50cz0iNDcsNjAgNTMsNjAgNTAsODAiIGZpbGw9IiNDODlCM0MiLz48L3N2Zz4=";
+const LOL_ROLE_JUN="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzBhMGEwYSIvPjxwYXRoIGQ9Ik01MCA4MiBDNDIgNjggMzAgNTQgMzggMzYgQzM4IDUwIDQ0IDU0IDQ4IDQ0IEM1MiAzNCA0NiAyMCA1MCAxMCBDNTQgMjAgNTYgMzQgNTIgNDQgQzU2IDM4IDU0IDI4IDYwIDIyIEM1OCAzNCA1NCA0NiA1OCA1NiBDNjIgNDggNjQgMzYgNjggMjggQzcwIDM2IDY2IDQ2IDcwIDUyIEM2OCA0MiA3NiAzOCA4MCA2MiBMNjggODIgWiIgZmlsbD0iI0M4OUIzQyIvPjxwYXRoIGQ9Ik0zMiA4MiBDMjYgNjggMTggNTIgMjYgMzYgQzI2IDQ2IDMwIDUwIDM0IDQyIEMzNiAzNCAzNCAyMiAzNiAxNCBDNDAgMjIgMzggMzQgMzYgNDIgQzQwIDM2IDQwIDI2IDQ0IDIyIEM0MiAzMCAzOCA0MCA0MCA0OCBDNDQgNDAgNDggMzAgNTAgMjIgQzUwIDMwIDQ0IDQyIDQ0IDUyIEM0OCA0NCA1MiAzNCA1NiAyNCBDNTggMzIgNTIgNDQgNTQgNTAgTDQ0IDgyIFoiIGZpbGw9IiM4YTY4MjAiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==";
+function getLolRoleLogo(role){
+  if(!role)return null;
+  const r=role.toLowerCase().replace(/[^a-z]/g,"");
+  if(r==="top"||r==="toplaner")return LOL_ROLE_TOP;
+  if(r==="mid"||r==="midlaner"||r==="midlane")return LOL_ROLE_MID;
+  if(r==="bot"||r==="botlaner"||r==="botlane"||r==="adc")return LOL_ROLE_BOT;
+  if(r==="support"||r==="sup")return LOL_ROLE_SUP;
+  if(r==="jungle"||r==="jungler"||r==="jun"||r==="jgl")return LOL_ROLE_JUN;
+  return null;
+}
+function RoleLogo({role,size=16}){
+  const src=getLolRoleLogo(role);
+  if(!src)return null;
+  return <img src={src} alt={role} style={{width:size,height:size,borderRadius:3,objectFit:"contain",flexShrink:0}}/>;
+}
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
 const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
@@ -1154,6 +1176,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
             {/* L1 : Joueur — Kills — Map */}
             <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"wrap"}}>
               <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
+              {bet.game==="LoL"&&bet.role&&<RoleLogo role={bet.role} size={14}/>}
               {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#00E676",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.2)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
               {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
               {bet.isHeadshot&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7,verticalAlign:"middle"}}/>}
@@ -2702,7 +2725,7 @@ export default function App(){
       // Top joueurs
       const pm={};
       gb.forEach(b=>{
-        if(!pm[b.player])pm[b.player]={player:b.player,count:0,won:0,profit:0};
+        if(!pm[b.player])pm[b.player]={player:b.player,count:0,won:0,profit:0,role:b.role||""};
         pm[b.player].count++;pm[b.player].profit+=b.profit;
         if(b.status==="won")pm[b.player].won++;
       });
@@ -5604,6 +5627,20 @@ export default function App(){
                 </div>
               );
 
+              // ── Profit formaté : signe fixe + chiffres tabulaires + $ aligné ──
+              const FmtProfit=({v,fontSize=12,fontWeight=800})=>{
+                const pos=v>=0;
+                const color=pos?"#00E676":"#f87171";
+                const abs=Math.abs(Math.round(v));
+                return(
+                  <span style={{display:"inline-flex",alignItems:"baseline",fontVariantNumeric:"tabular-nums",fontFeatureSettings:'"tnum"',fontSize,fontWeight,color,justifyContent:"flex-end",letterSpacing:"-0.2px"}}>
+                    <span style={{display:"inline-block",width:"0.65em",textAlign:"center",flexShrink:0}}>{pos?"+":"−"}</span>
+                    <span style={{minWidth:"3ch",textAlign:"right"}}>{abs.toLocaleString("fr-CA")}</span>
+                    <span style={{opacity:.7,marginLeft:1,fontSize:fontSize*0.85}}>$</span>
+                  </span>
+                );
+              };
+
               const StatRow=({s,label,isEdge,onClick,noLine})=>{
                 if(!s)return null;
                 return(
@@ -5615,7 +5652,7 @@ export default function App(){
                     <span style={{fontSize:11,fontWeight:700,color:roiColor(s.roi),textAlign:"center"}}>{fmt(s.roi,"%")}</span>
                     <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#00E676":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
                     <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
-                    <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#00E676":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
+                    <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit}/></div>
                   </div>
                 );
               };
@@ -5698,7 +5735,7 @@ export default function App(){
                               <span style={{fontSize:11,fontWeight:700,color:roiColor(s.roi),textAlign:"center"}}>{fmt(s.roi,"%")}</span>
                               <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#00E676":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
                               <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
-                              <span style={{fontSize:12,fontWeight:800,color:s.profit>=0?"#00E676":"#f87171",textAlign:"right"}}>{fmt(s.profit,"$")}</span>
+                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit} fontSize={12}/></div>
                               <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{(ppBetsDrill&&ppBetsDrill.key)===l.ou+l.bkLine+l.ppLine?"▲":"▼"}</span>
                             </div>
                             {/* Inline bets view */}
@@ -5729,7 +5766,7 @@ export default function App(){
                                         </div>
                                       </div>
                                       <div style={{flexShrink:0,textAlign:"right"}}>
-                                        <div style={{fontWeight:800,fontSize:13,color:isWon?"#00E676":"#f87171"}}>{profitVal>=0?"+":""}{profitVal.toFixed(0)}$</div>
+                                        <FmtProfit v={profitVal} fontSize={13}/>
                                         <div style={{fontSize:9,color:isWon?"rgba(110,231,160,.5)":"rgba(248,113,113,.5)",fontWeight:700}}>{isWon?"✓ WIN":"✗ LOSS"}</div>
                                       </div>
                                     </div>
@@ -5771,7 +5808,7 @@ export default function App(){
                               <span style={{marginLeft:"auto",fontSize:11,color:"#5a6a7e"}}>{gT.cnt}p</span>
                               <span style={{fontSize:12,fontWeight:700,color:roiColor(gT.roi),marginLeft:6}}>{fmt(gT.roi,"%")} ROI</span>
                               <span style={{fontSize:12,fontWeight:800,color:gT.ev>=0?"#00E676":"#f87171",marginLeft:6}}>{fmt(gT.ev,"%")} EV</span>
-                              <span style={{fontSize:12,fontWeight:800,color:gT.profit>=0?"#00E676":"#f87171",marginLeft:6}}>{fmt(gT.profit,"$")}</span>
+                              <FmtProfit v={gT.profit} fontSize={12}/>
                             </>}
                           </div>
                           <ColHeaders/>
@@ -5818,7 +5855,7 @@ export default function App(){
                                             <span style={{fontSize:10,color:"#4a5a6e"}}>{ls.cnt} paris</span>
                                             <span style={{fontSize:11,fontWeight:700,color:roiColor(ls.roi),marginLeft:"auto"}}>{fmt(ls.roi,"%")}</span>
                                             <span style={{fontSize:11,fontWeight:700,color:ls.wr>=55?"#00E676":ls.wr<45?"#f87171":"#9CA3AF"}}>{ls.wr}%</span>
-                                            <span style={{fontSize:12,fontWeight:800,color:ls.profit>=0?"#00E676":"#f87171"}}>{fmt(ls.profit,"$")}</span>
+                                            <FmtProfit v={ls.profit} fontSize={12}/>
                                             <span style={{fontSize:10,color:"#4a5a6e"}}>{isLineDrill?"▲":"▼"}</span>
                                           </div>
                                           {isLineDrill&&lg.bets.length>0&&(
@@ -5847,7 +5884,7 @@ export default function App(){
                                                       </div>
                                                     </div>
                                                     <div style={{flexShrink:0,textAlign:"right"}}>
-                                                      <div style={{fontWeight:800,fontSize:12,color:isWon?"#00E676":"#f87171"}}>{profitVal>=0?"+":""}{profitVal.toFixed(0)}$</div>
+                                                      <FmtProfit v={profitVal} fontSize={12}/>
                                                       <div style={{fontSize:8,color:isWon?"rgba(110,231,160,.5)":"rgba(248,113,113,.5)",fontWeight:700}}>{isWon?"✓ WIN":"✗ LOSS"}</div>
                                                     </div>
                                                   </div>
@@ -6279,6 +6316,7 @@ export default function App(){
                               <div key={r.role} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"role",filterValue:r.role})} style={{cursor:"pointer"}}>
                                 <div>
                                   <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                    {game==="LoL"&&<RoleLogo role={r.role} size={16}/>}
                                     <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB"}}>{r.role}</div>
                                     <span style={{fontSize:10,color:"#4B5563"}}>›</span>
                                   </div>
@@ -6630,7 +6668,7 @@ export default function App(){
                 if(!gs)return;
                 (gs.allPlayers||[]).forEach(p=>{
                   const k=p.player;
-                  if(!pm[k])pm[k]={player:k,game,count:0,won:0,profit:0};
+                  if(!pm[k])pm[k]={player:k,game,count:0,won:0,profit:0,role:p.role||""};
                   pm[k].count+=p.count;pm[k].won+=p.won;pm[k].profit+=p.profit;
                 });
               });
@@ -6678,6 +6716,7 @@ export default function App(){
                               <div style={{display:"flex",alignItems:"center",gap:5}}>
                                 <span style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</span>
                                 <GameLogo game={p.game} size={14}/>
+                                {p.game==="LoL"&&p.role&&<RoleLogo role={p.role} size={13}/>}
                               </div>
                               <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {wr.toFixed(0)}% WR</div>
                             </div>
