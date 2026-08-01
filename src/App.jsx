@@ -2205,7 +2205,8 @@ export default function App(){
   const [playerSortKey,setPlayerSortKey]=useState("profit");
   const [playerMinBets,setPlayerMinBets]=useState(1);
   const [testingOpen,setTestingOpen]=useState(false);
-  const [testFilter,setTestFilter]=useState({games:new Set(["CS2","LoL","Dota2","Valorant"]),headshot:"all",live:"all",oddsMin:"",oddsMax:""});
+  const DEFAULT_TEST_FILTER={games:new Set(["CS2","LoL","Dota2","Valorant"]),headshot:"all",live:"all",oddsMin:"",oddsMax:"",hideTourneys:new Set(),hideLeagues:new Set(),hideRoles:new Set(),ppEdgeMin:"",ppEdgeMax:"",overUnder:"all"};
+  const [testFilter,setTestFilter]=useState(DEFAULT_TEST_FILTER);
   const [candleTF,setCandleTF]=useState("day");
   const [betGroupMode,setBetGroupMode]=useState("jour"); // jour | semaine
   const [homePeriod,setHomePeriod]=useState(null);
@@ -2583,8 +2584,15 @@ export default function App(){
     if(testFilter.headshot==="no")base=base.filter(b=>!b.isHeadshot);
     if(testFilter.live==="yes")base=base.filter(b=>b.isLive);
     if(testFilter.live==="no")base=base.filter(b=>!b.isLive);
+    if(testFilter.overUnder==="over")base=base.filter(b=>b.overUnder==="Over");
+    if(testFilter.overUnder==="under")base=base.filter(b=>b.overUnder==="Under");
     if(testFilter.oddsMin)base=base.filter(b=>(b.odds||0)>=parseFloat(testFilter.oddsMin));
     if(testFilter.oddsMax)base=base.filter(b=>(b.odds||0)<=parseFloat(testFilter.oddsMax));
+    if(testFilter.hideTourneys&&testFilter.hideTourneys.size>0)base=base.filter(b=>!testFilter.hideTourneys.has(b.tournament||"Hors tournoi"));
+    if(testFilter.hideLeagues&&testFilter.hideLeagues.size>0)base=base.filter(b=>!testFilter.hideLeagues.has(b.league||""));
+    if(testFilter.hideRoles&&testFilter.hideRoles.size>0)base=base.filter(b=>!testFilter.hideRoles.has(b.role||""));
+    if(testFilter.ppEdgeMin)base=base.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(testFilter.ppEdgeMin));
+    if(testFilter.ppEdgeMax)base=base.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(testFilter.ppEdgeMax));
     return base;
   },[settled,statsPeriod,testFilter]);
 
@@ -5347,64 +5355,171 @@ export default function App(){
             </div>
 
             {/* ── TESTING PANEL ── */}
-            {statsTab==="plus"&&testingOpen&&(
-              <div style={{marginBottom:14,padding:12,background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:14}}>
-                <div style={{fontSize:10,color:"#fbbf24",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:10}}>🧪 Mode Test — filtre les stats</div>
-                {/* Games */}
-                <div style={{marginBottom:8}}>
-                  <div style={{fontSize:9,color:"#6a5a3e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Jeux</div>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                    {["CS2","LoL","Dota2","Valorant"].map(g=>{
-                      const on=testFilter.games.has(g);
-                      return(
-                        <button key={g} onClick={()=>setTestFilter(f=>{const ng=new Set(f.games);on?ng.delete(g):ng.add(g);return{...f,games:ng};})}
-                          style={{display:"flex",alignItems:"center",gap:5,padding:"5px 11px",borderRadius:8,border:"1px solid "+(on?"rgba(251,191,36,.4)":"rgba(255,255,255,.07)"),background:on?"rgba(251,191,36,.1)":"transparent",color:on?"#fbbf24":"#4a5a6e",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                          {on?"☑":"☐"} {g}
-                        </button>
-                      );
-                    })}
-                  </div>
+            {statsTab==="plus"&&testingOpen&&(()=>{
+              // Collect all available values from settled bets
+              const allTourneys=[...new Set(settled.map(b=>b.tournament||"Hors tournoi"))].sort();
+              const allLeagues=[...new Set(settled.map(b=>b.league).filter(Boolean))].sort();
+              const allRoles=[...new Set(settled.map(b=>b.role).filter(Boolean))].sort();
+              const activeCount=[
+                testFilter.games.size<4,
+                testFilter.headshot!=="all",
+                testFilter.live!=="all",
+                testFilter.overUnder!=="all",
+                testFilter.oddsMin||testFilter.oddsMax,
+                testFilter.hideTourneys.size>0,
+                testFilter.hideLeagues.size>0,
+                testFilter.hideRoles.size>0,
+                testFilter.ppEdgeMin||testFilter.ppEdgeMax,
+              ].filter(Boolean).length;
+
+              const Sec=({label,children})=>(
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#8a7a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{label}</div>
+                  {children}
                 </div>
-                {/* Headshot + Live */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                  <div>
-                    <div style={{fontSize:9,color:"#6a5a3e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Headshots</div>
-                    <div style={{display:"flex",gap:4}}>
-                      {[["all","Tous"],["yes",<span style={{display:"flex",alignItems:"center",gap:3}}><img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:11,height:11,objectFit:"contain",filter:"brightness(0) invert(1)"}}/> HS</span>],["no","✗ HS"]].map(([v,l])=>(
-                        <button key={v} onClick={()=>setTestFilter(f=>({...f,headshot:v}))}
-                          style={{flex:1,padding:"4px 0",borderRadius:7,border:"1px solid "+(testFilter.headshot===v?"rgba(251,191,36,.4)":"rgba(255,255,255,.07)"),background:testFilter.headshot===v?"rgba(251,191,36,.1)":"transparent",color:testFilter.headshot===v?"#fbbf24":"#4a5a6e",fontSize:10,fontWeight:testFilter.headshot===v?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>
+              );
+              const chipStyle=(on)=>({padding:"4px 11px",borderRadius:7,border:"1px solid "+(on?"rgba(251,191,36,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(251,191,36,.15)":"rgba(255,255,255,.02)",color:on?"#fbbf24":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"});
+              const redChipStyle=(on)=>({padding:"4px 11px",borderRadius:7,border:"1px solid "+(on?"rgba(239,68,68,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(239,68,68,.12)":"rgba(255,255,255,.02)",color:on?"#f87171":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"});
+              const inputStyle={background:"rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 10px",color:"#fbbf24",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",width:"100%",boxSizing:"border-box"};
+
+              const toggleSet=(key,val)=>setTestFilter(f=>{const s=new Set(f[key]);s.has(val)?s.delete(val):s.add(val);return{...f,[key]:s};});
+
+              return(
+                <div style={{marginBottom:14,padding:14,background:"rgba(20,18,12,.95)",border:"1px solid rgba(251,191,36,.25)",borderRadius:16,backdropFilter:"blur(8px)"}}>
+                  {/* Header */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,paddingBottom:10,borderBottom:"1px solid rgba(251,191,36,.12)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7}}>
+                      <span style={{fontSize:16}}>🧪</span>
+                      <div>
+                        <div style={{fontSize:13,color:"#fbbf24",fontWeight:800,letterSpacing:.5}}>MODE TEST</div>
+                        <div style={{fontSize:10,color:"#8a7a5e"}}>Filtre les stats pour analyser</div>
+                      </div>
+                    </div>
+                    {activeCount>0&&<div style={{background:"rgba(251,191,36,.2)",border:"1px solid rgba(251,191,36,.4)",borderRadius:20,padding:"2px 10px",fontSize:11,color:"#fbbf24",fontWeight:700}}>{activeCount} actif{activeCount>1?"s":""}</div>}
+                  </div>
+
+                  {/* JEUX */}
+                  <Sec label="Jeux inclus">
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                      {["CS2","LoL","Dota2","Valorant"].map(g=>{
+                        const on=testFilter.games.has(g);
+                        return(
+                          <button key={g} onClick={()=>setTestFilter(f=>{const ng=new Set(f.games);on?ng.delete(g):ng.add(g);return{...f,games:ng};})}
+                            style={{...chipStyle(on),display:"flex",alignItems:"center",gap:4}}>
+                            <GameLogo game={g} size={11}/> {on?"✓":""} {g}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Sec>
+
+                  {/* OVER / UNDER */}
+                  <Sec label="Direction">
+                    <div style={{display:"flex",gap:5}}>
+                      {[["all","Tous"],["over","Over"],["under","Under"]].map(([v,l])=>(
+                        <button key={v} onClick={()=>setTestFilter(f=>({...f,overUnder:v}))} style={chipStyle(testFilter.overUnder===v)}>{l}</button>
                       ))}
                     </div>
+                  </Sec>
+
+                  {/* HEADSHOT + LIVE */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                    <Sec label="Headshots">
+                      <div style={{display:"flex",gap:4}}>
+                        {[["all","Tous"],["yes","✓ HS"],["no","✗ HS"]].map(([v,l])=>(
+                          <button key={v} onClick={()=>setTestFilter(f=>({...f,headshot:v}))} style={{...chipStyle(testFilter.headshot===v),flex:1,textAlign:"center",padding:"4px 0"}}>{l}</button>
+                        ))}
+                      </div>
+                    </Sec>
+                    <Sec label="Live">
+                      <div style={{display:"flex",gap:4}}>
+                        {[["all","Tous"],["yes","✓ Live"],["no","✗ Live"]].map(([v,l])=>(
+                          <button key={v} onClick={()=>setTestFilter(f=>({...f,live:v}))} style={{...chipStyle(testFilter.live===v),flex:1,textAlign:"center",padding:"4px 0"}}>{l}</button>
+                        ))}
+                      </div>
+                    </Sec>
                   </div>
-                  <div>
-                    <div style={{fontSize:9,color:"#6a5a3e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Live</div>
-                    <div style={{display:"flex",gap:4}}>
-                      {[["all","Tous"],["yes","✓ Live"],["no","✗ Live"]].map(([v,l])=>(
-                        <button key={v} onClick={()=>setTestFilter(f=>({...f,live:v}))}
-                          style={{flex:1,padding:"4px 0",borderRadius:7,border:"1px solid "+(testFilter.live===v?"rgba(251,191,36,.4)":"rgba(255,255,255,.07)"),background:testFilter.live===v?"rgba(251,191,36,.1)":"transparent",color:testFilter.live===v?"#fbbf24":"#4a5a6e",fontSize:10,fontWeight:testFilter.live===v?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>
-                      ))}
+
+                  {/* COTES */}
+                  <Sec label="Cote">
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <input type="number" inputMode="decimal" step="0.01" placeholder="Min ex: 1.5" value={testFilter.oddsMin} onChange={e=>setTestFilter(f=>({...f,oddsMin:e.target.value}))} style={{...inputStyle,flex:1}}/>
+                      <span style={{color:"#4a5a6e",fontSize:12,flexShrink:0}}>→</span>
+                      <input type="number" inputMode="decimal" step="0.01" placeholder="Max ex: 2.0" value={testFilter.oddsMax} onChange={e=>setTestFilter(f=>({...f,oddsMax:e.target.value}))} style={{...inputStyle,flex:1}}/>
                     </div>
-                  </div>
+                  </Sec>
+
+                  {/* PP EDGE */}
+                  <Sec label="Edge PrizePicks (valeur abs.)">
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
+                      <input type="number" inputMode="decimal" step="0.1" placeholder="Min ex: 0.5" value={testFilter.ppEdgeMin} onChange={e=>setTestFilter(f=>({...f,ppEdgeMin:e.target.value}))} style={{...inputStyle,flex:1}}/>
+                      <span style={{color:"#4a5a6e",fontSize:12,flexShrink:0}}>→</span>
+                      <input type="number" inputMode="decimal" step="0.1" placeholder="Max ex: 3.0" value={testFilter.ppEdgeMax} onChange={e=>setTestFilter(f=>({...f,ppEdgeMax:e.target.value}))} style={{...inputStyle,flex:1}}/>
+                    </div>
+                    <div style={{fontSize:9,color:"#6a5a3e"}}>Laisse vide = garde tous les paris sans PP aussi</div>
+                  </Sec>
+
+                  {/* MASQUER POSITIONS (RÔLES) */}
+                  {(()=>{
+                    const PRESET_ROLES=["Top Laner","Jungler","Mid Laner","Bot Laner","Support","Carry","Offlane","Hard Support","AWPer","Rifler","IGL","Duelist","Initiator","Sentinel","Entry"];
+                    const dataRoles=[...new Set(settled.map(b=>b.role).filter(Boolean))];
+                    const merged=[...new Set([...PRESET_ROLES,...dataRoles])].sort();
+                    return(
+                      <Sec label={`Masquer positions${testFilter.hideRoles.size>0?` (${testFilter.hideRoles.size} masquée${testFilter.hideRoles.size>1?"s":""})`:""}` }>
+                        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                          {merged.map(r=>{
+                            const on=testFilter.hideRoles.has(r);
+                            return(
+                              <button key={r} onClick={()=>toggleSet("hideRoles",r)} style={redChipStyle(on)}>
+                                {on?"🚫 ":""}{r}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </Sec>
+                    );
+                  })()}
+
+                  {/* MASQUER LIGUES */}
+                  {allLeagues.length>0&&(
+                    <Sec label={`Masquer ligues${testFilter.hideLeagues.size>0?` (${testFilter.hideLeagues.size} masquée${testFilter.hideLeagues.size>1?"s":""})`:""}`}>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                        {allLeagues.map(l=>{
+                          const on=testFilter.hideLeagues.has(l);
+                          return(
+                            <button key={l} onClick={()=>toggleSet("hideLeagues",l)} style={redChipStyle(on)}>
+                              {on?"🚫 ":""}{l}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Sec>
+                  )}
+
+                  {/* MASQUER TOURNOIS */}
+                  {allTourneys.length>0&&(
+                    <Sec label={`Masquer tournois${testFilter.hideTourneys.size>0?` (${testFilter.hideTourneys.size} masqué${testFilter.hideTourneys.size>1?"s":""})`:""}`}>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap",maxHeight:140,overflowY:"auto"}}>
+                        {allTourneys.map(t=>{
+                          const on=testFilter.hideTourneys.has(t);
+                          return(
+                            <button key={t} onClick={()=>toggleSet("hideTourneys",t)} style={redChipStyle(on)}>
+                              {on?"🚫 ":""}{t}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </Sec>
+                  )}
+
+                  {/* RESET */}
+                  <button onClick={()=>setTestFilter(DEFAULT_TEST_FILTER)}
+                    style={{marginTop:4,width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(251,191,36,.2)",background:"rgba(251,191,36,.05)",color:"#8a7a5e",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5}}>
+                    ↺ Réinitialiser tous les filtres
+                  </button>
                 </div>
-                {/* Cote range */}
-                <div>
-                  <div style={{fontSize:9,color:"#6a5a3e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>Cote</div>
-                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                    <input type="number" inputMode="decimal" step="0.01" placeholder="Min ex: 1.5" value={testFilter.oddsMin} onChange={e=>setTestFilter(f=>({...f,oddsMin:e.target.value}))}
-                      style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 10px",color:"#fbbf24",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}/>
-                    <span style={{color:"#4a5a6e",fontSize:12}}>→</span>
-                    <input type="number" inputMode="decimal" step="0.01" placeholder="Max ex: 2.0" value={testFilter.oddsMax} onChange={e=>setTestFilter(f=>({...f,oddsMax:e.target.value}))}
-                      style={{flex:1,background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 10px",color:"#fbbf24",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}/>
-                    {(testFilter.oddsMin||testFilter.oddsMax)&&<button onClick={()=>setTestFilter(f=>({...f,oddsMin:"",oddsMax:""}))} style={{background:"transparent",border:"none",color:"#6a5a3e",cursor:"pointer",fontSize:14,padding:0}}>×</button>}
-                  </div>
-                </div>
-                {/* Reset */}
-                <button onClick={()=>setTestFilter({games:new Set(["CS2","LoL","Dota2","Valorant"]),headshot:"all",live:"all",oddsMin:"",oddsMax:""})}
-                  style={{marginTop:10,width:"100%",padding:"7px",borderRadius:9,border:"1px solid rgba(251,191,36,.2)",background:"transparent",color:"#6a5a3e",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  Réinitialiser filtres test
-                </button>
-              </div>
-            )}
+              );
+            })()}
 
             {statsTab==="plus"&&(
               <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
