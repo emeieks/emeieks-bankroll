@@ -858,7 +858,8 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
     const newDesc=ebOU+" "+(ebLine||initKills||bet.description&&bet.description.split(" ").slice(1).join(" ")||"");
     const odds=parseFloat(ebOdds)||bet.odds;
     const stake=parseFloat(ebStake)||bet.stake;
-    onSave({...bet,
+    const now=Date.now();
+    const saved={...bet,
       player:ebPlayer||bet.player,
       bookmaker:ebBK||bet.bookmaker,
       overUnder:ebOU,
@@ -869,7 +870,16 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
       tournament:ebTournament||undefined,
       datetime:ebDatetime||bet.datetime,
       profit:calcProfit(bet.status,stake,odds),
-    });
+      updatedAt:now,  // ← crucial : marque ce pari comme plus récent que Supabase
+    };
+    // Sauvegarder un override pour survivre au prochain pull Supabase
+    try{
+      const ovRaw=localStorage.getItem("v7_overrides");
+      const ov=ovRaw?JSON.parse(ovRaw):{};
+      ov[String(bet.id)]={datetime:saved.datetime,settledAt:saved.settledAt,bookmaker:saved.bookmaker,updatedAt:now};
+      localStorage.setItem("v7_overrides",JSON.stringify(ov));
+    }catch(e){}
+    onSave(saved);
   }
 
   return(
