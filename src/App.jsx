@@ -475,6 +475,18 @@ function RoleLogo({role,size=16}){
   if(!src)return null;
   return <img src={src} alt={role} style={{width:size,height:size,borderRadius:3,objectFit:"contain",flexShrink:0}}/>;
 }
+function FmtProfit({v,fontSize=12,fontWeight=800}){
+  const pos=v>=0;
+  const color=pos?"#00E676":"#f87171";
+  const abs=Math.abs(Math.round(v));
+  return(
+    <span style={{display:"inline-flex",alignItems:"baseline",fontVariantNumeric:"tabular-nums",fontFeatureSettings:'"tnum"',fontSize,fontWeight,color,justifyContent:"flex-end",letterSpacing:"-0.2px"}}>
+      <span style={{display:"inline-block",width:"0.65em",textAlign:"center",flexShrink:0}}>{pos?"+":"−"}</span>
+      <span style={{minWidth:"3ch",textAlign:"right"}}>{abs.toLocaleString("fr-CA")}</span>
+      <span style={{opacity:.7,marginLeft:1,fontSize:fontSize*0.85}}>$</span>
+    </span>
+  );
+}
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
 const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
@@ -2197,7 +2209,8 @@ export default function App(){
   const [ppCalcPp,setPpCalcPp]=useState("");
   const [ppCalcMt,setPpCalcMt]=useState("Map 1+2");
   const [ppCalcOu,setPpCalcOu]=useState("Over");
-  const [statsGameOpen,setStatsGameOpen]=useState({}); // {CS2: true, ...}
+  const [statsGameOpen,setStatsGameOpen]=useState({});
+  const [ouDrill,setOuDrill]=useState(null); // "over" | "under" | null // {CS2: true, ...}
   const [statsTab,setStatsTab]=useState("apercu"); // apercu | jeux | joueurs | tournois | plus
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [statsChartMode,setStatsChartMode]=useState("line");
@@ -2206,7 +2219,8 @@ export default function App(){
   const [playerMinBets,setPlayerMinBets]=useState(1);
   const [testingOpen,setTestingOpen]=useState(false);
   const DEFAULT_TEST_FILTER={games:new Set(["CS2","LoL","Dota2","Valorant"]),headshot:"all",live:"all",oddsMin:"",oddsMax:"",hideTourneys:new Set(),hideLeagues:new Set(),hideRoles:new Set(),ppEdgeMin:"",ppEdgeMax:"",overUnder:"all"};
-  const [testFilter,setTestFilter]=useState(DEFAULT_TEST_FILTER);
+  const [testFilterDraft,setTestFilterDraft]=useState(DEFAULT_TEST_FILTER); // what user edits
+  const [testFilter,setTestFilter]=useState(DEFAULT_TEST_FILTER); // what actually drives stats
   const [candleTF,setCandleTF]=useState("day");
   const [betGroupMode,setBetGroupMode]=useState("jour"); // jour | semaine
   const [homePeriod,setHomePeriod]=useState(null);
@@ -2604,11 +2618,16 @@ export default function App(){
     const overByMap={},underByMap={};
     const overByOdds={};
     const overByBK={},underByBK={};
+    const overByGame={},underByGame={};
     settledFiltered.forEach(b=>{
       const isOver=b.overUnder==="Over",isUnder=b.overUnder==="Under";
       if(!isOver&&!isUnder)return;
       const t=isOver?over:under;
       t.cnt++;t.profit+=b.profit;t.staked+=b.stake;if(b.status==="won")t.won++;
+      // Per-game
+      const g=b.game||"?";
+      if(isOver){if(!overByGame[g])overByGame[g]=mk();const og=overByGame[g];og.cnt++;og.profit+=b.profit;og.staked+=b.stake;if(b.status==="won")og.won++;}
+      if(isUnder){if(!underByGame[g])underByGame[g]=mk();const ug=underByGame[g];ug.cnt++;ug.profit+=b.profit;ug.staked+=b.stake;if(b.status==="won")ug.won++;}
       if(b.isLive){
         const tl=isOver?overLive:underLive;
         tl.cnt++;tl.profit+=b.profit;tl.staked+=b.stake;if(b.status==="won")tl.won++;
@@ -2640,11 +2659,13 @@ export default function App(){
       overLiveS:toS(overLive),underLiveS:toS(underLive),
       overNonLiveS:toS(overNonLive),underNonLiveS:toS(underNonLive),
       overHSS:toS(overHS),underHSS:toS(underHS),
+      overByGame:Object.entries(overByGame).map(([k,v])=>({game:k,...toS(v)})).sort((a,b)=>b.profit-a.profit),
+      underByGame:Object.entries(underByGame).map(([k,v])=>({game:k,...toS(v)})).sort((a,b)=>b.profit-a.profit),
       overByMap:Object.entries(overByMap).map(([k,v])=>({map:k,...toS(v)})).sort((a,b)=>a.map.localeCompare(b.map)),
       overByOdds:oddsOrder.map(k=>overByOdds[k]?{label:k,...toS(overByOdds[k])}:null).filter(Boolean),
       overByBK:Object.entries(overByBK).map(([k,v])=>({label:k,...toS(v)})).sort((a,b)=>a.profit-b.profit),
     };
-  },[settled]);
+  },[settledFiltered]);
 
   // Stats
   const bkStats=useMemo(function(){
@@ -5356,11 +5377,28 @@ export default function App(){
 
             {/* ── TESTING PANEL ── */}
             {statsTab==="plus"&&testingOpen&&(()=>{
-              // Collect all available values from settled bets
               const allTourneys=[...new Set(settled.map(b=>b.tournament||"Hors tournoi"))].sort();
               const allLeagues=[...new Set(settled.map(b=>b.league).filter(Boolean))].sort();
-              const allRoles=[...new Set(settled.map(b=>b.role).filter(Boolean))].sort();
-              const activeCount=[
+              const f=testFilterDraft;
+
+              // Check if draft differs from applied
+              const setsEqual=(a,b)=>a.size===b.size&&[...a].every(v=>b.has(v));
+              const isDirty=(
+                !setsEqual(f.games,testFilter.games)||
+                f.headshot!==testFilter.headshot||
+                f.live!==testFilter.live||
+                f.overUnder!==testFilter.overUnder||
+                f.oddsMin!==testFilter.oddsMin||
+                f.oddsMax!==testFilter.oddsMax||
+                f.ppEdgeMin!==testFilter.ppEdgeMin||
+                f.ppEdgeMax!==testFilter.ppEdgeMax||
+                !setsEqual(f.hideTourneys,testFilter.hideTourneys)||
+                !setsEqual(f.hideLeagues,testFilter.hideLeagues)||
+                !setsEqual(f.hideRoles,testFilter.hideRoles)
+              );
+
+              // Count applied filters
+              const appliedCount=[
                 testFilter.games.size<4,
                 testFilter.headshot!=="all",
                 testFilter.live!=="all",
@@ -5373,150 +5411,152 @@ export default function App(){
               ].filter(Boolean).length;
 
               const Sec=({label,children})=>(
-                <div style={{marginBottom:10}}>
+                <div style={{marginBottom:12}}>
                   <div style={{fontSize:9,color:"#8a7a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{label}</div>
                   {children}
                 </div>
               );
-              const chipStyle=(on)=>({padding:"4px 11px",borderRadius:7,border:"1px solid "+(on?"rgba(251,191,36,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(251,191,36,.15)":"rgba(255,255,255,.02)",color:on?"#fbbf24":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"});
-              const redChipStyle=(on)=>({padding:"4px 11px",borderRadius:7,border:"1px solid "+(on?"rgba(239,68,68,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(239,68,68,.12)":"rgba(255,255,255,.02)",color:on?"#f87171":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"});
-              const inputStyle={background:"rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 10px",color:"#fbbf24",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",width:"100%",boxSizing:"border-box"};
-
-              const toggleSet=(key,val)=>setTestFilter(f=>{const s=new Set(f[key]);s.has(val)?s.delete(val):s.add(val);return{...f,[key]:s};});
+              const chip=(on)=>({padding:"5px 12px",borderRadius:8,border:"1px solid "+(on?"rgba(251,191,36,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(251,191,36,.15)":"rgba(255,255,255,.02)",color:on?"#fbbf24":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"});
+              const redChip=(on)=>({padding:"5px 12px",borderRadius:8,border:"1px solid "+(on?"rgba(239,68,68,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(239,68,68,.12)":"rgba(255,255,255,.02)",color:on?"#f87171":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"});
+              const inp={background:"rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"6px 10px",color:"#fbbf24",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",width:"100%",boxSizing:"border-box"};
+              const set=(key,val)=>setTestFilterDraft(prev=>({...prev,[key]:val}));
+              const toggleSet=(key,val)=>setTestFilterDraft(prev=>{const s=new Set(prev[key]);s.has(val)?s.delete(val):s.add(val);return{...prev,[key]:s};});
 
               return(
-                <div style={{marginBottom:14,padding:14,background:"rgba(20,18,12,.95)",border:"1px solid rgba(251,191,36,.25)",borderRadius:16,backdropFilter:"blur(8px)"}}>
+                <div style={{marginBottom:14,padding:14,background:"rgba(16,14,8,.97)",border:"1px solid rgba(251,191,36,.25)",borderRadius:16}}>
+
                   {/* Header */}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,paddingBottom:10,borderBottom:"1px solid rgba(251,191,36,.12)"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:7}}>
-                      <span style={{fontSize:16}}>🧪</span>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,paddingBottom:10,borderBottom:"1px solid rgba(251,191,36,.1)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:18}}>🧪</span>
                       <div>
-                        <div style={{fontSize:13,color:"#fbbf24",fontWeight:800,letterSpacing:.5}}>MODE TEST</div>
-                        <div style={{fontSize:10,color:"#8a7a5e"}}>Filtre les stats pour analyser</div>
+                        <div style={{fontSize:13,color:"#fbbf24",fontWeight:800}}>MODE TEST</div>
+                        <div style={{fontSize:10,color:"#6a5a3e"}}>Configure puis applique</div>
                       </div>
                     </div>
-                    {activeCount>0&&<div style={{background:"rgba(251,191,36,.2)",border:"1px solid rgba(251,191,36,.4)",borderRadius:20,padding:"2px 10px",fontSize:11,color:"#fbbf24",fontWeight:700}}>{activeCount} actif{activeCount>1?"s":""}</div>}
+                    {appliedCount>0&&(
+                      <div style={{display:"flex",alignItems:"center",gap:5}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px #22C55E"}}/>
+                        <span style={{fontSize:10,color:"#22C55E",fontWeight:700}}>{appliedCount} filtre{appliedCount>1?"s":""} actif{appliedCount>1?"s":""}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* JEUX */}
                   <Sec label="Jeux inclus">
                     <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                       {["CS2","LoL","Dota2","Valorant"].map(g=>{
-                        const on=testFilter.games.has(g);
+                        const on=f.games.has(g);
                         return(
-                          <button key={g} onClick={()=>setTestFilter(f=>{const ng=new Set(f.games);on?ng.delete(g):ng.add(g);return{...f,games:ng};})}
-                            style={{...chipStyle(on),display:"flex",alignItems:"center",gap:4}}>
-                            <GameLogo game={g} size={11}/> {on?"✓":""} {g}
+                          <button key={g} onClick={()=>{const ng=new Set(f.games);on?ng.delete(g):ng.add(g);set("games",ng);}}
+                            style={{...chip(on),display:"flex",alignItems:"center",gap:4}}>
+                            <GameLogo game={g} size={11}/>{on?" ✓ ":""} {g}
                           </button>
                         );
                       })}
                     </div>
                   </Sec>
 
-                  {/* OVER / UNDER */}
+                  {/* DIRECTION */}
                   <Sec label="Direction">
                     <div style={{display:"flex",gap:5}}>
-                      {[["all","Tous"],["over","Over"],["under","Under"]].map(([v,l])=>(
-                        <button key={v} onClick={()=>setTestFilter(f=>({...f,overUnder:v}))} style={chipStyle(testFilter.overUnder===v)}>{l}</button>
+                      {[["all","Tous"],["over","▲ Over"],["under","▼ Under"]].map(([v,l])=>(
+                        <button key={v} onClick={()=>set("overUnder",v)} style={chip(f.overUnder===v)}>{l}</button>
                       ))}
                     </div>
                   </Sec>
 
                   {/* HEADSHOT + LIVE */}
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
                     <Sec label="Headshots">
                       <div style={{display:"flex",gap:4}}>
                         {[["all","Tous"],["yes","✓ HS"],["no","✗ HS"]].map(([v,l])=>(
-                          <button key={v} onClick={()=>setTestFilter(f=>({...f,headshot:v}))} style={{...chipStyle(testFilter.headshot===v),flex:1,textAlign:"center",padding:"4px 0"}}>{l}</button>
+                          <button key={v} onClick={()=>set("headshot",v)} style={{...chip(f.headshot===v),flex:1,textAlign:"center",padding:"4px 0"}}>{l}</button>
                         ))}
                       </div>
                     </Sec>
                     <Sec label="Live">
                       <div style={{display:"flex",gap:4}}>
-                        {[["all","Tous"],["yes","✓ Live"],["no","✗ Live"]].map(([v,l])=>(
-                          <button key={v} onClick={()=>setTestFilter(f=>({...f,live:v}))} style={{...chipStyle(testFilter.live===v),flex:1,textAlign:"center",padding:"4px 0"}}>{l}</button>
+                        {[["all","Tous"],["yes","✓"],["no","✗"]].map(([v,l])=>(
+                          <button key={v} onClick={()=>set("live",v)} style={{...chip(f.live===v),flex:1,textAlign:"center",padding:"4px 0"}}>{l==="✓"?"✓ Live":l==="✗"?"✗ Live":l}</button>
                         ))}
                       </div>
                     </Sec>
                   </div>
 
                   {/* COTES */}
-                  <Sec label="Cote">
+                  <Sec label="Cote (min → max)">
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <input type="number" inputMode="decimal" step="0.01" placeholder="Min ex: 1.5" value={testFilter.oddsMin} onChange={e=>setTestFilter(f=>({...f,oddsMin:e.target.value}))} style={{...inputStyle,flex:1}}/>
-                      <span style={{color:"#4a5a6e",fontSize:12,flexShrink:0}}>→</span>
-                      <input type="number" inputMode="decimal" step="0.01" placeholder="Max ex: 2.0" value={testFilter.oddsMax} onChange={e=>setTestFilter(f=>({...f,oddsMax:e.target.value}))} style={{...inputStyle,flex:1}}/>
+                      <input type="number" inputMode="decimal" step="0.01" placeholder="Min 1.5" value={f.oddsMin} onChange={e=>set("oddsMin",e.target.value)} style={{...inp,flex:1}}/>
+                      <span style={{color:"#4a5a6e",flexShrink:0}}>→</span>
+                      <input type="number" inputMode="decimal" step="0.01" placeholder="Max 2.0" value={f.oddsMax} onChange={e=>set("oddsMax",e.target.value)} style={{...inp,flex:1}}/>
                     </div>
                   </Sec>
 
                   {/* PP EDGE */}
-                  <Sec label="Edge PrizePicks (valeur abs.)">
-                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
-                      <input type="number" inputMode="decimal" step="0.1" placeholder="Min ex: 0.5" value={testFilter.ppEdgeMin} onChange={e=>setTestFilter(f=>({...f,ppEdgeMin:e.target.value}))} style={{...inputStyle,flex:1}}/>
-                      <span style={{color:"#4a5a6e",fontSize:12,flexShrink:0}}>→</span>
-                      <input type="number" inputMode="decimal" step="0.1" placeholder="Max ex: 3.0" value={testFilter.ppEdgeMax} onChange={e=>setTestFilter(f=>({...f,ppEdgeMax:e.target.value}))} style={{...inputStyle,flex:1}}/>
+                  <Sec label="Edge PP (valeur abs. min → max)">
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+                      <input type="number" inputMode="decimal" step="0.1" placeholder="Min 0.5" value={f.ppEdgeMin} onChange={e=>set("ppEdgeMin",e.target.value)} style={{...inp,flex:1}}/>
+                      <span style={{color:"#4a5a6e",flexShrink:0}}>→</span>
+                      <input type="number" inputMode="decimal" step="0.1" placeholder="Max 3.0" value={f.ppEdgeMax} onChange={e=>set("ppEdgeMax",e.target.value)} style={{...inp,flex:1}}/>
                     </div>
-                    <div style={{fontSize:9,color:"#6a5a3e"}}>Laisse vide = garde tous les paris sans PP aussi</div>
+                    <div style={{fontSize:9,color:"#5a4a30"}}>Paris sans edge PP toujours inclus si vide</div>
                   </Sec>
 
-                  {/* MASQUER POSITIONS (RÔLES) */}
+                  {/* POSITIONS */}
                   {(()=>{
-                    const PRESET_ROLES=["Top Laner","Jungler","Mid Laner","Bot Laner","Support","Carry","Offlane","Hard Support","AWPer","Rifler","IGL","Duelist","Initiator","Sentinel","Entry"];
-                    const dataRoles=[...new Set(settled.map(b=>b.role).filter(Boolean))];
-                    const merged=[...new Set([...PRESET_ROLES,...dataRoles])].sort();
+                    const PRESET=["Top Laner","Jungler","Mid Laner","Bot Laner","Support","Carry","Offlane","Hard Support","AWPer","Rifler","IGL","Duelist","Initiator","Sentinel","Entry"];
+                    const extra=[...new Set(settled.map(b=>b.role).filter(Boolean))];
+                    const merged=[...new Set([...PRESET,...extra])].sort();
                     return(
-                      <Sec label={`Masquer positions${testFilter.hideRoles.size>0?` (${testFilter.hideRoles.size} masquée${testFilter.hideRoles.size>1?"s":""})`:""}` }>
+                      <Sec label={`Masquer positions${f.hideRoles.size>0?` · ${f.hideRoles.size} 🚫`:""}`}>
                         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                           {merged.map(r=>{
-                            const on=testFilter.hideRoles.has(r);
-                            return(
-                              <button key={r} onClick={()=>toggleSet("hideRoles",r)} style={redChipStyle(on)}>
-                                {on?"🚫 ":""}{r}
-                              </button>
-                            );
+                            const on=f.hideRoles.has(r);
+                            return <button key={r} onClick={()=>toggleSet("hideRoles",r)} style={redChip(on)}>{on?"🚫 ":""}{r}</button>;
                           })}
                         </div>
                       </Sec>
                     );
                   })()}
 
-                  {/* MASQUER LIGUES */}
+                  {/* LIGUES */}
                   {allLeagues.length>0&&(
-                    <Sec label={`Masquer ligues${testFilter.hideLeagues.size>0?` (${testFilter.hideLeagues.size} masquée${testFilter.hideLeagues.size>1?"s":""})`:""}`}>
+                    <Sec label={`Masquer ligues${f.hideLeagues.size>0?` · ${f.hideLeagues.size} 🚫`:""}`}>
                       <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                         {allLeagues.map(l=>{
-                          const on=testFilter.hideLeagues.has(l);
-                          return(
-                            <button key={l} onClick={()=>toggleSet("hideLeagues",l)} style={redChipStyle(on)}>
-                              {on?"🚫 ":""}{l}
-                            </button>
-                          );
+                          const on=f.hideLeagues.has(l);
+                          return <button key={l} onClick={()=>toggleSet("hideLeagues",l)} style={redChip(on)}>{on?"🚫 ":""}{l}</button>;
                         })}
                       </div>
                     </Sec>
                   )}
 
-                  {/* MASQUER TOURNOIS */}
+                  {/* TOURNOIS */}
                   {allTourneys.length>0&&(
-                    <Sec label={`Masquer tournois${testFilter.hideTourneys.size>0?` (${testFilter.hideTourneys.size} masqué${testFilter.hideTourneys.size>1?"s":""})`:""}`}>
-                      <div style={{display:"flex",gap:5,flexWrap:"wrap",maxHeight:140,overflowY:"auto"}}>
+                    <Sec label={`Masquer tournois${f.hideTourneys.size>0?` · ${f.hideTourneys.size} 🚫`:""}`}>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap",maxHeight:130,overflowY:"auto"}}>
                         {allTourneys.map(t=>{
-                          const on=testFilter.hideTourneys.has(t);
-                          return(
-                            <button key={t} onClick={()=>toggleSet("hideTourneys",t)} style={redChipStyle(on)}>
-                              {on?"🚫 ":""}{t}
-                            </button>
-                          );
+                          const on=f.hideTourneys.has(t);
+                          return <button key={t} onClick={()=>toggleSet("hideTourneys",t)} style={redChip(on)}>{on?"🚫 ":""}{t}</button>;
                         })}
                       </div>
                     </Sec>
                   )}
 
-                  {/* RESET */}
-                  <button onClick={()=>setTestFilter(DEFAULT_TEST_FILTER)}
-                    style={{marginTop:4,width:"100%",padding:"9px",borderRadius:10,border:"1px solid rgba(251,191,36,.2)",background:"rgba(251,191,36,.05)",color:"#8a7a5e",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5}}>
-                    ↺ Réinitialiser tous les filtres
-                  </button>
+                  {/* BOUTONS APPLY + RESET */}
+                  <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <button onClick={()=>{setTestFilter({...testFilterDraft,games:new Set(testFilterDraft.games),hideTourneys:new Set(testFilterDraft.hideTourneys),hideLeagues:new Set(testFilterDraft.hideLeagues),hideRoles:new Set(testFilterDraft.hideRoles)});}}
+                      style={{flex:1,padding:"11px",borderRadius:10,border:"none",background:isDirty?"linear-gradient(135deg,#d4a017,#f5c842)":"rgba(251,191,36,.15)",color:isDirty?"#1a1000":"#6a5a3e",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.3,boxShadow:isDirty?"0 2px 12px rgba(212,160,23,.4)":"none",transition:"all .2s"}}>
+                      {isDirty?"⚡ Appliquer le test":"✓ Déjà appliqué"}
+                    </button>
+                    <button onClick={()=>{setTestFilterDraft(DEFAULT_TEST_FILTER);setTestFilter(DEFAULT_TEST_FILTER);}}
+                      style={{padding:"11px 14px",borderRadius:10,border:"1px solid rgba(251,191,36,.15)",background:"transparent",color:"#6a5a3e",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                      ↺ Reset
+                    </button>
+                  </div>
+
+                  {isDirty&&<div style={{marginTop:8,fontSize:10,color:"#f59e0b",textAlign:"center",opacity:.7}}>Changements non appliqués — clique sur ⚡ Appliquer</div>}
                 </div>
               );
             })()}
@@ -5644,11 +5684,16 @@ export default function App(){
               <div style={{background:"linear-gradient(135deg,rgba(10,16,30,.98),rgba(8,14,24,.99))",border:"1px solid rgba(99,130,200,.12)",borderRadius:16,padding:"12px 14px",marginBottom:16}}>
                 <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:10}}>Over / Under — Tous jeux</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[{label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.05)",border:"rgba(34,197,94,0.12)"},{label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.05)",border:"rgba(59,130,246,0.12)"}].map(({label,s,color,bg,border})=>{
+                  {[{key:"over",label:"▲ Over",s:globalOverUnderStats.overS,color:"#22C55E",bg:"rgba(34,197,94,0.05)",border:"rgba(34,197,94,0.12)",activeBorder:"rgba(34,197,94,0.45)"},{key:"under",label:"▼ Under",s:globalOverUnderStats.underS,color:"#60a5fa",bg:"rgba(59,130,246,0.05)",border:"rgba(59,130,246,0.12)",activeBorder:"rgba(96,165,250,0.45)"}].map(({key,label,s,color,bg,border,activeBorder})=>{
                     if(!s)return null;
+                    const active=ouDrill===key;
                     return(
-                      <div key={label} style={{background:bg,borderRadius:11,padding:"9px 11px",border:"1px solid "+border}}>
-                        <div style={{fontSize:11,fontWeight:800,color,marginBottom:6,letterSpacing:.3}}>{label}</div>
+                      <div key={key} onClick={()=>setOuDrill(active?null:key)}
+                        style={{background:active?bg:"rgba(255,255,255,.02)",borderRadius:11,padding:"9px 11px",border:"1px solid "+(active?activeBorder:border),cursor:"pointer",transition:"all .15s",position:"relative"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                          <span style={{fontSize:11,fontWeight:800,color,letterSpacing:.3}}>{label}</span>
+                          <span style={{fontSize:9,color:active?color:"#4a5a6e",opacity:.8}}>{active?"▲ Fermer":"▼ Détail"}</span>
+                        </div>
                         <div style={{display:"flex",flexDirection:"column",gap:3}}>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:10,color:"#5a6a7e"}}>Paris</span>
@@ -5664,10 +5709,9 @@ export default function App(){
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between"}}>
                             <span style={{fontSize:11,color:"#9CA3AF"}}>Profit</span>
-                            <span style={{fontSize:13,fontWeight:800,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</span>
+                            <FmtProfit v={s.profit} fontSize={13}/>
                           </div>
                         </div>
-                        {/* Barre WR */}
                         <div style={{marginTop:8,height:4,background:"#1F2937",borderRadius:2,overflow:"hidden"}}>
                           <div style={{height:"100%",width:s.wr+"%",background:s.wr>=55?"linear-gradient(90deg,#22C55E,#22C55E)":s.wr<45?"linear-gradient(90deg,#EF4444,#EF4444)":"linear-gradient(90deg,#9CA3AF,#6B7280)",borderRadius:2,transition:"width .5s ease"}}/>
                         </div>
@@ -5676,6 +5720,45 @@ export default function App(){
                   })}
                 </div>
 
+                {/* ── DRILL-DOWN PAR JEU ── */}
+                {ouDrill&&(()=>{
+                  const byGame=ouDrill==="over"?globalOverUnderStats.overByGame:globalOverUnderStats.underByGame;
+                  if(!byGame||byGame.length===0)return null;
+                  const color=ouDrill==="over"?"#22C55E":"#60a5fa";
+                  const maxAbs=Math.max(...byGame.map(g=>Math.abs(g.profit)));
+                  return(
+                    <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid rgba(255,255,255,.06)"}}>
+                      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:8}}>
+                        Résultats par jeu — {ouDrill==="over"?"Over":"Under"}
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                        {byGame.map(g=>{
+                          const barW=maxAbs>0?Math.abs(g.profit)/maxAbs*100:0;
+                          const pos=g.profit>=0;
+                          return(
+                            <div key={g.game} style={{background:"rgba(255,255,255,.02)",borderRadius:10,padding:"8px 10px",border:"1px solid rgba(255,255,255,.04)"}}>
+                              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                  <GameLogo game={g.game} size={14}/>
+                                  <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{g.game}</span>
+                                  <span style={{fontSize:10,color:"#4a5a6e"}}>{g.count}p · {g.wr.toFixed(0)}% WR</span>
+                                </div>
+                                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                  <span style={{fontSize:10,fontWeight:700,color:pos?"#22C55E":"#EF4444"}}>{pos?"+":""}{g.roi.toFixed(1)}% ROI</span>
+                                  <FmtProfit v={g.profit} fontSize={12}/>
+                                </div>
+                              </div>
+                              {/* Barre de profit */}
+                              <div style={{height:3,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:barW+"%",background:pos?"#22C55E":"#EF4444",borderRadius:2,opacity:.7}}/>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -5743,18 +5826,6 @@ export default function App(){
               );
 
               // ── Profit formaté : signe fixe + chiffres tabulaires + $ aligné ──
-              const FmtProfit=({v,fontSize=12,fontWeight=800})=>{
-                const pos=v>=0;
-                const color=pos?"#00E676":"#f87171";
-                const abs=Math.abs(Math.round(v));
-                return(
-                  <span style={{display:"inline-flex",alignItems:"baseline",fontVariantNumeric:"tabular-nums",fontFeatureSettings:'"tnum"',fontSize,fontWeight,color,justifyContent:"flex-end",letterSpacing:"-0.2px"}}>
-                    <span style={{display:"inline-block",width:"0.65em",textAlign:"center",flexShrink:0}}>{pos?"+":"−"}</span>
-                    <span style={{minWidth:"3ch",textAlign:"right"}}>{abs.toLocaleString("fr-CA")}</span>
-                    <span style={{opacity:.7,marginLeft:1,fontSize:fontSize*0.85}}>$</span>
-                  </span>
-                );
-              };
 
               const StatRow=({s,label,isEdge,onClick,noLine})=>{
                 if(!s)return null;
