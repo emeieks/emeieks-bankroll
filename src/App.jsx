@@ -1222,13 +1222,13 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               })}
               {bet.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></>}
               {hasPP&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><img src={PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
-              {/* Tournament/League — inline select cliquable directement */}
+              {/* Tournament/League — affichage custom + select invisible */}
               {(()=>{
                 const lolLeagues=["LCK","LEC","LCS","LPL"];
                 const valLeagues=["Americas","EMEA","Pacific"];
                 const currentVal=bet.tournament||bet.league||"";
                 const tLogo=(function(){
-                  var lc=(bet.tournament||bet.league||"").toLowerCase();
+                  var lc=(currentVal).toLowerCase();
                   var tkey=null;
                   if(lc.includes("world cup")||lc.includes("ewc"))tkey="EWC";
                   else if(lc.includes("the international")||lc.startsWith("ti "))tkey="TheInternational";
@@ -1253,32 +1253,40 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                   return tkey?LEAGUE_LOGOS[tkey]:null;
                 })();
                 const displayLabel=currentVal?(function(){
-                  var lc=(currentVal).toLowerCase();
+                  var lc=currentVal.toLowerCase();
                   return(lc.includes("world cup")||lc.includes("ewc"))?"EWC":currentVal.split(" ")[0];
                 })():null;
+                const handleChange=function(e){
+                  e.stopPropagation();
+                  const val=e.target.value;
+                  const isLeague=lolLeagues.includes(val)||valLeagues.includes(val);
+                  if(isLeague){if(onSave)onSave(Object.assign({},bet,{league:val,tournament:"",updatedAt:Date.now()}));}
+                  else{if(onSave)onSave(Object.assign({},bet,{tournament:val,updatedAt:Date.now()}));}
+                };
                 return(
-                  <span style={{display:"inline-flex",alignItems:"center",gap:3,marginLeft:4,cursor:"pointer",position:"relative"}}
+                  <span style={{display:"inline-flex",alignItems:"center",gap:3,marginLeft:4,position:"relative",cursor:"pointer"}}
                     onClick={e=>e.stopPropagation()}>
                     {currentVal&&<span style={{color:"#3a4e62",margin:"0 2px",fontSize:12,lineHeight:1}}>·</span>}
+                    {/* Affichage custom : logo + nom */}
+                    <span style={{display:"inline-flex",alignItems:"center",gap:3,pointerEvents:"none"}}>
+                      {currentVal
+                        ?<>{tLogo
+                          ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>
+                          :<span style={{fontSize:11}}>🏆</span>}
+                          <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>{displayLabel}</span>
+                        </>
+                        :<span style={{fontSize:11,color:"#3a4a5e",opacity:.6}}>🏆</span>}
+                    </span>
+                    {/* Select invisible par-dessus */}
                     <select
                       value={currentVal}
-                      onChange={function(e){
-                        e.stopPropagation();
-                        const val=e.target.value;
-                        const isLeague=lolLeagues.includes(val)||valLeagues.includes(val);
-                        if(isLeague){if(onSave)onSave(Object.assign({},bet,{league:val,tournament:"",updatedAt:Date.now()}));}
-                        else{if(onSave)onSave(Object.assign({},bet,{tournament:val,updatedAt:Date.now()}));}
-                      }}
+                      onChange={handleChange}
                       style={{
-                        appearance:"none",WebkitAppearance:"none",
-                        background:"transparent",border:"none",
-                        color:currentVal?"#7a9cbd":"#3a4e62",
-                        fontSize:11,fontFamily:"Inter,sans-serif",
-                        fontWeight:currentVal?700:400,
-                        cursor:"pointer",outline:"none",
-                        padding:0,margin:0,maxWidth:90,
+                        position:"absolute",inset:0,opacity:0,cursor:"pointer",
+                        width:"100%",height:"100%",border:"none",background:"transparent",
+                        fontSize:12,
                       }}>
-                      <option value="">🏆</option>
+                      <option value="">— Aucun —</option>
                       {(bet.game==="LoL")&&<optgroup label="Ligues">
                         {["LCK","LEC","LCS","LPL"].map(l=><option key={l} value={l}>{l}</option>)}
                       </optgroup>}
@@ -1293,9 +1301,6 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                           .map(function(t){return <option key={t} value={t}>{t}</option>;})}
                       </optgroup>}
                     </select>
-                    {currentVal&&(tLogo
-                      ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2,pointerEvents:"none",marginLeft:2}}/>
-                      :null)}
                   </span>
                 );
               })()}
