@@ -575,7 +575,9 @@ function NumPad({value,onChange,placeholder,step,id}){
           onChange(v);
         }}
         onBlur={e=>{
-          if(!isDecimal)return;
+          // Convert shorthand odds only (e.g. 175 → 1.75) — NOT for stake fields (step="1")
+          if(step==="1")return;
+          if(step!=="0.01")return;
           let v=e.target.value.replace(/,/g,".").replace(/[^0-9.]/g,"");
           if(v&&!v.includes(".")&&parseInt(v)>=100){
             onChange((parseInt(v)/100).toFixed(2));
@@ -1463,7 +1465,7 @@ function NavIconSuivi({active}){
 }
 
 // ── SelectionModal — sélection multiple + date + tournoi ────────────────────
-function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={},onAfterPush}){
+function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={},onAfterPush,allPlayers={}}){
   const [selected,setSelected]=useState(new Set());
   const [newDate,setNewDate]=useState("");
   const [newTournament,setNewTournament]=useState("");
@@ -1835,6 +1837,7 @@ function MesParisView({
   sortByMap,setSortByMap,
   savedTourneys={},
   onMarkPush,
+  allPlayers={},
 }){
   const [collapsedMonths,setCollapsedMonths]=useState(new Set());
   const [selectOpen,setSelectOpen]=useState(false); // separate overlay
@@ -2096,6 +2099,7 @@ function MesParisView({
           bkPhotos={bkPhotos}
           savedTourneys={savedTourneys}
           onAfterPush={function(){if(onMarkPush)onMarkPush();}}
+          allPlayers={allPlayers||{}}
         />
       )}
     </div>
@@ -3863,6 +3867,7 @@ export default function App(){
             sortByMap={sortByMap} setSortByMap={setSortByMap}
             savedTourneys={savedTourneys}
             onMarkPush={function(){lastPushRef.current=Date.now();}}
+            allPlayers={allPlayers}
           />
         )}
         {view==="calendrier"&&(
