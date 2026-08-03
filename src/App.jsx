@@ -1222,9 +1222,13 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
               })}
               {bet.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></>}
               {hasPP&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span><img src={PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
-              {bet.tournament&&(()=>{
-                var tLogo=(function(){
-                  var lc=(bet.tournament||"").toLowerCase();
+              {/* Tournament/League — inline select cliquable directement */}
+              {(()=>{
+                const lolLeagues=["LCK","LEC","LCS","LPL"];
+                const valLeagues=["Americas","EMEA","Pacific"];
+                const currentVal=bet.tournament||bet.league||"";
+                const tLogo=(function(){
+                  var lc=(bet.tournament||bet.league||"").toLowerCase();
                   var tkey=null;
                   if(lc.includes("world cup")||lc.includes("ewc"))tkey="EWC";
                   else if(lc.includes("the international")||lc.startsWith("ti "))tkey="TheInternational";
@@ -1248,21 +1252,54 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                   else if(lc.includes("worlds")||lc.includes("world 20"))tkey="LCK";
                   return tkey?LEAGUE_LOGOS[tkey]:null;
                 })();
-                return(<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span>
-                  {tLogo
-                    ?<img src={tLogo} alt={bet.tournament} style={{width:14,height:14,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>
-                    :<span style={{fontSize:11}}>🏆</span>}
-                  <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd",marginLeft:3}}>
-                    {(function(){var lc=(bet.tournament||"").toLowerCase();return(lc.includes("world cup")||lc.includes("ewc"))?"EWC":bet.tournament.split(" ")[0];})()}
+                const displayLabel=currentVal?(function(){
+                  var lc=(currentVal).toLowerCase();
+                  return(lc.includes("world cup")||lc.includes("ewc"))?"EWC":currentVal.split(" ")[0];
+                })():null;
+                return(
+                  <span style={{display:"inline-flex",alignItems:"center",gap:3,marginLeft:4,cursor:"pointer",position:"relative"}}
+                    onClick={e=>e.stopPropagation()}>
+                    {currentVal&&<span style={{color:"#3a4e62",margin:"0 2px",fontSize:12,lineHeight:1}}>·</span>}
+                    <select
+                      value={currentVal}
+                      onChange={function(e){
+                        e.stopPropagation();
+                        const val=e.target.value;
+                        const isLeague=lolLeagues.includes(val)||valLeagues.includes(val);
+                        if(isLeague){if(onSave)onSave(Object.assign({},bet,{league:val,tournament:"",updatedAt:Date.now()}));}
+                        else{if(onSave)onSave(Object.assign({},bet,{tournament:val,updatedAt:Date.now()}));}
+                      }}
+                      style={{
+                        appearance:"none",WebkitAppearance:"none",
+                        background:"transparent",border:"none",
+                        color:currentVal?"#7a9cbd":"#3a4e62",
+                        fontSize:11,fontFamily:"Inter,sans-serif",
+                        fontWeight:currentVal?700:400,
+                        cursor:"pointer",outline:"none",
+                        padding:0,margin:0,maxWidth:90,
+                      }}>
+                      <option value="">🏆</option>
+                      {(bet.game==="LoL")&&<optgroup label="Ligues">
+                        {["LCK","LEC","LCS","LPL"].map(l=><option key={l} value={l}>{l}</option>)}
+                      </optgroup>}
+                      {(bet.game==="Valorant")&&<optgroup label="Ligues">
+                        {["Americas","EMEA","Pacific"].map(l=><option key={l} value={l}>{l}</option>)}
+                      </optgroup>}
+                      {((savedTourneys&&savedTourneys[bet.game]&&savedTourneys[bet.game].length>0)
+                        ?(savedTourneys[bet.game]):(allTourneys||[]))
+                        .length>0&&<optgroup label="Tournois">
+                        {((savedTourneys&&savedTourneys[bet.game]&&savedTourneys[bet.game].length>0)
+                          ?(savedTourneys[bet.game]):(allTourneys||[]))
+                          .map(function(t){return <option key={t} value={t}>{t}</option>;})}
+                      </optgroup>}
+                    </select>
+                    {currentVal&&(tLogo
+                      ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2,pointerEvents:"none"}}/>
+                      :null)}
+                    {currentVal&&displayLabel&&<span style={{fontSize:11,fontWeight:700,color:"#7a9cbd",pointerEvents:"none"}}>{displayLabel}</span>}
                   </span>
-                </>);
+                );
               })()}
-              {/* League for LoL/Valorant when no active tournament */}
-              {bet.league&&(bet.game==="LoL"||bet.game==="Valorant")&&!bet.tournament&&(
-                <><span style={{color:"#3a4e62",margin:"0 5px",fontSize:12,lineHeight:1}}>·</span>
-                <LeagueLogo league={bet.league} size={13}/>
-                <span style={{fontSize:11,fontWeight:600,color:"#7a9cbd",marginLeft:3}}>{bet.league}</span></>
-              )}
             </div>
           </div>
 
@@ -2356,25 +2393,19 @@ export default function App(){
   useEffect(()=>{try{localStorage.setItem("v7_depots",JSON.stringify(depots));}catch(e){}},[depots]);
   useEffect(()=>{try{localStorage.setItem("v7_bk_accounts",JSON.stringify(bkAccounts));}catch(e){}},[bkAccounts]);
 
-  // Persister tournois actifs
+  // Persister tournois actifs + savedTourneys → localStorage + Supabase
   useEffect(()=>{
     if(!loaded)return;
     try{
       localStorage.setItem("v7_tourneys",JSON.stringify(activeTourneys));
       localStorage.setItem("v7_saved_tourneys_bk",JSON.stringify(savedTourneys));
-      // Sync to Supabase as a special settings bet
-      if(supaUrl&&supaKey&&Object.keys(activeTourneys).length>0){
+      // Sync to Supabase as a special settings bet (always, even if no active tourney)
+      if(supaUrl&&supaKey){
         const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
         fetch(supaUrl+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":"Bearer "+supaKey,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsRow)}).catch(function(){});
       }
     }catch(e){}
-  },[activeTourneys,loaded]);
-
-  // Persister liste des tournois sauvegardés
-  useEffect(()=>{
-    if(!loaded)return;
-    try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(savedTourneys));}catch(e){}
-  },[savedTourneys,loaded]);
+  },[activeTourneys,savedTourneys,loaded]);
 
   // ── Save: localStorage (debounced) ───────────────────────────────────────
   useEffect(()=>{
@@ -2494,7 +2525,21 @@ export default function App(){
         try{
           const s=JSON.parse(settingsRow.description||"{}");
           if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){setActiveTourneys(s.activeTourneys);localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));}
-          if(s.savedTourneys){setSavedTourneys(s.savedTourneys);}
+          // Merge savedTourneys instead of overwriting — keep local additions
+          if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
+            setSavedTourneys(prev=>{
+              const merged={};
+              const allGames=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
+              allGames.forEach(g=>{
+                const localList=prev?.[g]||[];
+                const remoteList=s.savedTourneys[g]||[];
+                // Union: keep all unique entries from both
+                merged[g]=[...new Set([...localList,...remoteList])];
+              });
+              try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));}catch(e){}
+              return merged;
+            });
+          }
         }catch(e){}
       }
       // Marquer comme pull pour éviter re-push automatique
