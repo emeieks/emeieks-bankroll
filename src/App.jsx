@@ -5013,7 +5013,7 @@ export default function App(){
                   if(game==="LoL") return range(0.5,10.5);
                 }
                 if(ppType==="Map 1+2+3"){
-                  if(isHS&&(game==="CS2"||game==="Valorant")) return range(6.5,35);
+                  if(isHS&&(game==="CS2"||game==="Valorant")) return range(6.5,40);
                   if(game==="CS2"||game==="Valorant") return range(28.5,65.0);
                   if(game==="Dota2") return range(4,37);
                   if(game==="LoL") return range(1,24);
