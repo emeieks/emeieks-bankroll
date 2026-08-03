@@ -1294,9 +1294,8 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
                       </optgroup>}
                     </select>
                     {currentVal&&(tLogo
-                      ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2,pointerEvents:"none"}}/>
+                      ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2,pointerEvents:"none",marginLeft:2}}/>
                       :null)}
-                    {currentVal&&displayLabel&&<span style={{fontSize:11,fontWeight:700,color:"#7a9cbd",pointerEvents:"none"}}>{displayLabel}</span>}
                   </span>
                 );
               })()}
