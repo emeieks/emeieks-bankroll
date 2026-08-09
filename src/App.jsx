@@ -2281,8 +2281,10 @@ export default function App(){
   const [ppCalcMt,setPpCalcMt]=useState("Map 1+2");
   const [ppCalcOu,setPpCalcOu]=useState("Over");
   const [statsGameOpen,setStatsGameOpen]=useState({});
-  const [ouDrill,setOuDrill]=useState(null); // "over" | "under" | null // {CS2: true, ...}
-  const [statsTab,setStatsTab]=useState("apercu"); // apercu | jeux | joueurs | tournois | plus
+  const [ouDrill,setOuDrill]=useState(null);
+  const [statsTab,setStatsTab]=useState("apercu");
+  const [dowMetric,setDowMetric]=useState("roi"); // métrique du graphique jour de semaine
+  const [analyseView,setAnalyseView]=useState("global"); // global | week
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [statsChartMode,setStatsChartMode]=useState("line");
   const [playersExpanded,setPlayersExpanded]=useState(null);
@@ -2714,6 +2716,23 @@ export default function App(){
       dow[day].cnt++;dow[day].profit+=b.profit;dow[day].staked+=b.stake;if(b.status==="won")dow[day].won++;
     });
 
+    // 1b. Performance par semaine (ISO week)
+    const weeks={};
+    settledFiltered.forEach(b=>{
+      const dt=b.datetime?String(b.datetime):"";if(!dt||!/^\d{4}-\d{2}-\d{2}/.test(dt))return;
+      const d=new Date(dt.slice(0,10));
+      // ISO week: Monday=start
+      const jan1=new Date(d.getFullYear(),0,1);
+      const wk=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+      const key=d.getFullYear()+"-S"+String(wk).padStart(2,"0");
+      // Get week start date (Monday)
+      const day=d.getDay()||7;const mon=new Date(d);mon.setDate(d.getDate()-day+1);
+      const label=mon.toLocaleDateString("fr-CA",{month:"short",day:"numeric"});
+      if(!weeks[key])weeks[key]={key,label,cnt:0,won:0,profit:0,staked:0};
+      const w=weeks[key];w.cnt++;w.profit+=b.profit;w.staked+=b.stake;if(b.status==="won")w.won++;
+    });
+    const weekList=Object.values(weeks).sort((a,b)=>a.key.localeCompare(b.key));
+
     // 2. Séries (streaks)
     const chron=[...settledFiltered].sort((a,b)=>(String(a.datetime)||"").localeCompare(String(b.datetime)||""));
     let curStreak=0,curType="",bestWin=0,bestLoss=0,tmpW=0,tmpL=0;
@@ -2802,7 +2821,7 @@ export default function App(){
       })
       .sort((a,b)=>a.edge-b.edge);
 
-    return{dow,DAYS,curStreak,curType,bestWin,bestLoss,calibration,signalList,breakevenData,coteIdéale};
+    return{dow,DAYS,curStreak,curType,bestWin,bestLoss,calibration,signalList,breakevenData,coteIdéale,weekList};
   },[settledFiltered]);
 
   const globalOverUnderStats=useMemo(function(){
@@ -6667,9 +6686,8 @@ export default function App(){
                   </div>
                 )}
 
-                {/* ── 📅 JOUR DE LA SEMAINE ── */}
+                {/* ── 📅 JOUR DE LA SEMAINE + VUE SEMAINE ── */}
                 {advancedStats&&(()=>{
-                  const [dowMetric,setDowMetric]=useState("roi");
                   const metricFn=(s)=>{
                     if(dowMetric==="roi")return s.staked>0?s.profit/s.staked*100:0;
                     if(dowMetric==="wr")return s.cnt>0?s.won/s.cnt*100:0;
@@ -6677,25 +6695,76 @@ export default function App(){
                     return s.cnt;
                   };
                   const metricFmt=(v)=>{
-                    if(dowMetric==="roi")return (v>=0?"+":"")+v.toFixed(1)+"%";
+                    if(dowMetric==="roi")return(v>=0?"+":"")+v.toFixed(1)+"%";
                     if(dowMetric==="wr")return v.toFixed(0)+"%";
-                    if(dowMetric==="profit")return (v>=0?"+":"")+v.toFixed(0)+"$";
+                    if(dowMetric==="profit")return(v>=0?"+":"")+v.toFixed(0)+"$";
                     return v+"p";
                   };
+                  const topBar=()=>(
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                      <div style={{display:"flex",gap:5}}>
+                        {[["global","Global"],["week","Par semaine"]].map(([v,l])=>(
+                          <button key={v} onClick={()=>setAnalyseView(v)}
+                            style={{padding:"4px 11px",borderRadius:7,border:"1px solid "+(analyseView===v?"rgba(96,165,250,.4)":"rgba(255,255,255,.08)"),background:analyseView===v?"rgba(96,165,250,.12)":"transparent",color:analyseView===v?"#60a5fa":"#5a6a7e",fontSize:11,fontWeight:analyseView===v?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                      <select value={dowMetric} onChange={e=>setDowMetric(e.target.value)}
+                        style={{background:"rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.12)",borderRadius:7,padding:"3px 8px",color:"#c8d4e8",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer"}}>
+                        <option value="roi">ROI %</option>
+                        <option value="wr">Win Rate</option>
+                        <option value="profit">Profit $</option>
+                        <option value="cnt">Nb Paris</option>
+                      </select>
+                    </div>
+                  );
+
+                  if(analyseView==="week"){
+                    // Vue par semaine
+                    const wl=advancedStats.weekList;
+                    const vals=wl.map(w=>metricFn(w));
+                    const maxAbs=Math.max(...vals.map(Math.abs),1);
+                    return(
+                      <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
+                        <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:12}}>📅 Performance par semaine</div>
+                        {topBar()}
+                        {wl.length===0?<div style={{fontSize:12,color:"#4a5a6e",textAlign:"center",padding:16}}>Aucune donnée</div>:(
+                          <div style={{overflowX:"auto"}}>
+                            <div style={{display:"flex",gap:5,minWidth:Math.max(wl.length*48,300)+"px",alignItems:"flex-end",height:100,marginBottom:6}}>
+                              {wl.map((w,i)=>{
+                                const v=metricFn(w);const pos=v>=0;
+                                const barH=Math.max(3,Math.abs(v)/maxAbs*90);
+                                const color=pos?"#22C55E":"#EF4444";
+                                return(
+                                  <div key={w.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",minWidth:40}}>
+                                    <div style={{fontSize:9,fontWeight:700,color:color,marginBottom:2}}>{metricFmt(v)}</div>
+                                    <div style={{width:"80%",height:barH+"px",background:color,borderRadius:"3px 3px 0 0",opacity:.75}}/>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div style={{display:"flex",gap:5,minWidth:Math.max(wl.length*48,300)+"px"}}>
+                              {wl.map(w=>(
+                                <div key={w.key} style={{flex:1,textAlign:"center",minWidth:40}}>
+                                  <div style={{fontSize:8,color:"#4a5a6e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{w.label}</div>
+                                  <div style={{fontSize:8,color:"#3a4a5e"}}>{w.cnt}p</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Vue globale par jour
                   const vals=advancedStats.DAYS.map(d=>metricFn(advancedStats.dow[d]));
                   const maxAbs=Math.max(...vals.map(Math.abs),1);
                   return(
                     <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                        <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>📅 Performance par jour</div>
-                        <select value={dowMetric} onChange={e=>setDowMetric(e.target.value)}
-                          style={{background:"rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.12)",borderRadius:7,padding:"3px 8px",color:"#c8d4e8",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer"}}>
-                          <option value="roi">ROI %</option>
-                          <option value="wr">Win Rate</option>
-                          <option value="profit">Profit $</option>
-                          <option value="cnt">Nb Paris</option>
-                        </select>
-                      </div>
+                      <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:12}}>📅 Performance par jour</div>
+                      {topBar()}
                       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5}}>
                         {advancedStats.DAYS.map((d,i)=>{
                           const s=advancedStats.dow[d];const v=metricFn(s);
