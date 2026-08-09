@@ -1972,7 +1972,7 @@ function MesParisView({
 
   useEffect(()=>{
     if(monthKeys.length>2){
-      setCollapsedMonths(prev=>{if(prev.size>0)return prev;return new Set(monthKeys.slice(2));});
+      setCollapsedMonths(prev=>{if(prev.size>0)return prev;return new Set(monthKeys.slice(1));});
     }
   },[monthKeys.length]);
 
@@ -2193,7 +2193,15 @@ export default function App(){
   const [stickyBK,setStickyBK]=useState(false);
   const [lockedStatus,setLockedStatus]=useState(null);
   const [view,setViewRaw]=useState("home");
-  const setView=v=>{setViewRaw(v);setTimeout(()=>{try{window.scrollTo({top:0,behavior:"instant"});}catch(e){}},0);};
+  const [viewPending,setViewPending]=useState(false);
+  const setView=v=>{
+    setViewPending(true);
+    setTimeout(()=>{
+      setViewRaw(v);
+      setViewPending(false);
+      try{window.scrollTo({top:0,behavior:"instant"});}catch(e){}
+    },0);
+  };
   const [loaded,setLoaded]=useState(false);
   // Les joueurs viennent uniquement de Supabase — pas de localStorage
   const [toast,setToast]=useState(null);
@@ -2425,19 +2433,20 @@ export default function App(){
   useEffect(()=>{try{localStorage.setItem("v7_depots",JSON.stringify(depots));}catch(e){}},[depots]);
   useEffect(()=>{try{localStorage.setItem("v7_bk_accounts",JSON.stringify(bkAccounts));}catch(e){}},[bkAccounts]);
 
-  // Persister tournois actifs + savedTourneys → localStorage + Supabase
+  // Persister tournois actifs + savedTourneys + MIB + testFilter → localStorage + Supabase
   useEffect(()=>{
     if(!loaded)return;
     try{
       localStorage.setItem("v7_tourneys",JSON.stringify(activeTourneys));
       localStorage.setItem("v7_saved_tourneys_bk",JSON.stringify(savedTourneys));
-      // Sync to Supabase as a special settings bet (always, even if no active tourney)
+      // Serialize testFilter (Sets → Arrays for JSON)
+      const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
       if(supaUrl&&supaKey){
-        const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
+        const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
         fetch(supaUrl+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":"Bearer "+supaKey,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsRow)}).catch(function(){});
       }
     }catch(e){}
-  },[activeTourneys,savedTourneys,loaded]);
+  },[activeTourneys,savedTourneys,mibActive,mibDate,testFilter,loaded]);
 
   // ── Save: localStorage (debounced) ───────────────────────────────────────
   useEffect(()=>{
@@ -2557,6 +2566,17 @@ export default function App(){
         try{
           const s=JSON.parse(settingsRow.description||"{}");
           if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){setActiveTourneys(s.activeTourneys);localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));}
+          // Restore MIB settings
+          if(s.mibActive!==undefined){setMibActive(!!s.mibActive);}
+          if(s.mibDate){setMibDate(s.mibDate);}
+          // Restore testFilter (deserialize Arrays → Sets)
+          if(s.testFilter){
+            try{
+              const tf=s.testFilter;
+              setTestFilter({...tf,games:new Set(tf.games||["CS2","LoL","Dota2","Valorant"]),hideTourneys:new Set(tf.hideTourneys||[]),hideLeagues:new Set(tf.hideLeagues||[]),hideRoles:new Set(tf.hideRoles||[])});
+              setTestFilterDraft({...tf,games:new Set(tf.games||["CS2","LoL","Dota2","Valorant"]),hideTourneys:new Set(tf.hideTourneys||[]),hideLeagues:new Set(tf.hideLeagues||[]),hideRoles:new Set(tf.hideRoles||[])});
+            }catch(e){}
+          }
           // Merge savedTourneys instead of overwriting — keep local additions
           if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
             setSavedTourneys(prev=>{
@@ -3828,8 +3848,17 @@ export default function App(){
           </div>
         )}
 
+        {/* ── VUE EN CHARGEMENT ── */}
+        {viewPending&&(
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:16}}>
+            <div style={{width:32,height:32,border:"2px solid rgba(99,102,241,.3)",borderTop:"2px solid #6366f1",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
+            <span style={{fontSize:11,color:"#4a5a6e"}}>Chargement…</span>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        )}
+
         {/* ── HOME ── */}
-        {view==="home"&&(
+        {!viewPending&&view==="home"&&(
           <div className="view-enter" style={{paddingBottom:8,paddingTop:(isTestActive||mibActive)?34:0}}>
 
             {/* ── TOP BAR ── */}
@@ -4129,7 +4158,7 @@ export default function App(){
         )}
 
         {/* ── MES PARIS ── */}
-        {view==="mesparis"&&(
+        {!viewPending&&view==="mesparis"&&(
           <MesParisView
             bets={betsForDisplay}
             setBets={setBets}
@@ -5680,7 +5709,7 @@ export default function App(){
 
 
         {/* ── STATS ── */}
-        {view==="statistiques"&&(
+        {!viewPending&&view==="statistiques"&&(
           <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
             <div style={{fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:1.5,color:"#dce8ff",marginBottom:14}}>Statistiques</div>
 
