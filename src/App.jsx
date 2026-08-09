@@ -2684,26 +2684,37 @@ export default function App(){
   },[allPlayers]);
 
   const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
+  // ── Fonction réutilisable du test filter ─────────────────────────────────
+  const applyTestFilter=useCallback(function(base){
+    let r=base;
+    if(testFilter.games.size<4)r=r.filter(b=>testFilter.games.has(b.game));
+    if(testFilter.headshot==="yes")r=r.filter(b=>b.isHeadshot);
+    if(testFilter.headshot==="no")r=r.filter(b=>!b.isHeadshot);
+    if(testFilter.live==="yes")r=r.filter(b=>b.isLive);
+    if(testFilter.live==="no")r=r.filter(b=>!b.isLive);
+    if(testFilter.overUnder==="over")r=r.filter(b=>b.overUnder==="Over");
+    if(testFilter.overUnder==="under")r=r.filter(b=>b.overUnder==="Under");
+    if(testFilter.oddsMin)r=r.filter(b=>(b.odds||0)>=parseFloat(testFilter.oddsMin));
+    if(testFilter.oddsMax)r=r.filter(b=>(b.odds||0)<=parseFloat(testFilter.oddsMax));
+    if(testFilter.hideTourneys&&testFilter.hideTourneys.size>0)r=r.filter(b=>!testFilter.hideTourneys.has(b.tournament||"Hors tournoi"));
+    if(testFilter.hideLeagues&&testFilter.hideLeagues.size>0)r=r.filter(b=>!testFilter.hideLeagues.has(b.league||""));
+    if(testFilter.hideRoles&&testFilter.hideRoles.size>0)r=r.filter(b=>!testFilter.hideRoles.has(b.role||""));
+    if(testFilter.ppEdgeMin)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(testFilter.ppEdgeMin));
+    if(testFilter.ppEdgeMax)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(testFilter.ppEdgeMax));
+    return r;
+  },[testFilter]);
+
+  // Vrai si le filtre test est actif (différent du défaut)
+  const isTestActive=useMemo(()=>{
+    const f=testFilter;const d=DEFAULT_TEST_FILTER;
+    return f.games.size<4||f.headshot!=="all"||f.live!=="all"||f.overUnder!=="all"||f.oddsMin||f.oddsMax||f.hideTourneys.size>0||f.hideLeagues.size>0||f.hideRoles.size>0||f.ppEdgeMin||f.ppEdgeMax;
+  },[testFilter]);
+
   const settledFiltered=useMemo(function(){
     let base=settled;
     if(statsPeriod){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-statsPeriod);const cutStr=cutoff.toISOString().slice(0,10);base=base.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=cutStr);}
-    // Apply testing filters
-    if(testFilter.games.size<4)base=base.filter(b=>testFilter.games.has(b.game));
-    if(testFilter.headshot==="yes")base=base.filter(b=>b.isHeadshot);
-    if(testFilter.headshot==="no")base=base.filter(b=>!b.isHeadshot);
-    if(testFilter.live==="yes")base=base.filter(b=>b.isLive);
-    if(testFilter.live==="no")base=base.filter(b=>!b.isLive);
-    if(testFilter.overUnder==="over")base=base.filter(b=>b.overUnder==="Over");
-    if(testFilter.overUnder==="under")base=base.filter(b=>b.overUnder==="Under");
-    if(testFilter.oddsMin)base=base.filter(b=>(b.odds||0)>=parseFloat(testFilter.oddsMin));
-    if(testFilter.oddsMax)base=base.filter(b=>(b.odds||0)<=parseFloat(testFilter.oddsMax));
-    if(testFilter.hideTourneys&&testFilter.hideTourneys.size>0)base=base.filter(b=>!testFilter.hideTourneys.has(b.tournament||"Hors tournoi"));
-    if(testFilter.hideLeagues&&testFilter.hideLeagues.size>0)base=base.filter(b=>!testFilter.hideLeagues.has(b.league||""));
-    if(testFilter.hideRoles&&testFilter.hideRoles.size>0)base=base.filter(b=>!testFilter.hideRoles.has(b.role||""));
-    if(testFilter.ppEdgeMin)base=base.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(testFilter.ppEdgeMin));
-    if(testFilter.ppEdgeMax)base=base.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(testFilter.ppEdgeMax));
-    return base;
-  },[settled,statsPeriod,testFilter]);
+    return applyTestFilter(base);
+  },[settled,statsPeriod,applyTestFilter]);
 
   // ── 📊 ANALYSE AVANCÉE ────────────────────────────────────────────────────
   const advancedStats=useMemo(function(){
@@ -3216,8 +3227,9 @@ export default function App(){
     return{allSortedBets:sorted,byDay:bd,dayKeys:dk,byMonth:bm,monthKeys:Object.keys(bm).sort((a,z)=>z.localeCompare(a))};
   },[bets]);
 
+
   const homeSettled=useMemo(function(){
-    let s=settled;
+    let s=isTestActive?applyTestFilter(settled):settled;
     // Period filter
     if(homePeriod){
       const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
@@ -3236,7 +3248,10 @@ export default function App(){
     if(homeChartFilters.dateFrom)s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=homeChartFilters.dateFrom);
     if(homeChartFilters.dateTo)s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)<=homeChartFilters.dateTo);
     return s;
-  },[settled,homePeriod,homeChartFilters]);
+  },[settled,homePeriod,homeChartFilters,isTestActive,applyTestFilter]);
+
+  // betsForDisplay: bets filtrés par testFilter pour Mes Paris
+  const betsForDisplay=useMemo(()=>isTestActive?applyTestFilter(bets):bets,[bets,isTestActive,applyTestFilter]);
   const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.profit||0),0),[homeSettled]);
   const totalStaked=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.stake||0),0),[homeSettled]);
   const roi=useMemo(()=>totalStaked>0?(totalProfit/totalStaked)*100:0,[totalProfit,totalStaked]);
@@ -3738,9 +3753,26 @@ export default function App(){
         {/* Syncing indicator */}
         {syncing&&<div style={{position:"fixed",top:18,right:14,background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontWeight:700,color:"#A78BFA",zIndex:499,fontFamily:"'Inter',sans-serif"}}>☁️ Sync…</div>}
 
+        {/* ── BANNIÈRE MODE TEST GLOBAL ── */}
+        {isTestActive&&(
+          <div style={{position:"fixed",top:0,left:0,right:0,zIndex:600,background:"linear-gradient(90deg,rgba(234,179,8,.95),rgba(202,138,4,.95))",padding:"5px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 12px rgba(234,179,8,.4)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:13}}>🧪</span>
+              <span style={{fontSize:11,fontWeight:800,color:"#1a1000",letterSpacing:.3}}>MODE TEST ACTIF — simulation en cours</span>
+              <span style={{fontSize:10,color:"rgba(0,0,0,.5)",marginLeft:2}}>
+                {[testFilter.games.size<4&&`${testFilter.games.size} jeux`,testFilter.headshot!=="all"&&(testFilter.headshot==="yes"?"HS only":"sans HS"),testFilter.live!=="all"&&(testFilter.live==="yes"?"Live only":"sans Live"),testFilter.overUnder!=="all"&&testFilter.overUnder,testFilter.hideRoles.size>0&&`${testFilter.hideRoles.size} pos. masquées`,testFilter.hideTourneys.size>0&&`${testFilter.hideTourneys.size} tournois masqués`].filter(Boolean).join(" · ")}
+              </span>
+            </div>
+            <button onClick={()=>{setTestFilter(DEFAULT_TEST_FILTER);setTestFilterDraft(DEFAULT_TEST_FILTER);}}
+              style={{background:"rgba(0,0,0,.15)",border:"none",borderRadius:5,padding:"2px 8px",color:"#1a1000",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
+              ✕ Reset
+            </button>
+          </div>
+        )}
+
         {/* ── HOME ── */}
         {view==="home"&&(
-          <div className="view-enter" style={{paddingBottom:8}}>
+          <div className="view-enter" style={{paddingBottom:8,paddingTop:isTestActive?34:0}}>
 
             {/* ── TOP BAR ── */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,paddingTop:2}}>
@@ -4041,7 +4073,7 @@ export default function App(){
         {/* ── MES PARIS ── */}
         {view==="mesparis"&&(
           <MesParisView
-            bets={bets}
+            bets={betsForDisplay}
             setBets={setBets}
             bookmakers={bookmakers}
             bkPhotos={bkPhotos}
