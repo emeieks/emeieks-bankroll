@@ -5985,261 +5985,6 @@ export default function App(){
 
 
 
-            {/* ── 📊 ONGLET ANALYSE ── */}
-            {statsTab==="analyse"&&(
-              <div style={{display:'flex',flexDirection:'column',gap:0}}>
-                {/* ── 💡 COTE IDÉALE PAR TYPE DE PARI ── */}
-                {advancedStats&&advancedStats.coteIdéale&&advancedStats.coteIdéale.length>0&&(()=>{
-              const byGame={};
-              advancedStats.coteIdéale.forEach(r=>{
-                if(!byGame[r.game])byGame[r.game]=[];
-                byGame[r.game].push(r);
-                  });
-              return(
-                <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
-                  <div style={{padding:"12px 14px 8px",display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:16}}>💡</span>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>Cote idéale par type de pari</div>
-                      <div style={{fontSize:10,color:"#4a5a6e"}}>Formule : cote min. = 1 ÷ WR · Marge sécurité +5%</div>
-                    </div>
-                  </div>
-
-                      {Object.entries(byGame).map(([game,rows])=>(
-                    <div key={game} style={{borderTop:"1px solid rgba(255,255,255,.05)"}}>
-                          {/* Header jeu */}
-                      <div style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background:"rgba(255,255,255,.02)"}}>
-                        <GameLogo game={game} size={14}/>
-                        <span style={{fontSize:11,fontWeight:800,color:"#c8d4e8",textTransform:"uppercase",letterSpacing:.8}}>{game}</span>
-                      </div>
-
-                          {/* Colonnes header */}
-                      <div style={{display:"grid",gridTemplateColumns:"60px 40px 46px 56px 56px 60px 1fr",gap:4,padding:"4px 14px",background:"rgba(0,0,0,.2)"}}>
-                            {["Edge","Dir.","WR","Cote réelle","Cote min.","Cote safe","Verdict"].map(h=>(
-                          <span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.4}}>{h}</span>
-                        ))}
-                      </div>
-
-                          {rows.map((r,i)=>{
-                        const isOk=r.gap>=0;
-                        const isGood=r.gap>=0.1;
-                        const isBad=r.gap<-0.05;
-                        const bgColor=isGood?"rgba(34,197,94,.05)":isBad?"rgba(239,68,68,.06)":"transparent";
-                        const verdict=isGood?"✅ Rentable":isBad?`❌ Besoin +${Math.abs(r.gap).toFixed(2)}`:"⚠️ Limite";
-                        const verdictColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
-                        return(
-                          <div key={i} style={{display:"grid",gridTemplateColumns:"60px 40px 46px 56px 56px 60px 1fr",gap:4,alignItems:"center",padding:"8px 14px",borderTop:"1px solid rgba(255,255,255,.03)",background:bgColor}}>
-                                {/* Edge */}
-                            <span style={{fontSize:12,fontWeight:800,color:"#fff"}}>+{r.edge}</span>
-                                {/* Direction */}
-                            <span style={{fontSize:10,fontWeight:700,color:r.ou==="Over"?"#4ade80":"#60a5fa"}}>{r.ou==="Over"?"▲":"▼"}{r.cnt}p</span>
-                                {/* WR */}
-                            <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#F59E0B"}}>{r.wr}%</span>
-                                {/* Cote réelle */}
-                            <div style={{textAlign:"center"}}>
-                              <span style={{fontSize:13,fontWeight:800,color:"#c8d4e8"}}>{r.avgOdds.toFixed(2)}</span>
-                            </div>
-                                {/* Cote min (idéale) */}
-                            <div style={{textAlign:"center",position:"relative"}}>
-                              <span style={{fontSize:13,fontWeight:800,color:isOk?"#22C55E":"#EF4444"}}>{r.idealOdds.toFixed(2)}</span>
-                            </div>
-                                {/* Cote safe (+5%) */}
-                            <div style={{textAlign:"center"}}>
-                              <span style={{fontSize:11,fontWeight:600,color:"#5a7a9e"}}>{r.safeOdds.toFixed(2)}</span>
-                            </div>
-                                {/* Verdict */}
-                            <span style={{fontSize:10,fontWeight:700,color:verdictColor,whiteSpace:"nowrap"}}>{verdict}</span>
-                          </div>
-                        );
-                          })}
-                    </div>
-                  ))}
-
-                      {/* Légende */}
-                  <div style={{padding:"8px 14px",background:"rgba(0,0,0,.15)",borderTop:"1px solid rgba(255,255,255,.04)"}}>
-                    <div style={{fontSize:9,color:"#3a4a5e",lineHeight:1.6}}>
-                      <span style={{color:"#22C55E",fontWeight:700}}>Cote min.</span> = 1 ÷ WR = seuil de rentabilité zéro · <span style={{color:"#5a7a9e",fontWeight:700}}>Cote safe</span> = cote min. ÷ 0.95 = marge de sécurité 5% pour la variance
-                    </div>
-                  </div>
-                </div>
-              );
-                })()}
-
-                {/* ── 🎯 TABLEAU DES SIGNAUX ── */}
-                {advancedStats&&advancedStats.signalList.length>0&&(
-              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
-                <div style={{padding:"11px 14px 8px",display:"flex",alignItems:"center",gap:7}}>
-                  <span style={{fontSize:14}}>🎯</span>
-                  <div>
-                    <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",letterSpacing:.3}}>Signaux — Quoi garder, quoi couper</div>
-                    <div style={{fontSize:10,color:"#4a5a6e"}}>Combinaisons Over/Under × Jeu (min 5 paris)</div>
-                  </div>
-                </div>
-                <div style={{display:"flex",flexDirection:"column"}}>
-                      {advancedStats.signalList.map((s,i)=>{
-                    const isGood=s.roi>=5;const isBad=s.roi<=-5;
-                    const signal=isGood?"✅ GARDER":isBad?"❌ COUPER":"⚠️ NEUTRE";
-                    const sigColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
-                    return(
-                      <div key={s.ou+s.game} style={{display:"grid",gridTemplateColumns:"auto 1fr auto auto",gap:8,alignItems:"center",padding:"8px 14px",borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",background:isGood?"rgba(34,197,94,.04)":isBad?"rgba(239,68,68,.04)":"transparent"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:5}}>
-                          <GameLogo game={s.game} size={13}/>
-                          <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{s.ou==="Over"?"▲":"▼"} {s.game}</span>
-                        </div>
-                        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <span style={{fontSize:10,color:"#5a6a7e"}}>{s.cnt}p</span>
-                          <span style={{fontSize:10,fontWeight:600,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr}% WR</span>
-                        </div>
-                        <span style={{fontSize:11,fontWeight:800,color:sigColor,whiteSpace:"nowrap"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span>
-                        <span style={{fontSize:10,fontWeight:700,color:sigColor}}>{signal}</span>
-                      </div>
-                    );
-                      })}
-                </div>
-              </div>
-            )}
-
-                {/* ── 📅 JOUR DE LA SEMAINE + HEURE ── */}
-                {advancedStats&&(
-              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:10}}>📅 Performance par jour</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
-                      {advancedStats.DAYS.map(d=>{
-                    const s=advancedStats.dow[d];
-                    const roi=s.staked>0?s.profit/s.staked*100:0;
-                    const wr=s.cnt>0?s.won/s.cnt*100:0;
-                    const color=roi>=5?"#22C55E":roi<=-5?"#EF4444":"#F59E0B";
-                    return(
-                      <div key={d} style={{textAlign:"center",background:"rgba(255,255,255,.02)",borderRadius:8,padding:"6px 2px",border:"1px solid rgba(255,255,255,.04)"}}>
-                        <div style={{fontSize:9,color:"#5a6a7e",fontWeight:600,marginBottom:2}}>{d}</div>
-                        <div style={{fontSize:12,fontWeight:800,color}}>{roi>=0?"+":""}{roi.toFixed(0)}%</div>
-                        <div style={{fontSize:8,color:"#4a5a6e"}}>{s.cnt}p</div>
-                        <div style={{marginTop:4,height:3,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
-                              {s.cnt>0&&<div style={{height:"100%",width:Math.min(100,Math.abs(roi)*3)+"%",background:color,borderRadius:2}}/>}
-                        </div>
-                      </div>
-                    );
-                      })}
-                </div>
-                    {/* Heure */}
-                <div style={{marginTop:10}}>
-                  <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6}}>Heure de la journée</div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4}}>
-                        {Object.entries(advancedStats.timeSlots).map(([label,s])=>{
-                      const roi=s.staked>0?s.profit/s.staked*100:0;
-                      const color=roi>=5?"#22C55E":roi<=-5?"#EF4444":"#5a6a7e";
-                      return(
-                        <div key={label} style={{textAlign:"center",background:"rgba(255,255,255,.02)",borderRadius:8,padding:"6px 4px",border:"1px solid rgba(255,255,255,.04)"}}>
-                          <div style={{fontSize:8,color:"#5a6a7e",fontWeight:600,marginBottom:2}}>{label}</div>
-                          <div style={{fontSize:12,fontWeight:800,color}}>{roi>=0?"+":""}{roi.toFixed(0)}%</div>
-                          <div style={{fontSize:8,color:"#4a5a6e"}}>{s.cnt}p</div>
-                        </div>
-                      );
-                        })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-                {/* ── 🎰 SEUIL DE RENTABILITÉ PAR COTE ── */}
-                {advancedStats&&advancedStats.breakevenData.length>0&&(
-              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📐 Seuil de rentabilité par cote</div>
-                <div style={{fontSize:10,color:"#4a5a6e",marginBottom:10}}>Ton WR réel vs le minimum requis pour être profitable</div>
-                    {advancedStats.breakevenData.filter(r=>r.cnt>=3).map((r,i)=>{
-                  const gap=r.wr-r.minWR;const isOk=gap>=0;
-                  return(
-                    <div key={r.label} style={{marginBottom:8}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                        <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
-                        <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                          <span style={{fontSize:10,color:"#5a6a7e"}}>{r.cnt}p · requis {r.minWR}%</span>
-                          <span style={{fontSize:12,fontWeight:800,color:isOk?"#22C55E":"#EF4444"}}>{isOk?"+":""}{gap}% {isOk?"✓":"✗"}</span>
-                        </div>
-                      </div>
-                          {/* Double barre : seuil gris + réel coloré */}
-                      <div style={{height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden",position:"relative"}}>
-                        <div style={{position:"absolute",left:r.minWR+"%",top:0,bottom:0,width:2,background:"rgba(255,255,255,.2)",zIndex:1}}/>
-                        <div style={{height:"100%",width:Math.min(100,r.wr)+"%",background:isOk?"rgba(34,197,94,.6)":"rgba(239,68,68,.6)",borderRadius:3}}/>
-                      </div>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#4a5a6e",marginTop:2}}>
-                        <span>WR réel: {r.wr}%</span>
-                        <span style={{color:r.roi>=0?"#22C55E":"#EF4444"}}>ROI {r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  );
-                    })}
-              </div>
-            )}
-
-                {/* ── 📈 CALIBRATION PP EDGE ── */}
-                {advancedStats&&advancedStats.calibration.length>1&&(
-              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📈 Calibration Edge PrizePicks</div>
-                <div style={{fontSize:10,color:"#4a5a6e",marginBottom:10}}>Est-ce que les edges élevés sont vraiment plus rentables ?</div>
-                    {advancedStats.calibration.map((c,i)=>{
-                  const isGood=c.roi>0;
-                  return(
-                    <div key={c.label} style={{display:"grid",gridTemplateColumns:"60px 32px 1fr 52px 60px",gap:6,alignItems:"center",padding:"5px 0",borderBottom:i<advancedStats.calibration.length-1?"1px solid rgba(255,255,255,.04)":"none"}}>
-                      <span style={{fontSize:12,fontWeight:800,color:"#FFFFFF"}}>+{c.label}</span>
-                      <span style={{fontSize:10,color:"#5a6a7e"}}>{c.cnt}p</span>
-                      <div style={{height:5,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:2}}/>
-                      </div>
-                      <span style={{fontSize:11,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{c.wr}%</span>
-                      <span style={{fontSize:12,fontWeight:800,color:isGood?"#22C55E":"#EF4444",textAlign:"right"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
-                    </div>
-                  );
-                    })}
-              </div>
-            )}
-
-                {/* ── 🏆 MEILLEURS / PIRES JOUEURS ── */}
-                {(()=>{
-              const pm={};
-              settledFiltered.forEach(b=>{
-                const k=(b.player||"?").toLowerCase();
-                if(!pm[k])pm[k]={player:b.player||"?",game:b.game,cnt:0,won:0,profit:0,staked:0};
-                const p=pm[k];p.cnt++;p.profit+=b.profit;p.staked+=b.stake;if(b.status==="won")p.won++;
-                  });
-              const list=Object.values(pm).filter(p=>p.cnt>=3).map(p=>({...p,roi:p.staked>0?p.profit/p.staked*100:0,wr:Math.round(p.won/p.cnt*100)}));
-              const top5=list.filter(p=>p.roi>=0).sort((a,b)=>b.profit-a.profit).slice(0,5);
-              const bot5=list.filter(p=>p.roi<0).sort((a,b)=>a.profit-b.profit).slice(0,5);
-              if(!top5.length&&!bot5.length)return null;
-              return(
-                <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                  <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:10}}>⭐ Top joueurs rentables · 💀 Joueurs à éviter</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                    <div>
-                      <div style={{fontSize:9,color:"#22C55E",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>✅ Top 5</div>
-                          {top5.map((p,i)=>(
-                        <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:i<top5.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <GameLogo game={p.game} size={10}/>
-                            <span style={{fontSize:11,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
-                          </div>
-                          <span style={{fontSize:11,fontWeight:800,color:"#22C55E"}}>+{p.profit.toFixed(0)}$</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      <div style={{fontSize:9,color:"#EF4444",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>❌ À couper</div>
-                          {bot5.map((p,i)=>(
-                        <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:i<bot5.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <GameLogo game={p.game} size={10}/>
-                            <span style={{fontSize:11,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
-                          </div>
-                          <span style={{fontSize:11,fontWeight:800,color:"#EF4444"}}>{p.profit.toFixed(0)}$</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-                })()}
-              </div>
-            )}
 
             {/* ── 🎯 PP ANALYTICS HUB ── */}
             {(()=>{
@@ -6830,6 +6575,263 @@ export default function App(){
               );
             })()}
             </>}
+
+            {/* ── 📊 ONGLET ANALYSE ── */}
+            {statsTab==="analyse"&&(
+              <div style={{display:'flex',flexDirection:'column',gap:0}}>
+                {/* ── 💡 COTE IDÉALE PAR TYPE DE PARI ── */}
+                {advancedStats&&advancedStats.coteIdéale&&advancedStats.coteIdéale.length>0&&(()=>{
+              const byGame={};
+              advancedStats.coteIdéale.forEach(r=>{
+                if(!byGame[r.game])byGame[r.game]=[];
+                byGame[r.game].push(r);
+                  });
+              return(
+                <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+                  <div style={{padding:"12px 14px 8px",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:16}}>💡</span>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>Cote idéale par type de pari</div>
+                      <div style={{fontSize:10,color:"#4a5a6e"}}>Formule : cote min. = 1 ÷ WR · Marge sécurité +5%</div>
+                    </div>
+                  </div>
+
+                      {Object.entries(byGame).map(([game,rows])=>(
+                    <div key={game} style={{borderTop:"1px solid rgba(255,255,255,.05)"}}>
+                          {/* Header jeu */}
+                      <div style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background:"rgba(255,255,255,.02)"}}>
+                        <GameLogo game={game} size={14}/>
+                        <span style={{fontSize:11,fontWeight:800,color:"#c8d4e8",textTransform:"uppercase",letterSpacing:.8}}>{game}</span>
+                      </div>
+
+                          {/* Colonnes header */}
+                      <div style={{display:"grid",gridTemplateColumns:"60px 40px 46px 56px 56px 60px 1fr",gap:4,padding:"4px 14px",background:"rgba(0,0,0,.2)"}}>
+                            {["Edge","Dir.","WR","Cote réelle","Cote min.","Cote safe","Verdict"].map(h=>(
+                          <span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.4}}>{h}</span>
+                        ))}
+                      </div>
+
+                          {rows.map((r,i)=>{
+                        const isOk=r.gap>=0;
+                        const isGood=r.gap>=0.1;
+                        const isBad=r.gap<-0.05;
+                        const bgColor=isGood?"rgba(34,197,94,.05)":isBad?"rgba(239,68,68,.06)":"transparent";
+                        const verdict=isGood?"✅ Rentable":isBad?`❌ Besoin +${Math.abs(r.gap).toFixed(2)}`:"⚠️ Limite";
+                        const verdictColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
+                        return(
+                          <div key={i} style={{display:"grid",gridTemplateColumns:"60px 40px 46px 56px 56px 60px 1fr",gap:4,alignItems:"center",padding:"8px 14px",borderTop:"1px solid rgba(255,255,255,.03)",background:bgColor}}>
+                                {/* Edge */}
+                            <span style={{fontSize:12,fontWeight:800,color:"#fff"}}>+{r.edge}</span>
+                                {/* Direction */}
+                            <span style={{fontSize:10,fontWeight:700,color:r.ou==="Over"?"#4ade80":"#60a5fa"}}>{r.ou==="Over"?"▲":"▼"}{r.cnt}p</span>
+                                {/* WR */}
+                            <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#F59E0B"}}>{r.wr}%</span>
+                                {/* Cote réelle */}
+                            <div style={{textAlign:"center"}}>
+                              <span style={{fontSize:13,fontWeight:800,color:"#c8d4e8"}}>{r.avgOdds.toFixed(2)}</span>
+                            </div>
+                                {/* Cote min (idéale) */}
+                            <div style={{textAlign:"center",position:"relative"}}>
+                              <span style={{fontSize:13,fontWeight:800,color:isOk?"#22C55E":"#EF4444"}}>{r.idealOdds.toFixed(2)}</span>
+                            </div>
+                                {/* Cote safe (+5%) */}
+                            <div style={{textAlign:"center"}}>
+                              <span style={{fontSize:11,fontWeight:600,color:"#5a7a9e"}}>{r.safeOdds.toFixed(2)}</span>
+                            </div>
+                                {/* Verdict */}
+                            <span style={{fontSize:10,fontWeight:700,color:verdictColor,whiteSpace:"nowrap"}}>{verdict}</span>
+                          </div>
+                        );
+                          })}
+                    </div>
+                  ))}
+
+                      {/* Légende */}
+                  <div style={{padding:"8px 14px",background:"rgba(0,0,0,.15)",borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                    <div style={{fontSize:9,color:"#3a4a5e",lineHeight:1.6}}>
+                      <span style={{color:"#22C55E",fontWeight:700}}>Cote min.</span> = 1 ÷ WR = seuil de rentabilité zéro · <span style={{color:"#5a7a9e",fontWeight:700}}>Cote safe</span> = cote min. ÷ 0.95 = marge de sécurité 5% pour la variance
+                    </div>
+                  </div>
+                </div>
+              );
+                })()}
+
+                {/* ── 🎯 TABLEAU DES SIGNAUX ── */}
+                {advancedStats&&advancedStats.signalList.length>0&&(
+              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+                <div style={{padding:"11px 14px 8px",display:"flex",alignItems:"center",gap:7}}>
+                  <span style={{fontSize:14}}>🎯</span>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",letterSpacing:.3}}>Signaux — Quoi garder, quoi couper</div>
+                    <div style={{fontSize:10,color:"#4a5a6e"}}>Combinaisons Over/Under × Jeu (min 5 paris)</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column"}}>
+                      {advancedStats.signalList.map((s,i)=>{
+                    const isGood=s.roi>=5;const isBad=s.roi<=-5;
+                    const signal=isGood?"✅ GARDER":isBad?"❌ COUPER":"⚠️ NEUTRE";
+                    const sigColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
+                    return(
+                      <div key={s.ou+s.game} style={{display:"grid",gridTemplateColumns:"auto 1fr auto auto",gap:8,alignItems:"center",padding:"8px 14px",borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",background:isGood?"rgba(34,197,94,.04)":isBad?"rgba(239,68,68,.04)":"transparent"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <GameLogo game={s.game} size={13}/>
+                          <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{s.ou==="Over"?"▲":"▼"} {s.game}</span>
+                        </div>
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                          <span style={{fontSize:10,color:"#5a6a7e"}}>{s.cnt}p</span>
+                          <span style={{fontSize:10,fontWeight:600,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF"}}>{s.wr}% WR</span>
+                        </div>
+                        <span style={{fontSize:11,fontWeight:800,color:sigColor,whiteSpace:"nowrap"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span>
+                        <span style={{fontSize:10,fontWeight:700,color:sigColor}}>{signal}</span>
+                      </div>
+                    );
+                      })}
+                </div>
+              </div>
+            )}
+
+                {/* ── 📅 JOUR DE LA SEMAINE + HEURE ── */}
+                {advancedStats&&(
+              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:10}}>📅 Performance par jour</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+                      {advancedStats.DAYS.map(d=>{
+                    const s=advancedStats.dow[d];
+                    const roi=s.staked>0?s.profit/s.staked*100:0;
+                    const wr=s.cnt>0?s.won/s.cnt*100:0;
+                    const color=roi>=5?"#22C55E":roi<=-5?"#EF4444":"#F59E0B";
+                    return(
+                      <div key={d} style={{textAlign:"center",background:"rgba(255,255,255,.02)",borderRadius:8,padding:"6px 2px",border:"1px solid rgba(255,255,255,.04)"}}>
+                        <div style={{fontSize:9,color:"#5a6a7e",fontWeight:600,marginBottom:2}}>{d}</div>
+                        <div style={{fontSize:12,fontWeight:800,color}}>{roi>=0?"+":""}{roi.toFixed(0)}%</div>
+                        <div style={{fontSize:8,color:"#4a5a6e"}}>{s.cnt}p</div>
+                        <div style={{marginTop:4,height:3,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
+                              {s.cnt>0&&<div style={{height:"100%",width:Math.min(100,Math.abs(roi)*3)+"%",background:color,borderRadius:2}}/>}
+                        </div>
+                      </div>
+                    );
+                      })}
+                </div>
+                    {/* Heure */}
+                <div style={{marginTop:10}}>
+                  <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:.8,textTransform:"uppercase",marginBottom:6}}>Heure de la journée</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4}}>
+                        {Object.entries(advancedStats.timeSlots).map(([label,s])=>{
+                      const roi=s.staked>0?s.profit/s.staked*100:0;
+                      const color=roi>=5?"#22C55E":roi<=-5?"#EF4444":"#5a6a7e";
+                      return(
+                        <div key={label} style={{textAlign:"center",background:"rgba(255,255,255,.02)",borderRadius:8,padding:"6px 4px",border:"1px solid rgba(255,255,255,.04)"}}>
+                          <div style={{fontSize:8,color:"#5a6a7e",fontWeight:600,marginBottom:2}}>{label}</div>
+                          <div style={{fontSize:12,fontWeight:800,color}}>{roi>=0?"+":""}{roi.toFixed(0)}%</div>
+                          <div style={{fontSize:8,color:"#4a5a6e"}}>{s.cnt}p</div>
+                        </div>
+                      );
+                        })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+                {/* ── 🎰 SEUIL DE RENTABILITÉ PAR COTE ── */}
+                {advancedStats&&advancedStats.breakevenData.length>0&&(
+              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📐 Seuil de rentabilité par cote</div>
+                <div style={{fontSize:10,color:"#4a5a6e",marginBottom:10}}>Ton WR réel vs le minimum requis pour être profitable</div>
+                    {advancedStats.breakevenData.filter(r=>r.cnt>=3).map((r,i)=>{
+                  const gap=r.wr-r.minWR;const isOk=gap>=0;
+                  return(
+                    <div key={r.label} style={{marginBottom:8}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                        <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
+                        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                          <span style={{fontSize:10,color:"#5a6a7e"}}>{r.cnt}p · requis {r.minWR}%</span>
+                          <span style={{fontSize:12,fontWeight:800,color:isOk?"#22C55E":"#EF4444"}}>{isOk?"+":""}{gap}% {isOk?"✓":"✗"}</span>
+                        </div>
+                      </div>
+                          {/* Double barre : seuil gris + réel coloré */}
+                      <div style={{height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden",position:"relative"}}>
+                        <div style={{position:"absolute",left:r.minWR+"%",top:0,bottom:0,width:2,background:"rgba(255,255,255,.2)",zIndex:1}}/>
+                        <div style={{height:"100%",width:Math.min(100,r.wr)+"%",background:isOk?"rgba(34,197,94,.6)":"rgba(239,68,68,.6)",borderRadius:3}}/>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#4a5a6e",marginTop:2}}>
+                        <span>WR réel: {r.wr}%</span>
+                        <span style={{color:r.roi>=0?"#22C55E":"#EF4444"}}>ROI {r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  );
+                    })}
+              </div>
+            )}
+
+                {/* ── 📈 CALIBRATION PP EDGE ── */}
+                {advancedStats&&advancedStats.calibration.length>1&&(
+              <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📈 Calibration Edge PrizePicks</div>
+                <div style={{fontSize:10,color:"#4a5a6e",marginBottom:10}}>Est-ce que les edges élevés sont vraiment plus rentables ?</div>
+                    {advancedStats.calibration.map((c,i)=>{
+                  const isGood=c.roi>0;
+                  return(
+                    <div key={c.label} style={{display:"grid",gridTemplateColumns:"60px 32px 1fr 52px 60px",gap:6,alignItems:"center",padding:"5px 0",borderBottom:i<advancedStats.calibration.length-1?"1px solid rgba(255,255,255,.04)":"none"}}>
+                      <span style={{fontSize:12,fontWeight:800,color:"#FFFFFF"}}>+{c.label}</span>
+                      <span style={{fontSize:10,color:"#5a6a7e"}}>{c.cnt}p</span>
+                      <div style={{height:5,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:2}}/>
+                      </div>
+                      <span style={{fontSize:11,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{c.wr}%</span>
+                      <span style={{fontSize:12,fontWeight:800,color:isGood?"#22C55E":"#EF4444",textAlign:"right"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
+                    </div>
+                  );
+                    })}
+              </div>
+            )}
+
+                {/* ── 🏆 MEILLEURS / PIRES JOUEURS ── */}
+                {(()=>{
+              const pm={};
+              settledFiltered.forEach(b=>{
+                const k=(b.player||"?").toLowerCase();
+                if(!pm[k])pm[k]={player:b.player||"?",game:b.game,cnt:0,won:0,profit:0,staked:0};
+                const p=pm[k];p.cnt++;p.profit+=b.profit;p.staked+=b.stake;if(b.status==="won")p.won++;
+                  });
+              const list=Object.values(pm).filter(p=>p.cnt>=3).map(p=>({...p,roi:p.staked>0?p.profit/p.staked*100:0,wr:Math.round(p.won/p.cnt*100)}));
+              const top5=list.filter(p=>p.roi>=0).sort((a,b)=>b.profit-a.profit).slice(0,5);
+              const bot5=list.filter(p=>p.roi<0).sort((a,b)=>a.profit-b.profit).slice(0,5);
+              if(!top5.length&&!bot5.length)return null;
+              return(
+                <div style={{marginBottom:16,background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
+                  <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",marginBottom:10}}>⭐ Top joueurs rentables · 💀 Joueurs à éviter</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    <div>
+                      <div style={{fontSize:9,color:"#22C55E",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>✅ Top 5</div>
+                          {top5.map((p,i)=>(
+                        <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:i<top5.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:4}}>
+                            <GameLogo game={p.game} size={10}/>
+                            <span style={{fontSize:11,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
+                          </div>
+                          <span style={{fontSize:11,fontWeight:800,color:"#22C55E"}}>+{p.profit.toFixed(0)}$</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div style={{fontSize:9,color:"#EF4444",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:5}}>❌ À couper</div>
+                          {bot5.map((p,i)=>(
+                        <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:i<bot5.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:4}}>
+                            <GameLogo game={p.game} size={10}/>
+                            <span style={{fontSize:11,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
+                          </div>
+                          <span style={{fontSize:11,fontWeight:800,color:"#EF4444"}}>{p.profit.toFixed(0)}$</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+                })()}
+              </div>
+            )}
+
 
             {statsTab==="jeux"&&<>
             {/* ── PAR JEU — accordéons regroupés ── */}
