@@ -2283,8 +2283,9 @@ export default function App(){
   const [statsGameOpen,setStatsGameOpen]=useState({});
   const [ouDrill,setOuDrill]=useState(null);
   const [statsTab,setStatsTab]=useState("apercu");
-  const [dowMetric,setDowMetric]=useState("roi"); // métrique du graphique jour de semaine
-  const [analyseView,setAnalyseView]=useState("global"); // global | week
+  const [dowMetric,setDowMetric]=useState("roi");
+  const [analyseView,setAnalyseView]=useState("global");
+  const [calibDrill,setCalibDrill]=useState(null); // edge value for drill-down
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [statsChartMode,setStatsChartMode]=useState("line");
   const [playersExpanded,setPlayersExpanded]=useState(null);
@@ -6606,8 +6607,8 @@ export default function App(){
                         const under=rows.filter(r=>r.ou==="Under").sort((a,b)=>a.edge-b.edge);
                         if(!over.length&&!under.length)return null;
                         const HDR=()=>(
-                          <div style={{display:"grid",gridTemplateColumns:"46px 34px 44px 50px 50px 56px 1fr",gap:4,padding:"4px 12px",background:"rgba(0,0,0,.25)"}}>
-                            {["Edge","N","WR","Réelle","Min","Safe","Verdict"].map(h=>(
+                          <div style={{display:"grid",gridTemplateColumns:"46px 34px 44px 52px 52px 60px 56px",gap:4,padding:"4px 12px",background:"rgba(0,0,0,.25)"}}>
+                            {["Edge","N","WR","Réelle","Min","Profit","Sur 5k$"].map(h=>(
                               <span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.3}}>{h}</span>
                             ))}
                           </div>
@@ -6615,17 +6616,17 @@ export default function App(){
                         const Row=({r,last})=>{
                           const ok=r.gap>=0;const good=r.gap>=0.1;const bad=r.gap<-0.05;
                           const bg=good?"rgba(34,197,94,.05)":bad?"rgba(239,68,68,.06)":"transparent";
-                          const vc=good?"#22C55E":bad?"#EF4444":"#F59E0B";
-                          const vt=good?"✅ OK":bad?`❌ +${Math.abs(r.gap).toFixed(2)} requis`:"⚠️ Limite";
+                          const prog=r.profit/5000*100; // % progression sur 5000$
+                          const progColor=prog>=0?"#22C55E":"#EF4444";
                           return(
-                            <div style={{display:"grid",gridTemplateColumns:"46px 34px 44px 50px 50px 56px 1fr",gap:4,alignItems:"center",padding:"7px 12px",borderBottom:last?"none":"1px solid rgba(255,255,255,.03)",background:bg}}>
+                            <div style={{display:"grid",gridTemplateColumns:"46px 34px 44px 52px 52px 60px 56px",gap:4,alignItems:"center",padding:"7px 12px",borderBottom:last?"none":"1px solid rgba(255,255,255,.03)",background:bg}}>
                               <span style={{fontSize:13,fontWeight:800,color:"#fff"}}>+{r.edge%1===0?r.edge.toFixed(0):r.edge}</span>
                               <span style={{fontSize:10,color:"#5a6a7e"}}>{r.cnt}</span>
                               <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#F59E0B"}}>{r.wr}%</span>
                               <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8",textAlign:"center"}}>{r.avgOdds.toFixed(2)}</span>
                               <span style={{fontSize:12,fontWeight:800,color:ok?"#22C55E":"#EF4444",textAlign:"center"}}>{r.idealOdds.toFixed(2)}</span>
-                              <span style={{fontSize:11,color:"#5a7a9e",textAlign:"center"}}>{r.safeOdds.toFixed(2)}</span>
-                              <span style={{fontSize:10,fontWeight:700,color:vc}}>{vt}</span>
+                              <FmtProfit v={r.profit} fontSize={11}/>
+                              <span style={{fontSize:11,fontWeight:700,color:progColor,textAlign:"right"}}>{prog>=0?"+":""}{prog.toFixed(1)}%</span>
                             </div>
                           );
                         };
@@ -6820,11 +6821,11 @@ export default function App(){
                   </div>
                 )}
 
-                {/* ── 📈 CALIBRATION EDGE PP ── chiffres ronds */}
+                {/* ── 📈 CALIBRATION EDGE PP ── chiffres ronds + drill Over/Under */}
                 {advancedStats&&advancedStats.calibration.length>1&&(
                   <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
                     <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📈 Calibration Edge PrizePicks</div>
-                    <div style={{fontSize:9,color:"#4a5a6e",marginBottom:10}}>Est-ce que les edges élevés sont vraiment plus rentables ?</div>
+                    <div style={{fontSize:9,color:"#4a5a6e",marginBottom:10}}>Clique sur un edge pour voir le détail Over / Under</div>
                     <div style={{display:"grid",gridTemplateColumns:"52px 34px 1fr 48px 56px 60px",gap:6,padding:"4px 0",marginBottom:4}}>
                       {["Edge","N","WR","ROI","Profit",""].map((h,i)=>(
                         <span key={i} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.3}}>{h}</span>
@@ -6832,19 +6833,71 @@ export default function App(){
                     </div>
                     {advancedStats.calibration.map((c,i)=>{
                       const isGood=c.roi>0;
+                      const isOpen=calibDrill===c.edge;
+                      // Compute Over/Under breakdown for this edge
+                      const snapE=e=>Math.round(Math.abs(e)*4)/4;
+                      const overS={cnt:0,won:0,profit:0,staked:0};
+                      const underS={cnt:0,won:0,profit:0,staked:0};
+                      if(isOpen){
+                        settledFiltered.filter(b=>b.ppEdge!=null&&Math.abs(snapE(b.ppEdge)-c.edge)<0.01).forEach(b=>{
+                          const t=b.overUnder==="Over"?overS:b.overUnder==="Under"?underS:null;
+                          if(!t)return;
+                          t.cnt++;t.profit+=b.profit;t.staked+=b.stake;if(b.status==="won")t.won++;
+                        });
+                      }
                       return(
-                        <div key={c.label} style={{display:"grid",gridTemplateColumns:"52px 34px 1fr 48px 56px 60px",gap:6,alignItems:"center",padding:"6px 0",borderTop:"1px solid rgba(255,255,255,.04)"}}>
-                          <span style={{fontSize:13,fontWeight:800,color:"#FFFFFF"}}>+{c.label}</span>
-                          <span style={{fontSize:10,color:"#5a6a7e"}}>{c.cnt}</span>
-                          <div style={{display:"flex",alignItems:"center",gap:4}}>
-                            <div style={{flex:1,height:5,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
-                              <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:2}}/>
+                        <div key={c.label}>
+                          <div onClick={()=>setCalibDrill(isOpen?null:c.edge)}
+                            style={{display:"grid",gridTemplateColumns:"52px 34px 1fr 48px 56px 60px",gap:6,alignItems:"center",padding:"8px 0",borderTop:"1px solid rgba(255,255,255,.04)",cursor:"pointer",background:isOpen?"rgba(96,165,250,.04)":"transparent",borderRadius:isOpen?8:0}}>
+                            <span style={{fontSize:13,fontWeight:800,color:isOpen?"#60a5fa":"#FFFFFF"}}>+{c.label}</span>
+                            <span style={{fontSize:10,color:"#5a6a7e"}}>{c.cnt}</span>
+                            <div style={{display:"flex",alignItems:"center",gap:4}}>
+                              <div style={{flex:1,height:5,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:2}}/>
+                              </div>
+                              <span style={{fontSize:10,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#F59E0B",minWidth:28}}>{c.wr}%</span>
                             </div>
-                            <span style={{fontSize:10,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#F59E0B",minWidth:28}}>{c.wr}%</span>
+                            <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
+                            <FmtProfit v={c.profit} fontSize={11}/>
+                            <span style={{fontSize:10,color:"#4a5a6e",textAlign:"right"}}>{isOpen?"▲":"▼"}</span>
                           </div>
-                          <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
-                          <FmtProfit v={c.profit} fontSize={11}/>
-                          <span style={{fontSize:9,color:isGood?"#22C55E":"#EF4444",fontWeight:600}}>{isGood?"✅ Bon":"❌ Éviter"}</span>
+
+                          {/* DRILL: Over / Under pour cet edge */}
+                          {isOpen&&(
+                            <div style={{margin:"4px 0 8px 0",background:"rgba(0,0,0,.25)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(96,165,250,.15)"}}>
+                              <div style={{fontSize:9,color:"#60a5fa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Détail — Edge +{c.label}</div>
+                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                                {[{label:"▲ Over",s:overS,color:"#22C55E"},{label:"▼ Under",s:underS,color:"#60a5fa"}].map(({label,s,color})=>{
+                                  if(s.cnt===0)return<div key={label} style={{textAlign:"center",color:"#3a4a5e",fontSize:11,padding:8}}>Aucun {label}</div>;
+                                  const wr=Math.round(s.won/s.cnt*100);
+                                  const roi=s.staked>0?s.profit/s.staked*100:0;
+                                  return(
+                                    <div key={label} style={{background:"rgba(255,255,255,.02)",borderRadius:8,padding:"8px 10px",border:"1px solid rgba(255,255,255,.05)"}}>
+                                      <div style={{fontSize:11,fontWeight:800,color,marginBottom:6}}>{label}</div>
+                                      <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                                        <div style={{display:"flex",justifyContent:"space-between"}}>
+                                          <span style={{fontSize:10,color:"#5a6a7e"}}>Paris</span>
+                                          <span style={{fontSize:10,fontWeight:700,color:"#c8d4e8"}}>{s.cnt}</span>
+                                        </div>
+                                        <div style={{display:"flex",justifyContent:"space-between"}}>
+                                          <span style={{fontSize:10,color:"#5a6a7e"}}>WR</span>
+                                          <span style={{fontSize:10,fontWeight:700,color:wr>=55?"#22C55E":wr<45?"#EF4444":"#F59E0B"}}>{wr}%</span>
+                                        </div>
+                                        <div style={{display:"flex",justifyContent:"space-between"}}>
+                                          <span style={{fontSize:10,color:"#5a6a7e"}}>ROI</span>
+                                          <span style={{fontSize:11,fontWeight:700,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
+                                        </div>
+                                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                                          <span style={{fontSize:10,color:"#5a6a7e"}}>Profit</span>
+                                          <FmtProfit v={s.profit} fontSize={12}/>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
