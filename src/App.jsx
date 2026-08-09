@@ -2289,7 +2289,12 @@ export default function App(){
   const [coteSort,setCoteSort]=useState({key:"edge",dir:1});
   const [signalSort,setSignalSort]=useState({key:"profit",dir:-1});
   const [calibSort,setCalibSort]=useState({key:"edge",dir:1});
-  const [breakevenSort,setBreakevenSort]=useState({key:"label",dir:1}); // edge value for drill-down
+  const [breakevenSort,setBreakevenSort]=useState({key:"label",dir:1});
+  // ── MODE NOUVEAU DÉPART (Men in Black) ───────────────────────────────────
+  const [mibActive,setMibActive]=useState(()=>{try{return localStorage.getItem("v7_mib_active")==="1";}catch(e){return false;}});
+  const [mibDate,setMibDate]=useState(()=>{try{return localStorage.getItem("v7_mib_date")||new Date().toISOString().slice(0,10);}catch(e){return new Date().toISOString().slice(0,10);}});
+  // Persister MIB dans localStorage
+  useEffect(()=>{try{localStorage.setItem("v7_mib_active",mibActive?"1":"0");localStorage.setItem("v7_mib_date",mibDate);}catch(e){}},[mibActive,mibDate]);
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [statsChartMode,setStatsChartMode]=useState("line");
   const [playersExpanded,setPlayersExpanded]=useState(null);
@@ -2684,9 +2689,62 @@ export default function App(){
   },[allPlayers]);
 
   const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
-  // ── Fonction réutilisable du test filter ─────────────────────────────────
-  const applyTestFilter=useCallback(function(base){
-    let r=base;
+  // ── Fonction réutilisable du test filter (inline, pas useCallback pour perf) ──
+  // Utilisée comme ref stable
+  const testFilterRef=useRef(testFilter);
+  const mibActiveRef=useRef(mibActive);
+  const mibDateRef=useRef(mibDate);
+  useEffect(()=>{testFilterRef.current=testFilter;},[testFilter]);
+  useEffect(()=>{mibActiveRef.current=mibActive;},[mibActive]);
+  useEffect(()=>{mibDateRef.current=mibDate;},[mibDate]);
+
+  // Snapshot des valeurs clés pour les useMemo (évite de recréer des fonctions)
+  const testFilterSnap=useMemo(()=>({
+    games:testFilter.games,
+    headshot:testFilter.headshot,
+    live:testFilter.live,
+    overUnder:testFilter.overUnder,
+    oddsMin:testFilter.oddsMin,
+    oddsMax:testFilter.oddsMax,
+    hideTourneys:testFilter.hideTourneys,
+    hideLeagues:testFilter.hideLeagues,
+    hideRoles:testFilter.hideRoles,
+    ppEdgeMin:testFilter.ppEdgeMin,
+    ppEdgeMax:testFilter.ppEdgeMax,
+    mibActive,
+    mibDate,
+  }),[testFilter,mibActive,mibDate]);
+
+  const isTestActive=useMemo(()=>{
+    const f=testFilter;
+    return mibActive||f.games.size<4||f.headshot!=="all"||f.live!=="all"||f.overUnder!=="all"||!!f.oddsMin||!!f.oddsMax||f.hideTourneys.size>0||f.hideLeagues.size>0||f.hideRoles.size>0||!!f.ppEdgeMin||!!f.ppEdgeMax;
+  },[testFilter,mibActive]);
+
+  // Filtre inline (pas de useCallback pour éviter les cascades)
+  function applyMib(base,snap){
+    if(!snap.mibActive||!snap.mibDate)return base;
+    return base.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=snap.mibDate);
+  }
+  function applyTestFilter(base,snap){
+    let r=applyMib(base,snap);
+    if(snap.games.size<4)r=r.filter(b=>snap.games.has(b.game));
+    if(snap.headshot==="yes")r=r.filter(b=>b.isHeadshot);
+    if(snap.headshot==="no")r=r.filter(b=>!b.isHeadshot);
+    if(snap.live==="yes")r=r.filter(b=>b.isLive);
+    if(snap.live==="no")r=r.filter(b=>!b.isLive);
+    if(snap.overUnder==="over")r=r.filter(b=>b.overUnder==="Over");
+    if(snap.overUnder==="under")r=r.filter(b=>b.overUnder==="Under");
+    if(snap.oddsMin)r=r.filter(b=>(b.odds||0)>=parseFloat(snap.oddsMin));
+    if(snap.oddsMax)r=r.filter(b=>(b.odds||0)<=parseFloat(snap.oddsMax));
+    if(snap.hideTourneys&&snap.hideTourneys.size>0)r=r.filter(b=>!snap.hideTourneys.has(b.tournament||"Hors tournoi"));
+    if(snap.hideLeagues&&snap.hideLeagues.size>0)r=r.filter(b=>!snap.hideLeagues.has(b.league||""));
+    if(snap.hideRoles&&snap.hideRoles.size>0)r=r.filter(b=>!snap.hideRoles.has(b.role||""));
+    if(snap.ppEdgeMin)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(snap.ppEdgeMin));
+    if(snap.ppEdgeMax)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(snap.ppEdgeMax));
+    return r;
+  }
+
+  const betsForDisplay=useMemo(()=>isTestActive?applyTestFilter(bets,testFilterSnap):bets,[bets,isTestActive,testFilterSnap]);
     if(testFilter.games.size<4)r=r.filter(b=>testFilter.games.has(b.game));
     if(testFilter.headshot==="yes")r=r.filter(b=>b.isHeadshot);
     if(testFilter.headshot==="no")r=r.filter(b=>!b.isHeadshot);
@@ -2694,27 +2752,11 @@ export default function App(){
     if(testFilter.live==="no")r=r.filter(b=>!b.isLive);
     if(testFilter.overUnder==="over")r=r.filter(b=>b.overUnder==="Over");
     if(testFilter.overUnder==="under")r=r.filter(b=>b.overUnder==="Under");
-    if(testFilter.oddsMin)r=r.filter(b=>(b.odds||0)>=parseFloat(testFilter.oddsMin));
-    if(testFilter.oddsMax)r=r.filter(b=>(b.odds||0)<=parseFloat(testFilter.oddsMax));
-    if(testFilter.hideTourneys&&testFilter.hideTourneys.size>0)r=r.filter(b=>!testFilter.hideTourneys.has(b.tournament||"Hors tournoi"));
-    if(testFilter.hideLeagues&&testFilter.hideLeagues.size>0)r=r.filter(b=>!testFilter.hideLeagues.has(b.league||""));
-    if(testFilter.hideRoles&&testFilter.hideRoles.size>0)r=r.filter(b=>!testFilter.hideRoles.has(b.role||""));
-    if(testFilter.ppEdgeMin)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(testFilter.ppEdgeMin));
-    if(testFilter.ppEdgeMax)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(testFilter.ppEdgeMax));
-    return r;
-  },[testFilter]);
-
-  // Vrai si le filtre test est actif (différent du défaut)
-  const isTestActive=useMemo(()=>{
-    const f=testFilter;const d=DEFAULT_TEST_FILTER;
-    return f.games.size<4||f.headshot!=="all"||f.live!=="all"||f.overUnder!=="all"||f.oddsMin||f.oddsMax||f.hideTourneys.size>0||f.hideLeagues.size>0||f.hideRoles.size>0||f.ppEdgeMin||f.ppEdgeMax;
-  },[testFilter]);
-
   const settledFiltered=useMemo(function(){
     let base=settled;
     if(statsPeriod){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-statsPeriod);const cutStr=cutoff.toISOString().slice(0,10);base=base.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=cutStr);}
-    return applyTestFilter(base);
-  },[settled,statsPeriod,applyTestFilter]);
+    return isTestActive?applyTestFilter(base,testFilterSnap):base;
+  },[settled,statsPeriod,isTestActive,testFilterSnap]);
 
   // ── 📊 ANALYSE AVANCÉE ────────────────────────────────────────────────────
   const advancedStats=useMemo(function(){
@@ -3192,10 +3234,10 @@ export default function App(){
   const calFilteredBets=useMemo(function(){const gf=calGames.length>0?calGames:fGames;return gf.length>0?bets.filter(b=>gf.includes(b.game)):bets;},[bets,calGames,fGames]);
 
   const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(function(){
+    const src=isTestActive?betsForDisplay:bets;
     const now=Date.now();
-    // Extraire le numéro de map depuis mapTag (ex: "Map 2" → 2)
     function mapNum(b){const m=b.mapTag?parseInt(b.mapTag.replace(/\D/g,""))||1:1;return m;}
-    const sorted=[...bets].sort((a,b2)=>{
+    const sorted=[...src].sort((a,b2)=>{
       // Pending toujours en premier
       if(a.status==="pending"&&b2.status!=="pending")return -1;
       if(b2.status==="pending"&&a.status!=="pending")return 1;
@@ -3225,11 +3267,11 @@ export default function App(){
       bm[mk].push(d);
     });
     return{allSortedBets:sorted,byDay:bd,dayKeys:dk,byMonth:bm,monthKeys:Object.keys(bm).sort((a,z)=>z.localeCompare(a))};
-  },[bets]);
+  },[bets,betsForDisplay,isTestActive]);
 
 
   const homeSettled=useMemo(function(){
-    let s=isTestActive?applyTestFilter(settled):settled;
+    let s=isTestActive?applyTestFilter(settled,testFilterSnap):settled;
     // Period filter
     if(homePeriod){
       const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
@@ -3251,7 +3293,6 @@ export default function App(){
   },[settled,homePeriod,homeChartFilters,isTestActive,applyTestFilter]);
 
   // betsForDisplay: bets filtrés par testFilter pour Mes Paris
-  const betsForDisplay=useMemo(()=>isTestActive?applyTestFilter(bets):bets,[bets,isTestActive,applyTestFilter]);
   const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.profit||0),0),[homeSettled]);
   const totalStaked=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.stake||0),0),[homeSettled]);
   const roi=useMemo(()=>totalStaked>0?(totalProfit/totalStaked)*100:0,[totalProfit,totalStaked]);
@@ -3753,6 +3794,23 @@ export default function App(){
         {/* Syncing indicator */}
         {syncing&&<div style={{position:"fixed",top:18,right:14,background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontWeight:700,color:"#A78BFA",zIndex:499,fontFamily:"'Inter',sans-serif"}}>☁️ Sync…</div>}
 
+        {/* ── BANNIÈRE MODE NOUVEAU DÉPART (Men in Black) ── */}
+        {mibActive&&(
+          <div style={{position:"fixed",top:0,left:0,right:0,zIndex:601,background:"linear-gradient(90deg,#0a0a0a,#111827)",padding:"6px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.08)",boxShadow:"0 2px 16px rgba(0,0,0,.8)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:16}}>🕵️</span>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:"#E5E7EB",letterSpacing:.3}}>NOUVEAU DÉPART</div>
+                <div style={{fontSize:9,color:"#4a5a6e"}}>Depuis le {new Date(mibDate).toLocaleDateString("fr-CA",{day:"numeric",month:"long",year:"numeric"})} · anciens paris masqués</div>
+              </div>
+            </div>
+            <button onClick={()=>setMibActive(false)}
+              style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.12)",borderRadius:6,padding:"3px 10px",color:"#9CA3AF",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              👁 Révéler
+            </button>
+          </div>
+        )}
+
         {/* ── BANNIÈRE MODE TEST GLOBAL ── */}
         {isTestActive&&(
           <div style={{position:"fixed",top:0,left:0,right:0,zIndex:600,background:"linear-gradient(90deg,rgba(234,179,8,.95),rgba(202,138,4,.95))",padding:"5px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 12px rgba(234,179,8,.4)"}}>
@@ -3772,7 +3830,7 @@ export default function App(){
 
         {/* ── HOME ── */}
         {view==="home"&&(
-          <div className="view-enter" style={{paddingBottom:8,paddingTop:isTestActive?34:0}}>
+          <div className="view-enter" style={{paddingBottom:8,paddingTop:(isTestActive||mibActive)?34:0}}>
 
             {/* ── TOP BAR ── */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,paddingTop:2}}>
@@ -5827,6 +5885,50 @@ export default function App(){
 
             {statsTab==="plus"&&(
               <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
+
+                {/* ── 🕵️ MODE NOUVEAU DÉPART ── */}
+                <div style={{background:mibActive?"rgba(0,0,0,.95)":"#111827",border:"1.5px solid "+(mibActive?"rgba(255,255,255,.15)":"#1F2937"),borderRadius:14,overflow:"hidden"}}>
+                  <div style={{padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:9}}>
+                      <span style={{fontSize:18}}>🕵️</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:800,color:mibActive?"#E5E7EB":"#dce8ff"}}>Nouveau Départ</div>
+                        <div style={{fontSize:9,color:"#4a5a6e",marginTop:1}}>Masque tous les anciens paris — données préservées dans Supabase</div>
+                      </div>
+                    </div>
+                    {mibActive
+                      ?<button onClick={()=>setMibActive(false)}
+                          style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",borderRadius:8,padding:"5px 12px",color:"#E5E7EB",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                          👁 Révéler tout
+                        </button>
+                      :<button onClick={()=>{setMibDate(new Date().toISOString().slice(0,10));setMibActive(true);}}
+                          style={{background:"linear-gradient(135deg,#1a1a2e,#16213e)",border:"1px solid rgba(255,255,255,.15)",borderRadius:8,padding:"5px 12px",color:"#E5E7EB",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                          🕵️ Activer
+                        </button>
+                    }
+                  </div>
+                  {mibActive&&(
+                    <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"10px 14px",background:"rgba(0,0,0,.4)"}}>
+                      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Date de début du nouveau départ</div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="date" value={mibDate} onChange={e=>setMibDate(e.target.value)}
+                          style={{flex:1,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}/>
+                        <button onClick={()=>setMibDate(new Date().toISOString().slice(0,10))}
+                          style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 10px",color:"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+                          Aujourd'hui
+                        </button>
+                      </div>
+                      <div style={{marginTop:8,fontSize:10,color:"#4a5a6e"}}>
+                        {(()=>{const hidden=bets.filter(b=>b.datetime&&String(b.datetime).slice(0,10)<mibDate).length;const visible=bets.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=mibDate).length;return `${hidden} paris masqués · ${visible} paris visibles`})()}
+                      </div>
+                      <div style={{marginTop:6,padding:"7px 10px",background:"rgba(255,255,255,.02)",borderRadius:8,border:"1px solid rgba(255,255,255,.04)"}}>
+                        <div style={{fontSize:9,color:"#374151",fontWeight:600,marginBottom:3}}>ℹ️ Toutes les données restent dans Supabase et localStorage — rien n'est supprimé.</div>
+                        <div style={{fontSize:9,color:"#374151"}}>Clique "Révéler tout" à tout moment pour retrouver l'historique complet.</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button onClick={()=>setTestingOpen(v=>!v)}
                   style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:testingOpen?"rgba(251,191,36,.1)":"#111827",border:"1px solid "+(testingOpen?"rgba(251,191,36,.4)":"#1F2937"),borderRadius:12,padding:"12px 14px",color:testingOpen?"#fbbf24":"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
                   🧪 Mode Test
