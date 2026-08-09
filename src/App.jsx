@@ -2285,7 +2285,11 @@ export default function App(){
   const [statsTab,setStatsTab]=useState("apercu");
   const [dowMetric,setDowMetric]=useState("roi");
   const [analyseView,setAnalyseView]=useState("global");
-  const [calibDrill,setCalibDrill]=useState(null); // edge value for drill-down
+  const [calibDrill,setCalibDrill]=useState(null);
+  const [coteSort,setCoteSort]=useState({key:"edge",dir:1});
+  const [signalSort,setSignalSort]=useState({key:"profit",dir:-1});
+  const [calibSort,setCalibSort]=useState({key:"edge",dir:1});
+  const [breakevenSort,setBreakevenSort]=useState({key:"label",dir:1}); // edge value for drill-down
   const [statsPeriod,setStatsPeriod]=useState(null);
   const [statsChartMode,setStatsChartMode]=useState("line");
   const [playersExpanded,setPlayersExpanded]=useState(null);
@@ -6587,107 +6591,146 @@ export default function App(){
 
             {/* ── 📊 ONGLET ANALYSE ── */}
             {statsTab==="analyse"&&(
-              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
-                {/* ── 💡 COTE IDÉALE ── */}
+                {/* ── HELPER: SortHeader ── */}
+                {(()=>{
+                  const accent="#6366f1";
+                  const cardStyle={background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"};
+                  const secTitle=(emoji,title,sub)=>(
+                    <div style={{display:"flex",alignItems:"center",gap:9,padding:"12px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+                      <span style={{fontSize:18,lineHeight:1}}>{emoji}</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff",letterSpacing:.2}}>{title}</div>
+                        {sub&&<div style={{fontSize:9,color:"#4a5a6e",marginTop:1}}>{sub}</div>}
+                      </div>
+                    </div>
+                  );
+                  const SortHdr=({label,k,sort,setSort,align="right"})=>{
+                    const active=sort.key===k;
+                    return(
+                      <span onClick={()=>setSort(s=>({key:k,dir:s.key===k?-s.dir:-1}))}
+                        style={{fontSize:8,color:active?"#a5b4fc":"#3a4a5e",fontWeight:active?800:700,textTransform:"uppercase",letterSpacing:.5,cursor:"pointer",textAlign:align,userSelect:"none",display:"flex",alignItems:"center",gap:2,justifyContent:align==="right"?"flex-end":align==="center"?"center":"flex-start"}}>
+                        {label}
+                        <span style={{fontSize:9,opacity:active?1:.3}}>{active&&sort.dir>0?"↑":"↓"}</span>
+                      </span>
+                    );
+                  };
+
+                  const sortFn=(arr,sort,keys)=>{
+                    return [...arr].sort((a,b)=>{
+                      const va=a[sort.key]??0,vb=b[sort.key]??0;
+                      return sort.dir*(vb-va);
+                    });
+                  };
+
+                  return(<>
+
+                {/* ══ 💡 COTE IDÉALE ══ */}
                 {advancedStats&&advancedStats.coteIdéale&&advancedStats.coteIdéale.length>0&&(()=>{
                   const byGame={};
                   advancedStats.coteIdéale.forEach(r=>{if(!byGame[r.game])byGame[r.game]=[];byGame[r.game].push(r);});
                   return(
-                    <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
-                      <div style={{padding:"11px 14px 9px",display:"flex",alignItems:"center",gap:7,borderBottom:"1px solid rgba(255,255,255,.05)"}}>
-                        <span style={{fontSize:15}}>💡</span>
-                        <div>
-                          <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>Cote idéale par type de pari</div>
-                          <div style={{fontSize:9,color:"#4a5a6e"}}>Map 1+2 et Map 3 · Formule : cote min = 1 ÷ WR · Cote safe = +5% marge</div>
-                        </div>
-                      </div>
+                    <div style={cardStyle}>
+                      {secTitle("💡","Cote idéale par pari","Map 1+2 et Map 3 · formule : cote min = 1 ÷ WR")}
                       {Object.entries(byGame).map(([game,rows])=>{
-                        const over=rows.filter(r=>r.ou==="Over").sort((a,b)=>a.edge-b.edge);
-                        const under=rows.filter(r=>r.ou==="Under").sort((a,b)=>a.edge-b.edge);
-                        if(!over.length&&!under.length)return null;
+                        const over=rows.filter(r=>r.ou==="Over");
+                        const under=rows.filter(r=>r.ou==="Under");
+                        const sortOver=sortFn(over,coteSort,["edge","cnt","wr","avgOdds","idealOdds","profit"]);
+                        const sortUnder=sortFn(under,coteSort,["edge","cnt","wr","avgOdds","idealOdds","profit"]);
+                        const COLS="46px 28px 40px 48px 48px 60px 54px";
                         const HDR=()=>(
-                          <div style={{display:"grid",gridTemplateColumns:"46px 34px 44px 52px 52px 60px 56px",gap:4,padding:"4px 12px",background:"rgba(0,0,0,.25)"}}>
-                            {["Edge","N","WR","Réelle","Min","Profit","Sur 5k$"].map(h=>(
-                              <span key={h} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.3}}>{h}</span>
+                          <div style={{display:"grid",gridTemplateColumns:COLS,gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
+                            {[["edge","Edge","left"],["cnt","N","center"],["wr","WR%","center"],["avgOdds","Réelle","center"],["idealOdds","Min","center"],["profit","Profit","right"],["prog","5k$","right"]].map(([k,l,a])=>(
+                              <SortHdr key={k} label={l} k={k} sort={coteSort} setSort={setCoteSort} align={a}/>
                             ))}
                           </div>
                         );
                         const Row=({r,last})=>{
                           const ok=r.gap>=0;const good=r.gap>=0.1;const bad=r.gap<-0.05;
-                          const bg=good?"rgba(34,197,94,.05)":bad?"rgba(239,68,68,.06)":"transparent";
-                          const prog=r.profit/5000*100; // % progression sur 5000$
-                          const progColor=prog>=0?"#22C55E":"#EF4444";
+                          const bg=good?"rgba(34,197,94,.06)":bad?"rgba(239,68,68,.06)":"transparent";
+                          const prog=r.profit/5000*100;
+                          const progC=prog>=0?"#22C55E":"#EF4444";
                           return(
-                            <div style={{display:"grid",gridTemplateColumns:"46px 34px 44px 52px 52px 60px 56px",gap:4,alignItems:"center",padding:"7px 12px",borderBottom:last?"none":"1px solid rgba(255,255,255,.03)",background:bg}}>
-                              <span style={{fontSize:13,fontWeight:800,color:"#fff"}}>+{r.edge%1===0?r.edge.toFixed(0):r.edge}</span>
-                              <span style={{fontSize:10,color:"#5a6a7e"}}>{r.cnt}</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#F59E0B"}}>{r.wr}%</span>
-                              <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8",textAlign:"center"}}>{r.avgOdds.toFixed(2)}</span>
-                              <span style={{fontSize:12,fontWeight:800,color:ok?"#22C55E":"#EF4444",textAlign:"center"}}>{r.idealOdds.toFixed(2)}</span>
-                              <FmtProfit v={r.profit} fontSize={11}/>
-                              <span style={{fontSize:11,fontWeight:700,color:progColor,textAlign:"right"}}>{prog>=0?"+":""}{prog.toFixed(1)}%</span>
+                            <div style={{display:"grid",gridTemplateColumns:COLS,gap:4,alignItems:"center",padding:"8px 14px",borderBottom:last?"none":"1px solid rgba(255,255,255,.03)",background:bg}}>
+                              <span style={{fontSize:13,fontWeight:900,color:"#fff",fontVariantNumeric:"tabular-nums"}}>+{r.edge%1===0?r.edge.toFixed(0):r.edge}</span>
+                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{r.cnt}</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.wr>=55?"#22C55E":r.wr<45?"#EF4444":"#F59E0B",textAlign:"center"}}>{r.wr}%</span>
+                              <span style={{fontSize:12,fontWeight:600,color:"#c8d4e8",textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{r.avgOdds.toFixed(2)}</span>
+                              <span style={{fontSize:12,fontWeight:800,color:ok?"#22C55E":"#EF4444",textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{r.idealOdds.toFixed(2)}</span>
+                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={r.profit} fontSize={11}/></div>
+                              <span style={{fontSize:10,fontWeight:700,color:progC,textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{prog>=0?"+":""}{prog.toFixed(1)}%</span>
                             </div>
                           );
                         };
                         return(
                           <div key={game} style={{borderTop:"1px solid rgba(255,255,255,.06)"}}>
-                            <div style={{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:"rgba(255,255,255,.02)"}}>
-                              <GameLogo game={game} size={14}/><span style={{fontSize:11,fontWeight:800,color:"#c8d4e8",textTransform:"uppercase",letterSpacing:.7}}>{game}</span>
+                            <div style={{display:"flex",alignItems:"center",gap:7,padding:"8px 14px 4px",background:"rgba(255,255,255,.015)"}}>
+                              <GameLogo game={game} size={14}/>
+                              <span style={{fontSize:11,fontWeight:800,color:"#c8d4e8",textTransform:"uppercase",letterSpacing:1}}>{game}</span>
                             </div>
-                            {over.length>0&&<>
-                              <div style={{padding:"3px 12px",background:"rgba(34,197,94,.04)"}}>
+                            {sortOver.length>0&&<>
+                              <div style={{padding:"4px 14px 2px",background:"rgba(34,197,94,.04)",display:"flex",alignItems:"center",gap:5}}>
                                 <span style={{fontSize:9,color:"#22C55E",fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>▲ Over</span>
+                                <span style={{fontSize:8,color:"#3a5a3e"}}>{sortOver.length} lignes</span>
                               </div>
-                              <HDR/>{over.map((r,i)=><Row key={r.mt+r.edge} r={r} last={i===over.length-1}/>)}
+                              <HDR/>{sortOver.map((r,i)=><Row key={r.mt+r.edge} r={{...r,prog:r.profit/5000*100}} last={i===sortOver.length-1&&!sortUnder.length}/>)}
                             </>}
-                            {over.length>0&&under.length>0&&<div style={{height:1,background:"rgba(255,255,255,.08)",margin:"0 12px"}}/>}
-                            {under.length>0&&<>
-                              <div style={{padding:"3px 12px",background:"rgba(96,165,250,.04)"}}>
+                            {sortOver.length>0&&sortUnder.length>0&&<div style={{height:1,background:"rgba(255,255,255,.1)",margin:"0 14px"}}/>}
+                            {sortUnder.length>0&&<>
+                              <div style={{padding:"4px 14px 2px",background:"rgba(96,165,250,.04)",display:"flex",alignItems:"center",gap:5}}>
                                 <span style={{fontSize:9,color:"#60a5fa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>▼ Under</span>
+                                <span style={{fontSize:8,color:"#3a4a6e"}}>{sortUnder.length} lignes</span>
                               </div>
-                              <HDR/>{under.map((r,i)=><Row key={r.mt+r.edge} r={r} last={i===under.length-1}/>)}
+                              <HDR/>{sortUnder.map((r,i)=><Row key={r.mt+r.edge} r={{...r,prog:r.profit/5000*100}} last={i===sortUnder.length-1}/>)}
                             </>}
                           </div>
                         );
                       })}
-                      <div style={{padding:"6px 12px",background:"rgba(0,0,0,.15)",borderTop:"1px solid rgba(255,255,255,.04)"}}>
-                        <span style={{fontSize:9,color:"#3a4a5e"}}>Min = 1÷WR · Safe = min÷0.95 · Réelle = ta cote moyenne</span>
+                      <div style={{padding:"7px 14px",background:"rgba(0,0,0,.2)",borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                        <span style={{fontSize:9,color:"#3a4a5e"}}>Min = 1÷WR (seuil zéro) · 5k$ = profit si bankroll de 5 000$</span>
                       </div>
                     </div>
                   );
                 })()}
 
-                {/* ── 🎯 SIGNAUX ── */}
-                {advancedStats&&advancedStats.signalList.length>0&&(
-                  <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
-                    <div style={{padding:"11px 14px 8px",display:"flex",alignItems:"center",gap:7,borderBottom:"1px solid rgba(255,255,255,.05)"}}>
-                      <span style={{fontSize:15}}>🎯</span>
-                      <div>
-                        <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>Signaux — Quoi garder, quoi couper</div>
-                        <div style={{fontSize:9,color:"#4a5a6e"}}>Combinaisons Over/Under × Jeu (min 5 paris)</div>
+                {/* ══ 🎯 SIGNAUX ══ */}
+                {advancedStats&&advancedStats.signalList.length>0&&(()=>{
+                  const sorted=sortFn(advancedStats.signalList,signalSort);
+                  return(
+                    <div style={cardStyle}>
+                      {secTitle("🎯","Signaux","Quoi garder · quoi couper — min 5 paris par combinaison")}
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 32px 40px 40px 70px 60px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
+                        {[["game","Type","left"],["cnt","N","center"],["wr","WR","center"],["roi","ROI","center"],["profit","Profit","right"],["signal","Signal","right"]].map(([k,l,a])=>(
+                          k==="signal"
+                          ?<span key={k} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,textAlign:"right"}}>Signal</span>
+                          :<SortHdr key={k} label={l} k={k} sort={signalSort} setSort={setSignalSort} align={a}/>
+                        ))}
                       </div>
-                    </div>
-                    {advancedStats.signalList.map((s,i)=>{
-                      const isGood=s.roi>=5;const isBad=s.roi<=-5;
-                      const sigColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
-                      const signal=isGood?"✅ GARDER":isBad?"❌ COUPER":"⚠️ NEUTRE";
-                      return(
-                        <div key={s.ou+s.game} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderTop:i>0?"1px solid rgba(255,255,255,.04)":"none",background:isGood?"rgba(34,197,94,.03)":isBad?"rgba(239,68,68,.04)":"transparent"}}>
-                          <div style={{display:"flex",alignItems:"center",gap:5,flex:1}}>
-                            <GameLogo game={s.game} size={13}/>
-                            <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{s.ou==="Over"?"▲":"▼"} {s.game}</span>
-                            <span style={{fontSize:10,color:"#5a6a7e"}}>{s.cnt}p · {s.wr}% WR</span>
+                      {sorted.map((s,i)=>{
+                        const isGood=s.roi>=5;const isBad=s.roi<=-5;
+                        const sigColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
+                        const bg=isGood?"rgba(34,197,94,.05)":isBad?"rgba(239,68,68,.05)":"transparent";
+                        const tag=isGood?"✅ Garder":isBad?"❌ Couper":"⚠️ Neutre";
+                        return(
+                          <div key={s.ou+s.game} style={{display:"grid",gridTemplateColumns:"1fr 32px 40px 40px 70px 60px",gap:4,alignItems:"center",padding:"9px 14px",borderTop:"1px solid rgba(255,255,255,.04)",background:bg}}>
+                            <div style={{display:"flex",alignItems:"center",gap:5}}>
+                              <GameLogo game={s.game} size={12}/>
+                              <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{s.ou==="Over"?"▲":"▼"} {s.game}</span>
+                            </div>
+                            <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{s.cnt}</span>
+                            <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#F59E0B",textAlign:"center"}}>{s.wr}%</span>
+                            <span style={{fontSize:11,fontWeight:700,color:s.roi>=0?"#22C55E":"#EF4444",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span>
+                            <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit} fontSize={12}/></div>
+                            <span style={{fontSize:10,fontWeight:800,color:sigColor,textAlign:"right"}}>{tag}</span>
                           </div>
-                          <span style={{fontSize:11,fontWeight:700,color:sigColor,marginRight:8}}>{signal}</span>
-                          <FmtProfit v={s.profit} fontSize={12}/>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
-                {/* ── 📅 JOUR DE LA SEMAINE + VUE SEMAINE ── */}
+                {/* ══ 📅 PERFORMANCE TEMPORELLE ══ */}
                 {advancedStats&&(()=>{
                   const metricFn=(s)=>{
                     if(dowMetric==="roi")return s.staked>0?s.profit/s.staked*100:0;
@@ -6701,210 +6744,209 @@ export default function App(){
                     if(dowMetric==="profit")return(v>=0?"+":"")+v.toFixed(0)+"$";
                     return v+"p";
                   };
-                  const topBar=()=>(
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                      <div style={{display:"flex",gap:5}}>
-                        {[["global","Global"],["week","Par semaine"]].map(([v,l])=>(
-                          <button key={v} onClick={()=>setAnalyseView(v)}
-                            style={{padding:"4px 11px",borderRadius:7,border:"1px solid "+(analyseView===v?"rgba(96,165,250,.4)":"rgba(255,255,255,.08)"),background:analyseView===v?"rgba(96,165,250,.12)":"transparent",color:analyseView===v?"#60a5fa":"#5a6a7e",fontSize:11,fontWeight:analyseView===v?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                            {l}
-                          </button>
-                        ))}
+                  return(
+                    <div style={cardStyle}>
+                      <div style={{padding:"12px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:9}}>
+                            <span style={{fontSize:18}}>📅</span>
+                            <div>
+                              <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Performance temporelle</div>
+                              <div style={{fontSize:9,color:"#4a5a6e",marginTop:1}}>Par jour · par semaine</div>
+                            </div>
+                          </div>
+                          <select value={dowMetric} onChange={e=>setDowMetric(e.target.value)}
+                            style={{background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",borderRadius:8,padding:"4px 10px",color:"#a5b4fc",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer",fontWeight:600}}>
+                            <option value="roi">ROI %</option>
+                            <option value="wr">Win Rate</option>
+                            <option value="profit">Profit $</option>
+                            <option value="cnt">Nb Paris</option>
+                          </select>
+                        </div>
+                        <div style={{display:"flex",gap:4,marginTop:10}}>
+                          {[["global","Par jour"],["week","Par semaine"]].map(([v,l])=>(
+                            <button key={v} onClick={()=>setAnalyseView(v)}
+                              style={{padding:"5px 14px",borderRadius:8,border:"1.5px solid "+(analyseView===v?"rgba(99,102,241,.5)":"rgba(255,255,255,.08)"),background:analyseView===v?"rgba(99,102,241,.15)":"transparent",color:analyseView===v?"#a5b4fc":"#4a5a6e",fontSize:11,fontWeight:analyseView===v?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                              {l}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <select value={dowMetric} onChange={e=>setDowMetric(e.target.value)}
-                        style={{background:"rgba(0,0,0,.4)",border:"1px solid rgba(255,255,255,.12)",borderRadius:7,padding:"3px 8px",color:"#c8d4e8",fontSize:11,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer"}}>
-                        <option value="roi">ROI %</option>
-                        <option value="wr">Win Rate</option>
-                        <option value="profit">Profit $</option>
-                        <option value="cnt">Nb Paris</option>
-                      </select>
-                    </div>
-                  );
-
-                  if(analyseView==="week"){
-                    // Vue par semaine
-                    const wl=advancedStats.weekList;
-                    const vals=wl.map(w=>metricFn(w));
-                    const maxAbs=Math.max(...vals.map(Math.abs),1);
-                    return(
-                      <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                        <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:12}}>📅 Performance par semaine</div>
-                        {topBar()}
-                        {wl.length===0?<div style={{fontSize:12,color:"#4a5a6e",textAlign:"center",padding:16}}>Aucune donnée</div>:(
-                          <div style={{overflowX:"auto"}}>
-                            <div style={{display:"flex",gap:5,minWidth:Math.max(wl.length*48,300)+"px",alignItems:"flex-end",height:100,marginBottom:6}}>
+                      {analyseView==="week"?(()=>{
+                        const wl=advancedStats.weekList;
+                        const vals=wl.map(w=>metricFn(w));
+                        const maxAbs=Math.max(...vals.map(Math.abs),1);
+                        return(
+                          <div style={{padding:"12px 14px",overflowX:"auto"}}>
+                            <div style={{display:"flex",gap:4,minWidth:Math.max(wl.length*52,280)+"px",alignItems:"flex-end",height:90,marginBottom:8}}>
                               {wl.map((w,i)=>{
                                 const v=metricFn(w);const pos=v>=0;
-                                const barH=Math.max(3,Math.abs(v)/maxAbs*90);
+                                const barH=Math.max(4,Math.abs(v)/maxAbs*82);
                                 const color=pos?"#22C55E":"#EF4444";
                                 return(
-                                  <div key={w.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",minWidth:40}}>
-                                    <div style={{fontSize:9,fontWeight:700,color:color,marginBottom:2}}>{metricFmt(v)}</div>
-                                    <div style={{width:"80%",height:barH+"px",background:color,borderRadius:"3px 3px 0 0",opacity:.75}}/>
+                                  <div key={w.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",minWidth:44}}>
+                                    <div style={{fontSize:8,fontWeight:700,color,marginBottom:2,whiteSpace:"nowrap"}}>{metricFmt(v)}</div>
+                                    <div style={{width:"75%",height:barH+"px",background:color,borderRadius:"3px 3px 0 0",opacity:.7}}/>
                                   </div>
                                 );
                               })}
                             </div>
-                            <div style={{display:"flex",gap:5,minWidth:Math.max(wl.length*48,300)+"px"}}>
+                            <div style={{display:"flex",gap:4,minWidth:Math.max(wl.length*52,280)+"px",borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:4}}>
                               {wl.map(w=>(
-                                <div key={w.key} style={{flex:1,textAlign:"center",minWidth:40}}>
+                                <div key={w.key} style={{flex:1,textAlign:"center",minWidth:44}}>
                                   <div style={{fontSize:8,color:"#4a5a6e",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{w.label}</div>
-                                  <div style={{fontSize:8,color:"#3a4a5e"}}>{w.cnt}p</div>
+                                  <div style={{fontSize:7,color:"#3a4a5e"}}>{w.cnt}p</div>
                                 </div>
                               ))}
                             </div>
                           </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  // Vue globale par jour
-                  const vals=advancedStats.DAYS.map(d=>metricFn(advancedStats.dow[d]));
-                  const maxAbs=Math.max(...vals.map(Math.abs),1);
-                  return(
-                    <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                      <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:12}}>📅 Performance par jour</div>
-                      {topBar()}
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5}}>
-                        {advancedStats.DAYS.map((d,i)=>{
-                          const s=advancedStats.dow[d];const v=metricFn(s);
-                          const pos=v>=0;const barH=s.cnt>0?Math.min(100,Math.abs(v)/maxAbs*100):0;
-                          const color=pos?"#22C55E":"#EF4444";
-                          return(
-                            <div key={d} style={{textAlign:"center"}}>
-                              <div style={{fontSize:9,color:"#5a6a7e",fontWeight:600,marginBottom:4}}>{d}</div>
-                              <div style={{height:48,display:"flex",alignItems:"flex-end",justifyContent:"center",marginBottom:3}}>
-                                {s.cnt>0&&<div style={{width:"70%",height:barH+"%",background:color,borderRadius:"2px 2px 0 0",opacity:.75,minHeight:3}}/>}
-                              </div>
-                              <div style={{fontSize:10,fontWeight:800,color:s.cnt>0?(pos?color:"#EF4444"):"#3a4a5e"}}>{s.cnt>0?metricFmt(v):"—"}</div>
-                              <div style={{fontSize:8,color:"#3a4a5e"}}>{s.cnt}p</div>
+                        );
+                      })():(()=>{
+                        const vals=advancedStats.DAYS.map(d=>metricFn(advancedStats.dow[d]));
+                        const maxAbs=Math.max(...vals.map(Math.abs),1);
+                        return(
+                          <div style={{padding:"12px 14px"}}>
+                            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6}}>
+                              {advancedStats.DAYS.map((d,i)=>{
+                                const s=advancedStats.dow[d];const v=metricFn(s);
+                                const pos=v>=0;const barH=s.cnt>0?Math.min(100,Math.abs(v)/maxAbs*100):0;
+                                const color=pos?"#22C55E":"#EF4444";
+                                return(
+                                  <div key={d} style={{textAlign:"center"}}>
+                                    <div style={{fontSize:9,color:"#5a6a7e",fontWeight:600,marginBottom:5}}>{d}</div>
+                                    <div style={{height:52,display:"flex",alignItems:"flex-end",justifyContent:"center",marginBottom:4}}>
+                                      {s.cnt>0
+                                        ?<div style={{width:"72%",height:barH+"%",background:color,borderRadius:"3px 3px 0 0",opacity:.8,minHeight:4,boxShadow:pos?"0 0 8px rgba(34,197,94,.3)":"0 0 8px rgba(239,68,68,.3)"}}/>
+                                        :<div style={{width:"72%",height:4,background:"rgba(255,255,255,.04)",borderRadius:2}}/>}
+                                    </div>
+                                    <div style={{fontSize:10,fontWeight:800,color:s.cnt>0?(pos?color:"#EF4444"):"#3a4a5e"}}>{s.cnt>0?metricFmt(v):"—"}</div>
+                                    <div style={{fontSize:8,color:"#3a4a5e",marginTop:2}}>{s.cnt}p</div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
 
-                {/* ── 📐 SEUIL DE RENTABILITÉ ── simplifié */}
-                {advancedStats&&advancedStats.breakevenData.length>0&&(
-                  <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                    <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📐 Rentabilité par tranche de cote</div>
-                    <div style={{fontSize:9,color:"#4a5a6e",marginBottom:12}}>WR requis = seuil zéro pour chaque tranche · Vert = tu es au-dessus, Rouge = en-dessous</div>
-                    {advancedStats.breakevenData.filter(r=>r.cnt>=3).map((r,i)=>{
-                      const gap=r.wr-r.minWR;const isOk=gap>=0;
-                      const profitColor=r.profit>=0?"#22C55E":"#EF4444";
-                      return(
-                        <div key={r.label} style={{marginBottom:10}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              <span style={{fontSize:13,fontWeight:800,color:"#c8d4e8",minWidth:72}}>{r.label}</span>
-                              <span style={{fontSize:10,color:isOk?"#22C55E":"#EF4444",fontWeight:700}}>{isOk?"✓":"✗"} {r.wr}% WR <span style={{color:"#4a5a6e",fontWeight:400}}>(requis {r.minWR}%)</span></span>
-                            </div>
-                            <div style={{display:"flex",alignItems:"center",gap:10}}>
-                              <span style={{fontSize:11,color:"#5a6a7e"}}>{r.cnt}p</span>
-                              <FmtProfit v={r.profit} fontSize={12}/>
-                            </div>
-                          </div>
-                          <div style={{height:5,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden",position:"relative"}}>
-                            <div style={{position:"absolute",left:r.minWR+"%",top:0,bottom:0,width:2,background:"rgba(255,255,255,.25)",zIndex:1}}/>
-                            <div style={{height:"100%",width:Math.min(100,r.wr)+"%",background:isOk?"rgba(34,197,94,.6)":"rgba(239,68,68,.6)",borderRadius:3}}/>
-                          </div>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:8,color:"#3a4a5e",marginTop:2}}>
-                            <span>Seuil requis : {r.minWR}%</span>
-                            <span style={{color:r.roi>=0?"#22C55E":"#EF4444"}}>ROI {r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* ── 📈 CALIBRATION EDGE PP ── chiffres ronds + drill Over/Under */}
-                {advancedStats&&advancedStats.calibration.length>1&&(
-                  <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                    <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:4}}>📈 Calibration Edge PrizePicks</div>
-                    <div style={{fontSize:9,color:"#4a5a6e",marginBottom:10}}>Clique sur un edge pour voir le détail Over / Under</div>
-                    <div style={{display:"grid",gridTemplateColumns:"52px 34px 1fr 48px 56px 60px",gap:6,padding:"4px 0",marginBottom:4}}>
-                      {["Edge","N","WR","ROI","Profit",""].map((h,i)=>(
-                        <span key={i} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.3}}>{h}</span>
-                      ))}
-                    </div>
-                    {advancedStats.calibration.map((c,i)=>{
-                      const isGood=c.roi>0;
-                      const isOpen=calibDrill===c.edge;
-                      // Compute Over/Under breakdown for this edge
-                      const snapE=e=>Math.round(Math.abs(e)*4)/4;
-                      const overS={cnt:0,won:0,profit:0,staked:0};
-                      const underS={cnt:0,won:0,profit:0,staked:0};
-                      if(isOpen){
-                        settledFiltered.filter(b=>b.ppEdge!=null&&Math.abs(snapE(b.ppEdge)-c.edge)<0.01).forEach(b=>{
-                          const t=b.overUnder==="Over"?overS:b.overUnder==="Under"?underS:null;
-                          if(!t)return;
-                          t.cnt++;t.profit+=b.profit;t.staked+=b.stake;if(b.status==="won")t.won++;
-                        });
-                      }
-                      return(
-                        <div key={c.label}>
-                          <div onClick={()=>setCalibDrill(isOpen?null:c.edge)}
-                            style={{display:"grid",gridTemplateColumns:"52px 34px 1fr 48px 56px 60px",gap:6,alignItems:"center",padding:"8px 0",borderTop:"1px solid rgba(255,255,255,.04)",cursor:"pointer",background:isOpen?"rgba(96,165,250,.04)":"transparent",borderRadius:isOpen?8:0}}>
-                            <span style={{fontSize:13,fontWeight:800,color:isOpen?"#60a5fa":"#FFFFFF"}}>+{c.label}</span>
-                            <span style={{fontSize:10,color:"#5a6a7e"}}>{c.cnt}</span>
-                            <div style={{display:"flex",alignItems:"center",gap:4}}>
-                              <div style={{flex:1,height:5,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
-                                <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:2}}/>
+                {/* ══ 📐 SEUIL DE RENTABILITÉ ══ */}
+                {advancedStats&&advancedStats.breakevenData.length>0&&(()=>{
+                  const sorted=sortFn(advancedStats.breakevenData.filter(r=>r.cnt>=3),breakevenSort);
+                  return(
+                    <div style={cardStyle}>
+                      {secTitle("📐","Rentabilité par tranche de cote","Vert = WR au-dessus du seuil minimum requis")}
+                      <div style={{display:"grid",gridTemplateColumns:"80px 1fr 36px 36px 54px 60px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
+                        {[["label","Cote","left"],["wr","WR","center"],["minWR","Requis","center"],["cnt","N","center"],["roi","ROI","right"],["profit","Profit","right"]].map(([k,l,a])=>(
+                          <SortHdr key={k} label={l} k={k} sort={breakevenSort} setSort={setBreakevenSort} align={a}/>
+                        ))}
+                      </div>
+                      {sorted.map((r,i)=>{
+                        const gap=r.wr-r.minWR;const isOk=gap>=0;
+                        const bg=isOk?"rgba(34,197,94,.04)":"rgba(239,68,68,.04)";
+                        return(
+                          <div key={r.label} style={{borderTop:"1px solid rgba(255,255,255,.04)",background:bg}}>
+                            <div style={{display:"grid",gridTemplateColumns:"80px 1fr 36px 36px 54px 60px",gap:4,alignItems:"center",padding:"8px 14px"}}>
+                              <span style={{fontSize:12,fontWeight:800,color:"#c8d4e8",fontVariantNumeric:"tabular-nums"}}>{r.label}</span>
+                              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                <div style={{flex:1,height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden",position:"relative"}}>
+                                  <div style={{position:"absolute",left:r.minWR+"%",top:0,bottom:0,width:2,background:"rgba(255,255,255,.3)"}}/>
+                                  <div style={{height:"100%",width:Math.min(100,r.wr)+"%",background:isOk?"rgba(34,197,94,.7)":"rgba(239,68,68,.7)",borderRadius:3}}/>
+                                </div>
                               </div>
-                              <span style={{fontSize:10,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#F59E0B",minWidth:28}}>{c.wr}%</span>
+                              <span style={{fontSize:11,fontWeight:800,color:isOk?"#22C55E":"#EF4444",textAlign:"center"}}>{r.wr}%</span>
+                              <span style={{fontSize:10,color:"#5a6a7e",textAlign:"center"}}>{r.minWR}%</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.roi>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
+                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={r.profit} fontSize={11}/></div>
                             </div>
-                            <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
-                            <FmtProfit v={c.profit} fontSize={11}/>
-                            <span style={{fontSize:10,color:"#4a5a6e",textAlign:"right"}}>{isOpen?"▲":"▼"}</span>
+                            <div style={{padding:"0 14px 6px",display:"flex",gap:8}}>
+                              <span style={{fontSize:8,color:isOk?"rgba(34,197,94,.5)":"rgba(239,68,68,.5)",fontWeight:600}}>{isOk?"✓ "+gap+"% au-dessus":"✗ "+Math.abs(gap)+"% sous le seuil"}</span>
+                              <span style={{fontSize:8,color:"#3a4a5e"}}>{r.cnt} paris</span>
+                            </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
-                          {/* DRILL: Over / Under pour cet edge */}
-                          {isOpen&&(
-                            <div style={{margin:"4px 0 8px 0",background:"rgba(0,0,0,.25)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(96,165,250,.15)"}}>
-                              <div style={{fontSize:9,color:"#60a5fa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Détail — Edge +{c.label}</div>
-                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                                {[{label:"▲ Over",s:overS,color:"#22C55E"},{label:"▼ Under",s:underS,color:"#60a5fa"}].map(({label,s,color})=>{
-                                  if(s.cnt===0)return<div key={label} style={{textAlign:"center",color:"#3a4a5e",fontSize:11,padding:8}}>Aucun {label}</div>;
-                                  const wr=Math.round(s.won/s.cnt*100);
-                                  const roi=s.staked>0?s.profit/s.staked*100:0;
-                                  return(
-                                    <div key={label} style={{background:"rgba(255,255,255,.02)",borderRadius:8,padding:"8px 10px",border:"1px solid rgba(255,255,255,.05)"}}>
-                                      <div style={{fontSize:11,fontWeight:800,color,marginBottom:6}}>{label}</div>
-                                      <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                                        <div style={{display:"flex",justifyContent:"space-between"}}>
-                                          <span style={{fontSize:10,color:"#5a6a7e"}}>Paris</span>
-                                          <span style={{fontSize:10,fontWeight:700,color:"#c8d4e8"}}>{s.cnt}</span>
-                                        </div>
-                                        <div style={{display:"flex",justifyContent:"space-between"}}>
-                                          <span style={{fontSize:10,color:"#5a6a7e"}}>WR</span>
-                                          <span style={{fontSize:10,fontWeight:700,color:wr>=55?"#22C55E":wr<45?"#EF4444":"#F59E0B"}}>{wr}%</span>
-                                        </div>
-                                        <div style={{display:"flex",justifyContent:"space-between"}}>
-                                          <span style={{fontSize:10,color:"#5a6a7e"}}>ROI</span>
-                                          <span style={{fontSize:11,fontWeight:700,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
-                                        </div>
-                                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                {/* ══ 📈 CALIBRATION EDGE ══ */}
+                {advancedStats&&advancedStats.calibration.length>1&&(()=>{
+                  const sorted=sortFn(advancedStats.calibration,calibSort);
+                  const snapE=e=>Math.round(Math.abs(e)*4)/4;
+                  return(
+                    <div style={cardStyle}>
+                      {secTitle("📈","Calibration Edge PrizePicks","Clique sur un edge pour le détail Over / Under")}
+                      <div style={{display:"grid",gridTemplateColumns:"52px 32px 1fr 44px 54px 28px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
+                        {[["edge","Edge","left"],["cnt","N","center"],["wr","WR","left"],["roi","ROI","right"],["profit","Profit","right"],["","","right"]].map(([k,l,a],idx)=>(
+                          k?<SortHdr key={k} label={l} k={k} sort={calibSort} setSort={setCalibSort} align={a}/>
+                          :<span key={idx}/>
+                        ))}
+                      </div>
+                      {sorted.map((c,i)=>{
+                        const isGood=c.roi>0;const isOpen=calibDrill===c.edge;
+                        const overS={cnt:0,won:0,profit:0,staked:0};
+                        const underS={cnt:0,won:0,profit:0,staked:0};
+                        if(isOpen){
+                          settledFiltered.filter(b=>b.ppEdge!=null&&Math.abs(snapE(b.ppEdge)-c.edge)<0.01).forEach(b=>{
+                            const t=b.overUnder==="Over"?overS:b.overUnder==="Under"?underS:null;
+                            if(!t)return;t.cnt++;t.profit+=b.profit;t.staked+=b.stake;if(b.status==="won")t.won++;
+                          });
+                        }
+                        const rowBg=isOpen?"rgba(99,102,241,.08)":isGood?"rgba(34,197,94,.03)":"rgba(239,68,68,.03)";
+                        return(
+                          <div key={c.label} style={{borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                            <div onClick={()=>setCalibDrill(isOpen?null:c.edge)}
+                              style={{display:"grid",gridTemplateColumns:"52px 32px 1fr 44px 54px 28px",gap:4,alignItems:"center",padding:"9px 14px",cursor:"pointer",background:rowBg,transition:"background .15s"}}>
+                              <span style={{fontSize:14,fontWeight:900,color:isOpen?"#a5b4fc":"#fff",fontVariantNumeric:"tabular-nums"}}>+{c.label}</span>
+                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{c.cnt}</span>
+                              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                <div style={{flex:1,height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
+                                  <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:3,boxShadow:isGood?"0 0 6px rgba(34,197,94,.4)":"0 0 6px rgba(239,68,68,.4)"}}/>
+                                </div>
+                                <span style={{fontSize:10,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#F59E0B",minWidth:26}}>{c.wr}%</span>
+                              </div>
+                              <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444",textAlign:"right"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
+                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={c.profit} fontSize={11}/></div>
+                              <span style={{fontSize:12,color:isOpen?"#a5b4fc":"#3a4a5e",textAlign:"right"}}>{isOpen?"▲":"▼"}</span>
+                            </div>
+                            {isOpen&&(
+                              <div style={{margin:"0 10px 10px",background:"rgba(99,102,241,.06)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(99,102,241,.2)"}}>
+                                <div style={{fontSize:9,color:"#6366f1",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Détail · Edge +{c.label}</div>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                                  {[{label:"▲ Over",s:overS,color:"#22C55E",bg:"rgba(34,197,94,.05)"},{label:"▼ Under",s:underS,color:"#60a5fa",bg:"rgba(96,165,250,.05)"}].map(({label,s,color,bg})=>{
+                                    if(s.cnt===0)return<div key={label} style={{textAlign:"center",color:"#3a4a5e",fontSize:10,padding:12}}>Aucun</div>;
+                                    const wr=Math.round(s.won/s.cnt*100);
+                                    const roi=s.staked>0?s.profit/s.staked*100:0;
+                                    return(
+                                      <div key={label} style={{background:bg,borderRadius:8,padding:"9px 10px",border:"1px solid rgba(255,255,255,.06)"}}>
+                                        <div style={{fontSize:12,fontWeight:800,color,marginBottom:7}}>{label}</div>
+                                        {[["Paris",s.cnt,null],["WR",wr+"%",wr>=55?"#22C55E":wr<45?"#EF4444":"#F59E0B"],["ROI",(roi>=0?"+":"")+roi.toFixed(1)+"%",roi>=0?"#22C55E":"#EF4444"]].map(([k,v,c])=>(
+                                          <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                                            <span style={{fontSize:10,color:"#5a6a7e"}}>{k}</span>
+                                            <span style={{fontSize:11,fontWeight:700,color:c||"#c8d4e8"}}>{v}</span>
+                                          </div>
+                                        ))}
+                                        <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
                                           <span style={{fontSize:10,color:"#5a6a7e"}}>Profit</span>
                                           <FmtProfit v={s.profit} fontSize={12}/>
                                         </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
-                {/* ── ⭐ TOP / BAS JOUEURS ── */}
+                {/* ══ ⭐ TOP / BAS JOUEURS ══ */}
                 {(()=>{
                   const pm={};
                   settledFiltered.forEach(b=>{
@@ -6916,42 +6958,41 @@ export default function App(){
                   const top5=list.filter(p=>p.profit>=0).sort((a,b)=>b.profit-a.profit).slice(0,5);
                   const bot5=list.filter(p=>p.profit<0).sort((a,b)=>a.profit-b.profit).slice(0,5);
                   if(!top5.length&&!bot5.length)return null;
+                  const PRow=({p,good,last})=>(
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:last?"none":"1px solid rgba(255,255,255,.04)"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:5}}>
+                        <GameLogo game={p.game} size={11}/>
+                        <span style={{fontSize:12,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
+                        <span style={{fontSize:9,color:"#3a4a5e"}}>{p.wr}%WR</span>
+                      </div>
+                      <FmtProfit v={p.profit} fontSize={12}/>
+                    </div>
+                  );
                   return(
-                    <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"11px 14px"}}>
-                      <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",marginBottom:10}}>⭐ Top joueurs · 💀 À éviter</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                        <div>
-                          <div style={{fontSize:9,color:"#22C55E",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>✅ Top 5</div>
-                          {top5.map((p,i)=>(
-                            <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<top5.length-1?"1px solid rgba(255,255,255,.04)":"none"}}>
-                              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                                <GameLogo game={p.game} size={10}/>
-                                <span style={{fontSize:11,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
-                              </div>
-                              <FmtProfit v={p.profit} fontSize={11}/>
-                            </div>
-                          ))}
+                    <div style={cardStyle}>
+                      {secTitle("🏆","Top joueurs · À éviter","Min 3 paris")}
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+                        <div style={{padding:"10px 14px",borderRight:"1px solid rgba(255,255,255,.06)"}}>
+                          <div style={{fontSize:9,color:"#22C55E",fontWeight:800,textTransform:"uppercase",letterSpacing:.8,marginBottom:8,display:"flex",alignItems:"center",gap:4}}>
+                            <span style={{width:6,height:6,borderRadius:"50%",background:"#22C55E",display:"inline-block"}}/>✅ Top 5
+                          </div>
+                          {top5.map((p,i)=><PRow key={p.player} p={p} good last={i===top5.length-1}/>)}
                         </div>
-                        <div>
-                          <div style={{fontSize:9,color:"#EF4444",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>❌ À couper</div>
-                          {bot5.map((p,i)=>(
-                            <div key={p.player} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<bot5.length-1?"1px solid rgba(255,255,255,.04)":"none"}}>
-                              <div style={{display:"flex",alignItems:"center",gap:4}}>
-                                <GameLogo game={p.game} size={10}/>
-                                <span style={{fontSize:11,color:"#c8d4e8",fontWeight:600,textTransform:"capitalize"}}>{p.player}</span>
-                              </div>
-                              <FmtProfit v={p.profit} fontSize={11}/>
-                            </div>
-                          ))}
+                        <div style={{padding:"10px 14px"}}>
+                          <div style={{fontSize:9,color:"#EF4444",fontWeight:800,textTransform:"uppercase",letterSpacing:.8,marginBottom:8,display:"flex",alignItems:"center",gap:4}}>
+                            <span style={{width:6,height:6,borderRadius:"50%",background:"#EF4444",display:"inline-block"}}/>❌ À couper
+                          </div>
+                          {bot5.map((p,i)=><PRow key={p.player} p={p} last={i===bot5.length-1}/>)}
                         </div>
                       </div>
                     </div>
                   );
                 })()}
 
+                  </>);
+                })()}
               </div>
             )}
-
 
             {statsTab==="jeux"&&<>
             {/* ── PAR JEU — accordéons regroupés ── */}
