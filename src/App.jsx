@@ -2709,62 +2709,19 @@ export default function App(){
   },[allPlayers]);
 
   const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
-  // ── Fonction réutilisable du test filter (inline, pas useCallback pour perf) ──
-  // Utilisée comme ref stable
-  const testFilterRef=useRef(testFilter);
-  const mibActiveRef=useRef(mibActive);
-  const mibDateRef=useRef(mibDate);
-  useEffect(()=>{testFilterRef.current=testFilter;},[testFilter]);
-  useEffect(()=>{mibActiveRef.current=mibActive;},[mibActive]);
-  useEffect(()=>{mibDateRef.current=mibDate;},[mibDate]);
 
-  // Snapshot des valeurs clés pour les useMemo (évite de recréer des fonctions)
-  const testFilterSnap=useMemo(()=>({
-    games:testFilter.games,
-    headshot:testFilter.headshot,
-    live:testFilter.live,
-    overUnder:testFilter.overUnder,
-    oddsMin:testFilter.oddsMin,
-    oddsMax:testFilter.oddsMax,
-    hideTourneys:testFilter.hideTourneys,
-    hideLeagues:testFilter.hideLeagues,
-    hideRoles:testFilter.hideRoles,
-    ppEdgeMin:testFilter.ppEdgeMin,
-    ppEdgeMax:testFilter.ppEdgeMax,
-    mibActive,
-    mibDate,
-  }),[testFilter,mibActive,mibDate]);
-
+  // ── Filtre Test + MIB ─────────────────────────────────────────────────────
   const isTestActive=useMemo(()=>{
     const f=testFilter;
     return mibActive||f.games.size<4||f.headshot!=="all"||f.live!=="all"||f.overUnder!=="all"||!!f.oddsMin||!!f.oddsMax||f.hideTourneys.size>0||f.hideLeagues.size>0||f.hideRoles.size>0||!!f.ppEdgeMin||!!f.ppEdgeMax;
   },[testFilter,mibActive]);
 
-  // Filtre inline (pas de useCallback pour éviter les cascades)
-  function applyMib(base,snap){
-    if(!snap.mibActive||!snap.mibDate)return base;
-    return base.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=snap.mibDate);
-  }
-  function applyTestFilter(base,snap){
-    let r=applyMib(base,snap);
-    if(snap.games.size<4)r=r.filter(b=>snap.games.has(b.game));
-    if(snap.headshot==="yes")r=r.filter(b=>b.isHeadshot);
-    if(snap.headshot==="no")r=r.filter(b=>!b.isHeadshot);
-    if(snap.live==="yes")r=r.filter(b=>b.isLive);
-    if(snap.live==="no")r=r.filter(b=>!b.isLive);
-    if(snap.overUnder==="over")r=r.filter(b=>b.overUnder==="Over");
-    if(snap.overUnder==="under")r=r.filter(b=>b.overUnder==="Under");
-    if(snap.oddsMin)r=r.filter(b=>(b.odds||0)>=parseFloat(snap.oddsMin));
-    if(snap.oddsMax)r=r.filter(b=>(b.odds||0)<=parseFloat(snap.oddsMax));
-    if(snap.hideTourneys&&snap.hideTourneys.size>0)r=r.filter(b=>!snap.hideTourneys.has(b.tournament||"Hors tournoi"));
-    if(snap.hideLeagues&&snap.hideLeagues.size>0)r=r.filter(b=>!snap.hideLeagues.has(b.league||""));
-    if(snap.hideRoles&&snap.hideRoles.size>0)r=r.filter(b=>!snap.hideRoles.has(b.role||""));
-    if(snap.ppEdgeMin)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(snap.ppEdgeMin));
-    if(snap.ppEdgeMax)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(snap.ppEdgeMax));
-    return r;
-  }
-
-  const betsForDisplay=useMemo(()=>isTestActive?applyTestFilter(bets,testFilterSnap):bets,[bets,isTestActive,testFilterSnap]);
+  // Filtre pur hors composant — pas de capture de closure React
+  const filteredByTest=useCallback((base)=>{
+    let r=base;
+    // MIB filter
+    if(mibActive&&mibDate)r=r.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=mibDate);
+    // Test filters
     if(testFilter.games.size<4)r=r.filter(b=>testFilter.games.has(b.game));
     if(testFilter.headshot==="yes")r=r.filter(b=>b.isHeadshot);
     if(testFilter.headshot==="no")r=r.filter(b=>!b.isHeadshot);
@@ -2772,11 +2729,24 @@ export default function App(){
     if(testFilter.live==="no")r=r.filter(b=>!b.isLive);
     if(testFilter.overUnder==="over")r=r.filter(b=>b.overUnder==="Over");
     if(testFilter.overUnder==="under")r=r.filter(b=>b.overUnder==="Under");
+    if(testFilter.oddsMin)r=r.filter(b=>(b.odds||0)>=parseFloat(testFilter.oddsMin));
+    if(testFilter.oddsMax)r=r.filter(b=>(b.odds||0)<=parseFloat(testFilter.oddsMax));
+    if(testFilter.hideTourneys.size>0)r=r.filter(b=>!testFilter.hideTourneys.has(b.tournament||"Hors tournoi"));
+    if(testFilter.hideLeagues.size>0)r=r.filter(b=>!testFilter.hideLeagues.has(b.league||""));
+    if(testFilter.hideRoles.size>0)r=r.filter(b=>!testFilter.hideRoles.has(b.role||""));
+    if(testFilter.ppEdgeMin)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)>=parseFloat(testFilter.ppEdgeMin));
+    if(testFilter.ppEdgeMax)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(testFilter.ppEdgeMax));
+    return r;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[isTestActive,testFilter,mibActive,mibDate]);
+
+  const betsForDisplay=useMemo(()=>isTestActive?filteredByTest(bets):bets,[bets,isTestActive,filteredByTest]);
+
   const settledFiltered=useMemo(function(){
     let base=settled;
     if(statsPeriod){const cutoff=new Date();cutoff.setDate(cutoff.getDate()-statsPeriod);const cutStr=cutoff.toISOString().slice(0,10);base=base.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=cutStr);}
-    return isTestActive?applyTestFilter(base,testFilterSnap):base;
-  },[settled,statsPeriod,isTestActive,testFilterSnap]);
+    return isTestActive?filteredByTest(base):base;
+  },[settled,statsPeriod,isTestActive,filteredByTest]);
 
   // ── 📊 ANALYSE AVANCÉE ────────────────────────────────────────────────────
   const advancedStats=useMemo(function(){
@@ -3291,7 +3261,7 @@ export default function App(){
 
 
   const homeSettled=useMemo(function(){
-    let s=isTestActive?applyTestFilter(settled,testFilterSnap):settled;
+    let s=isTestActive?filteredByTest(settled):settled;
     // Period filter
     if(homePeriod){
       const cutoff=new Date();cutoff.setDate(cutoff.getDate()-homePeriod);
@@ -3310,7 +3280,7 @@ export default function App(){
     if(homeChartFilters.dateFrom)s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=homeChartFilters.dateFrom);
     if(homeChartFilters.dateTo)s=s.filter(b=>b.datetime&&String(b.datetime).slice(0,10)<=homeChartFilters.dateTo);
     return s;
-  },[settled,homePeriod,homeChartFilters,isTestActive,applyTestFilter]);
+  },[settled,homePeriod,homeChartFilters,isTestActive,filteredByTest]);
 
   // betsForDisplay: bets filtrés par testFilter pour Mes Paris
   const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.profit||0),0),[homeSettled]);
