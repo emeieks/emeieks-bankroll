@@ -2422,6 +2422,15 @@ export default function App(){
       if(sbk){const d=JSON.parse(sbk);setStickyBK(d.active||false);setForm(f=>({...f,bookmaker:d.bk||""}));}
     }catch(e){}
     setLoaded(true);
+    // ── Pari Wager -900$ (paiement refusé) ──
+    const WAGER_ID="wager-vol-900-aug2026";
+    setBets(prev=>{
+      if(prev.some(b=>b.id===WAGER_ID))return prev;
+      const wagerBet={id:WAGER_ID,player:"Wager",description:"Paiement refusé",overUnder:"",odds:2,stake:900,bookmaker:"Wager",status:"lost",game:"",league:"",role:"",team:"",datetime:"2026-08-15T12:00",isHeadshot:false,isLive:false,mapTag:"",profit:-900,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
+      const updated=[...prev,wagerBet];
+      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
+      return updated;
+    });
   },[]);
 
   // Persister stickyBK + bookmaker actif
