@@ -435,6 +435,8 @@ async function supaUploadAvatar(file, playerName) {
 }
 
 const DEFAULT_BK=["Stake","Roobet","Rainbet","BCGame","Duelbits","Duel","Yeet","Thunderpick","Winna","Thrill","Spartans","Gambana","Betpanda","Toshi","Shock","Qzino","Wager"];
+// Sites dont la devise est différente de USD — taux vers USD
+const BK_CURRENCY={"Wager":{currency:"CAD",rate:0.7213,label:"CAD → USD"}};
 
 const BK_LOGOS={
 "Stake":"data:image/png;base64,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",
@@ -818,7 +820,7 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
   if(ebIsHS) ebOpts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");
   else if(ebGame==="LoL") ebOpts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
   else if(ebGame==="CS2") ebOpts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
-  else if(ebGame==="Dota2") ebOpts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
+  else if(ebGame==="Dota2") ebOpts=Array.from({length:18},(_,i)=>(i+1.5).toFixed(1)+" Kills");
   else ebOpts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
   // Extract current kills line: "Over 14.5 Kills" → "14.5 Kills"
   const ebDescParts=bet.description&&bet.description.split(" ")||[];
@@ -2422,15 +2424,6 @@ export default function App(){
       if(sbk){const d=JSON.parse(sbk);setStickyBK(d.active||false);setForm(f=>({...f,bookmaker:d.bk||""}));}
     }catch(e){}
     setLoaded(true);
-    // ── Pari Wager -900$ (paiement refusé) ──
-    const WAGER_ID="wager-vol-900-aug2026";
-    setBets(prev=>{
-      if(prev.some(b=>b.id===WAGER_ID))return prev;
-      const wagerBet={id:WAGER_ID,player:"Wager",description:"Paiement refusé",overUnder:"",odds:2,stake:900,bookmaker:"Wager",status:"lost",game:"",league:"",role:"",team:"",datetime:"2026-08-15T12:00",isHeadshot:false,isLive:false,mapTag:"",profit:-900,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
-      const updated=[...prev,wagerBet];
-      try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
-      return updated;
-    });
   },[]);
 
   // Persister stickyBK + bookmaker actif
@@ -3325,7 +3318,11 @@ export default function App(){
   function addBet(){
     if(!form.player||!form.odds||!form.stake||!form.bookmaker||!form.description||!form.mapTag)return;
     const info=findPlayer(form.player)||{game:"?",league:"?",role:"?",team:"?"};
-    const stake=parseFloat(form.stake),odds=parseFloat(form.odds);
+    // Conversion devise si le casino a une devise différente de USD
+    const bkCurr=BK_CURRENCY[form.bookmaker];
+    const convRate=bkCurr?bkCurr.rate:1;
+    const stake=Math.round(parseFloat(form.stake)*convRate*100)/100;
+    const odds=parseFloat(form.odds);
     const desc=form.description?form.overUnder+" "+form.description:form.overUnder;
     const tname=(()=>{const t=activeTourneys[info.game];return(t&&(!t.end||new Date(t.end)>=new Date()))?t.name:"";})();
     if(editingBet){
@@ -5114,7 +5111,7 @@ export default function App(){
                 let opts=[];
                 if(game==="CS2"){const kills=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");const hs=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");opts=[...kills,...hs];}
                 else if(game==="LoL") opts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
-                else if(game==="Dota2") opts=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Kills");
+                else if(game==="Dota2") opts=Array.from({length:18},(_,i)=>(i+1.5).toFixed(1)+" Kills");
                 else if(game==="Valorant") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
                 if(form.description&&!opts.includes(form.description)){opts=[form.description,...opts];}
                 if(opts.length===0)return null;
@@ -5174,10 +5171,17 @@ export default function App(){
                     </div>
                   </div>
                   <div>
-                    <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase"}}>Mise</div>
-                    <div style={{height:48,borderRadius:12,border:"1px solid rgba(255,255,255,.09)",background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px",overflow:"hidden"}}>
+                    <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase",display:"flex",alignItems:"center",gap:5}}>
+                      Mise
+                      {BK_CURRENCY[form.bookmaker]&&(
+                        <span style={{background:"rgba(251,191,36,.15)",border:"1px solid rgba(251,191,36,.3)",borderRadius:5,padding:"1px 6px",fontSize:8,color:"#fbbf24",fontWeight:700}}>
+                          {BK_CURRENCY[form.bookmaker].currency} → {(parseFloat(form.stake||0)*BK_CURRENCY[form.bookmaker].rate).toFixed(2)} USD
+                        </span>
+                      )}
+                    </div>
+                    <div style={{height:48,borderRadius:12,border:"1px solid "+(BK_CURRENCY[form.bookmaker]?"rgba(251,191,36,.3)":"rgba(255,255,255,.09)"),background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px",overflow:"hidden"}}>
                       <NumPad value={form.stake} onChange={v=>setForm(f=>({...f,stake:v}))} placeholder="75" step="1"/>
-                      <span style={{color:"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>$</span>
+                      <span style={{color:BK_CURRENCY[form.bookmaker]?"#fbbf24":"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>{BK_CURRENCY[form.bookmaker]?BK_CURRENCY[form.bookmaker].currency:"$"}</span>
                     </div>
                   </div>
                 </div>
@@ -5318,7 +5322,7 @@ export default function App(){
                 if(ppType==="Map 1+2"){
                   if(isHS&&(game==="CS2"||game==="Valorant")) return range(4.5,24.5);
                   if(game==="CS2"||game==="Valorant") return range(18.5,42.5);
-                  if(game==="Dota2") return range(2.5,24.5);
+                  if(game==="Dota2") return range(1.5,24.5);
                   if(game==="LoL") return range(0.5,15.5);
                 }
                 if(ppType==="Map 3"){
@@ -5943,6 +5947,36 @@ export default function App(){
                   <span style={{fontSize:11,opacity:.6}}>{testingOpen?"▲":"▼"}</span>
                 </button>
                 <button onClick={exportCSV} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}>📊 Exporter en CSV</button>
+                {/* ── Conversion CAD→USD pour Wager ── */}
+                {bets.some(b=>b.bookmaker==="Wager")&&(
+                  <div style={{background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:12,padding:"12px 14px"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#fbbf24",marginBottom:4}}>💱 Wager — Conversion CAD → USD</div>
+                    <div style={{fontSize:10,color:"#6a5a3e",marginBottom:10}}>
+                      {bets.filter(b=>b.bookmaker==="Wager").length} paris Wager détectés · Taux {BK_CURRENCY.Wager.rate} (1 CAD = {BK_CURRENCY.Wager.rate} USD)
+                    </div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>{
+                        const rate=BK_CURRENCY.Wager.rate;
+                        const updated=bets.map(b=>{
+                          if(b.bookmaker!=="Wager")return b;
+                          const newStake=Math.round(b.stake*rate*100)/100;
+                          const newProfit=b.status==="won"?Math.round(newStake*(b.odds-1)*100)/100:b.status==="lost"?-newStake:0;
+                          return{...b,stake:newStake,profit:newProfit,updatedAt:Date.now()};
+                        });
+                        setBets(updated);
+                        try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
+                        // Sync Supabase
+                        const wagerBets=updated.filter(b=>b.bookmaker==="Wager");
+                        if(supaUrl&&supaKey&&wagerBets.length>0){
+                          fetch(supaUrl+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":"Bearer "+supaKey,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(wagerBets)}).catch(()=>{});
+                        }
+                        showToast("Paris Wager convertis en USD ✓","#fbbf24");
+                      }} style={{flex:1,padding:"8px",borderRadius:9,border:"none",background:"rgba(251,191,36,.2)",color:"#fbbf24",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                        ⚡ Convertir tous les paris Wager → USD
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <button onClick={exportJSON} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}>💾 Exporter en JSON</button>
                 <label style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
                   📂 Importer un JSON
