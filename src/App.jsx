@@ -7156,42 +7156,6 @@ export default function App(){
                     </div>
                   );
                 })()}
-                  return(
-                    <div style={cardStyle}>
-                      {secTitle("📐","Rentabilité par tranche de cote","Vert = WR au-dessus du seuil minimum requis")}
-                      <div style={{display:"grid",gridTemplateColumns:"80px 1fr 36px 36px 54px 60px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
-                        {[["label","Cote","left"],["wr","WR","center"],["minWR","Requis","center"],["cnt","N","center"],["roi","ROI","right"],["profit","Profit","right"]].map(([k,l,a])=>(
-                          <SortHdr key={k} label={l} k={k} sort={breakevenSort} setSort={setBreakevenSort} align={a}/>
-                        ))}
-                      </div>
-                      {sorted.map((r,i)=>{
-                        const gap=r.wr-r.minWR;const isOk=gap>=0;
-                        const bg=isOk?"rgba(34,197,94,.04)":"rgba(239,68,68,.04)";
-                        return(
-                          <div key={r.label} style={{borderTop:"1px solid rgba(255,255,255,.04)",background:bg}}>
-                            <div style={{display:"grid",gridTemplateColumns:"80px 1fr 36px 36px 54px 60px",gap:4,alignItems:"center",padding:"8px 14px"}}>
-                              <span style={{fontSize:12,fontWeight:800,color:"#c8d4e8",fontVariantNumeric:"tabular-nums"}}>{r.label}</span>
-                              <div style={{display:"flex",alignItems:"center",gap:5}}>
-                                <div style={{flex:1,height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden",position:"relative"}}>
-                                  <div style={{position:"absolute",left:r.minWR+"%",top:0,bottom:0,width:2,background:"rgba(255,255,255,.3)"}}/>
-                                  <div style={{height:"100%",width:Math.min(100,r.wr)+"%",background:isOk?"rgba(34,197,94,.7)":"rgba(239,68,68,.7)",borderRadius:3}}/>
-                                </div>
-                              </div>
-                              <span style={{fontSize:11,fontWeight:800,color:isOk?"#22C55E":"#EF4444",textAlign:"center"}}>{r.wr}%</span>
-                              <span style={{fontSize:10,color:"#5a6a7e",textAlign:"center"}}>{r.minWR}%</span>
-                              <span style={{fontSize:11,fontWeight:700,color:r.roi>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
-                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={r.profit} fontSize={11}/></div>
-                            </div>
-                            <div style={{padding:"0 14px 6px",display:"flex",gap:8}}>
-                              <span style={{fontSize:8,color:isOk?"rgba(34,197,94,.5)":"rgba(239,68,68,.5)",fontWeight:600}}>{isOk?"✓ "+gap+"% au-dessus":"✗ "+Math.abs(gap)+"% sous le seuil"}</span>
-                              <span style={{fontSize:8,color:"#3a4a5e"}}>{r.cnt} paris</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
 
                 {/* ══ 📈 CALIBRATION EDGE ══ */}
                 {advancedStats&&advancedStats.calibration.length>1&&(()=>{
