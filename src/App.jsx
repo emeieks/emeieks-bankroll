@@ -2281,6 +2281,9 @@ export default function App(){
   const [confirmDelete,setConfirmDelete]=useState(false);
   const [modalTourney,setModalTourney]=useState(false); // game string ou false
   const [suiviOpen,setSuiviOpen]=useState({tournois:true,bookmakers:false,prizepicks:false});
+  const [tourneyCal,setTourneyCal]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_tourney_cal")||"[]");}catch(e){return[];}});
+  const [tourneyCalForm,setTourneyCalForm]=useState({name:"",game:"LoL",start:"",end:""});
+  const [showTourneyCalForm,setShowTourneyCalForm]=useState(false);
   const [ppData,setPpData]=useState(()=>{try{const s=localStorage.getItem("v7_pp_data");return s?JSON.parse(s):[];}catch(e){return[];}});
   const [ppActiveLeague,setPpActiveLeague]=useState("all");
   const [ppActiveTiers,setPpActiveTiers]=useState(new Set(["standard","demon","goblin"]));
@@ -2423,6 +2426,17 @@ export default function App(){
       const sbk=localStorage.getItem("v7_sticky_bk");
       if(sbk){const d=JSON.parse(sbk);setStickyBK(d.active||false);setForm(f=>({...f,bookmaker:d.bk||""}));}
     }catch(e){}
+    // Nettoyer le pari Wager injecté précédemment
+    setBets(prev=>{
+      const cleaned=prev.filter(b=>b.id!=="wager-vol-900-aug2026"&&b.id!=="wager-stolen-900-2026");
+      if(cleaned.length!==prev.length){
+        try{localStorage.setItem("v7_bets",JSON.stringify(cleaned));}catch(e){}
+        // Supprimer de Supabase aussi
+        const ids=["wager-vol-900-aug2026","wager-stolen-900-2026"];
+        if(SUPA_URL&&SUPA_KEY){ids.forEach(id=>{fetch(SUPA_URL+"/rest/v1/bets?id=eq."+id,{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});});}
+      }
+      return cleaned;
+    });
     setLoaded(true);
   },[]);
 
@@ -2436,6 +2450,7 @@ export default function App(){
   useEffect(()=>{try{localStorage.setItem("v7_bk_accounts",JSON.stringify(bkAccounts));}catch(e){}},[bkAccounts]);
 
   // Persister tournois actifs + savedTourneys + MIB + testFilter → localStorage + Supabase
+  useEffect(()=>{try{localStorage.setItem("v7_tourney_cal",JSON.stringify(tourneyCal));}catch(e){};},[tourneyCal]);
   useEffect(()=>{
     if(!loaded)return;
     try{
@@ -2814,31 +2829,86 @@ export default function App(){
         profit:v.profit
       }));
 
-    // 4. Signaux — combinaisons Over/Under × Jeu
-    const signals={};
+    // 4. ── DÉTECTEUR DE PERTES ── ce qui coûte le plus
+    const LOSS_THRESHOLD=200; // montant minimum pour apparaître
+    const lossFactors=[];
+    // Helper: agréger par dimension
+    const agg=(key,label,val,arr)=>{
+      if(!val)return;
+      const k=`${key}:${val}`;
+      let e=arr.find(x=>x.k===k);
+      if(!e){e={k,label,val,cnt:0,won:0,profit:0,staked:0};arr.push(e);}
+      return e;
+    };
+
+    // Dimensions simples
+    const dimMap={};
     settledFiltered.forEach(b=>{
-      if(!b.overUnder||b.overUnder==="")return;
-      const k=b.overUnder+"|"+(b.game||"?");
-      if(!signals[k])signals[k]={ou:b.overUnder,game:b.game||"?",cnt:0,won:0,profit:0,staked:0};
-      const s=signals[k];s.cnt++;s.profit+=b.profit;s.staked+=b.stake;if(b.status==="won")s.won++;
+      const dims=[
+        b.game&&{key:"game",label:"Jeu",val:b.game},
+        b.overUnder&&{key:"ou",label:"Direction",val:b.overUnder},
+        b.role&&{key:"role",label:"Position",val:b.role},
+        b.ppLine&&{key:"line",label:"Ligne PP",val:String(b.ppLine)},
+        b.league&&{key:"league",label:"Ligue",val:b.league},
+        b.bookmaker&&{key:"bk",label:"Casino",val:b.bookmaker},
+      ].filter(Boolean);
+      dims.forEach(d=>{
+        const k=`${d.key}:${d.val}`;
+        if(!dimMap[k])dimMap[k]={...d,cnt:0,won:0,profit:0,staked:0};
+        const e=dimMap[k];e.cnt++;e.profit+=b.profit;e.staked+=b.stake;if(b.status==="won")e.won++;
+      });
     });
-    const signalList=Object.values(signals)
-      .filter(s=>s.cnt>=5)
-      .map(s=>({...s,wr:Math.round(s.won*100/s.cnt),roi:s.staked>0?Math.round(s.profit/s.staked*1000)/10:0}))
-      .sort((a,b)=>b.profit-a.profit);
+
+    // Combos 2 dimensions (game+ou, game+role, ou+line, game+line, ou+role)
+    const comboMap={};
+    settledFiltered.filter(b=>b.overUnder).forEach(b=>{
+      const combos=[
+        b.game&&b.overUnder&&{key:`${b.game}+${b.overUnder}`,label:`${b.game} ${b.overUnder}`},
+        b.role&&b.overUnder&&{key:`${b.overUnder}+${b.role}`,label:`${b.overUnder} · ${b.role}`},
+        b.ppLine&&b.overUnder&&{key:`${b.overUnder}+${b.ppLine}`,label:`${b.overUnder} · Ligne ${b.ppLine}`},
+        b.game&&b.role&&b.overUnder&&{key:`${b.game}+${b.overUnder}+${b.role}`,label:`${b.game} ${b.overUnder} · ${b.role}`},
+        b.game&&b.ppLine&&b.overUnder&&{key:`${b.game}+${b.overUnder}+${b.ppLine}`,label:`${b.game} ${b.overUnder} · Ligne ${b.ppLine}`},
+      ].filter(Boolean);
+      combos.forEach(c=>{
+        if(!comboMap[c.key])comboMap[c.key]={...c,cnt:0,won:0,profit:0,staked:0};
+        const e=comboMap[c.key];e.cnt++;e.profit+=b.profit;e.staked+=b.stake;if(b.status==="won")e.won++;
+      });
+    });
+
+    const toSig=e=>({...e,wr:e.cnt>0?Math.round(e.won/e.cnt*100):0,roi:e.staked>0?Math.round(e.profit/e.staked*1000)/10:0});
+    const signalList=Object.values(dimMap).filter(e=>e.cnt>=5).map(toSig).sort((a,b)=>a.profit-b.profit);
+    const comboList=Object.values(comboMap).filter(e=>e.cnt>=4&&e.profit<=-LOSS_THRESHOLD).map(toSig).sort((a,b)=>a.profit-b.profit).slice(0,12);
 
     // 5. Seuil de rentabilité par tranche de cote — simplifié
+    // Tranches de cotes fines (0.05)
     const oddsBuckets={};
+    const getBucket=o=>{
+      if(o<1.50)return{k:"<1.50",minWR:67};
+      if(o<1.55)return{k:"1.50–1.54",minWR:65};
+      if(o<1.60)return{k:"1.55–1.59",minWR:63};
+      if(o<1.65)return{k:"1.60–1.64",minWR:61};
+      if(o<1.70)return{k:"1.65–1.69",minWR:59};
+      if(o<1.75)return{k:"1.70–1.74",minWR:57};
+      if(o<1.80)return{k:"1.75–1.79",minWR:56};
+      if(o<1.85)return{k:"1.80–1.84",minWR:54};
+      if(o<1.90)return{k:"1.85–1.89",minWR:53};
+      if(o<1.95)return{k:"1.90–1.94",minWR:52};
+      if(o<2.00)return{k:"1.95–1.99",minWR:51};
+      if(o<2.10)return{k:"2.00–2.09",minWR:48};
+      if(o<2.25)return{k:"2.10–2.24",minWR:45};
+      if(o<2.50)return{k:"2.25–2.49",minWR:41};
+      return{k:"≥2.50",minWR:40};
+    };
     settledFiltered.forEach(b=>{
       const o=b.odds||0;
-      const k=o<1.5?"<1.50":o<1.75?"1.50–1.74":o<2?"1.75–1.99":o<2.5?"2.00–2.49":"≥2.50";
-      const minWR=o<1.5?67:o<1.75?57:o<2?50:o<2.5?44:40;
-      if(!oddsBuckets[k])oddsBuckets[k]={cnt:0,won:0,profit:0,staked:0,minWR};
+      const {k,minWR}=getBucket(o);
+      if(!oddsBuckets[k])oddsBuckets[k]={cnt:0,won:0,profit:0,staked:0,minWR,sortKey:o<1.50?0:o};
       const bk=oddsBuckets[k];bk.cnt++;bk.profit+=b.profit;bk.staked+=b.stake;if(b.status==="won")bk.won++;
     });
     const breakevenData=Object.entries(oddsBuckets)
-      .map(([k,v])=>({label:k,cnt:v.cnt,wr:Math.round(v.won*100/v.cnt),minWR:v.minWR,roi:v.staked>0?Math.round(v.profit/v.staked*1000)/10:0,profit:v.profit}))
-      .sort((a,b)=>a.minWR-b.minWR);
+      .map(([k,v])=>({label:k,cnt:v.cnt,wr:Math.round(v.won*100/v.cnt),minWR:v.minWR,roi:v.staked>0?Math.round(v.profit/v.staked*1000)/10:0,profit:v.profit,sortKey:v.sortKey}))
+      .filter(r=>r.cnt>=5)
+      .sort((a,b)=>a.sortKey-b.sortKey);
 
     // 6. ── COTE IDÉALE ── Map 1+2 et Map 3 seulement, edges ronds, Over/Under séparés
     const coteGroups={};
@@ -2871,7 +2941,7 @@ export default function App(){
       })
       .sort((a,b)=>a.edge-b.edge);
 
-    return{dow,DAYS,curStreak,curType,bestWin,bestLoss,calibration,signalList,breakevenData,coteIdéale,weekList};
+    return{dow,DAYS,curStreak,curType,bestWin,bestLoss,calibration,signalList,comboList,breakevenData,coteIdéale,weekList};
   },[settledFiltered]);
 
   const globalOverUnderStats=useMemo(function(){
@@ -6428,7 +6498,7 @@ export default function App(){
                               ppLineGroups[k].bets.push(b);
                               addS(ppLineGroups[k].data,b);
                             });
-                            const sortedPPLines=Object.values(ppLineGroups).sort(function(a,b){return b.ppLine-a.ppLine;});
+                            const sortedPPLines=Object.values(ppLineGroups).sort(function(a,b){return a.ppLine-b.ppLine;});
                             return(
                               <div key={e}>
                                 <StatRow key={e} s={s} label={"+"+e.toFixed(2)} isEdge={true} noLine={false} onClick={function(){setEdgeDrill(isExpanded?null:{mt,game,edge:e,fromHeat:false});}}/>
@@ -6812,8 +6882,22 @@ export default function App(){
                       {Object.entries(byGame).map(([game,rows])=>{
                         const over=rows.filter(r=>r.ou==="Over");
                         const under=rows.filter(r=>r.ou==="Under");
-                        const sortOver=sortFn(over,coteSort,["edge","cnt","wr","avgOdds","idealOdds","profit"]);
-                        const sortUnder=sortFn(under,coteSort,["edge","cnt","wr","avgOdds","idealOdds","profit"]);
+                        const over12=sortFn(rows.filter(r=>r.ou==="Over"&&r.mt==="Map 1+2"),coteSort);
+                        const over3=sortFn(rows.filter(r=>r.ou==="Over"&&r.mt==="Map 3"),coteSort);
+                        const under12=sortFn(rows.filter(r=>r.ou==="Under"&&r.mt==="Map 1+2"),coteSort);
+                        const under3=sortFn(rows.filter(r=>r.ou==="Under"&&r.mt==="Map 3"),coteSort);
+                        if(!over12.length&&!over3.length&&!under12.length&&!under3.length)return null;
+                        const SubTable=({label,color,rows:rws,bg})=>{
+                          if(!rws.length)return null;
+                          return(<>
+                            <div style={{padding:"4px 14px 2px",background:bg,display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{fontSize:9,color,fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>{label}</span>
+                              <span style={{fontSize:8,color:"#2a3a4e"}}>{rws.length} lignes</span>
+                            </div>
+                            <HDR/>
+                            {rws.map((r,i)=><Row key={r.mt+r.edge+r.ou} r={{...r,prog:r.profit/5000*100}} last={i===rws.length-1}/>)}
+                          </>);
+                        };
                         const COLS="46px 28px 40px 48px 48px 60px 54px";
                         const HDR=()=>(
                           <div style={{display:"grid",gridTemplateColumns:COLS,gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
@@ -6845,21 +6929,13 @@ export default function App(){
                               <GameLogo game={game} size={14}/>
                               <span style={{fontSize:11,fontWeight:800,color:"#c8d4e8",textTransform:"uppercase",letterSpacing:1}}>{game}</span>
                             </div>
-                            {sortOver.length>0&&<>
-                              <div style={{padding:"4px 14px 2px",background:"rgba(34,197,94,.04)",display:"flex",alignItems:"center",gap:5}}>
-                                <span style={{fontSize:9,color:"#22C55E",fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>▲ Over</span>
-                                <span style={{fontSize:8,color:"#3a5a3e"}}>{sortOver.length} lignes</span>
-                              </div>
-                              <HDR/>{sortOver.map((r,i)=><Row key={r.mt+r.edge} r={{...r,prog:r.profit/5000*100}} last={i===sortOver.length-1&&!sortUnder.length}/>)}
-                            </>}
-                            {sortOver.length>0&&sortUnder.length>0&&<div style={{height:1,background:"rgba(255,255,255,.1)",margin:"0 14px"}}/>}
-                            {sortUnder.length>0&&<>
-                              <div style={{padding:"4px 14px 2px",background:"rgba(96,165,250,.04)",display:"flex",alignItems:"center",gap:5}}>
-                                <span style={{fontSize:9,color:"#60a5fa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>▼ Under</span>
-                                <span style={{fontSize:8,color:"#3a4a6e"}}>{sortUnder.length} lignes</span>
-                              </div>
-                              <HDR/>{sortUnder.map((r,i)=><Row key={r.mt+r.edge} r={{...r,prog:r.profit/5000*100}} last={i===sortUnder.length-1}/>)}
-                            </>}
+                            <SubTable label="▲ Over · Map 1+2" color="#22C55E" rows={over12} bg="rgba(34,197,94,.04)"/>
+                            {over12.length>0&&over3.length>0&&<div style={{height:1,background:"rgba(255,255,255,.06)",margin:"0 14px"}}/>}
+                            <SubTable label="▲ Over · Map 3" color="#4ade80" rows={over3} bg="rgba(74,222,128,.03)"/>
+                            {(over12.length||over3.length)>0&&(under12.length||under3.length)>0&&<div style={{height:2,background:"rgba(255,255,255,.1)",margin:"0 14px"}}/>}
+                            <SubTable label="▼ Under · Map 1+2" color="#60a5fa" rows={under12} bg="rgba(96,165,250,.04)"/>
+                            {under12.length>0&&under3.length>0&&<div style={{height:1,background:"rgba(255,255,255,.06)",margin:"0 14px"}}/>}
+                            <SubTable label="▼ Under · Map 3" color="#93c5fd" rows={under3} bg="rgba(147,197,253,.03)"/>
                           </div>
                         );
                       })}
@@ -6870,38 +6946,70 @@ export default function App(){
                   );
                 })()}
 
-                {/* ══ 🎯 SIGNAUX ══ */}
-                {advancedStats&&advancedStats.signalList.length>0&&(()=>{
-                  const sorted=sortFn(advancedStats.signalList,signalSort);
-                  return(
-                    <div style={cardStyle}>
-                      {secTitle("🎯","Signaux","Quoi garder · quoi couper — min 5 paris par combinaison")}
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 32px 40px 40px 70px 60px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
-                        {[["game","Type","left"],["cnt","N","center"],["wr","WR","center"],["roi","ROI","center"],["profit","Profit","right"],["signal","Signal","right"]].map(([k,l,a])=>(
-                          k==="signal"
-                          ?<span key={k} style={{fontSize:8,color:"#3a4a5e",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,textAlign:"right"}}>Signal</span>
-                          :<SortHdr key={k} label={l} k={k} sort={signalSort} setSort={setSignalSort} align={a}/>
-                        ))}
+                {/* ══ 🚨 DÉTECTEUR DE PERTES ══ */}
+                {advancedStats&&(advancedStats.signalList.length>0||advancedStats.comboList.length>0)&&(()=>{
+                  const losses=advancedStats.signalList.filter(s=>s.profit<=-200).slice(0,10);
+                  const gains=advancedStats.signalList.filter(s=>s.profit>=200).slice(0,5);
+                  const combos=advancedStats.comboList||[];
+                  const DIM_ICONS={game:"🎮",ou:"↕",role:"🎯",line:"📊",league:"🏆",bk:"🏦"};
+                  const LossRow=({s,i})=>(
+                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2===0?"rgba(239,68,68,.025)":"transparent"}}>
+                      <span style={{fontSize:13,flexShrink:0}}>{DIM_ICONS[s.key?.split(":")[0]]||"•"}</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.val||s.label}</div>
+                        <div style={{fontSize:9,color:"#4a5a6e"}}>{s.label} · {s.cnt}p · {s.wr}% WR</div>
                       </div>
-                      {sorted.map((s,i)=>{
-                        const isGood=s.roi>=5;const isBad=s.roi<=-5;
-                        const sigColor=isGood?"#22C55E":isBad?"#EF4444":"#F59E0B";
-                        const bg=isGood?"rgba(34,197,94,.05)":isBad?"rgba(239,68,68,.05)":"transparent";
-                        const tag=isGood?"✅ Garder":isBad?"❌ Couper":"⚠️ Neutre";
-                        return(
-                          <div key={s.ou+s.game} style={{display:"grid",gridTemplateColumns:"1fr 32px 40px 40px 70px 60px",gap:4,alignItems:"center",padding:"9px 14px",borderTop:"1px solid rgba(255,255,255,.04)",background:bg}}>
-                            <div style={{display:"flex",alignItems:"center",gap:5}}>
-                              <GameLogo game={s.game} size={12}/>
-                              <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{s.ou==="Over"?"▲":"▼"} {s.game}</span>
-                            </div>
-                            <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{s.cnt}</span>
-                            <span style={{fontSize:11,fontWeight:700,color:s.wr>=55?"#22C55E":s.wr<45?"#EF4444":"#F59E0B",textAlign:"center"}}>{s.wr}%</span>
-                            <span style={{fontSize:11,fontWeight:700,color:s.roi>=0?"#22C55E":"#EF4444",textAlign:"center"}}>{s.roi>=0?"+":""}{s.roi.toFixed(1)}%</span>
-                            <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit} fontSize={12}/></div>
-                            <span style={{fontSize:10,fontWeight:800,color:sigColor,textAlign:"right"}}>{tag}</span>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <FmtProfit v={s.profit} fontSize={13}/>
+                        <div style={{fontSize:9,color:"#EF4444"}}>{s.roi.toFixed(1)}% ROI</div>
+                      </div>
+                    </div>
+                  );
+                  return(
+                    <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+                      <div style={{padding:"12px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(239,68,68,.04)"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:9}}>
+                          <span style={{fontSize:18}}>🚨</span>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Où tu perds ton argent</div>
+                            <div style={{fontSize:9,color:"#4a5a6e"}}>Facteurs individuels + combinaisons · min 4-5 paris</div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      </div>
+
+                      {/* ── Pertes individuelles ── */}
+                      {losses.length>0&&<>
+                        <div style={{padding:"7px 14px 4px",background:"rgba(239,68,68,.06)"}}>
+                          <span style={{fontSize:9,color:"#EF4444",fontWeight:800,textTransform:"uppercase",letterSpacing:.8}}>❌ Facteurs les plus coûteux</span>
+                        </div>
+                        {losses.map((s,i)=><LossRow key={s.k||s.key+s.val} s={s} i={i}/>)}
+                      </>}
+
+                      {/* ── Combos perdants ── */}
+                      {combos.length>0&&<>
+                        <div style={{height:1,background:"rgba(255,255,255,.06)"}}/>
+                        <div style={{padding:"7px 14px 4px",background:"rgba(249,115,22,.05)"}}>
+                          <span style={{fontSize:9,color:"#f97316",fontWeight:800,textTransform:"uppercase",letterSpacing:.8}}>⚠️ Combinaisons à éviter</span>
+                        </div>
+                        {combos.map((s,i)=>(
+                          <div key={s.key} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2===0?"rgba(249,115,22,.025)":"transparent"}}>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{s.label}</div>
+                              <div style={{fontSize:9,color:"#4a5a6e"}}>{s.cnt}p · {s.wr}% WR · {s.roi.toFixed(1)}% ROI</div>
+                            </div>
+                            <FmtProfit v={s.profit} fontSize={13}/>
+                          </div>
+                        ))}
+                      </>}
+
+                      {/* ── Ce qui fonctionne ── */}
+                      {gains.length>0&&<>
+                        <div style={{height:1,background:"rgba(255,255,255,.06)"}}/>
+                        <div style={{padding:"7px 14px 4px",background:"rgba(34,197,94,.04)"}}>
+                          <span style={{fontSize:9,color:"#22C55E",fontWeight:800,textTransform:"uppercase",letterSpacing:.8}}>✅ Ce qui fonctionne</span>
+                        </div>
+                        {gains.map((s,i)=><LossRow key={s.k||s.key+s.val} s={s} i={i}/>)}
+                      </>}
                     </div>
                   );
                 })()}
@@ -7010,7 +7118,44 @@ export default function App(){
 
                 {/* ══ 📐 SEUIL DE RENTABILITÉ ══ */}
                 {advancedStats&&advancedStats.breakevenData.length>0&&(()=>{
-                  const sorted=sortFn(advancedStats.breakevenData.filter(r=>r.cnt>=3),breakevenSort);
+                  const sorted=sortFn(advancedStats.breakevenData.filter(r=>r.cnt>=5),breakevenSort);
+                  return(
+                    <div style={cardStyle}>
+                      {secTitle("📐","Rentabilité par tranche de cote",`Pour être profitable à une cote donnée, tu dois avoir un WR minimum. Vert = tu es au-dessus, Rouge = tu perds.`)}
+                      <div style={{display:"grid",gridTemplateColumns:"88px 36px 1fr 36px 44px 56px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
+                        {[["label","Cote","left"],["minWR","Requis","center"],["wr","Ton WR","left"],["cnt","N","center"],["roi","ROI","right"],["profit","Profit","right"]].map(([k,l,a])=>(
+                          <SortHdr key={k} label={l} k={k} sort={breakevenSort} setSort={setBreakevenSort} align={a}/>
+                        ))}
+                      </div>
+                      {sorted.map((r,i)=>{
+                        const gap=r.wr-r.minWR;const isOk=gap>=0;
+                        const barW=Math.min(100,r.wr);const threshW=Math.min(100,r.minWR);
+                        return(
+                          <div key={r.label} style={{borderTop:"1px solid rgba(255,255,255,.04)",background:isOk?"rgba(34,197,94,.04)":"rgba(239,68,68,.04)"}}>
+                            <div style={{display:"grid",gridTemplateColumns:"88px 36px 1fr 36px 44px 56px",gap:4,alignItems:"center",padding:"8px 14px"}}>
+                              <span style={{fontSize:12,fontWeight:800,color:"#c8d4e8",fontVariantNumeric:"tabular-nums"}}>{r.label}</span>
+                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{r.minWR}%</span>
+                              {/* Barre WR avec seuil */}
+                              <div style={{position:"relative"}}>
+                                <div style={{height:7,background:"rgba(255,255,255,.05)",borderRadius:4,overflow:"visible",position:"relative"}}>
+                                  <div style={{height:"100%",width:barW+"%",background:isOk?"rgba(34,197,94,.7)":"rgba(239,68,68,.7)",borderRadius:4}}/>
+                                  <div style={{position:"absolute",left:threshW+"%",top:-3,bottom:-3,width:2,background:"rgba(255,255,255,.6)",borderRadius:1}}/>
+                                </div>
+                                <div style={{fontSize:9,fontWeight:700,color:isOk?"#22C55E":"#EF4444",marginTop:2}}>{isOk?"✓":""}{r.wr}% {isOk?`(+${gap}% au-dessus)`:`(${Math.abs(gap)}% sous le seuil)`}</div>
+                              </div>
+                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{r.cnt}</span>
+                              <span style={{fontSize:11,fontWeight:700,color:r.roi>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
+                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={r.profit} fontSize={11}/></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div style={{padding:"6px 14px",background:"rgba(0,0,0,.2)",borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                        <span style={{fontSize:9,color:"#3a4a5e"}}>Requis = WR minimum pour être profitable à cette cote · trait blanc = seuil</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                   return(
                     <div style={cardStyle}>
                       {secTitle("📐","Rentabilité par tranche de cote","Vert = WR au-dessus du seuil minimum requis")}
@@ -7050,78 +7195,97 @@ export default function App(){
 
                 {/* ══ 📈 CALIBRATION EDGE ══ */}
                 {advancedStats&&advancedStats.calibration.length>1&&(()=>{
-                  const sorted=sortFn(advancedStats.calibration,calibSort);
                   const snapE=e=>Math.round(Math.abs(e)*4)/4;
+                  // Séparer over et under
+                  const calcOU=(edgeVal,ou)=>{
+                    const s={cnt:0,won:0,profit:0,staked:0};
+                    settledFiltered.filter(b=>b.ppEdge!=null&&Math.abs(snapE(b.ppEdge)-edgeVal)<0.01&&b.overUnder===ou).forEach(b=>{
+                      s.cnt++;s.profit+=b.profit;s.staked+=b.stake;if(b.status==="won")s.won++;
+                    });
+                    return s;
+                  };
+                  const calcByGame=(edgeVal,ou)=>{
+                    const byGame={};
+                    settledFiltered.filter(b=>b.ppEdge!=null&&Math.abs(snapE(b.ppEdge)-edgeVal)<0.01&&b.overUnder===ou).forEach(b=>{
+                      const g=b.game||"?";
+                      if(!byGame[g])byGame[g]={cnt:0,won:0,profit:0,staked:0};
+                      const s=byGame[g];s.cnt++;s.profit+=b.profit;s.staked+=b.stake;if(b.status==="won")s.won++;
+                    });
+                    return byGame;
+                  };
+                  const Row=({c,ou,color,accentBg})=>{
+                    const s=calcOU(c.edge,ou);
+                    if(s.cnt<3)return null;
+                    const wr=Math.round(s.won/s.cnt*100);
+                    const roi=s.staked>0?s.profit/s.staked*100:0;
+                    const isGood=roi>0;
+                    const drillKey=`${c.edge}:${ou}`;
+                    const isOpen=calibDrill===drillKey;
+                    const byGame=isOpen?calcByGame(c.edge,ou):{};
+                    return(
+                      <div style={{borderTop:"1px solid rgba(255,255,255,.04)"}}>
+                        <div onClick={()=>setCalibDrill(isOpen?null:drillKey)}
+                          style={{display:"grid",gridTemplateColumns:"52px 30px 1fr 42px 54px 24px",gap:4,alignItems:"center",padding:"8px 14px",cursor:"pointer",background:isOpen?"rgba(99,102,241,.08)":isGood?"rgba(34,197,94,.025)":"rgba(239,68,68,.025)"}}>
+                          <span style={{fontSize:13,fontWeight:900,color:isOpen?"#a5b4fc":"#fff",fontVariantNumeric:"tabular-nums"}}>+{c.label}</span>
+                          <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{s.cnt}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:4}}>
+                            <div style={{flex:1,height:5,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:3}}/>
+                            </div>
+                            <span style={{fontSize:10,fontWeight:700,color:wr>=55?"#22C55E":wr<45?"#EF4444":"#F59E0B",minWidth:26}}>{wr}%</span>
+                          </div>
+                          <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444",textAlign:"right"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
+                          <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit} fontSize={11}/></div>
+                          <span style={{fontSize:11,color:isOpen?"#a5b4fc":"#3a4a5e",textAlign:"right"}}>{isOpen?"▲":"▼"}</span>
+                        </div>
+                        {isOpen&&Object.keys(byGame).length>0&&(
+                          <div style={{margin:"0 10px 8px",background:"rgba(99,102,241,.05)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(99,102,241,.18)"}}>
+                            <div style={{fontSize:9,color:"#6366f1",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Par jeu — {ou} +{c.label}</div>
+                            {Object.entries(byGame).filter(([,v])=>v.cnt>0).sort((a,b)=>b[1].profit-a[1].profit).map(([game,v])=>{
+                              const gwr=Math.round(v.won/v.cnt*100);
+                              const groi=v.staked>0?v.profit/v.staked*100:0;
+                              return(
+                                <div key={game} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+                                  <GameLogo game={game} size={13}/>
+                                  <span style={{fontSize:12,fontWeight:600,color:"#c8d4e8",width:56}}>{game}</span>
+                                  <span style={{fontSize:10,color:"#4a5a6e"}}>{v.cnt}p</span>
+                                  <span style={{fontSize:10,fontWeight:700,color:gwr>=55?"#22C55E":gwr<45?"#EF4444":"#F59E0B"}}>{gwr}%</span>
+                                  <span style={{fontSize:10,fontWeight:700,color:groi>=0?"#22C55E":"#EF4444",marginLeft:"auto"}}>{groi>=0?"+":""}{groi.toFixed(1)}%</span>
+                                  <FmtProfit v={v.profit} fontSize={11}/>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  };
+                  const sorted=sortFn(advancedStats.calibration,calibSort);
+                  const HDR=()=>(
+                    <div style={{display:"grid",gridTemplateColumns:"52px 30px 1fr 42px 54px 24px",gap:4,padding:"4px 14px",background:"rgba(0,0,0,.3)"}}>
+                      {[["edge","Edge","left"],["cnt","N","center"],["wr","WR","left"],["roi","ROI","right"],["profit","Profit","right"],["","","right"]].map(([k,l,a],idx)=>(
+                        k?<SortHdr key={k} label={l} k={k} sort={calibSort} setSort={setCalibSort} align={a}/>:<span key={idx}/>
+                      ))}
+                    </div>
+                  );
                   return(
                     <div style={cardStyle}>
-                      {secTitle("📈","Calibration Edge PrizePicks","Clique sur un edge pour le détail Over / Under")}
-                      <div style={{display:"grid",gridTemplateColumns:"52px 32px 1fr 44px 54px 28px",gap:4,padding:"5px 14px",background:"rgba(0,0,0,.3)"}}>
-                        {[["edge","Edge","left"],["cnt","N","center"],["wr","WR","left"],["roi","ROI","right"],["profit","Profit","right"],["","","right"]].map(([k,l,a],idx)=>(
-                          k?<SortHdr key={k} label={l} k={k} sort={calibSort} setSort={setCalibSort} align={a}/>
-                          :<span key={idx}/>
-                        ))}
+                      {secTitle("📈","Calibration Edge PrizePicks","Clique → stats par jeu · séparé Over / Under")}
+                      {/* OVER */}
+                      <div style={{borderTop:"1px solid rgba(255,255,255,.06)",background:"rgba(34,197,94,.04)",padding:"5px 14px 3px"}}>
+                        <span style={{fontSize:9,color:"#22C55E",fontWeight:800,textTransform:"uppercase",letterSpacing:.8}}>▲ Over</span>
                       </div>
-                      {sorted.map((c,i)=>{
-                        const isGood=c.roi>0;const isOpen=calibDrill===c.edge;
-                        const overS={cnt:0,won:0,profit:0,staked:0};
-                        const underS={cnt:0,won:0,profit:0,staked:0};
-                        if(isOpen){
-                          settledFiltered.filter(b=>b.ppEdge!=null&&Math.abs(snapE(b.ppEdge)-c.edge)<0.01).forEach(b=>{
-                            const t=b.overUnder==="Over"?overS:b.overUnder==="Under"?underS:null;
-                            if(!t)return;t.cnt++;t.profit+=b.profit;t.staked+=b.stake;if(b.status==="won")t.won++;
-                          });
-                        }
-                        const rowBg=isOpen?"rgba(99,102,241,.08)":isGood?"rgba(34,197,94,.03)":"rgba(239,68,68,.03)";
-                        return(
-                          <div key={c.label} style={{borderTop:"1px solid rgba(255,255,255,.04)"}}>
-                            <div onClick={()=>setCalibDrill(isOpen?null:c.edge)}
-                              style={{display:"grid",gridTemplateColumns:"52px 32px 1fr 44px 54px 28px",gap:4,alignItems:"center",padding:"9px 14px",cursor:"pointer",background:rowBg,transition:"background .15s"}}>
-                              <span style={{fontSize:14,fontWeight:900,color:isOpen?"#a5b4fc":"#fff",fontVariantNumeric:"tabular-nums"}}>+{c.label}</span>
-                              <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{c.cnt}</span>
-                              <div style={{display:"flex",alignItems:"center",gap:5}}>
-                                <div style={{flex:1,height:6,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
-                                  <div style={{height:"100%",width:c.wr+"%",background:isGood?"#22C55E":"#EF4444",borderRadius:3,boxShadow:isGood?"0 0 6px rgba(34,197,94,.4)":"0 0 6px rgba(239,68,68,.4)"}}/>
-                                </div>
-                                <span style={{fontSize:10,fontWeight:700,color:c.wr>=55?"#22C55E":c.wr<45?"#EF4444":"#F59E0B",minWidth:26}}>{c.wr}%</span>
-                              </div>
-                              <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444",textAlign:"right"}}>{c.roi>=0?"+":""}{c.roi.toFixed(1)}%</span>
-                              <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={c.profit} fontSize={11}/></div>
-                              <span style={{fontSize:12,color:isOpen?"#a5b4fc":"#3a4a5e",textAlign:"right"}}>{isOpen?"▲":"▼"}</span>
-                            </div>
-                            {isOpen&&(
-                              <div style={{margin:"0 10px 10px",background:"rgba(99,102,241,.06)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(99,102,241,.2)"}}>
-                                <div style={{fontSize:9,color:"#6366f1",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Détail · Edge +{c.label}</div>
-                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                                  {[{label:"▲ Over",s:overS,color:"#22C55E",bg:"rgba(34,197,94,.05)"},{label:"▼ Under",s:underS,color:"#60a5fa",bg:"rgba(96,165,250,.05)"}].map(({label,s,color,bg})=>{
-                                    if(s.cnt===0)return<div key={label} style={{textAlign:"center",color:"#3a4a5e",fontSize:10,padding:12}}>Aucun</div>;
-                                    const wr=Math.round(s.won/s.cnt*100);
-                                    const roi=s.staked>0?s.profit/s.staked*100:0;
-                                    return(
-                                      <div key={label} style={{background:bg,borderRadius:8,padding:"9px 10px",border:"1px solid rgba(255,255,255,.06)"}}>
-                                        <div style={{fontSize:12,fontWeight:800,color,marginBottom:7}}>{label}</div>
-                                        {[["Paris",s.cnt,null],["WR",wr+"%",wr>=55?"#22C55E":wr<45?"#EF4444":"#F59E0B"],["ROI",(roi>=0?"+":"")+roi.toFixed(1)+"%",roi>=0?"#22C55E":"#EF4444"]].map(([k,v,c])=>(
-                                          <div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                                            <span style={{fontSize:10,color:"#5a6a7e"}}>{k}</span>
-                                            <span style={{fontSize:11,fontWeight:700,color:c||"#c8d4e8"}}>{v}</span>
-                                          </div>
-                                        ))}
-                                        <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
-                                          <span style={{fontSize:10,color:"#5a6a7e"}}>Profit</span>
-                                          <FmtProfit v={s.profit} fontSize={12}/>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                      <HDR/>
+                      {sorted.map(c=><Row key={`${c.edge}:over`} c={c} ou="Over" color="#22C55E" accentBg="rgba(34,197,94,.04)"/>)}
+                      {/* UNDER */}
+                      <div style={{borderTop:"2px solid rgba(255,255,255,.1)",background:"rgba(96,165,250,.04)",padding:"5px 14px 3px"}}>
+                        <span style={{fontSize:9,color:"#60a5fa",fontWeight:800,textTransform:"uppercase",letterSpacing:.8}}>▼ Under</span>
+                      </div>
+                      <HDR/>
+                      {sorted.map(c=><Row key={`${c.edge}:under`} c={c} ou="Under" color="#60a5fa" accentBg="rgba(96,165,250,.04)"/>)}
                     </div>
                   );
                 })()}
-
                 {/* ══ ⭐ TOP / BAS JOUEURS ══ */}
                 {(()=>{
                   const pm={};
@@ -8647,6 +8811,157 @@ export default function App(){
               </div>
             </div>}
             </div>
+
+            {/* ── 📅 CALENDRIER DES TOURNOIS ── */}
+            {(()=>{
+              const now=new Date();
+              const FR_MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+              const GAME_COLORS={CS2:"#F0A500",Dota2:"#C23C2A",LoL:"#C89B3C",Valorant:"#FF4655"};
+
+              // Groupe par mois
+              const byMonth={};
+              [...tourneyCal].sort((a,b)=>a.start.localeCompare(b.start)).forEach(t=>{
+                const mk=t.start.slice(0,7);
+                if(!byMonth[mk])byMonth[mk]=[];
+                byMonth[mk].push(t);
+              });
+              // Ajouter le mois courant si vide
+              const curMk=now.toISOString().slice(0,7);
+              if(!byMonth[curMk])byMonth[curMk]=[];
+              const months=Object.keys(byMonth).sort();
+
+              const addTourney=()=>{
+                if(!tourneyCalForm.name||!tourneyCalForm.start)return;
+                const entry={id:Date.now().toString(),name:tourneyCalForm.name,game:tourneyCalForm.game,start:tourneyCalForm.start,end:tourneyCalForm.end};
+                const updated=[...tourneyCal,entry];
+                setTourneyCal(updated);
+                // Auto-ajouter dans savedTourneys du jeu
+                setSavedTourneys(prev=>{
+                  const list=prev[entry.game]||[];
+                  if(list.includes(entry.name))return prev;
+                  return{...prev,[entry.game]:[...list,entry.name]};
+                });
+                setTourneyCalForm({name:"",game:"LoL",start:"",end:""});
+                setShowTourneyCalForm(false);
+                showToast(entry.name+" ajouté au calendrier ✓","#a78bfa");
+              };
+
+              return(
+                <div style={{marginBottom:10}}>
+                  <button onClick={()=>setSuiviOpen(s=>({...s,cal:!s.cal}))}
+                    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:suiviOpen.cal?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s",marginBottom:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:14}}>📅</span>
+                      <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Calendrier des tournois</span>
+                      {tourneyCal.filter(t=>t.end?new Date(t.end)>=now:new Date(t.start)>=now).length>0&&(
+                        <span style={{background:"rgba(167,139,250,.2)",color:"#a78bfa",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:8}}>
+                          {tourneyCal.filter(t=>t.end?new Date(t.end)>=now:new Date(t.start)>=now).length} à venir
+                        </span>
+                      )}
+                    </div>
+                    <span style={{color:"#6B7280",fontSize:12,transform:suiviOpen.cal?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+                  </button>
+
+                  {suiviOpen.cal&&(
+                    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+
+                      {/* Bouton ajouter */}
+                      {!showTourneyCalForm&&(
+                        <button onClick={()=>setShowTourneyCalForm(true)}
+                          style={{width:"100%",padding:"9px",borderRadius:10,border:"1px dashed rgba(167,139,250,.3)",background:"rgba(167,139,250,.05)",color:"#a78bfa",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:12}}>
+                          + Ajouter un tournoi
+                        </button>
+                      )}
+
+                      {/* Formulaire */}
+                      {showTourneyCalForm&&(
+                        <div style={{background:"rgba(167,139,250,.06)",border:"1px solid rgba(167,139,250,.2)",borderRadius:12,padding:"12px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>
+                          <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,textTransform:"uppercase",letterSpacing:.8}}>Nouveau tournoi</div>
+                          <input placeholder="Nom ex: Worlds 2026" value={tourneyCalForm.name} onChange={e=>setTourneyCalForm(f=>({...f,name:e.target.value}))}
+                            style={{background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}/>
+                          <select value={tourneyCalForm.game} onChange={e=>setTourneyCalForm(f=>({...f,game:e.target.value}))}
+                            style={{background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer"}}>
+                            {["LoL","CS2","Dota2","Valorant"].map(g=><option key={g} value={g}>{g}</option>)}
+                          </select>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <div>
+                              <div style={{fontSize:9,color:"#4a5a6e",fontWeight:600,marginBottom:3}}>Début</div>
+                              <input type="date" value={tourneyCalForm.start} onChange={e=>setTourneyCalForm(f=>({...f,start:e.target.value}))}
+                                style={{width:"100%",background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 8px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:9,color:"#4a5a6e",fontWeight:600,marginBottom:3}}>Fin</div>
+                              <input type="date" value={tourneyCalForm.end} onChange={e=>setTourneyCalForm(f=>({...f,end:e.target.value}))}
+                                style={{width:"100%",background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 8px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}/>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:6}}>
+                            <button onClick={addTourney}
+                              style={{flex:1,padding:"9px",borderRadius:9,border:"none",background:"rgba(167,139,250,.25)",color:"#a78bfa",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                              ✓ Ajouter
+                            </button>
+                            <button onClick={()=>setShowTourneyCalForm(false)}
+                              style={{padding:"9px 14px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#4a5a6e",fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Vue calendrier par mois */}
+                      {months.map(mk=>{
+                        const [y,m]=mk.split("-").map(Number);
+                        const entries=byMonth[mk]||[];
+                        const isPast=new Date(y,m-1,1)<new Date(now.getFullYear(),now.getMonth(),1);
+                        if(isPast&&entries.length===0)return null;
+                        return(
+                          <div key={mk} style={{marginBottom:10}}>
+                            <div style={{fontSize:10,color:mk===curMk?"#a78bfa":"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                              {mk===curMk&&<span style={{width:6,height:6,borderRadius:"50%",background:"#a78bfa",display:"inline-block"}}/>}
+                              {FR_MONTHS[m-1]} {y}
+                            </div>
+                            {entries.length===0
+                              ?<div style={{fontSize:10,color:"#2a3a4e",textAlign:"center",padding:"8px 0"}}>Aucun tournoi</div>
+                              :entries.map(t=>{
+                                const isActive=new Date(t.start)<=now&&(!t.end||new Date(t.end)>=now);
+                                const isUpcoming=new Date(t.start)>now;
+                                const isPastT=t.end&&new Date(t.end)<now;
+                                const accent=GAME_COLORS[t.game]||"#a78bfa";
+                                const statusColor=isActive?"#22C55E":isUpcoming?"#a78bfa":"#374151";
+                                const statusLabel=isActive?"● EN COURS":isUpcoming?"◇ À VENIR":"○ TERMINÉ";
+                                return(
+                                  <div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"rgba(255,255,255,.02)",border:"1px solid "+(isActive?"rgba(34,197,94,.2)":"rgba(255,255,255,.05)"),borderLeft:"3px solid "+accent,borderRadius:8,marginBottom:4}}>
+                                    <div style={{flex:1}}>
+                                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                                        <GameLogo game={t.game} size={12}/>
+                                        <span style={{fontSize:12,fontWeight:700,color:isPastT?"#4a5a6e":"#E5E7EB"}}>{t.name}</span>
+                                        <span style={{fontSize:8,fontWeight:700,color:statusColor,letterSpacing:.5}}>{statusLabel}</span>
+                                      </div>
+                                      <div style={{fontSize:9,color:"#4a5a6e"}}>
+                                        {new Date(t.start).toLocaleDateString("fr-CA",{day:"numeric",month:"short"})}
+                                        {t.end&&<> → {new Date(t.end).toLocaleDateString("fr-CA",{day:"numeric",month:"short"})}</>}
+                                      </div>
+                                    </div>
+                                    <button onClick={()=>{setTourneyCal(prev=>prev.filter(x=>x.id!==t.id));setSavedTourneys(prev=>{const list=(prev[t.game]||[]).filter(n=>n!==t.name);return{...prev,[t.game]:list};});}}
+                                      style={{background:"transparent",border:"none",color:"#374151",cursor:"pointer",fontSize:14,padding:"0 4px",flexShrink:0}}>
+                                      ×
+                                    </button>
+                                  </div>
+                                );
+                              })
+                            }
+                          </div>
+                        );
+                      })}
+
+                      {tourneyCal.length===0&&(
+                        <div style={{textAlign:"center",color:"#2a3a4e",fontSize:11,padding:"16px 0"}}>Aucun tournoi planifié</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <PlayerSearchPanel allPlayers={allPlayers} custom={players} setPlayers={setPlayers} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist} onSaveBulk={function(fromRole,toRole,updated){Object.entries(updated).forEach(function(e){var k=e[0],p=e[1];if(p.role===toRole&&allPlayers[k]&&allPlayers[k].role===fromRole){supaUpsertPlayer({name:k,...p}).catch(function(){});}});}}/>
             <div style={{fontSize:11,color:"#6B7280",textAlign:"center",padding:12}}>
