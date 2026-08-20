@@ -3390,9 +3390,9 @@ export default function App(){
  if(!form.player||!form.odds||!form.stake||!form.bookmaker||!form.description||!form.mapTag)return;
  const info=findPlayer(form.player)||{game:"?",league:"?",role:"?",team:"?"};
  // Conversion devise si le casino a une devise différente de USD
- const bkCurr=BK_CURRENCY[form.bookmaker];
- const convRate=bkCurr?bkCurr.rate:1;
- const stake=Math.round(parseFloat(form.stake)*convRate*100)/100;
+ // CAD conversion removed
+ 
+ const stake=parseFloat(form.stake);
  const odds=parseFloat(form.odds);
  const desc=form.description?form.overUnder+" "+form.description:form.overUnder;
  const tname=(()=>{const t=activeTourneys[info.game];return(t&&(!t.end||new Date(t.end)>=new Date()))?t.name:"";})();
@@ -5242,17 +5242,10 @@ export default function App(){
  </div>
  </div>
  <div>
- <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase",display:"flex",alignItems:"center",gap:5}}>
- Mise
- {BK_CURRENCY[form.bookmaker]&&(
- <span style={{background:"rgba(251,191,36,.15)",border:"1px solid rgba(251,191,36,.3)",borderRadius:5,padding:"1px 6px",fontSize:8,color:"#fbbf24",fontWeight:700}}>
- {BK_CURRENCY[form.bookmaker].currency} → {(parseFloat(form.stake||0)*BK_CURRENCY[form.bookmaker].rate).toFixed(2)} USD
- </span>
- )}
- </div>
- <div style={{height:48,borderRadius:12,border:"1px solid "+(BK_CURRENCY[form.bookmaker]?"rgba(251,191,36,.3)":"rgba(255,255,255,.09)"),background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px",overflow:"hidden"}}>
+ <div style={{fontSize:9,color:"#4a5468",fontWeight:700,marginBottom:4,letterSpacing:.8,textTransform:"uppercase"}}>Mise</div>
+ <div style={{height:48,borderRadius:12,border:"1px solid rgba(255,255,255,.09)",background:"rgba(8,14,28,.95)",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 10px",overflow:"hidden"}}>
  <NumPad value={form.stake} onChange={v=>setForm(f=>({...f,stake:v}))} placeholder="75" step="1"/>
- <span style={{color:BK_CURRENCY[form.bookmaker]?"#fbbf24":"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>{BK_CURRENCY[form.bookmaker]?BK_CURRENCY[form.bookmaker].currency:"$"}</span>
+ <span style={{color:"#4a5468",fontSize:13,fontWeight:500,flexShrink:0,marginLeft:3}}>$</span>
  </div>
  </div>
  </div>
