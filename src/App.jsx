@@ -492,7 +492,7 @@ function FmtProfit({v,fontSize=12,fontWeight=800}){
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
 const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
-const QUICK_STAKES=[50,62,75,87,100];
+const QUICK_STAKES=(()=>{try{const s=localStorage.getItem("v7_quick_stakes");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}return[25,50,62,75,87,100];})();
 const GAME_CFG={
  LoL:{accent:"#C89B3C",bg:"rgba(200,155,60,0.08)",border:"rgba(200,155,60,0.25)",logo:"https://mtgryzsovqiolinobbjw.supabase.co/storage/v1/object/public/players/game-logos/lol.png"},
  Dota2:{accent:"#C23C2A",bg:"rgba(194,60,42,0.08)",border:"rgba(194,60,42,0.25)",logo:"https://mtgryzsovqiolinobbjw.supabase.co/storage/v1/object/public/players/game-logos/dota2.png"},
@@ -1513,6 +1513,74 @@ function NavIconAnalyse({active}){
  <line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/>
  </svg>);
 }
+function QuickStakesEditor(){
+ const [stakes,setStakes]=React.useState(()=>{
+  try{const s=localStorage.getItem("v7_quick_stakes");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}
+  return[25,50,62,75,87,100];
+ });
+ const [editing,setEditing]=React.useState(null);
+ const [tempVal,setTempVal]=React.useState("");
+ const [open,setOpen]=React.useState(false);
+ const save=(idx,val)=>{
+  const n=parseFloat(val);
+  if(isNaN(n)||n<=0)return;
+  const next=[...stakes];next[idx]=Math.round(n*100)/100;
+  setStakes(next);
+  localStorage.setItem("v7_quick_stakes",JSON.stringify(next));
+  setEditing(null);
+ };
+ const reset=()=>{
+  const def=[25,50,62,75,87,100];
+  setStakes(def);
+  localStorage.setItem("v7_quick_stakes",JSON.stringify(def));
+ };
+ return(
+  <div style={{marginBottom:8}}>
+   <button onClick={()=>setOpen(o=>!o)}
+    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s",fontFamily:"'Inter',sans-serif"}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{fontSize:14}}>💰</span>
+     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Mises rapides</span>
+     <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:8}}>{stakes.length} cases</span>
+    </div>
+    <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▾</span>
+   </button>
+   {open&&(
+    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"14px 14px 10px",marginBottom:0}}>
+     <div style={{fontSize:10,color:"#6B7280",marginBottom:10,lineHeight:1.5}}>
+      Ces 6 valeurs apparaissent dans les boutons de raccourci de mise dans le formulaire "Ajouter un pari".
+     </div>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+      {stakes.map((s,i)=>(
+       <div key={i} style={{background:"#111827",border:"1px solid "+(editing===i?"rgba(124,58,237,0.5)":"#1F2937"),borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,transition:"border-color .2s"}}>
+        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>Case {i+1}</div>
+        {editing===i?(
+         <div style={{display:"flex",gap:4,alignItems:"center",width:"100%"}}>
+          <input autoFocus type="number" value={tempVal} onChange={e=>setTempVal(e.target.value)}
+           onKeyDown={e=>{if(e.key==="Enter")save(i,tempVal);if(e.key==="Escape")setEditing(null);}}
+           style={{width:"100%",background:"#0D0F1E",border:"1px solid rgba(124,58,237,0.4)",borderRadius:6,color:"#A78BFA",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:700,padding:"3px 6px",textAlign:"center",outline:"none"}}/>
+          <button onClick={()=>save(i,tempVal)} style={{background:"rgba(124,58,237,0.2)",border:"none",borderRadius:5,color:"#A78BFA",cursor:"pointer",fontSize:12,padding:"3px 6px",fontFamily:"'Inter',sans-serif"}}>✓</button>
+         </div>
+        ):(
+         <button onClick={()=>{setEditing(i);setTempVal(String(s));}}
+          style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",width:"100%",textAlign:"center"}}>
+          <span style={{fontSize:16,fontWeight:800,color:"#c4b5fd"}}>{s}</span>
+          <span style={{fontSize:11,color:"#6B7280"}}>$</span>
+         </button>
+        )}
+       </div>
+      ))}
+     </div>
+     <button onClick={reset}
+      style={{width:"100%",padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+      Réinitialiser (25 · 50 · 62 · 75 · 87 · 100)
+     </button>
+    </div>
+   )}
+  </div>
+ );
+}
+
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -4930,7 +4998,7 @@ export default function App(){
  <NumPad value={duelForm.stake} onChange={v=>setDuelForm(f=>({...f,stake:v}))} placeholder="50" step="1"/>
  </div>
  <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
- {[50,62,75,87,100].map(s=>(
+ {QUICK_STAKES.map(s=>(
  <button key={s} onClick={()=>setDuelForm(f=>({...f,stake:String(s)}))}
  style={{padding:"6px 12px",borderRadius:8,border:"1px solid "+(duelForm.stake===String(s)?"#F59E0B":"#1F2937"),background:duelForm.stake===String(s)?"rgba(245,158,11,0.12)":"#111827",color:duelForm.stake===String(s)?"#F59E0B":"#6B7280",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
  {s}$
@@ -9424,6 +9492,9 @@ export default function App(){
  </button>
  </div>
 
+ {/* Mises rapides */}
+ <QuickStakesEditor/>
+
  <div style={{marginTop:20}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
  <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -9998,7 +10069,7 @@ export default function App(){
 
  {/* Raccourcis mise intelligents */}
  {(()=>{
- const UNITS=[50,62,75,87,100];
+ const UNITS=QUICK_STAKES;
  const valid=UNITS.map(u=>({unit:u,add:Math.round(u-splitModal.stake)})).filter(x=>x.add>0);
  if(!valid.length)return null;
  return(
