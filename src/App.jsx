@@ -2230,6 +2230,7 @@ function MesParisView({
 export default function App(){
  const [bets,setBets]=useState([]);
  const [bankroll,setBankroll]=useState(5000);
+ const [manualTier,setManualTier]=useState(()=>{try{const s=localStorage.getItem("v7_manual_tier");return s?parseInt(s):null;}catch(e){return null;}});
  const [quickUnits,setQuickUnits]=useState(()=>{try{const s=localStorage.getItem("v7_quick_units");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}return[0.75,1,1.25,1.5,1.75,2];});
  const [depots,setDepots]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_depots")||"[]");}catch(e){return [];}});
  const [modalDepot,setModalDepot]=useState(false);
@@ -3424,7 +3425,7 @@ export default function App(){
  const progression=useMemo(()=>bankroll>0?(totalProfit/bankroll)*100:0,[totalProfit,bankroll]);
  // Compound bankroll system: tier = floor(liveBK/2500)*2500 (min 5000), 1u = 1% of tier 
  const liveBankroll=useMemo(()=>bankroll+totalProfit,[bankroll,totalProfit]);
- const bkTier=useMemo(()=>Math.max(5000,Math.floor(liveBankroll/2500)*2500),[liveBankroll]);
+ const bkTier=useMemo(()=>manualTier||Math.max(5000,Math.floor(liveBankroll/2500)*2500),[liveBankroll,manualTier]);
  const unitValue=useMemo(()=>bkTier*0.01,[bkTier]);
  const chartPoints=useMemo(function(){
  const pts=[{v:0,dt:""}];
@@ -9486,6 +9487,54 @@ export default function App(){
  </button>
  </div>
 
+ {/* ── Palier bankroll ── */}
+ {(()=>{
+  const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
+  const autoTier=Math.max(5000,Math.floor((bankroll+totalProfit)/2500)*2500);
+  const isAuto=!manualTier;
+  return(
+   <div style={{marginBottom:8}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 16px",marginBottom:6}}>
+     <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:14}}>📊</span>
+      <div>
+       <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Palier actif</div>
+       <div style={{fontSize:10,color:isAuto?"#6B7280":"#A78BFA",fontWeight:600}}>
+        {isAuto?"Auto — suit la bankroll":"Manuel — palier forcé"}
+       </div>
+      </div>
+     </div>
+     <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:18,fontWeight:900,color:"#c4b5fd"}}>{bkTier.toFixed(0)}$</span>
+      <span style={{fontSize:12,color:"#5a6a7e",fontWeight:600}}>→ 1u = {(bkTier*0.01).toFixed(0)}$</span>
+     </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:6}}>
+     {PALIERS.map(p=>{
+      const isActive=bkTier===p;
+      const isAutoTier=!manualTier&&autoTier===p;
+      return(
+       <button key={p} onClick={()=>{
+        if(isActive&&manualTier){setManualTier(null);localStorage.removeItem("v7_manual_tier");}
+        else{setManualTier(p);localStorage.setItem("v7_manual_tier",String(p));}
+       }}
+       style={{padding:"10px 6px",borderRadius:10,border:"1.5px solid "+(isActive?"rgba(139,92,246,.7)":isAutoTier?"rgba(139,92,246,.25)":"#1F2937"),background:isActive?"rgba(139,92,246,.18)":isAutoTier?"rgba(139,92,246,.06)":"rgba(255,255,255,.02)",cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"all .15s",position:"relative"}}>
+        {isAutoTier&&!manualTier&&<span style={{position:"absolute",top:4,right:5,fontSize:8,color:"#7C3AED",fontWeight:700,textTransform:"uppercase",letterSpacing:.4}}>auto</span>}
+        <span style={{fontSize:13,fontWeight:800,color:isActive?"#c4b5fd":"#6B7280"}}>{p>=1000?(p/1000).toFixed(p%1000===0?0:1)+"k":p}$</span>
+        <span style={{fontSize:10,color:isActive?"#A78BFA":"#374151",fontWeight:600}}>{(p*0.01).toFixed(0)}$/u</span>
+       </button>
+      );
+     })}
+    </div>
+    {manualTier&&(
+     <button onClick={()=>{setManualTier(null);localStorage.removeItem("v7_manual_tier");}}
+      style={{width:"100%",padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
+      ↺ Repasser en automatique (palier actuel : {autoTier.toFixed(0)}$)
+     </button>
+    )}
+   </div>
+  );
+ })()}
  {/* ── Multiplicateurs d unités ── */}
  <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>{setQuickUnits(su);localStorage.setItem("v7_quick_units",JSON.stringify(su));}}/>
 
