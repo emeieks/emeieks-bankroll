@@ -1514,13 +1514,13 @@ function NavIconAnalyse({active}){
  </svg>);
 }
 function QuickStakesEditor(){
- const [stakes,setStakes]=React.useState(()=>{
+ const [stakes,setStakes]=useState(()=>{
   try{const s=localStorage.getItem("v7_quick_stakes");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}
   return[25,50,62,75,87,100];
  });
- const [editing,setEditing]=React.useState(null);
- const [tempVal,setTempVal]=React.useState("");
- const [open,setOpen]=React.useState(false);
+ const [editing,setEditing]=useState(null);
+ const [tempVal,setTempVal]=useState("");
+ const [open,setOpen]=useState(false);
  const save=(idx,val)=>{
   const n=parseFloat(val);
   if(isNaN(n)||n<=0)return;
