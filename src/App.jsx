@@ -10115,44 +10115,57 @@ export default function App(){
  ):(
  <>
  {integrityReport.onlyLocal.length>0&&(
- <div style={{marginBottom:8}}>
- <div style={{fontSize:11,fontWeight:700,color:"#F59E0B",marginBottom:4}}>
- {integrityReport.onlyLocal.length} paris en local mais PAS dans le cloud
- </div>
- <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
- {integrityReport.onlyLocal.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
- <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
- <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}$ · {b.bookmaker}</span>
- <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
- </div>)}
- {integrityReport.onlyLocal.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyLocal.length-5} autres…</div>}
- </div>
- <button onClick={function(){supaPushBets(integrityReport.onlyLocal).then(function(){showToast(integrityReport.onlyLocal.length+" paris envoyés ","#00E676");setIntegrityReport(null);}).catch(function(){showToast("Erreur envoi","#EF4444");});}}
- style={{width:"100%",padding:"8px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,color:"#F59E0B",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- ↑ Envoyer ces {integrityReport.onlyLocal.length} paris vers le cloud
- </button>
- </div>
- )}
- {integrityReport.onlyRemote.length>0&&(
- <div>
- <div style={{fontSize:11,fontWeight:700,color:"#60A5FA",marginBottom:4}}>
- ℹ {integrityReport.onlyRemote.length} paris dans le cloud mais PAS en local
- </div>
- <div style={{fontSize:10,color:"#6B7280",marginBottom:6}}>
- {integrityReport.onlyRemote.slice(0,5).map(b=><div key={b.id} style={{padding:"3px 0",borderBottom:"1px solid #1F2937"}}>
- <span style={{color:"#E5E7EB",fontWeight:600}}>{b.player}</span>
- <span style={{color:"#6B7280"}}> · {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")} · @{b.odds} · {b.stake}$ · {b.bookmaker}</span>
- <span style={{color:b.status==="won"?"#00E676":b.status==="lost"?"#EF4444":"#3B82F6",marginLeft:4,fontWeight:600}}>{b.status}</span>
- <span style={{color:"#4B5563",marginLeft:4}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
- </div>)}
- {integrityReport.onlyRemote.length>5&&<div style={{paddingTop:4}}>+{integrityReport.onlyRemote.length-5} autres…</div>}
- </div>
- <button onClick={()=>{const merged=[...bets,...integrityReport.onlyRemote];setBets(merged);localStorage.setItem("v7_bets",JSON.stringify(merged));showToast(integrityReport.onlyRemote.length+" paris récupérés ","#00E676");setIntegrityReport(null);}}
- style={{width:"100%",padding:"8px",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:8,color:"#60A5FA",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- ↓ Récupérer ces {integrityReport.onlyRemote.length} paris depuis le cloud
- </button>
- </div>
- )}
+                <div style={{marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#F59E0B"}}>⚠️ {integrityReport.onlyLocal.length} paris en local mais PAS dans le cloud</div>
+                </div>
+                <div style={{maxHeight:200,overflowY:"auto",fontSize:10,color:"#6B7280",marginBottom:6,border:"1px solid rgba(245,158,11,0.15)",borderRadius:6,padding:"4px 0"}}>
+                {integrityReport.onlyLocal.map((b,i)=><div key={b.id} style={{display:"flex",flexDirection:"column",padding:"5px 8px",borderBottom:"1px solid #1F2937",background:i%2===0?"rgba(0,0,0,0.15)":"transparent"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
+                <span style={{color:"#E5E7EB",fontWeight:700,fontSize:11}}>{b.player}</span>
+                <span style={{color:b.status==="won"?"#00E676":b.status==="lost"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:10,textTransform:"uppercase"}}>{b.status}</span>
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:2}}>
+                <span style={{color:"#c4b5fd",fontWeight:600}}>{b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")}</span>
+                <span style={{color:"#6B7280"}}>@{b.odds}</span>
+                <span style={{color:"#6B7280"}}>{b.stake}$</span>
+                <span style={{color:"#4a5a6e"}}>{b.bookmaker}</span>
+                <span style={{color:"#3a4a5e",marginLeft:"auto"}}>{b.datetime?String(b.datetime).slice(0,16):""}</span>
+                </div>
+                </div>)}
+                </div>
+                <button onClick={function(){supaPushBets(integrityReport.onlyLocal).then(function(){showToast(integrityReport.onlyLocal.length+" paris envoyés ","#00E676");setIntegrityReport(null);}).catch(function(){showToast("Erreur envoi","#EF4444");});}}
+                style={{width:"100%",padding:"8px",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:8,color:"#F59E0B",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                ↑ Envoyer ces {integrityReport.onlyLocal.length} paris vers le cloud
+                </button>
+                </div>
+                )}
+                {integrityReport.onlyRemote.length>0&&(
+                <div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#60A5FA"}}>☁️ {integrityReport.onlyRemote.length} paris dans le cloud mais PAS en local</div>
+                </div>
+                <div style={{maxHeight:200,overflowY:"auto",fontSize:10,color:"#6B7280",marginBottom:6,border:"1px solid rgba(96,165,250,0.15)",borderRadius:6,padding:"4px 0"}}>
+                {integrityReport.onlyRemote.map((b,i)=><div key={b.id} style={{display:"flex",flexDirection:"column",padding:"5px 8px",borderBottom:"1px solid #1F2937",background:i%2===0?"rgba(0,0,0,0.15)":"transparent"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
+                <span style={{color:"#E5E7EB",fontWeight:700,fontSize:11}}>{b.player}</span>
+                <span style={{color:b.status==="won"?"#00E676":b.status==="lost"?"#EF4444":"#9CA3AF",fontWeight:700,fontSize:10,textTransform:"uppercase"}}>{b.status}</span>
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:2}}>
+                <span style={{color:"#c4b5fd",fontWeight:600}}>{b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"")}</span>
+                <span style={{color:"#6B7280"}}>@{b.odds}</span>
+                <span style={{color:"#6B7280"}}>{b.stake}$</span>
+                <span style={{color:"#4a5a6e"}}>{b.bookmaker}</span>
+                <span style={{color:"#3a4a5e",marginLeft:"auto"}}>{b.datetime?String(b.datetime).slice(0,16):""}</span>
+                </div>
+                </div>)}
+                </div>
+                <button onClick={()=>{const merged=[...bets,...integrityReport.onlyRemote];setBets(merged);localStorage.setItem("v7_bets",JSON.stringify(merged));showToast(integrityReport.onlyRemote.length+" paris récupérés ","#00E676");setIntegrityReport(null);}}
+                style={{width:"100%",padding:"8px",background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:8,color:"#60A5FA",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+                ↓ Récupérer ces {integrityReport.onlyRemote.length} paris depuis le cloud
+                </button>
+                </div>
+                )}
  </>
  )}
  </>
