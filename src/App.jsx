@@ -492,7 +492,7 @@ function FmtProfit({v,fontSize=12,fontWeight=800}){
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
 const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
-const QUICK_STAKES=(()=>{try{const s=localStorage.getItem("v7_quick_stakes");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}return[25,50,62,75,87,100];})();
+const QUICK_STAKES=[25,50,62,75,87,100];
 const GAME_CFG={
  LoL:{accent:"#C89B3C",bg:"rgba(200,155,60,0.08)",border:"rgba(200,155,60,0.25)",logo:"https://mtgryzsovqiolinobbjw.supabase.co/storage/v1/object/public/players/game-logos/lol.png"},
  Dota2:{accent:"#C23C2A",bg:"rgba(194,60,42,0.08)",border:"rgba(194,60,42,0.25)",logo:"https://mtgryzsovqiolinobbjw.supabase.co/storage/v1/object/public/players/game-logos/dota2.png"},
@@ -1513,59 +1513,52 @@ function NavIconAnalyse({active}){
  <line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/>
  </svg>);
 }
-function QuickStakesEditor(){
- const [stakes,setStakes]=useState(()=>{
-  try{const s=localStorage.getItem("v7_quick_stakes");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}
-  return[25,50,62,75,87,100];
- });
+
+function QuickUnitsEditor({quickUnits,setQuickUnits}){
+ const [open,setOpen]=useState(false);
  const [editing,setEditing]=useState(null);
  const [tempVal,setTempVal]=useState("");
- const [open,setOpen]=useState(false);
- const save=(idx,val)=>{
+ const save=(i,val)=>{
   const n=parseFloat(val);
-  if(isNaN(n)||n<=0)return;
-  const next=[...stakes];next[idx]=Math.round(n*100)/100;
-  setStakes(next);
-  localStorage.setItem("v7_quick_stakes",JSON.stringify(next));
-  setEditing(null);
+  if(isNaN(n)||n<=0||n>10)return;
+  const next=[...quickUnits];next[i]=Math.round(n*100)/100;
+  setQuickUnits(next);setEditing(null);
  };
- const reset=()=>{
-  const def=[25,50,62,75,87,100];
-  setStakes(def);
-  localStorage.setItem("v7_quick_stakes",JSON.stringify(def));
- };
+ const reset=()=>setQuickUnits([0.75,1,1.25,1.5,1.75,2]);
  return(
   <div style={{marginBottom:8}}>
    <button onClick={()=>setOpen(o=>!o)}
     style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s",fontFamily:"'Inter',sans-serif"}}>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
-     <span style={{fontSize:14}}>💰</span>
-     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Mises rapides</span>
-     <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:8}}>{stakes.length} cases</span>
+     <span style={{fontSize:14}}>⚡</span>
+     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Boutons de mise rapide</span>
+     <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:8}}>{quickUnits.join(" · ")}u</span>
     </div>
     <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▾</span>
    </button>
    {open&&(
-    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"14px 14px 10px",marginBottom:0}}>
+    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"14px 14px 10px"}}>
      <div style={{fontSize:10,color:"#6B7280",marginBottom:10,lineHeight:1.5}}>
-      Ces 6 valeurs apparaissent dans les boutons de raccourci de mise dans le formulaire "Ajouter un pari".
+      Les 6 multiplicateurs utilisés dans les boutons de mise rapide du formulaire.<br/>
+      <span style={{color:"#A78BFA"}}>Le montant en $ s'adapte automatiquement à ton palier de bankroll.</span>
      </div>
      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-      {stakes.map((s,i)=>(
-       <div key={i} style={{background:"#111827",border:"1px solid "+(editing===i?"rgba(124,58,237,0.5)":"#1F2937"),borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,transition:"border-color .2s"}}>
-        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>Case {i+1}</div>
+      {quickUnits.map((u,i)=>(
+       <div key={i} style={{background:"#111827",border:"1px solid "+(editing===i?"rgba(139,92,246,.5)":"#1F2937"),borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,transition:"border-color .2s"}}>
+        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>Bouton {i+1}</div>
         {editing===i?(
          <div style={{display:"flex",gap:4,alignItems:"center",width:"100%"}}>
-          <input autoFocus type="number" value={tempVal} onChange={e=>setTempVal(e.target.value)}
+          <input autoFocus type="number" value={tempVal} step="0.25" min="0.25" max="10"
+           onChange={e=>setTempVal(e.target.value)}
            onKeyDown={e=>{if(e.key==="Enter")save(i,tempVal);if(e.key==="Escape")setEditing(null);}}
-           style={{width:"100%",background:"#0D0F1E",border:"1px solid rgba(124,58,237,0.4)",borderRadius:6,color:"#A78BFA",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:700,padding:"3px 6px",textAlign:"center",outline:"none"}}/>
-          <button onClick={()=>save(i,tempVal)} style={{background:"rgba(124,58,237,0.2)",border:"none",borderRadius:5,color:"#A78BFA",cursor:"pointer",fontSize:12,padding:"3px 6px",fontFamily:"'Inter',sans-serif"}}>✓</button>
+           style={{width:"100%",background:"#0D0F1E",border:"1px solid rgba(139,92,246,.4)",borderRadius:6,color:"#A78BFA",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:700,padding:"3px 6px",textAlign:"center",outline:"none"}}/>
+          <button onClick={()=>save(i,tempVal)} style={{background:"rgba(139,92,246,.2)",border:"none",borderRadius:5,color:"#A78BFA",cursor:"pointer",fontSize:12,padding:"3px 6px",fontFamily:"'Inter',sans-serif"}}>✓</button>
          </div>
         ):(
-         <button onClick={()=>{setEditing(i);setTempVal(String(s));}}
+         <button onClick={()=>{setEditing(i);setTempVal(String(u));}}
           style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",width:"100%",textAlign:"center"}}>
-          <span style={{fontSize:16,fontWeight:800,color:"#c4b5fd"}}>{s}</span>
-          <span style={{fontSize:11,color:"#6B7280"}}>$</span>
+          <span style={{fontSize:16,fontWeight:800,color:"#c4b5fd"}}>{u}</span>
+          <span style={{fontSize:11,color:"#6B7280"}}>u</span>
          </button>
         )}
        </div>
@@ -1573,7 +1566,7 @@ function QuickStakesEditor(){
      </div>
      <button onClick={reset}
       style={{width:"100%",padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
-      Réinitialiser (25 · 50 · 62 · 75 · 87 · 100)
+      Réinitialiser (0.75 · 1 · 1.25 · 1.5 · 1.75 · 2u)
      </button>
     </div>
    )}
@@ -2237,6 +2230,7 @@ function MesParisView({
 export default function App(){
  const [bets,setBets]=useState([]);
  const [bankroll,setBankroll]=useState(5000);
+ const [quickUnits,setQuickUnits]=useState(()=>{try{const s=localStorage.getItem("v7_quick_units");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}return[0.75,1,1.25,1.5,1.75,2];});
  const [depots,setDepots]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_depots")||"[]");}catch(e){return [];}});
  const [modalDepot,setModalDepot]=useState(false);
  const [bkAccounts,setBkAccounts]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_bk_accounts")||"{}");}catch(e){return {};}});
@@ -5322,7 +5316,7 @@ export default function App(){
  <span style={{fontSize:10,color:"#7a6aae",fontWeight:600}}>1u = {unitValue.toFixed(0)}$ · Palier {bkTier.toFixed(0)}$</span>
  </div>
  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:form.odds&&form.stake?9:0}}>
- {[0.75,1,1.25,1.5,1.75,2].map(u=>{
+ {quickUnits.map(u=>{
  const s=unitValue*u;
  const sStr=Number.isInteger(s)?String(s):s.toFixed(1);
  const isActive=parseFloat(form.stake)===s;
@@ -9492,8 +9486,8 @@ export default function App(){
  </button>
  </div>
 
- {/* Mises rapides */}
- <QuickStakesEditor/>
+ {/* ── Multiplicateurs d unités ── */}
+ <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>{setQuickUnits(su);localStorage.setItem("v7_quick_units",JSON.stringify(su));}}/>
 
  <div style={{marginTop:20}}>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -10069,7 +10063,7 @@ export default function App(){
 
  {/* Raccourcis mise intelligents */}
  {(()=>{
- const UNITS=QUICK_STAKES;
+ const UNITS=[50,62,75,87,100];
  const valid=UNITS.map(u=>({unit:u,add:Math.round(u-splitModal.stake)})).filter(x=>x.add>0);
  if(!valid.length)return null;
  return(
