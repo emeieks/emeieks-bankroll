@@ -1574,6 +1574,144 @@ function QuickUnitsEditor({quickUnits,setQuickUnits}){
  );
 }
 
+function SimulationTab({settledFiltered,GAME_CFG}){
+ const GAMES=["CS2","LoL","Dota2","Valorant"];
+ const [simStake,setSimStake]=useState(75);
+ const [simInput,setSimInput]=useState("75");
+ const snap=e=>Math.round(Math.abs(parseFloat(e||0))*4)/4;
+ const buildData=(betsArr,stake)=>{
+  const edgeMap={};
+  betsArr.forEach(b=>{
+   const eKey=snap(b.ppEdge).toFixed(2);
+   if(!edgeMap[eKey])edgeMap[eKey]={edge:parseFloat(eKey),cnt:0,won:0,profit:0,stakeReal:0};
+   const e=edgeMap[eKey];
+   e.cnt++;e.stakeReal+=b.stake||0;
+   if(b.status==="won"){e.won++;e.profit+=stake*(b.odds-1);}
+   else e.profit-=stake;
+  });
+  return Object.values(edgeMap).sort((a,b2)=>a.edge-b2.edge);
+ };
+ const ppBets=settledFiltered.filter(b=>b.ppEdge!=null&&b.ppEdge!==0);
+ const allData=buildData(ppBets,simStake);
+ const gameData={};
+ GAMES.forEach(g=>{const gb=ppBets.filter(b=>b.game===g);if(gb.length>0)gameData[g]=buildData(gb,simStake);});
+ const totalSim=allData.reduce((s,r)=>s+r.profit,0);
+ const totalCnt=allData.reduce((s,r)=>s+r.cnt,0);
+
+ const EdgeTable=({rows,stake})=>{
+  const tot=rows.reduce((s,r)=>({cnt:s.cnt+r.cnt,won:s.won+r.won,profit:s.profit+r.profit,stakeReal:s.stakeReal+r.stakeReal}),{cnt:0,won:0,profit:0,stakeReal:0});
+  return(
+   <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+    <thead>
+     <tr style={{background:"rgba(0,0,0,.35)"}}>
+      {[["Edge","left"],["Paris","center"],["Taux W","center"],["Mise moy.","center"],["Profit sim.","right"]].map(([l,a])=>(
+       <th key={l} style={{padding:"7px 10px",textAlign:a,fontSize:9,fontWeight:700,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.6}}>{l}</th>
+      ))}
+     </tr>
+    </thead>
+    <tbody>
+     {rows.map(r=>{
+      const wr=r.cnt>0?Math.round(r.won/r.cnt*100):0;
+      const pc=r.profit>=0?"#00E676":"#f87171";
+      const avgStake=r.cnt>0?(r.stakeReal/r.cnt).toFixed(0):"-";
+      return(
+       <tr key={r.edge} style={{borderTop:"1px solid rgba(255,255,255,.03)"}}>
+        <td style={{padding:"8px 10px"}}><span style={{fontWeight:800,fontSize:13,color:"#c4b5fd"}}>+{r.edge.toFixed(2).replace(/\.?0+$|(\.\d)$/g,s=>s.length===1?s+"0":"")}</span></td>
+        <td style={{padding:"8px 10px",textAlign:"center",color:"#7a9cbd",fontWeight:600}}>{r.cnt}</td>
+        <td style={{padding:"8px 10px",textAlign:"center"}}><span style={{color:wr>=55?"#00E676":wr>=50?"#9CA3AF":"#f87171",fontWeight:700}}>{wr}%</span></td>
+        <td style={{padding:"8px 10px",textAlign:"center",color:"#6B7280"}}>{avgStake}$</td>
+        <td style={{padding:"8px 10px",textAlign:"right"}}><span style={{fontWeight:800,color:pc,fontSize:13}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span></td>
+       </tr>
+      );
+     })}
+    </tbody>
+    <tfoot>
+     <tr style={{borderTop:"2px solid rgba(124,58,237,.3)",background:"rgba(124,58,237,.06)"}}>
+      <td style={{padding:"8px 10px",fontWeight:800,color:"#E5E7EB",fontSize:11}}>TOTAL</td>
+      <td style={{padding:"8px 10px",textAlign:"center",fontWeight:700,color:"#E5E7EB"}}>{tot.cnt}</td>
+      <td style={{padding:"8px 10px",textAlign:"center",fontWeight:700,color:tot.cnt>0&&Math.round(tot.won/tot.cnt*100)>=55?"#00E676":"#f87171"}}>{tot.cnt>0?Math.round(tot.won/tot.cnt*100):0}%</td>
+      <td style={{padding:"8px 10px",textAlign:"center",color:"#9CA3AF",fontWeight:600}}>{stake}$</td>
+      <td style={{padding:"8px 10px",textAlign:"right",fontWeight:900,fontSize:14,color:tot.profit>=0?"#00E676":"#f87171"}}>{tot.profit>=0?"+":""}{tot.profit.toFixed(0)}$</td>
+     </tr>
+    </tfoot>
+   </table>
+  );
+ };
+
+ const GameCard=({game,rows,stake})=>{
+  const cfg=GAME_CFG[game]||{accent:"#A78BFA",bg:"rgba(167,139,250,.08)",border:"rgba(167,139,250,.25)"};
+  const tot=rows.reduce((s,r)=>s+r.profit,0);
+  return(
+   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden",marginBottom:10}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid rgba(255,255,255,.06)",background:cfg.bg}}>
+     <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:14,fontWeight:800,color:cfg.accent}}>{game}</span>
+      <span style={{fontSize:10,color:"#6B7280"}}>{rows.reduce((s,r)=>s+r.cnt,0)} paris PP</span>
+     </div>
+     <span style={{fontSize:15,fontWeight:900,color:tot>=0?"#00E676":"#f87171"}}>{tot>=0?"+":""}{tot.toFixed(0)}$</span>
+    </div>
+    <div style={{overflowX:"auto"}}><EdgeTable rows={rows} stake={stake}/></div>
+   </div>
+  );
+ };
+
+ return(
+  <div style={{display:"flex",flexDirection:"column",gap:12}}>
+   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(124,58,237,.2)",borderRadius:16,padding:"14px 16px"}}>
+    <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff",marginBottom:4}}>🎯 Simulation PrizePicks</div>
+    <div style={{fontSize:10,color:"#4a5a6e",marginBottom:14}}>Si tu avais misé un montant fixe sur chaque pari PP selon son edge, quel serait ton résultat ?</div>
+    <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+     <input type="number" value={simInput} min="1"
+      onChange={e=>{setSimInput(e.target.value);const n=parseFloat(e.target.value);if(!isNaN(n)&&n>0)setSimStake(n);}}
+      style={{width:90,background:"#0D0F1E",border:"1px solid rgba(124,58,237,.4)",borderRadius:8,color:"#A78BFA",fontFamily:"'Inter',sans-serif",fontSize:18,fontWeight:900,padding:"8px 12px",outline:"none",textAlign:"center"}}/>
+     <span style={{color:"#6B7280",fontWeight:700}}>$</span>
+     <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+      {[25,50,75,100,150].map(v=>(
+       <button key={v} onClick={()=>{setSimStake(v);setSimInput(String(v));}}
+        style={{padding:"6px 10px",borderRadius:8,border:"1px solid "+(simStake===v?"rgba(124,58,237,.6)":"#1F2937"),background:simStake===v?"rgba(124,58,237,.15)":"rgba(255,255,255,.03)",color:simStake===v?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
+        {v}$
+       </button>
+      ))}
+     </div>
+    </div>
+    {totalCnt>0&&(
+     <div style={{display:"flex",gap:8,marginTop:14,flexWrap:"wrap"}}>
+      {[
+       {l:"Paris PP",v:totalCnt,c:"#c4b5fd"},
+       {l:"Résultat simulé",v:(totalSim>=0?"+":"")+totalSim.toFixed(0)+"$",c:totalSim>=0?"#00E676":"#f87171"},
+       {l:"Misé total",v:(simStake*totalCnt).toFixed(0)+"$",c:"#9CA3AF"},
+       {l:"ROI simulé",v:(totalCnt>0?(totalSim/(simStake*totalCnt)*100).toFixed(1):0)+"%",c:totalSim>=0?"#00E676":"#f87171"},
+      ].map(s=>(
+       <div key={s.l} style={{flex:"1 1 auto",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.12)",borderRadius:10,padding:"8px 12px",minWidth:70}}>
+        <div style={{fontSize:15,fontWeight:900,color:s.c}}>{s.v}</div>
+        <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5,marginTop:2}}>{s.l}</div>
+       </div>
+      ))}
+     </div>
+    )}
+   </div>
+   {allData.length>0&&(
+    <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+      <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>🌐 Tous jeux combinés</div>
+      <span style={{fontSize:15,fontWeight:900,color:totalSim>=0?"#00E676":"#f87171"}}>{totalSim>=0?"+":""}{totalSim.toFixed(0)}$</span>
+     </div>
+     <div style={{overflowX:"auto"}}><EdgeTable rows={allData} stake={simStake}/></div>
+    </div>
+   )}
+   {GAMES.filter(g=>gameData[g]).map(g=>(
+    <GameCard key={g} game={g} rows={gameData[g]} stake={simStake}/>
+   ))}
+   {ppBets.length===0&&(
+    <div style={{textAlign:"center",padding:"40px 20px",color:"#4a5a6e",fontSize:13}}>
+     Aucun pari avec edge PP trouvé.<br/>
+     <span style={{fontSize:10}}>Assure-toi d'avoir renseigné l'edge PP sur tes paris.</span>
+    </div>
+   )}
+  </div>
+ );
+}
+
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -5825,7 +5963,7 @@ export default function App(){
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"analyse",l:"Analyse"},{k:"simulation",l:"Simulation PP"},{k:"plus",l:"Plus"}].map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} onClick={()=>setStatsTab(t.k)}
@@ -7360,6 +7498,9 @@ export default function App(){
  })()}
  </div>
  )}
+
+ {statsTab==="simulation"&&<SimulationTab settledFiltered={settledFiltered} GAME_CFG={GAME_CFG}/>}
+
 
  {statsTab==="jeux"&&<>
  {/* PAR JEU — accordéons regroupés */}
