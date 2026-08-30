@@ -5585,9 +5585,9 @@ export default function App(){
  };
  const isHS=form.isHeadshot;
  if(ppType==="Map 1+2"){
- if(isHS&&(game==="CS2"||game==="Valorant")) return range(4.5,24.5);
+ if(isHS&&(game==="CS2"||game==="Valorant")) return range(4.5,30.5);
  if(game==="CS2"||game==="Valorant") return range(18.5,42.5);
- if(game==="Dota2") return range(1.5,24.5);
+ if(game==="Dota2") return range(1.5,30.5);
  if(game==="LoL") return range(0.5,15.5);
  }
  if(ppType==="Map 3"){
