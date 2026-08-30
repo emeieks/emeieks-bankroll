@@ -5381,10 +5381,10 @@ export default function App(){
  {form.autoInfo&&(()=>{
  const game=form.autoInfo.game;
  let opts=[];
- if(game==="CS2"){const kills=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");const hs=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");opts=[...kills,...hs];}
+ if(game==="CS2"){const kills=Array.from({length:18},(_,i)=>(i+7.5).toFixed(1)+" Kills");const hs=Array.from({length:16},(_,i)=>(i+2.5).toFixed(1)+" Headshots");opts=[...kills,...hs];}
  else if(game==="LoL") opts=Array.from({length:20},(_,i)=>(i+0.5).toFixed(1)+" Kills");
  else if(game==="Dota2") opts=Array.from({length:18},(_,i)=>(i+1.5).toFixed(1)+" Kills");
- else if(game==="Valorant") opts=Array.from({length:16},(_,i)=>(i+7.5).toFixed(1)+" Kills");
+ else if(game==="Valorant") opts=Array.from({length:18},(_,i)=>(i+7.5).toFixed(1)+" Kills");
  if(form.description&&!opts.includes(form.description)){opts=[form.description,...opts];}
  if(opts.length===0)return null;
  return(
@@ -5592,7 +5592,7 @@ export default function App(){
  }
  if(ppType==="Map 3"){
  if(isHS&&(game==="CS2"||game==="Valorant")) return range(2.5,15);
- if(game==="CS2"||game==="Valorant") return range(8.5,22.5);
+ if(game==="CS2"||game==="Valorant") return range(8.5,26.5);
  if(game==="Dota2") return range(2,13);
  if(game==="LoL") return range(0.5,10.5);
  }
