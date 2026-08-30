@@ -1961,10 +1961,18 @@ function MesParisView({
  allPlayers={},
 }){
  const [collapsedMonths,setCollapsedMonths]=useState(new Set());
+ const [collapsedMonthsInit,setCollapsedMonthsInit]=useState(false);
  const [selectOpen,setSelectOpen]=useState(false); // separate overlay
  const [globalSearch,setGlobalSearch]=useState("");
  const [searchOpen,setSearchOpen]=useState(false);
  const toggleMonth=mk=>setCollapsedMonths(prev=>{const n=new Set(prev);n.has(mk)?n.delete(mk):n.add(mk);return n;});
+ useEffect(()=>{
+  if(collapsedMonthsInit||!monthKeys||monthKeys.length===0)return;
+  setCollapsedMonthsInit(true);
+  if(monthKeys.length>1){
+   setCollapsedMonths(new Set(monthKeys.slice(1)));
+  }
+ },[monthKeys,collapsedMonthsInit]);
 
  const p=v=>String(v).padStart(2,"0");
  const idToDateStr=id=>{const d=new Date(Number(id));if(isNaN(d.getTime())||d.getFullYear()<2020)return null;return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());};
@@ -2534,7 +2542,7 @@ export default function App(){
  useEffect(()=>{
  if(!loaded)return;
  // Debounce longer for large datasets to avoid blocking UI
- const delay=bets.length>5000?2000:800;
+ const delay=bets.length>2000?2000:bets.length>1000?1200:800;
  const t=setTimeout(()=>{
  try{
  const data=JSON.stringify(bets);
@@ -2573,23 +2581,24 @@ export default function App(){
  if(timeSincePush<5000)return;
  const t=setTimeout(async()=>{
  try{
- // Appliquer les overrides avant push pour garantir que les dates/bookmakers
- // modifiés manuellement sont bien envoyés à Supabase
  const ovRaw=localStorage.getItem("v7_overrides");
  const overrides=ovRaw?JSON.parse(ovRaw):{};
  const hasOv=Object.keys(overrides).length>0;
- const betsToSend=hasOv?bets.map(b=>{
+ // Only push bets modified since last push (or all if overrides exist)
+ const cutoff=lastPushRef.current-5000;
+ const dirtyBets=hasOv?bets:bets.filter(b=>(b.updatedAt||0)>=cutoff);
+ const betsToSend=dirtyBets.map(b=>{
  const ov=overrides[String(b.id)];
  if(!ov)return b;
  return{...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{})};
- }):bets;
+ });
+ if(betsToSend.length===0){setSupaOk(true);return;}
  await supaPushBets(betsToSend);
- // Nettoyer les overrides une fois pushés avec succès
  if(hasOv)localStorage.removeItem("v7_overrides");
  setSupaOk(true);
  }
  catch(e){ setSupaOk(false); }
- },3000);
+ },bets.length>1000?8000:3000);
  return()=>clearTimeout(t);
  },[bets,loaded]);
 
@@ -3425,6 +3434,8 @@ export default function App(){
  const roi=useMemo(()=>totalStaked>0?(totalProfit/totalStaked)*100:0,[totalProfit,totalStaked]);
  const progression=useMemo(()=>bankroll>0?(totalProfit/bankroll)*100:0,[totalProfit,bankroll]);
  // Compound bankroll system: tier = floor(liveBK/2500)*2500 (min 5000), 1u = 1% of tier 
+ const pendingCount=useMemo(()=>bets.filter(b=>b.status==="pending").length,[bets]);
+ const settledCount=useMemo(()=>bets.filter(b=>b.status!=="pending").length,[bets]);
  const liveBankroll=useMemo(()=>bankroll+totalProfit,[bankroll,totalProfit]);
  const bkTier=useMemo(()=>manualTier||Math.max(5000,Math.floor(liveBankroll/2500)*2500),[liveBankroll,manualTier]);
  const unitValue=useMemo(()=>bkTier*0.01,[bkTier]);
@@ -4070,12 +4081,12 @@ export default function App(){
  </div>
 
  {/* PARIS RÉCENTS */}
- {bets.filter(b=>b.status!=="pending").length>0&&(
+ {settledCount>0&&(
  <div>
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
  <span style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase"}}>Paris récents</span>
  <button onClick={()=>setView("mesparis")} style={{fontSize:11,color:"#a78bfa",fontWeight:700,background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",padding:0}}>
- Voir tous ({bets.filter(b=>b.status!=="pending").length}) →
+ Voir tous ({settledCount}) →
  </button>
  </div>
  <div style={{background:"rgba(10,16,32,.99)",borderRadius:14,border:"1px solid rgba(99,130,200,.1)",overflow:"hidden"}}>
@@ -9683,13 +9694,11 @@ export default function App(){
 
  {/* BOTTOM NAV */}
  {(()=>{
- const pendingCount=bets.filter(b=>b.status==="pending").length;
  return(
  <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.06)",display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 4px 14px",zIndex:50,backdropFilter:"blur(20px)",boxShadow:"0 -4px 24px rgba(0,0,0,.4)"}}>
  {(()=>{
  const navItems=NAV.filter(n=>n.id!=="add");
  const mid=Math.floor(navItems.length/2);
- const pendingCount=bets.filter(b=>b.status==="pending").length;
  const items=[];
  navItems.forEach((n,idx)=>{
  if(idx===mid){
