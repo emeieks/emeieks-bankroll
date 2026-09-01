@@ -1998,169 +1998,194 @@ function AvanceTab({settledFiltered,bets}){
 function SpotsTab({settledFiltered}){
  const ALL_GAMES=["CS2","LoL","Dota2","Valorant"];
  const [game,setGame]=useState("CS2");
- const MIN_BETS=5; // minimum pour apparaître
+ const [drill,setDrill]=useState(null); // {key, label, bets}
+ const MIN_BETS=5;
 
  const spots=useMemo(()=>{
   const gb=settledFiltered.filter(b=>b.game===game);
   if(gb.length===0)return null;
-
-  const mk=()=>({count:0,won:0,profit:0,staked:0,oddsSum:0});
+  const mk=()=>({count:0,won:0,profit:0,staked:0,oddsSum:0,bets:[]});
   const agg=(map,key,b)=>{
    if(!map[key])map[key]=mk();
    const s=map[key];
    s.count++;s.profit+=b.profit;s.staked+=b.stake;s.oddsSum+=b.odds||0;
    if(b.status==="won")s.won++;
+   s.bets.push(b);
   };
-
-  // Dimensions
   const byPlayer={},byLine={},byOverUnder={},byOddsRange={},byIsLive={},byIsHS={},byPPEdge={},byLeague={},byMapType={},byRole={};
-
   gb.forEach(b=>{
    if(b.player)agg(byPlayer,b.player,b);
-   if(b.description){
-    const desc=String(b.description).replace(/^(Over|Under)\s/,"").trim();
-    agg(byLine,desc,b);
-   }
+   if(b.description){const desc=String(b.description).replace(/^(Over|Under)\s/,"").trim();agg(byLine,desc,b);}
    if(b.overUnder)agg(byOverUnder,b.overUnder,b);
-   if(b.odds){
-    const bucket=Math.floor((b.odds-1)/0.10)*0.10+1;
-    agg(byOddsRange,bucket.toFixed(2)+"-"+(bucket+0.09).toFixed(2),b);
-   }
+   if(b.odds){const bucket=Math.floor((b.odds-1)/0.10)*0.10+1;agg(byOddsRange,bucket.toFixed(2)+"-"+(bucket+0.09).toFixed(2),b);}
    agg(byIsLive,b.isLive?"Live":"Non-Live",b);
    if(game==="CS2"||game==="Valorant")agg(byIsHS,b.isHeadshot?"Headshot":"Kills",b);
-   if(b.ppEdge!=null&&b.ppEdge!==0){
-    const ek="+"+Math.round(Math.abs(b.ppEdge)*4)/4;
-    agg(byPPEdge,ek,b);
-   }
+   if(b.ppEdge!=null&&b.ppEdge!==0){const ek="+"+Math.round(Math.abs(b.ppEdge)*4)/4;agg(byPPEdge,ek,b);}
    if(b.league)agg(byLeague,b.league,b);
    if(b.ppMapType)agg(byMapType,b.ppMapType,b);
    if(game==="LoL"&&b.role)agg(byRole,b.role,b);
   });
-
-  const rank=(map,label)=>{
-   return Object.entries(map)
-    .filter(([,s])=>s.count>=MIN_BETS)
-    .map(([key,s])=>{
-     const wr=s.count>0?s.won/s.count*100:0;
-     const roi=s.staked>0?s.profit/s.staked*100:0;
-     const avgOdds=s.count>0?s.oddsSum/s.count:0;
-     return{key,label,wr,roi,profit:s.profit,count:s.count,avgOdds,staked:s.staked};
-    })
-    .sort((a,b)=>b.profit-a.profit);
-  };
-
-  return{
-   player:rank(byPlayer,"Joueur"),
-   line:rank(byLine,"Stat"),
-   overUnder:rank(byOverUnder,"O/U"),
-   oddsRange:rank(byOddsRange,"Tranche cote"),
-   live:rank(byIsLive,"Live"),
-   hs:rank(byIsHS,"Type"),
-   ppEdge:rank(byPPEdge,"PP Edge"),
-   league:rank(byLeague,"Ligue"),
-   mapType:rank(byMapType,"Map type"),
-   role:rank(byRole,"Rôle"),
-   total:gb.length,
-  };
+  const rank=(map)=>Object.entries(map)
+   .filter(([,s])=>s.count>=MIN_BETS)
+   .map(([key,s])=>({key,wr:s.count>0?s.won/s.count*100:0,roi:s.staked>0?s.profit/s.staked*100:0,profit:s.profit,count:s.count,avgOdds:s.count>0?s.oddsSum/s.count:0,bets:s.bets}))
+   .sort((a,b)=>b.profit-a.profit);
+  return{player:rank(byPlayer),line:rank(byLine),overUnder:rank(byOverUnder),oddsRange:rank(byOddsRange),live:rank(byIsLive),hs:rank(byIsHS),ppEdge:rank(byPPEdge),league:rank(byLeague),mapType:rank(byMapType),role:rank(byRole),total:gb.length};
  },[settledFiltered,game]);
 
+ // ── DRILL VIEW ──
+ if(drill){
+  const sorted=[...drill.bets].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
+  const won=drill.bets.filter(b=>b.status==="won").length;
+  const lost=drill.bets.filter(b=>b.status==="lost").length;
+  const totalP=drill.bets.reduce((s,b)=>s+b.profit,0);
+  const wr=drill.bets.length>0?won/drill.bets.length*100:0;
+  return(
+   <div>
+    <button onClick={()=>setDrill(null)} style={{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"none",color:"#6B7280",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:600,marginBottom:12,padding:0}}>
+     ← Retour aux spots
+    </button>
+    <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,overflow:"hidden",marginBottom:12}}>
+     <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+      <div style={{fontSize:16,fontWeight:900,color:"#f0f4ff",marginBottom:6}}>{drill.key}</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+       {[
+        {l:"Paris",v:drill.bets.length,c:"#c4b5fd"},
+        {l:"Gagnés",v:won,c:"#22C55E"},
+        {l:"Perdus",v:lost,c:"#EF4444"},
+        {l:"WR",v:wr.toFixed(0)+"%",c:wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF"},
+        {l:"Profit",v:(totalP>=0?"+":"")+totalP.toFixed(0)+"$",c:totalP>=0?"#22C55E":"#EF4444"},
+       ].map(s=>(
+        <div key={s.l} style={{flex:"1 1 auto",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.1)",borderRadius:8,padding:"5px 10px",minWidth:50,textAlign:"center"}}>
+         <div style={{fontSize:13,fontWeight:900,color:s.c}}>{s.v}</div>
+         <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+        </div>
+       ))}
+      </div>
+     </div>
+     <div>
+      {sorted.map((b,i)=>{
+       const isWon=b.status==="won";
+       const isLost=b.status==="lost";
+       const pc=isWon?"#22C55E":isLost?"#EF4444":"#9CA3AF";
+       const bg=isWon?"rgba(34,197,94,.04)":isLost?"rgba(239,68,68,.04)":"transparent";
+       return(
+        <div key={b.id||i} style={{padding:"10px 16px",borderTop:"1px solid rgba(255,255,255,.04)",background:bg,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+         <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB",marginBottom:2}}>{b.player} — {b.overUnder} {String(b.description||"").replace(/^(Over|Under)\s/,"").trim()}</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+           <span style={{fontSize:10,color:"#6B7280"}}>@{b.odds}</span>
+           <span style={{fontSize:10,color:"#6B7280"}}>{b.stake}$</span>
+           {b.bookmaker&&<span style={{fontSize:10,color:"#4a5a6e"}}>{b.bookmaker}</span>}
+           {b.datetime&&<span style={{fontSize:10,color:"#374151"}}>{String(b.datetime).slice(0,10)}</span>}
+           {b.isLive&&<span style={{fontSize:9,fontWeight:700,color:"#F59E0B"}}>LIVE</span>}
+           {b.isHeadshot&&<span style={{fontSize:9,fontWeight:700,color:"#EC4899"}}>HS</span>}
+          </div>
+         </div>
+         <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
+          <div style={{fontSize:14,fontWeight:900,color:pc}}>{b.profit>=0?"+":""}{b.profit.toFixed(0)}$</div>
+          <div style={{fontSize:10,fontWeight:700,color:pc,textTransform:"uppercase"}}>{b.status==="won"?"✓ Gagné":b.status==="lost"?"✗ Perdu":"En attente"}</div>
+         </div>
+        </div>
+       );
+      })}
+     </div>
+    </div>
+   </div>
+  );
+ }
+
+ // ── SECTION ──
  const SpotSection=({title,rows,showTop=3})=>{
   if(!rows||rows.length===0)return null;
   const best=rows.slice(0,showTop);
-  const worst=[...rows].reverse().slice(0,showTop).filter(r=>r.profit<0);
-  if(best.length===0&&worst.length===0)return null;
+  const worst=[...rows].reverse().slice(0,showTop).filter(r=>r.profit<0||rows.length<=showTop);
+  const filtered=worst.filter(r=>!best.find(b=>b.key===r.key));
+  if(best.length===0&&filtered.length===0)return null;
   return(
-   <div style={{marginBottom:14}}>
-    <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{title}</div>
-    <div style={{display:"flex",flexDirection:"column",gap:6}}>
-     {best.map((r,i)=><SpotRow key={r.key} r={r} rank={i+1} type="best"/>)}
-     {worst.length>0&&<div style={{height:1,background:"rgba(255,255,255,.04)",margin:"2px 0"}}/>}
-     {worst.map((r,i)=><SpotRow key={r.key+"_w"} r={r} rank={i+1} type="worst"/>)}
+   <div style={{marginBottom:18}}>
+    <div style={{fontSize:13,fontWeight:800,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,paddingLeft:2}}>{title}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+     {best.map(r=><SpotRow key={r.key} r={r} type="best"/>)}
+     {filtered.length>0&&<div style={{height:1,background:"rgba(239,68,68,.15)",margin:"3px 0"}}/>}
+     {filtered.map(r=><SpotRow key={r.key+"_w"} r={r} type="worst"/>)}
     </div>
    </div>
   );
  };
 
- const SpotRow=({r,rank,type})=>{
+ const SpotRow=({r,type})=>{
   const isBest=type==="best";
-  const accent=isBest?"#22C55E":"#EF4444";
-  const bg=isBest?"rgba(34,197,94,.06)":"rgba(239,68,68,.06)";
-  const border=isBest?"rgba(34,197,94,.15)":"rgba(239,68,68,.15)";
-  const emoji=isBest?(rank===1?"🥇":rank===2?"🥈":"🥉"):(rank===1?"💀":rank===2?"🔴":"⚠️");
-  const wr=r.wr;
-  const wrc=wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF";
+  const isLoss=r.profit<0;
+  const bg=isLoss?"rgba(239,68,68,.07)":"rgba(34,197,94,.06)";
+  const border=isLoss?"rgba(239,68,68,.18)":"rgba(34,197,94,.15)";
+  const profitColor=isLoss?"#EF4444":"#22C55E";
+  const wrc=r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
   return(
-   <div style={{background:bg,border:"1px solid "+border,borderRadius:10,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+   <button onClick={()=>setDrill({key:r.key,bets:r.bets})}
+    style={{width:"100%",background:bg,border:"1px solid "+border,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-      <span style={{fontSize:13}}>{emoji}</span>
-      <span style={{fontSize:12,fontWeight:800,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:160}}>{r.key}</span>
-      <span style={{fontSize:9,color:"#4a5a6e",whiteSpace:"nowrap"}}>{r.count} paris</span>
+      <span style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>{r.key}</span>
+      <span style={{fontSize:10,color:"#4a5a6e"}}>{r.count} paris</span>
      </div>
-     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-      <span style={{fontSize:10,color:"#4a5a6e"}}>WR <span style={{color:wrc,fontWeight:700}}>{wr.toFixed(0)}%</span></span>
+     <div style={{display:"flex",gap:10}}>
+      <span style={{fontSize:10,color:"#4a5a6e"}}>WR <span style={{color:wrc,fontWeight:700}}>{r.wr.toFixed(0)}%</span></span>
       <span style={{fontSize:10,color:"#4a5a6e"}}>ROI <span style={{color:r.roi>=0?"#22C55E":"#EF4444",fontWeight:700}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span></span>
       <span style={{fontSize:10,color:"#4a5a6e"}}>@<span style={{color:"#9CA3AF",fontWeight:600}}>{r.avgOdds.toFixed(2)}</span></span>
      </div>
     </div>
-    <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
-     <div style={{fontSize:15,fontWeight:900,color:accent}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</div>
+    <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:8}}>
+     <span style={{fontSize:16,fontWeight:900,color:profitColor}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span>
+     <span style={{color:"#374151",fontSize:14}}>›</span>
     </div>
-   </div>
+   </button>
   );
  };
 
- if(!spots)return(
-  <div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucun paris pour ce jeu</div>
- );
+ if(!spots)return<div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucun paris pour ce jeu</div>;
+
+ const gb=settledFiltered.filter(b=>b.game===game);
+ const totP=gb.reduce((s,b)=>s+b.profit,0);
+ const totW=gb.filter(b=>b.status==="won").length;
+ const totWR=gb.length>0?totW/gb.length*100:0;
+ const totROI=gb.reduce((s,b)=>s+b.stake,0)>0?totP/gb.reduce((s,b)=>s+b.stake,0)*100:0;
 
  return(
   <div>
    {/* Game selector */}
-   <div style={{display:"flex",gap:6,marginBottom:14}}>
+   <div style={{display:"flex",gap:6,marginBottom:12}}>
     {ALL_GAMES.map(g=>(
-     <button key={g} onClick={()=>setGame(g)}
+     <button key={g} onClick={()=>{setGame(g);setDrill(null);}}
       style={{flex:1,padding:"8px 4px",borderRadius:10,border:"1.5px solid "+(game===g?"rgba(124,58,237,.6)":"#1F2937"),background:game===g?"rgba(124,58,237,.2)":"rgba(255,255,255,.02)",color:game===g?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
       {g}
      </button>
     ))}
    </div>
-
-   {/* Summary bar */}
-   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}>
-    {(()=>{
-     const gb=settledFiltered.filter(b=>b.game===game);
-     const won=gb.filter(b=>b.status==="won").length;
-     const profit=gb.reduce((s,b)=>s+b.profit,0);
-     const staked=gb.reduce((s,b)=>s+b.stake,0);
-     const wr=gb.length>0?won/gb.length*100:0;
-     const roi=staked>0?profit/staked*100:0;
-     return[
-      {l:"Paris",v:gb.length,c:"#c4b5fd"},
-      {l:"WR",v:wr.toFixed(0)+"%",c:wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF"},
-      {l:"ROI",v:(roi>=0?"+":"")+roi.toFixed(1)+"%",c:roi>=0?"#22C55E":"#EF4444"},
-      {l:"Profit total",v:(profit>=0?"+":"")+profit.toFixed(0)+"$",c:profit>=0?"#22C55E":"#EF4444"},
-     ].map(s=>(
-      <div key={s.l} style={{flex:"1 1 auto",textAlign:"center"}}>
-       <div style={{fontSize:14,fontWeight:900,color:s.c}}>{s.v}</div>
-       <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
-      </div>
-     ));
-    })()}
+   {/* Summary */}
+   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,padding:"10px 14px",marginBottom:14,display:"flex",gap:8,flexWrap:"wrap"}}>
+    {[
+     {l:"Paris",v:gb.length,c:"#c4b5fd"},
+     {l:"WR",v:totWR.toFixed(0)+"%",c:totWR>55?"#22C55E":totWR<45?"#EF4444":"#9CA3AF"},
+     {l:"ROI",v:(totROI>=0?"+":"")+totROI.toFixed(1)+"%",c:totROI>=0?"#22C55E":"#EF4444"},
+     {l:"Profit",v:(totP>=0?"+":"")+totP.toFixed(0)+"$",c:totP>=0?"#22C55E":"#EF4444"},
+    ].map(s=>(
+     <div key={s.l} style={{flex:"1 1 auto",textAlign:"center"}}>
+      <div style={{fontSize:14,fontWeight:900,color:s.c}}>{s.v}</div>
+      <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+     </div>
+    ))}
    </div>
-
-   <div style={{fontSize:9,color:"#4a5a6e",marginBottom:10,textAlign:"center"}}>Min {MIN_BETS} paris pour apparaître · 🥇🥈🥉 = meilleurs · 💀🔴⚠️ = à éviter</div>
-
+   <div style={{fontSize:9,color:"#4a5a6e",marginBottom:12,textAlign:"center"}}>Min {MIN_BETS} paris · Vert = profitable · Rouge = à éviter · Clique pour voir les paris</div>
    <SpotSection title="Par joueur" rows={spots.player} showTop={3}/>
-   <SpotSection title="Par stat (description)" rows={spots.line} showTop={3}/>
+   <SpotSection title="Par stat" rows={spots.line} showTop={3}/>
    <SpotSection title="Over vs Under" rows={spots.overUnder} showTop={2}/>
    {(game==="CS2"||game==="Valorant")&&<SpotSection title="Headshot vs Kills" rows={spots.hs} showTop={2}/>}
-   {game==="LoL"&&<SpotSection title="Par rôle" rows={spots.role} showTop={2}/>}
+   {game==="LoL"&&<SpotSection title="Par rôle" rows={spots.role} showTop={3}/>}
    <SpotSection title="Par tranche de cote" rows={spots.oddsRange} showTop={3}/>
    <SpotSection title="Live vs Non-Live" rows={spots.live} showTop={2}/>
    {spots.ppEdge.length>0&&<SpotSection title="Par PP Edge" rows={spots.ppEdge} showTop={3}/>}
    {spots.league.length>0&&<SpotSection title="Par ligue" rows={spots.league} showTop={3}/>}
-   {spots.mapType.length>0&&<SpotSection title="Par type de map (PP)" rows={spots.mapType} showTop={3}/>}
+   {spots.mapType.length>0&&<SpotSection title="Par type de map PP" rows={spots.mapType} showTop={3}/>}
   </div>
  );
 }
