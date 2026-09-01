@@ -1658,6 +1658,343 @@ function CoteTab({settledFiltered}){
  );
 }
 
+function AvanceTab({settledFiltered,bets}){
+ const [activeSection,setActiveSection]=useState("courbe");
+ const sections=[{k:"courbe",l:"📈 Courbe"},{k:"mois",l:"📅 Mois"},{k:"calibration",l:"🎯 Calibration"},{k:"performance",l:"⚡ Performance"}];
+
+ // ── DATA COURBE ──
+ const courbeData=useMemo(()=>{
+  const sorted=[...settledFiltered].sort((a,b)=>String(a.datetime||"").localeCompare(String(b.datetime||"")));
+  let cum=0;const pts=[];
+  sorted.forEach((b,i)=>{cum+=b.profit;pts.push({i,date:String(b.datetime||"").slice(0,10),profit:b.profit,cum:Math.round(cum*100)/100,label:b.player});});
+  return pts;
+ },[settledFiltered]);
+
+ // ── DATA MOIS ──
+ const moisData=useMemo(()=>{
+  const m={};
+  settledFiltered.forEach(b=>{
+   const dk=String(b.datetime||"").slice(0,7);if(!dk||dk.length<7)return;
+   if(!m[dk])m[dk]={month:dk,count:0,won:0,profit:0,staked:0};
+   m[dk].count++;m[dk].profit+=b.profit;m[dk].staked+=b.stake;
+   if(b.status==="won")m[dk].won++;
+  });
+  return Object.values(m).sort((a,b)=>a.month.localeCompare(b.month));
+ },[settledFiltered]);
+
+ // ── DATA CALIBRATION ──
+ const calibData=useMemo(()=>{
+  const buckets={};
+  settledFiltered.forEach(b=>{
+   if(!b.odds||b.odds<1)return;
+   const impliedProb=Math.round((1/b.odds)*20)/20;// snap to 5%
+   const key=impliedProb.toFixed(2);
+   if(!buckets[key])buckets[key]={implied:impliedProb,count:0,won:0};
+   buckets[key].count++;if(b.status==="won")buckets[key].won++;
+  });
+  return Object.values(buckets)
+   .filter(b=>b.count>=3)
+   .map(b=>({...b,actualWR:b.won/b.count*100,impliedWR:b.implied*100,edge:(b.won/b.count-b.implied)*100}))
+   .sort((a,b2)=>a.implied-b2.implied);
+ },[settledFiltered]);
+
+ // ── DATA PERFORMANCE ──
+ const perfData=useMemo(()=>{
+  // Par jour de semaine
+  const DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const dow={};DAYS.forEach(d=>{dow[d]={label:d,count:0,won:0,profit:0,staked:0};});
+  // Par heure
+  const hours={};for(let h=0;h<24;h++)hours[h]={label:h+"h",count:0,won:0,profit:0,staked:0};
+  // Streaks
+  let curStreak=0,bestWin=0,bestLose=0,curLose=0;
+  const sorted=[...settledFiltered].sort((a,b)=>String(a.datetime||"").localeCompare(String(b.datetime||"")));
+  sorted.forEach(b=>{
+   const dt=b.datetime?String(b.datetime):"";
+   if(dt){
+    const d=new Date(dt);
+    const day=DAYS[d.getDay()];if(dow[day]){dow[day].count++;dow[day].staked+=b.stake;dow[day].profit+=b.profit;if(b.status==="won")dow[day].won++;}
+    const h=d.getHours();if(hours[h]){hours[h].count++;hours[h].staked+=b.stake;hours[h].profit+=b.profit;if(b.status==="won")hours[h].won++;}
+   }
+   if(b.status==="won"){curStreak=curStreak>=0?curStreak+1:1;curLose=0;bestWin=Math.max(bestWin,curStreak);}
+   else if(b.status==="lost"){curLose=curLose>=0?curLose+1:1;curStreak=0;bestLose=Math.max(bestLose,curLose);}
+  });
+  // Max drawdown
+  let peak=0,maxDD=0,cum2=0;
+  sorted.forEach(b=>{cum2+=b.profit;if(cum2>peak)peak=cum2;maxDD=Math.max(maxDD,peak-cum2);});
+  // Avg odds won vs lost
+  const wonBets=settledFiltered.filter(b=>b.status==="won");
+  const lostBets=settledFiltered.filter(b=>b.status==="lost");
+  const avgOddsWon=wonBets.length>0?(wonBets.reduce((s,b)=>s+(b.odds||0),0)/wonBets.length):0;
+  const avgOddsLost=lostBets.length>0?(lostBets.reduce((s,b)=>s+(b.odds||0),0)/lostBets.length):0;
+  return{dow:Object.values(dow),hours:Object.values(hours).filter(h=>h.count>0),bestWin,bestLose,curStreak,maxDD,avgOddsWon,avgOddsLost};
+ },[settledFiltered]);
+
+ // ── RENDER HELPERS ──
+ const Card=({title,children})=>(
+  <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden",marginBottom:10}}>
+   <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,.06)"}}><span style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>{title}</span></div>
+   <div style={{padding:"12px 16px"}}>{children}</div>
+  </div>
+ );
+
+ const wrc=wr=>wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF";
+ const pc=p=>p>=0?"#22C55E":"#EF4444";
+
+ return(
+  <div>
+   {/* Sub-nav */}
+   <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
+    {sections.map(s=>(
+     <button key={s.k} onClick={()=>setActiveSection(s.k)}
+      style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:"1px solid "+(activeSection===s.k?"rgba(124,58,237,.6)":"#1F2937"),background:activeSection===s.k?"rgba(124,58,237,.2)":"transparent",color:activeSection===s.k?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+      {s.l}
+     </button>
+    ))}
+   </div>
+
+   {/* ── COURBE ── */}
+   {activeSection==="courbe"&&(()=>{
+    if(courbeData.length===0)return <div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucune donnée</div>;
+    const maxCum=Math.max(...courbeData.map(p=>p.cum));
+    const minCum=Math.min(...courbeData.map(p=>p.cum));
+    const range=maxCum-minCum||1;
+    const W=340,H=140,PAD=8;
+    const x=i=>(i/(courbeData.length-1||1))*(W-PAD*2)+PAD;
+    const y=v=>H-PAD-((v-minCum)/range)*(H-PAD*2);
+    const pts=courbeData.map((p,i)=>`${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join(" ");
+    const lastP=courbeData[courbeData.length-1];
+    const totalProfit=lastP?lastP.cum:0;
+    // Monthly breakdown for bar chart
+    const maxMonthProfit=moisData.length>0?Math.max(...moisData.map(m=>Math.abs(m.profit))):1;
+    return(
+     <div>
+      <Card title="📈 Courbe de bankroll">
+       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        {[
+         {l:"Total",v:(totalProfit>=0?"+":"")+totalProfit.toFixed(0)+"$",c:pc(totalProfit)},
+         {l:"Paris",v:courbeData.length,c:"#c4b5fd"},
+         {l:"Pic",v:"+"+maxCum.toFixed(0)+"$",c:"#22C55E"},
+         {l:"Creux",v:minCum.toFixed(0)+"$",c:minCum<0?"#EF4444":"#22C55E"},
+        ].map(s=>(
+         <div key={s.l} style={{flex:"1 1 auto",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.1)",borderRadius:8,padding:"6px 10px",minWidth:65}}>
+          <div style={{fontSize:13,fontWeight:900,color:s.c}}>{s.v}</div>
+          <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+         </div>
+        ))}
+       </div>
+       <div style={{overflowX:"auto"}}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:H,display:"block"}}>
+         <defs>
+          <linearGradient id="gfill" x1="0" y1="0" x2="0" y2="1">
+           <stop offset="0%" stopColor={totalProfit>=0?"#22C55E":"#EF4444"} stopOpacity="0.25"/>
+           <stop offset="100%" stopColor={totalProfit>=0?"#22C55E":"#EF4444"} stopOpacity="0"/>
+          </linearGradient>
+         </defs>
+         {/* Zero line */}
+         <line x1={PAD} y1={y(0).toFixed(1)} x2={W-PAD} y2={y(0).toFixed(1)} stroke="rgba(255,255,255,.08)" strokeWidth="1" strokeDasharray="4,3"/>
+         {/* Fill */}
+         <polygon points={`${PAD},${H-PAD} ${pts} ${W-PAD},${H-PAD}`} fill="url(#gfill)"/>
+         {/* Line */}
+         <polyline points={pts} fill="none" stroke={totalProfit>=0?"#22C55E":"#EF4444"} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+         {/* Last point */}
+         {lastP&&<circle cx={x(courbeData.length-1).toFixed(1)} cy={y(lastP.cum).toFixed(1)} r="4" fill={totalProfit>=0?"#22C55E":"#EF4444"}/>}
+        </svg>
+       </div>
+       <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#374151",marginTop:2}}>
+        <span>{courbeData[0]?.date}</span>
+        <span>{lastP?.date}</span>
+       </div>
+      </Card>
+     </div>
+    );
+   })()}
+
+   {/* ── MOIS ── */}
+   {activeSection==="mois"&&(()=>{
+    if(moisData.length===0)return <div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucune donnée</div>;
+    const maxAbs=Math.max(...moisData.map(m=>Math.abs(m.profit)),1);
+    const totProfit=moisData.reduce((s,m)=>s+m.profit,0);
+    const totCount=moisData.reduce((s,m)=>s+m.count,0);
+    const totWon=moisData.reduce((s,m)=>s+m.won,0);
+    const bestMonth=moisData.reduce((a,b)=>b.profit>a.profit?b:a);
+    const worstMonth=moisData.reduce((a,b)=>b.profit<a.profit?b:a);
+    return(
+     <Card title="📅 Performance par mois">
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+       {[
+        {l:"Total",v:(totProfit>=0?"+":"")+totProfit.toFixed(0)+"$",c:pc(totProfit)},
+        {l:"WR global",v:totCount>0?(totWon/totCount*100).toFixed(0)+"%":"-",c:wrc(totCount>0?totWon/totCount*100:50)},
+        {l:"Meilleur mois",v:(bestMonth.profit>=0?"+":"")+bestMonth.profit.toFixed(0)+"$",c:"#22C55E"},
+        {l:"Pire mois",v:worstMonth.profit.toFixed(0)+"$",c:"#EF4444"},
+       ].map(s=>(
+        <div key={s.l} style={{flex:"1 1 auto",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.1)",borderRadius:8,padding:"6px 10px",minWidth:70}}>
+         <div style={{fontSize:13,fontWeight:900,color:s.c}}>{s.v}</div>
+         <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+        </div>
+       ))}
+      </div>
+      {/* Header */}
+      <div style={{display:"grid",gridTemplateColumns:"60px 40px 40px 50px 60px",gap:"0 6px",marginBottom:4}}>
+       {[["Mois","left"],["Paris","center"],["WR","center"],["ROI","center"],["Profit","right"]].map(([l,a])=>(
+        <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.7,textAlign:a}}>{l}</span>
+       ))}
+      </div>
+      {moisData.map(m=>{
+       const wr=m.count>0?m.won/m.count*100:0;
+       const roi=m.staked>0?m.profit/m.staked*100:0;
+       const barW=Math.abs(m.profit)/maxAbs*100;
+       const label=m.month.slice(0,4)+"/"+m.month.slice(5,7);
+       return(
+        <div key={m.month}>
+         <div style={{display:"grid",gridTemplateColumns:"60px 40px 40px 50px 60px",gap:"0 6px",alignItems:"center",padding:"6px 0",borderTop:"1px solid rgba(255,255,255,.03)"}}>
+          <span style={{fontSize:11,fontWeight:700,color:"#c8d4e8"}}>{label}</span>
+          <span style={{fontSize:11,color:"#6B7280",textAlign:"center"}}>{m.count}</span>
+          <span style={{fontSize:11,fontWeight:700,color:wrc(wr),textAlign:"center"}}>{wr.toFixed(0)}%</span>
+          <span style={{fontSize:11,fontWeight:700,color:roi>=0?"#22C55E":"#EF4444",textAlign:"center"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
+          <span style={{fontSize:11,fontWeight:800,color:pc(m.profit),textAlign:"right"}}>{m.profit>=0?"+":""}{m.profit.toFixed(0)}$</span>
+         </div>
+         <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,.04)",overflow:"hidden",marginBottom:3}}>
+          <div style={{height:"100%",width:barW+"%",background:m.profit>=0?"#22C55E":"#EF4444",borderRadius:2,marginLeft:m.profit<0?(100-barW)+"%":0,opacity:.7}}/>
+         </div>
+        </div>
+       );
+      })}
+      <div style={{display:"grid",gridTemplateColumns:"60px 40px 40px 50px 60px",gap:"0 6px",padding:"8px 0 0",borderTop:"2px solid rgba(124,58,237,.3)"}}>
+       <span style={{fontSize:11,fontWeight:800,color:"#E5E7EB"}}>TOTAL</span>
+       <span style={{fontSize:11,color:"#6B7280",textAlign:"center"}}>{totCount}</span>
+       <span style={{fontSize:11,fontWeight:700,color:wrc(totCount>0?totWon/totCount*100:50),textAlign:"center"}}>{totCount>0?(totWon/totCount*100).toFixed(0):0}%</span>
+       <span style={{fontSize:11,fontWeight:700,color:totProfit>=0?"#22C55E":"#EF4444",textAlign:"center"}}>{totCount>0?((totProfit/moisData.reduce((s,m)=>s+m.staked,0))*100).toFixed(1):0}%</span>
+       <span style={{fontSize:11,fontWeight:800,color:pc(totProfit),textAlign:"right"}}>{totProfit>=0?"+":""}{totProfit.toFixed(0)}$</span>
+      </div>
+     </Card>
+    );
+   })()}
+
+   {/* ── CALIBRATION ── */}
+   {activeSection==="calibration"&&(()=>{
+    if(calibData.length===0)return <div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Pas assez de données (min 3 paris par tranche)</div>;
+    const maxDev=Math.max(...calibData.map(c=>Math.abs(c.edge)),1);
+    return(
+     <Card title="🎯 Calibration — Cote vs Résultat réel">
+      <div style={{fontSize:10,color:"#4a5a6e",marginBottom:12,lineHeight:1.5}}>
+       Compare ta <span style={{color:"#c4b5fd"}}>probabilité implicite de la cote</span> avec ton <span style={{color:"#22C55E"}}>taux de victoire réel</span>.<br/>
+       Un edge positif = tu gagnes plus souvent que la cote le prédit.
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"52px 50px 50px 1fr 50px",gap:"0 6px",marginBottom:4}}>
+       {[["Cote impl.","left"],["Réel WR","center"],["Prévu","center"],["Edge","left"],["Paris","right"]].map(([l,a])=>(
+        <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.6,textAlign:a}}>{l}</span>
+       ))}
+      </div>
+      {calibData.map(r=>{
+       const edgeColor=r.edge>5?"#22C55E":r.edge<-5?"#EF4444":"#9CA3AF";
+       const barW=Math.abs(r.edge)/maxDev*100;
+       return(
+        <div key={r.implied} style={{borderTop:"1px solid rgba(255,255,255,.03)",padding:"7px 0"}}>
+         <div style={{display:"grid",gridTemplateColumns:"52px 50px 50px 1fr 50px",gap:"0 6px",alignItems:"center"}}>
+          <span style={{fontSize:11,fontWeight:700,color:"#c8d4e8"}}>{r.impliedWR.toFixed(0)}%</span>
+          <span style={{fontSize:12,fontWeight:800,color:wrc(r.actualWR),textAlign:"center"}}>{r.actualWR.toFixed(0)}%</span>
+          <span style={{fontSize:11,color:"#6B7280",textAlign:"center"}}>{r.impliedWR.toFixed(0)}%</span>
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
+           <div style={{width:barW*0.6+"%",height:4,background:edgeColor,borderRadius:2,opacity:.8,minWidth:r.edge!==0?3:0}}/>
+           <span style={{fontSize:11,fontWeight:800,color:edgeColor}}>{r.edge>=0?"+":""}{r.edge.toFixed(1)}%</span>
+          </div>
+          <span style={{fontSize:10,color:"#6B7280",textAlign:"right"}}>{r.count}p</span>
+         </div>
+        </div>
+       );
+      })}
+      <div style={{marginTop:10,padding:"10px 12px",background:"rgba(124,58,237,.06)",borderRadius:10,border:"1px solid rgba(124,58,237,.1)"}}>
+       <div style={{fontSize:10,color:"#c4b5fd",fontWeight:700,marginBottom:4}}>Résumé calibration</div>
+       {(()=>{
+        const pos=calibData.filter(r=>r.edge>2);
+        const neg=calibData.filter(r=>r.edge<-2);
+        const bestEdge=calibData.reduce((a,b)=>b.edge>a.edge?b:a,calibData[0]);
+        const worstEdge=calibData.reduce((a,b)=>b.edge<a.edge?b:a,calibData[0]);
+        return(
+         <div style={{display:"flex",flexDirection:"column",gap:4}}>
+          <div style={{fontSize:10,color:"#E5E7EB"}}>✅ <span style={{color:"#22C55E",fontWeight:700}}>{pos.length}</span> tranches avec edge positif (>+2%)</div>
+          <div style={{fontSize:10,color:"#E5E7EB"}}>❌ <span style={{color:"#EF4444",fontWeight:700}}>{neg.length}</span> tranches avec edge négatif (>-2%)</div>
+          <div style={{fontSize:10,color:"#E5E7EB"}}>🏆 Meilleur range : <span style={{color:"#22C55E",fontWeight:700}}>{bestEdge.impliedWR.toFixed(0)}% impl.</span> → {bestEdge.actualWR.toFixed(0)}% réel (<span style={{color:"#22C55E"}}>+{bestEdge.edge.toFixed(1)}%</span>)</div>
+          <div style={{fontSize:10,color:"#E5E7EB"}}>⚠️ Pire range : <span style={{color:"#EF4444",fontWeight:700}}>{worstEdge.impliedWR.toFixed(0)}% impl.</span> → {worstEdge.actualWR.toFixed(0)}% réel (<span style={{color:"#EF4444"}}>{worstEdge.edge.toFixed(1)}%</span>)</div>
+         </div>
+        );
+       })()}
+      </div>
+     </Card>
+    );
+   })()}
+
+   {/* ── PERFORMANCE ── */}
+   {activeSection==="performance"&&(()=>{
+    const {dow,hours,bestWin,bestLose,curStreak,maxDD,avgOddsWon,avgOddsLost}=perfData;
+    const maxDowAbs=Math.max(...dow.map(d=>Math.abs(d.profit)),1);
+    const maxHAbs=hours.length>0?Math.max(...hours.map(h=>Math.abs(h.profit)),1):1;
+    return(
+     <div>
+      {/* Streaks */}
+      <Card title="⚡ Streaks & Drawdown">
+       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {[
+         {l:"Streak actuel",v:(curStreak>=0?"+":"")+curStreak,c:curStreak>0?"#22C55E":curStreak<0?"#EF4444":"#9CA3AF"},
+         {l:"Meilleur win streak",v:"+"+bestWin,c:"#22C55E"},
+         {l:"Pire lose streak",v:"-"+bestLose,c:"#EF4444"},
+         {l:"Max Drawdown",v:"-"+maxDD.toFixed(0)+"$",c:"#F59E0B"},
+         {l:"Cote moy gagnés",v:"@"+(avgOddsWon>0?avgOddsWon.toFixed(2):"?"),c:"#22C55E"},
+         {l:"Cote moy perdus",v:"@"+(avgOddsLost>0?avgOddsLost.toFixed(2):"?"),c:"#EF4444"},
+        ].map(s=>(
+         <div key={s.l} style={{flex:"1 1 auto",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.1)",borderRadius:8,padding:"6px 10px",minWidth:80}}>
+          <div style={{fontSize:16,fontWeight:900,color:s.c}}>{s.v}</div>
+          <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.4,marginTop:2}}>{s.l}</div>
+         </div>
+        ))}
+       </div>
+      </Card>
+      {/* Par jour */}
+      <Card title="📆 Par jour de semaine">
+       {dow.map(d=>{
+        if(d.count===0)return null;
+        const wr=d.count>0?d.won/d.count*100:0;
+        const barW=Math.abs(d.profit)/maxDowAbs*80;
+        return(
+         <div key={d.label} style={{display:"grid",gridTemplateColumns:"32px 36px 44px 1fr 56px",gap:"0 8px",alignItems:"center",padding:"6px 0",borderTop:"1px solid rgba(255,255,255,.03)"}}>
+          <span style={{fontSize:11,fontWeight:700,color:"#c8d4e8"}}>{d.label}</span>
+          <span style={{fontSize:10,color:"#6B7280",textAlign:"center"}}>{d.count}p</span>
+          <span style={{fontSize:11,fontWeight:700,color:wrc(wr),textAlign:"center"}}>{wr.toFixed(0)}%</span>
+          <div style={{height:5,borderRadius:3,background:"rgba(255,255,255,.04)",overflow:"hidden"}}>
+           <div style={{height:"100%",width:barW+"%",background:d.profit>=0?"#22C55E":"#EF4444",borderRadius:3,opacity:.75}}/>
+          </div>
+          <span style={{fontSize:11,fontWeight:700,color:pc(d.profit),textAlign:"right"}}>{d.profit>=0?"+":""}{d.profit.toFixed(0)}$</span>
+         </div>
+        );
+       })}
+      </Card>
+      {/* Par heure */}
+      {hours.length>0&&(
+       <Card title="🕐 Par heure de la journée">
+        {hours.map(h=>{
+         const wr=h.count>0?h.won/h.count*100:0;
+         const barW=Math.abs(h.profit)/maxHAbs*80;
+         return(
+          <div key={h.label} style={{display:"grid",gridTemplateColumns:"32px 36px 44px 1fr 56px",gap:"0 8px",alignItems:"center",padding:"5px 0",borderTop:"1px solid rgba(255,255,255,.03)"}}>
+           <span style={{fontSize:10,fontWeight:700,color:"#c8d4e8"}}>{h.label}</span>
+           <span style={{fontSize:10,color:"#6B7280",textAlign:"center"}}>{h.count}p</span>
+           <span style={{fontSize:10,fontWeight:700,color:wrc(wr),textAlign:"center"}}>{wr.toFixed(0)}%</span>
+           <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,.04)",overflow:"hidden"}}>
+            <div style={{height:"100%",width:barW+"%",background:h.profit>=0?"#22C55E":"#EF4444",borderRadius:2,opacity:.75}}/>
+           </div>
+           <span style={{fontSize:10,fontWeight:700,color:pc(h.profit),textAlign:"right"}}>{h.profit>=0?"+":""}{h.profit.toFixed(0)}$</span>
+          </div>
+         );
+        })}
+       </Card>
+      )}
+     </div>
+    );
+   })()}
+  </div>
+ );
+}
+
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -5968,7 +6305,7 @@ export default function App(){
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"cote",l:"Cotes"},{k:"bookmaker",l:"Bookmakers"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"cote",l:"Cotes"},{k:"bookmaker",l:"Bookmakers"},{k:"avance",l:"Avancé"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} onClick={()=>setStatsTab(t.k)}
@@ -6168,48 +6505,6 @@ export default function App(){
  {statsTab==="plus"&&(
  <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
 
- {/* MODE NOUVEAU DÉPART */}
- <div style={{background:mibActive?"rgba(0,0,0,.95)":"#111827",border:"1.5px solid "+(mibActive?"rgba(255,255,255,.15)":"#1F2937"),borderRadius:14,overflow:"hidden"}}>
- <div style={{padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
- <div style={{display:"flex",alignItems:"center",gap:9}}>
- <span style={{fontSize:18}}></span>
- <div>
- <div style={{fontSize:13,fontWeight:800,color:mibActive?"#E5E7EB":"#dce8ff"}}>Nouveau Départ</div>
- <div style={{fontSize:9,color:"#4a5a6e",marginTop:1}}>Masque tous les anciens paris — données préservées dans Supabase</div>
- </div>
- </div>
- {mibActive
- ?<button onClick={()=>setMibActive(false)}
- style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",borderRadius:8,padding:"5px 12px",color:"#E5E7EB",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- Révéler tout
- </button>
- :<button onClick={()=>{setMibDate(new Date().toISOString().slice(0,10));setMibActive(true);}}
- style={{background:"linear-gradient(135deg,#1a1a2e,#16213e)",border:"1px solid rgba(255,255,255,.15)",borderRadius:8,padding:"5px 12px",color:"#E5E7EB",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- Activer
- </button>
- }
- </div>
- {mibActive&&(
- <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"10px 14px",background:"rgba(0,0,0,.4)"}}>
- <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Date de début du nouveau départ</div>
- <div style={{display:"flex",gap:8,alignItems:"center"}}>
- <input type="date" value={mibDate} onChange={e=>setMibDate(e.target.value)}
- style={{flex:1,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"}}/>
- <button onClick={()=>setMibDate(new Date().toISOString().slice(0,10))}
- style={{background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 10px",color:"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
- Aujourd'hui
- </button>
- </div>
- <div style={{marginTop:8,fontSize:10,color:"#4a5a6e"}}>
- {(()=>{const hidden=bets.filter(b=>b.datetime&&String(b.datetime).slice(0,10)<mibDate).length;const visible=bets.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=mibDate).length;return `${hidden} paris masqués · ${visible} paris visibles`})()}
- </div>
- <div style={{marginTop:6,padding:"7px 10px",background:"rgba(255,255,255,.02)",borderRadius:8,border:"1px solid rgba(255,255,255,.04)"}}>
- <div style={{fontSize:9,color:"#374151",fontWeight:600,marginBottom:3}}>ℹ Toutes les données restent dans Supabase et localStorage — rien n'est supprimé.</div>
- <div style={{fontSize:9,color:"#374151"}}>Clique "Révéler tout" à tout moment pour retrouver l'historique complet.</div>
- </div>
- </div>
- )}
- </div>
 
  <button onClick={()=>setTestingOpen(v=>!v)}
  style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:testingOpen?"rgba(251,191,36,.1)":"#111827",border:"1px solid "+(testingOpen?"rgba(251,191,36,.4)":"#1F2937"),borderRadius:12,padding:"12px 14px",color:testingOpen?"#fbbf24":"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
@@ -6217,36 +6512,6 @@ export default function App(){
  <span style={{fontSize:11,opacity:.6}}>{testingOpen?"":""}</span>
  </button>
  <button onClick={exportCSV} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}> Exporter en CSV</button>
- {/* Conversion CAD→USD pour Wager */}
- {bets.some(b=>b.bookmaker==="Wager")&&(
- <div style={{background:"rgba(251,191,36,.06)",border:"1px solid rgba(251,191,36,.2)",borderRadius:12,padding:"12px 14px"}}>
- <div style={{fontSize:12,fontWeight:700,color:"#fbbf24",marginBottom:4}}> Wager — Conversion CAD → USD</div>
- <div style={{fontSize:10,color:"#6a5a3e",marginBottom:10}}>
- {bets.filter(b=>b.bookmaker==="Wager").length} paris Wager détectés · Taux {BK_CURRENCY.Wager.rate} (1 CAD = {BK_CURRENCY.Wager.rate} USD)
- </div>
- <div style={{display:"flex",gap:6}}>
- <button onClick={()=>{
- const rate=BK_CURRENCY.Wager.rate;
- const updated=bets.map(b=>{
- if(b.bookmaker!=="Wager")return b;
- const newStake=Math.round(b.stake*rate*100)/100;
- const newProfit=b.status==="won"?Math.round(newStake*(b.odds-1)*100)/100:b.status==="lost"?-newStake:0;
- return{...b,stake:newStake,profit:newProfit,updatedAt:Date.now()};
- });
- setBets(updated);
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
- // Sync Supabase
- const wagerBets=updated.filter(b=>b.bookmaker==="Wager");
- if(supaUrl&&supaKey&&wagerBets.length>0){
- fetch(supaUrl+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":"Bearer "+supaKey,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(wagerBets)}).catch(()=>{});
- }
- showToast("Paris Wager convertis en USD ","#fbbf24");
- }} style={{flex:1,padding:"8px",borderRadius:9,border:"none",background:"rgba(251,191,36,.2)",color:"#fbbf24",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- Convertir tous les paris Wager → USD
- </button>
- </div>
- </div>
- )}
  <button onClick={exportJSON} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}> Exporter en JSON</button>
  <label style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
  Importer un JSON
@@ -7036,6 +7301,8 @@ export default function App(){
  </>}
 
  {/* ONGLET ANALYSE */}
+ {statsTab==="avance"&&<AvanceTab settledFiltered={settledFiltered} bets={bets}/>}
+
  {statsTab==="analyse"&&(
  <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
