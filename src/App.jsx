@@ -1584,6 +1584,80 @@ function QuickUnitsEditor({quickUnits,setQuickUnits}){
 }
 
 
+function CoteTab({settledFiltered}){
+ const [coteStep,setCoteStep]=useState(0.05);
+ const steps=Array.from({length:20},(_,i)=>parseFloat((0.01*(i+1)).toFixed(2)));
+ const coteRanges=useMemo(()=>{
+  const ranges={};
+  settledFiltered.forEach(b=>{
+   const o=b.odds;if(!o||o<1)return;
+   const bucket=Math.floor((o-1)/coteStep);
+   const lo=(1+bucket*coteStep).toFixed(2);
+   const hi=(1+(bucket+1)*coteStep-0.01).toFixed(2);
+   const key=lo;
+   if(!ranges[key])ranges[key]={label:lo+"-"+hi,lo:parseFloat(lo),count:0,won:0,profit:0};
+   ranges[key].count++;ranges[key].profit+=b.profit;
+   if(b.status==="won")ranges[key].won++;
+  });
+  return Object.values(ranges).map(r=>({...r,wr:r.count>0?r.won/r.count*100:0})).sort((a,b)=>a.lo-b.lo);
+ },[settledFiltered,coteStep]);
+ const maxC=coteRanges.length>0?Math.max(...coteRanges.map(r=>r.count)):1;
+ const totCount=coteRanges.reduce((s,r)=>s+r.count,0);
+ const totWon=coteRanges.reduce((s,r)=>s+r.won,0);
+ const totProfit=coteRanges.reduce((s,r)=>s+r.profit,0);
+ const totWR=totCount>0?(totWon/totCount*100).toFixed(0):0;
+ return(
+  <div style={{display:"flex",flexDirection:"column",gap:10}}>
+   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+    <div style={{padding:"13px 16px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",gap:10}}>
+     <span style={{fontSize:14}}>🎯</span>
+     <span style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Cotes par tranches</span>
+     <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
+      <span style={{fontSize:10,color:"#6B7280"}}>Taille :</span>
+      <select value={coteStep} onChange={e=>setCoteStep(parseFloat(e.target.value))}
+       style={{background:"#1a2235",border:"1px solid rgba(124,58,237,.4)",borderRadius:8,color:"#c4b5fd",fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:700,padding:"4px 8px",cursor:"pointer",outline:"none"}}>
+       {steps.map(s=><option key={s} value={s}>{s.toFixed(2)}</option>)}
+      </select>
+     </div>
+    </div>
+    {coteRanges.length===0?<div style={{padding:"30px",textAlign:"center",color:"#4a5a6e"}}>Aucune donnée</div>:(
+     <div>
+      <div style={{display:"grid",gridTemplateColumns:"90px 1fr 48px 64px",gap:"0 8px",padding:"6px 16px"}}>
+       {[["Tranche","left"],["Paris","left"],["WR%","center"],["Profit","right"]].map(([l,a])=>(
+        <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:a}}>{l}</span>
+       ))}
+      </div>
+      {coteRanges.map(r=>{
+       const barW=maxC>0?(r.count/maxC*100):0;
+       const pc=r.profit>=0?"#22C55E":"#EF4444";
+       const wc=r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
+       return(
+        <div key={r.label} style={{display:"grid",gridTemplateColumns:"90px 1fr 48px 64px",gap:"0 8px",alignItems:"center",padding:"7px 16px",borderTop:"1px solid rgba(255,255,255,.03)"}}>
+         <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
+         <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <div style={{flex:1,height:5,borderRadius:3,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+           <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"#22C55E":"#EF4444",borderRadius:3,opacity:.75}}/>
+          </div>
+          <span style={{fontSize:9,color:"#4a5a6e",minWidth:24,textAlign:"right"}}>{r.count}p</span>
+         </div>
+         <span style={{fontSize:12,fontWeight:700,color:wc,textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
+         <span style={{fontSize:12,fontWeight:700,color:pc,textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span>
+        </div>
+       );
+      })}
+      <div style={{display:"grid",gridTemplateColumns:"90px 1fr 48px 64px",gap:"0 8px",padding:"8px 16px",borderTop:"2px solid rgba(124,58,237,.3)",background:"rgba(124,58,237,.05)"}}>
+       <span style={{fontSize:11,fontWeight:800,color:"#E5E7EB"}}>TOTAL</span>
+       <span style={{fontSize:11,color:"#6B7280"}}>{totCount}p</span>
+       <span style={{fontSize:11,fontWeight:700,color:parseFloat(totWR)>55?"#22C55E":parseFloat(totWR)<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{totWR}%</span>
+       <span style={{fontSize:12,fontWeight:800,textAlign:"right",color:totProfit>=0?"#22C55E":"#EF4444"}}>{totProfit>=0?"+":""}{totProfit.toFixed(0)}$</span>
+      </div>
+     </div>
+    )}
+   </div>
+  </div>
+ );
+}
+
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -7853,47 +7927,7 @@ export default function App(){
 
  </>}
 
- {statsTab==="cote"&&(
-  <div style={{display:"flex",flexDirection:"column",gap:10}}>
-   {oddsRangeStats.length>0?(
-    <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
-     <div style={{padding:"13px 16px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",gap:8}}>
-      <span style={{fontSize:14}}>🎯</span>
-      <span style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Cotes par tranches</span>
-      <span style={{fontSize:10,color:"#4a5a6e",marginLeft:4}}>par 0.05</span>
-     </div>
-     <div style={{padding:"6px 0"}}>
-      <div style={{display:"grid",gridTemplateColumns:"80px 1fr 48px 60px",gap:"0 8px",padding:"4px 16px",marginBottom:2}}>
-      {[["Tranche","left"],["Paris","left"],["WR%","center"],["Profit","right"]].map(([l,a])=>(
-       <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:a}}>{l}</span>
-      ))}
-     </div>
-     {(()=>{
-      const maxC=Math.max(...oddsRangeStats.map(r=>r.count));
-      return oddsRangeStats.map(r=>{
-       const barW=maxC>0?(r.count/maxC*100):0;
-       const pc=r.profit>=0?"#22C55E":"#EF4444";
-       const wc=r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
-       return(
-        <div key={r.label} style={{display:"grid",gridTemplateColumns:"80px 1fr 48px 60px",gap:"0 8px",alignItems:"center",padding:"6px 16px",borderTop:"1px solid rgba(255,255,255,.03)"}}>
-         <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
-         <div style={{display:"flex",alignItems:"center",gap:5}}>
-          <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
-           <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"#22C55E":"#EF4444",borderRadius:2,opacity:.7}}/>
-          </div>
-          <span style={{fontSize:9,color:"#4a5a6e",minWidth:28,textAlign:"right"}}>{r.count}p</span>
-         </div>
-         <span style={{fontSize:12,fontWeight:700,color:wc,textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
-         <span style={{fontSize:12,fontWeight:700,color:pc,textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span>
-        </div>
-       );
-      });
-     })()}
-    </div>
-   </div>
-   ):<div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucune donnée</div>}
-  </div>
- )}
+ {statsTab==="cote"&&<CoteTab settledFiltered={settledFiltered}/>}
 
  {statsTab==="bookmaker"&&(
   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
