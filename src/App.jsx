@@ -1721,13 +1721,13 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  };
 
  return(
- <div style={{position:"fixed",inset:0,background:"#0B1220",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"Inter,sans-serif",overflowY:"hidden"}}>
+ <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#0B1220",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"Inter,sans-serif",overflow:"hidden",height:"100%",maxHeight:"-webkit-fill-available"}}>
  <div style={{background:"#0B1220",borderBottom:"1px solid #1F2937",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
  <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",border:"none",borderRadius:8,width:34,height:34,color:"#9CA3AF",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>←</button>
  <div style={{flex:1,fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{selected.size>0?selected.size+" sélectionné"+(selected.size>1?"s":""):"Sélectionner des paris"}</div>
  {selected.size>0&&<button onClick={()=>setSelected(new Set())} style={{fontSize:11,color:"#6B7280",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tout désélect.</button>}
  </div>
- <div style={{padding:"10px 14px",borderBottom:"1px solid #1F2937",flexShrink:0,flexGrow:0,background:"#0F1829",display:"flex",flexDirection:"column",gap:8,maxHeight:"55vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+ <div style={{padding:"10px 14px",borderBottom:"1px solid #1F2937",flexShrink:0,flexGrow:0,background:"#0F1829",display:"flex",flexDirection:"column",gap:8,maxHeight:"38vh",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"}}>
  {/* Game filter */}
  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
  {allGames.map(function(g){
@@ -1905,7 +1905,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  {!canApply&&<div style={{fontSize:11,color:"#fbbf24",marginBottom:6,textAlign:"center"}}>Choisis une date, un tournoi ou un bookmaker ci-dessus</div>}
  <button onClick={apply} disabled={!canApply||saving} style={{width:"100%",padding:"12px",background:canApply?"linear-gradient(135deg,#F97316,#EA580C)":"rgba(255,255,255,.05)",border:canApply?"none":"1px solid rgba(255,255,255,.1)",borderRadius:12,color:canApply?"#fff":"#4a5a6e",fontWeight:800,fontSize:14,cursor:canApply?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:saving?0.6:1,boxShadow:canApply?"0 4px 16px rgba(249,115,22,.3)":"none"}}>{saving?"Enregistrement...":" Appliquer aux "+selected.size+" paris"}</button>
  </div>}
- <div style={{flex:"1 1 0",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",padding:"8px 14px 120px",minHeight:0,height:0}}>
+ <div style={{flex:"1 1 auto",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",padding:"8px 14px 120px",minHeight:"30vh"}}>
  {allMonthKeys.map(mk=>{
  const days=allByMonth[mk]||[];
  return(
@@ -2368,6 +2368,8 @@ export default function App(){
  const [ppCalcMt,setPpCalcMt]=useState("Map 1+2");
  const [ppCalcOu,setPpCalcOu]=useState("Over");
  const [statsGameOpen,setStatsGameOpen]=useState({});
+ const [bkDrillOpen,setBkDrillOpen]=useState(null); // selected bookmaker name
+ const [bkDrillGame,setBkDrillGame]=useState(null); // selected game within bookmaker
  const [ouDrill,setOuDrill]=useState(null);
  const [statsTab,setStatsTab]=useState("apercu");
  const [dowMetric,setDowMetric]=useState("roi");
@@ -3111,8 +3113,61 @@ export default function App(){
 
  const bkStatsSorted=useMemo(()=>Object.entries(bkStats).sort((a,z)=>z[1].profit-a[1].profit),[bkStats]);
 
+ // Per-bookmaker detailed stats: bkDrillStats[bk][game] = {count,won,profit,staked,oddsSum,over,under,live,hs,nonHs,ppEdges,oddsRanges}
+ const bkDrillStats=useMemo(function(){
+  const res={};
+  const mk=(bk,game)=>{
+   if(!res[bk])res[bk]={};
+   if(!res[bk][game])res[bk][game]={count:0,won:0,profit:0,staked:0,oddsSum:0,
+    over:{c:0,w:0,p:0},under:{c:0,w:0,p:0},
+    live:{c:0,w:0,p:0},hs:{c:0,w:0,p:0},nonHs:{c:0,w:0,p:0},
+    ppEdges:{},oddsRanges:{}};
+   return res[bk][game];
+  };
+  const addOdds=(s,odds,profit,won)=>{
+   const bucket=Math.floor((odds-1)/0.05);
+   const lo=(1+bucket*0.05).toFixed(2);
+   const hi=(1+(bucket+1)*0.05-0.01).toFixed(2);
+   const key=lo+"-"+hi;
+   if(!s.oddsRanges[key])s.oddsRanges[key]={label:key,lo:parseFloat(lo),count:0,won:0,profit:0};
+   s.oddsRanges[key].count++;s.oddsRanges[key].profit+=profit;
+   if(won)s.oddsRanges[key].won++;
+  };
+  const addBet=(bk,b,stake,profit)=>{
+   const game=b.game||"Autre";
+   const s=mk(bk,game);
+   const won=b.status==="won";
+   s.count++;s.won+=(won?1:0);s.profit+=profit;s.staked+=stake;s.oddsSum+=b.odds||0;
+   if(b.overUnder==="Over")s.over.c++,s.over.p+=profit,won&&s.over.w++;
+   else if(b.overUnder==="Under")s.under.c++,s.under.p+=profit,won&&s.under.w++;
+   if(b.isLive)s.live.c++,s.live.p+=profit,won&&s.live.w++;
+   if(b.isHeadshot)s.hs.c++,s.hs.p+=profit,won&&s.hs.w++;
+   else s.nonHs.c++,s.nonHs.p+=profit,won&&s.nonHs.w++;
+   if(b.ppEdge!=null&&b.ppEdge!==0){
+    const ek=Math.round(Math.abs(b.ppEdge)*4)/4;
+    if(!s.ppEdges[ek])s.ppEdges[ek]={edge:ek,count:0,won:0,profit:0};
+    s.ppEdges[ek].count++;s.ppEdges[ek].profit+=profit;if(won)s.ppEdges[ek].won++;
+   }
+   if(b.odds&&b.odds>=1)addOdds(s,b.odds,profit,won);
+  };
+  settledFiltered.forEach(b=>{
+   const splits=b.splits||[];
+   const totalStake=b.stake;
+   if(splits.length===0){addBet(b.bookmaker||"Autre",b,totalStake,b.profit);}
+   else{
+    const splitTotal=splits.reduce((s,sp)=>s+sp.stake,0);
+    const mainStake=totalStake-splitTotal;
+    const ratio=mainStake/totalStake;
+    addBet(b.bookmaker||"Autre",b,mainStake,b.profit*ratio);
+    splits.forEach(sp=>{const r=sp.stake/totalStake;addBet(sp.bookmaker||"Autre",b,sp.stake,b.profit*r);});
+   }
+  });
+  return res;
+ },[settledFiltered]);
+
+
  const oddsRangeStats=useMemo(function(){
- const step=0.10;
+ const step=0.05;
  const start=1.00;
  const ranges={};
  settledFiltered.forEach(b=>{
@@ -5839,7 +5894,7 @@ export default function App(){
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"cote",l:"Cotes"},{k:"bookmaker",l:"Bookmakers"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} onClick={()=>setStatsTab(t.k)}
@@ -7796,78 +7851,226 @@ export default function App(){
  );
  })}
 
- {/* COTES PAR TRANCHES */}
- {oddsRangeStats.length>0&&(
- <div style={{marginBottom:14}}>
- <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Cotes par tranches</div>
- {/* En-têtes colonnes */}
- <div style={{display:"grid",gridTemplateColumns:"72px 1fr 44px 58px",gap:"0 8px",padding:"0 4px",marginBottom:4}}>
- <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Tranche</span>
- <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8}}>Paris</span>
- <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:"center"}}>WR%</span>
- <span style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:"right"}}>Profit</span>
- </div>
- {(()=>{
- const maxCount=Math.max(...oddsRangeStats.map(r=>r.count));
- return oddsRangeStats.map(r=>{
- const barW=maxCount>0?(r.count/maxCount*100):0;
- const profitColor=r.profit>=0?"#22C55E":"#EF4444";
- const wrColor=r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
- return(
- <div key={r.label} style={{display:"grid",gridTemplateColumns:"72px 1fr 44px 58px",gap:"0 8px",alignItems:"center",padding:"5px 4px",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
- <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
- <div style={{display:"flex",alignItems:"center",gap:5}}>
- <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
- <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"#22C55E":"#EF4444",borderRadius:2,opacity:.7}}/>
- </div>
- <span style={{fontSize:9,color:"#4a5a6e",whiteSpace:"nowrap",minWidth:32}}>{r.count}p</span>
- </div>
- <span style={{fontSize:12,fontWeight:700,color:wrColor,textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
- <span style={{fontSize:12,fontWeight:700,color:profitColor,textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
- </div>
- );
- });
- })()}
- </div>
- )}
-
- {/* BOOKMAKERS (global tous jeux) */}
- {bkStatsSorted.length>0&&(
- <div style={{marginBottom:14}}>
- <div style={{fontSize:13,fontWeight:800,color:"#E5E7EB",letterSpacing:.5,marginBottom:8,paddingBottom:6,borderBottom:"2px solid rgba(59,130,246,0.4)",display:"flex",alignItems:"center",gap:8}}>
- <span style={{fontSize:15}}></span> Bookmakers
- </div>
- <div className="stat-bloc">
- {bkStatsSorted.map(([bk,s])=>{
- const wr=s.count>0?(s.won/s.count*100).toFixed(0):0;
- const bkROI=s.staked>0?((s.profit/s.staked)*100):0;
- const avgOdds=s.count>0?(s.oddsSum/s.count).toFixed(2):0;
- const logo=BK_LOGOS[bk]||bkPhotos[bk];
- // Dépôts/retraits pour ce bookmaker
-
- return(
- <div key={bk} style={{padding:"12px 14px",borderBottom:"1px solid #1F2937"}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:0}}>
- <div style={{display:"flex",alignItems:"center",gap:9}}>
- {logo&&<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:6,objectFit:"cover",flexShrink:0}}/>}
- <div>
- <div style={{fontWeight:700,fontSize:14,color:"#E5E7EB"}}>{bk}</div>
- <div style={{fontSize:10,color:"#6B7280"}}>{s.count} paris · {wr}% WR · @{avgOdds}</div>
- </div>
- </div>
- <div style={{textAlign:"right"}}>
- <div style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</div>
- <div style={{fontSize:10,color:bkROI>=0?"#22C55E":"#EF4444"}}>{bkROI>=0?"+":""}{bkROI.toFixed(1)}% ROI</div>
- </div>
- </div>
-
- </div>
- );
- })}
- </div>
- </div>
- )}
  </>}
+
+ {statsTab==="cote"&&(
+  <div style={{display:"flex",flexDirection:"column",gap:10}}>
+   {oddsRangeStats.length>0?(
+    <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+     <div style={{padding:"13px 16px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",gap:8}}>
+      <span style={{fontSize:14}}>🎯</span>
+      <span style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Cotes par tranches</span>
+      <span style={{fontSize:10,color:"#4a5a6e",marginLeft:4}}>par 0.05</span>
+     </div>
+     <div style={{padding:"6px 0"}}>
+      <div style={{display:"grid",gridTemplateColumns:"80px 1fr 48px 60px",gap:"0 8px",padding:"4px 16px",marginBottom:2}}>
+      {[["Tranche","left"],["Paris","left"],["WR%","center"],["Profit","right"]].map(([l,a])=>(
+       <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.8,textAlign:a}}>{l}</span>
+      ))}
+     </div>
+     {(()=>{
+      const maxC=Math.max(...oddsRangeStats.map(r=>r.count));
+      return oddsRangeStats.map(r=>{
+       const barW=maxC>0?(r.count/maxC*100):0;
+       const pc=r.profit>=0?"#22C55E":"#EF4444";
+       const wc=r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF";
+       return(
+        <div key={r.label} style={{display:"grid",gridTemplateColumns:"80px 1fr 48px 60px",gap:"0 8px",alignItems:"center",padding:"6px 16px",borderTop:"1px solid rgba(255,255,255,.03)"}}>
+         <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{r.label}</span>
+         <div style={{display:"flex",alignItems:"center",gap:5}}>
+          <div style={{flex:1,height:4,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+           <div style={{height:"100%",width:barW+"%",background:r.profit>=0?"#22C55E":"#EF4444",borderRadius:2,opacity:.7}}/>
+          </div>
+          <span style={{fontSize:9,color:"#4a5a6e",minWidth:28,textAlign:"right"}}>{r.count}p</span>
+         </div>
+         <span style={{fontSize:12,fontWeight:700,color:wc,textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
+         <span style={{fontSize:12,fontWeight:700,color:pc,textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span>
+        </div>
+       );
+      });
+     })()}
+    </div>
+   </div>
+   ):<div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucune donnée</div>}
+  </div>
+ )}
+
+ {statsTab==="bookmaker"&&(
+  <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
+   <div style={{padding:"13px 16px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",gap:8}}>
+    <span style={{fontSize:14}}>📚</span>
+    <span style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>
+     {bkDrillGame?bkDrillOpen+" → "+bkDrillGame:bkDrillOpen||"Bookmakers"}
+    </span>
+    {bkDrillOpen&&(
+     <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto"}}>
+      {bkDrillGame&&<button onClick={()=>setBkDrillGame(null)} style={{fontSize:10,color:"#6B7280",background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>← {bkDrillOpen}</button>}
+      <button onClick={()=>{setBkDrillOpen(null);setBkDrillGame(null);}} style={{fontSize:10,color:"#f87171",background:"rgba(239,68,68,.1)",border:"none",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕</button>
+     </div>
+    )}
+   </div>
+   {/* Niveau 1 — liste bookmakers */}
+   {!bkDrillOpen&&(
+    <div>
+     {bkStatsSorted.map(([bk,s])=>{
+      const wr=s.count>0?(s.won/s.count*100).toFixed(0):0;
+      const roi=s.staked>0?(s.profit/s.staked*100):0;
+      const avgOdds=s.count>0?(s.oddsSum/s.count).toFixed(2):0;
+      const logo=BK_LOGOS[bk]||bkPhotos[bk];
+      return(
+       <button key={bk} onClick={()=>{setBkDrillOpen(bk);setBkDrillGame(null);}} style={{width:"100%",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"transparent",border:"none",borderBottom:"1px solid #1F2937",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+        <div style={{display:"flex",alignItems:"center",gap:9}}>
+         {logo&&<img src={logo} alt={bk} style={{width:28,height:28,borderRadius:7,objectFit:"cover",flexShrink:0}}/>}
+         <div>
+          <div style={{fontWeight:700,fontSize:14,color:"#E5E7EB"}}>{bk}</div>
+          <div style={{fontSize:10,color:"#6B7280"}}>{s.count} paris · {wr}% WR · @{avgOdds}</div>
+         </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+         <div style={{textAlign:"right"}}>
+          <div style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</div>
+          <div style={{fontSize:10,color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
+         </div>
+         <span style={{color:"#4a5a6e",fontSize:18}}>›</span>
+        </div>
+       </button>
+      );
+     })}
+    </div>
+   )}
+   {/* Niveau 2 — bookmaker → jeux */}
+   {bkDrillOpen&&!bkDrillGame&&(()=>{
+    const bkData=bkDrillStats[bkDrillOpen]||{};
+    const games=ALL_GAMES.filter(g=>bkData[g]&&bkData[g].count>0);
+    if(games.length===0)return <div style={{padding:"30px",textAlign:"center",color:"#4a5a6e"}}>Aucun paris</div>;
+    return(
+     <div>
+      <div style={{padding:"10px 16px 4px",fontSize:11,color:"#6B7280"}}>Clique sur un jeu pour voir le détail complet</div>
+      {games.map(g=>{
+       const s=bkData[g];
+       const cfg=GAME_CFG[g]||{accent:"#9CA3AF"};
+       const wr=s.count>0?(s.won/s.count*100).toFixed(0):0;
+       const roi=s.staked>0?(s.profit/s.staked*100):0;
+       return(
+        <button key={g} onClick={()=>setBkDrillGame(g)} style={{width:"100%",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"transparent",border:"none",borderBottom:"1px solid #1F2937",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+         <div>
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+           <GameLogo game={g} size={16}/>
+           <span style={{fontWeight:700,fontSize:13,color:cfg.accent}}>{g}</span>
+           <span style={{fontSize:10,color:"#6B7280"}}>{s.count} paris</span>
+          </div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+           {[["WR",wr+"%",parseFloat(wr)>55?"#22C55E":parseFloat(wr)<45?"#EF4444":"#9CA3AF"],["ROI",(roi>=0?"+":"")+roi.toFixed(1)+"%",roi>=0?"#22C55E":"#EF4444"],["@"+(s.count>0?(s.oddsSum/s.count).toFixed(2):"?"),"cote moy","#9CA3AF"],["Over",s.over.c+"p","#60A5FA"],["Under",s.under.c+"p","#818CF8"],["Live",s.live.c+"p","#F59E0B"],["HS",s.hs.c+"p","#EC4899"]].map(([v,l,c])=>(
+            <span key={l} style={{fontSize:10,color:"#4a5a6e"}}><span style={{color:c,fontWeight:700}}>{v}</span> {l}</span>
+           ))}
+          </div>
+         </div>
+         <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontWeight:700,fontSize:14,color:s.profit>=0?"#22C55E":"#EF4444"}}>{s.profit>=0?"+":""}{s.profit.toFixed(0)}$</span>
+          <span style={{color:"#4a5a6e",fontSize:18}}>›</span>
+         </div>
+        </button>
+       );
+      })}
+     </div>
+    );
+   })()}
+   {/* Niveau 3 — bookmaker + jeu → détail complet */}
+   {bkDrillOpen&&bkDrillGame&&(()=>{
+    const s=(bkDrillStats[bkDrillOpen]||{})[bkDrillGame];
+    if(!s)return null;
+    const wr=s.count>0?(s.won/s.count*100):0;
+    const roi=s.staked>0?(s.profit/s.staked*100):0;
+    const statRow=(label,data,color)=>{
+     if(!data||data.c===0)return null;
+     const w2=data.c>0?(data.w/data.c*100).toFixed(0):0;
+     const wc=parseFloat(w2)>55?"#22C55E":parseFloat(w2)<45?"#EF4444":"#9CA3AF";
+     return(
+      <div key={label} style={{display:"grid",gridTemplateColumns:"90px 44px 44px 1fr",gap:"0 8px",padding:"7px 16px",borderTop:"1px solid rgba(255,255,255,.03)",alignItems:"center"}}>
+       <span style={{fontSize:11,fontWeight:700,color:color||"#9CA3AF"}}>{label}</span>
+       <span style={{fontSize:11,color:"#6B7280",textAlign:"center"}}>{data.c}p</span>
+       <span style={{fontSize:11,fontWeight:700,color:wc,textAlign:"center"}}>{w2}%</span>
+       <span style={{fontSize:11,fontWeight:700,color:data.p>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{data.p>=0?"+":""}{data.p.toFixed(0)}$</span>
+      </div>
+     );
+    };
+    const ppRows=Object.values(s.ppEdges).sort((a,b)=>a.edge-b.edge);
+    const oddsRows=Object.values(s.oddsRanges).sort((a,b)=>a.lo-b.lo).filter(r=>r.count>0);
+    return(
+     <div>
+      <div style={{padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",gap:8,flexWrap:"wrap"}}>
+       {[
+        {l:"Paris",v:s.count,c:"#c4b5fd"},
+        {l:"WR",v:wr.toFixed(0)+"%",c:wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF"},
+        {l:"ROI",v:(roi>=0?"+":"")+roi.toFixed(1)+"%",c:roi>=0?"#22C55E":"#EF4444"},
+        {l:"Profit",v:(s.profit>=0?"+":"")+s.profit.toFixed(0)+"$",c:s.profit>=0?"#22C55E":"#EF4444"},
+        {l:"Cote moy",v:"@"+(s.count>0?(s.oddsSum/s.count).toFixed(2):"?"),c:"#9CA3AF"},
+       ].map(x=>(
+        <div key={x.l} style={{flex:"1 1 auto",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.1)",borderRadius:8,padding:"6px 10px",minWidth:60}}>
+         <div style={{fontSize:14,fontWeight:900,color:x.c}}>{x.v}</div>
+         <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{x.l}</div>
+        </div>
+       ))}
+      </div>
+      <div style={{padding:"4px 0"}}>
+       <div style={{display:"grid",gridTemplateColumns:"90px 44px 44px 1fr",gap:"0 8px",padding:"5px 16px"}}>
+        {[["Catégorie","left"],["Paris","center"],["WR%","center"],["Profit","right"]].map(([l,a])=>(
+         <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.7,textAlign:a}}>{l}</span>
+        ))}
+       </div>
+       {statRow("Over",s.over,"#60A5FA")}
+       {statRow("Under",s.under,"#818CF8")}
+       {statRow("Live",s.live,"#F59E0B")}
+       {statRow("Headshot",s.hs,"#EC4899")}
+       {statRow("Non-HS",s.nonHs,"#9CA3AF")}
+      </div>
+      {ppRows.length>0&&(
+       <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"10px 16px 6px"}}>
+        <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>PP Edge</div>
+        <div style={{display:"grid",gridTemplateColumns:"90px 44px 44px 1fr",gap:"0 8px",padding:"3px 0",marginBottom:2}}>
+         {[["Edge","left"],["Paris","center"],["WR%","center"],["Profit","right"]].map(([l,a])=>(
+          <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.7,textAlign:a}}>{l}</span>
+         ))}
+        </div>
+        {ppRows.map(r=>{
+         const w3=r.count>0?(r.won/r.count*100).toFixed(0):0;
+         return(
+          <div key={r.edge} style={{display:"grid",gridTemplateColumns:"90px 44px 44px 1fr",gap:"0 8px",padding:"5px 0",borderTop:"1px solid rgba(255,255,255,.03)",alignItems:"center"}}>
+           <span style={{fontSize:12,fontWeight:800,color:"#c4b5fd"}}>+{r.edge}</span>
+           <span style={{fontSize:11,color:"#6B7280",textAlign:"center"}}>{r.count}p</span>
+           <span style={{fontSize:11,fontWeight:700,color:parseFloat(w3)>55?"#22C55E":parseFloat(w3)<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{w3}%</span>
+           <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span>
+          </div>
+         );
+        })}
+       </div>
+      )}
+      {oddsRows.length>0&&(
+       <div style={{borderTop:"1px solid rgba(255,255,255,.06)",padding:"10px 16px 6px"}}>
+        <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:6}}>Cotes par tranches</div>
+        <div style={{display:"grid",gridTemplateColumns:"90px 44px 44px 1fr",gap:"0 8px",padding:"3px 0",marginBottom:2}}>
+         {[["Tranche","left"],["Paris","center"],["WR%","center"],["Profit","right"]].map(([l,a])=>(
+          <span key={l} style={{fontSize:9,color:"#374151",fontWeight:600,textTransform:"uppercase",letterSpacing:.7,textAlign:a}}>{l}</span>
+         ))}
+        </div>
+        {oddsRows.map(r=>{
+         const w4=r.count>0?(r.won/r.count*100).toFixed(0):0;
+         return(
+          <div key={r.label} style={{display:"grid",gridTemplateColumns:"90px 44px 44px 1fr",gap:"0 8px",padding:"5px 0",borderTop:"1px solid rgba(255,255,255,.03)",alignItems:"center"}}>
+           <span style={{fontSize:11,color:"#c8d4e8",fontWeight:700}}>{r.label}</span>
+           <span style={{fontSize:11,color:"#6B7280",textAlign:"center"}}>{r.count}p</span>
+           <span style={{fontSize:11,fontWeight:700,color:parseFloat(w4)>55?"#22C55E":parseFloat(w4)<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{w4}%</span>
+           <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</span>
+          </div>
+         );
+        })}
+       </div>
+      )}
+     </div>
+    );
+   })()}
+  </div>
+ )}
 
  {statsTab==="joueurs"&&(()=>{
  const pm={};
