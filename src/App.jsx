@@ -1995,6 +1995,176 @@ function AvanceTab({settledFiltered,bets}){
  );
 }
 
+function SpotsTab({settledFiltered}){
+ const ALL_GAMES=["CS2","LoL","Dota2","Valorant"];
+ const [game,setGame]=useState("CS2");
+ const MIN_BETS=5; // minimum pour apparaître
+
+ const spots=useMemo(()=>{
+  const gb=settledFiltered.filter(b=>b.game===game);
+  if(gb.length===0)return null;
+
+  const mk=()=>({count:0,won:0,profit:0,staked:0,oddsSum:0});
+  const agg=(map,key,b)=>{
+   if(!map[key])map[key]=mk();
+   const s=map[key];
+   s.count++;s.profit+=b.profit;s.staked+=b.stake;s.oddsSum+=b.odds||0;
+   if(b.status==="won")s.won++;
+  };
+
+  // Dimensions
+  const byPlayer={},byLine={},byOverUnder={},byOddsRange={},byIsLive={},byIsHS={},byPPEdge={},byLeague={},byMapType={},byRole={};
+
+  gb.forEach(b=>{
+   if(b.player)agg(byPlayer,b.player,b);
+   if(b.description){
+    const desc=String(b.description).replace(/^(Over|Under)\s/,"").trim();
+    agg(byLine,desc,b);
+   }
+   if(b.overUnder)agg(byOverUnder,b.overUnder,b);
+   if(b.odds){
+    const bucket=Math.floor((b.odds-1)/0.10)*0.10+1;
+    agg(byOddsRange,bucket.toFixed(2)+"-"+(bucket+0.09).toFixed(2),b);
+   }
+   agg(byIsLive,b.isLive?"Live":"Non-Live",b);
+   if(game==="CS2"||game==="Valorant")agg(byIsHS,b.isHeadshot?"Headshot":"Kills",b);
+   if(b.ppEdge!=null&&b.ppEdge!==0){
+    const ek="+"+Math.round(Math.abs(b.ppEdge)*4)/4;
+    agg(byPPEdge,ek,b);
+   }
+   if(b.league)agg(byLeague,b.league,b);
+   if(b.ppMapType)agg(byMapType,b.ppMapType,b);
+   if(game==="LoL"&&b.role)agg(byRole,b.role,b);
+  });
+
+  const rank=(map,label)=>{
+   return Object.entries(map)
+    .filter(([,s])=>s.count>=MIN_BETS)
+    .map(([key,s])=>{
+     const wr=s.count>0?s.won/s.count*100:0;
+     const roi=s.staked>0?s.profit/s.staked*100:0;
+     const avgOdds=s.count>0?s.oddsSum/s.count:0;
+     return{key,label,wr,roi,profit:s.profit,count:s.count,avgOdds,staked:s.staked};
+    })
+    .sort((a,b)=>b.profit-a.profit);
+  };
+
+  return{
+   player:rank(byPlayer,"Joueur"),
+   line:rank(byLine,"Stat"),
+   overUnder:rank(byOverUnder,"O/U"),
+   oddsRange:rank(byOddsRange,"Tranche cote"),
+   live:rank(byIsLive,"Live"),
+   hs:rank(byIsHS,"Type"),
+   ppEdge:rank(byPPEdge,"PP Edge"),
+   league:rank(byLeague,"Ligue"),
+   mapType:rank(byMapType,"Map type"),
+   role:rank(byRole,"Rôle"),
+   total:gb.length,
+  };
+ },[settledFiltered,game]);
+
+ const SpotSection=({title,rows,showTop=3})=>{
+  if(!rows||rows.length===0)return null;
+  const best=rows.slice(0,showTop);
+  const worst=[...rows].reverse().slice(0,showTop).filter(r=>r.profit<0);
+  if(best.length===0&&worst.length===0)return null;
+  return(
+   <div style={{marginBottom:14}}>
+    <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{title}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+     {best.map((r,i)=><SpotRow key={r.key} r={r} rank={i+1} type="best"/>)}
+     {worst.length>0&&<div style={{height:1,background:"rgba(255,255,255,.04)",margin:"2px 0"}}/>}
+     {worst.map((r,i)=><SpotRow key={r.key+"_w"} r={r} rank={i+1} type="worst"/>)}
+    </div>
+   </div>
+  );
+ };
+
+ const SpotRow=({r,rank,type})=>{
+  const isBest=type==="best";
+  const accent=isBest?"#22C55E":"#EF4444";
+  const bg=isBest?"rgba(34,197,94,.06)":"rgba(239,68,68,.06)";
+  const border=isBest?"rgba(34,197,94,.15)":"rgba(239,68,68,.15)";
+  const emoji=isBest?(rank===1?"🥇":rank===2?"🥈":"🥉"):(rank===1?"💀":rank===2?"🔴":"⚠️");
+  const wr=r.wr;
+  const wrc=wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF";
+  return(
+   <div style={{background:bg,border:"1px solid "+border,borderRadius:10,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+      <span style={{fontSize:13}}>{emoji}</span>
+      <span style={{fontSize:12,fontWeight:800,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:160}}>{r.key}</span>
+      <span style={{fontSize:9,color:"#4a5a6e",whiteSpace:"nowrap"}}>{r.count} paris</span>
+     </div>
+     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+      <span style={{fontSize:10,color:"#4a5a6e"}}>WR <span style={{color:wrc,fontWeight:700}}>{wr.toFixed(0)}%</span></span>
+      <span style={{fontSize:10,color:"#4a5a6e"}}>ROI <span style={{color:r.roi>=0?"#22C55E":"#EF4444",fontWeight:700}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span></span>
+      <span style={{fontSize:10,color:"#4a5a6e"}}>@<span style={{color:"#9CA3AF",fontWeight:600}}>{r.avgOdds.toFixed(2)}</span></span>
+     </div>
+    </div>
+    <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
+     <div style={{fontSize:15,fontWeight:900,color:accent}}>{r.profit>=0?"+":""}{r.profit.toFixed(0)}$</div>
+    </div>
+   </div>
+  );
+ };
+
+ if(!spots)return(
+  <div style={{textAlign:"center",padding:"40px 0",color:"#4a5a6e"}}>Aucun paris pour ce jeu</div>
+ );
+
+ return(
+  <div>
+   {/* Game selector */}
+   <div style={{display:"flex",gap:6,marginBottom:14}}>
+    {ALL_GAMES.map(g=>(
+     <button key={g} onClick={()=>setGame(g)}
+      style={{flex:1,padding:"8px 4px",borderRadius:10,border:"1.5px solid "+(game===g?"rgba(124,58,237,.6)":"#1F2937"),background:game===g?"rgba(124,58,237,.2)":"rgba(255,255,255,.02)",color:game===g?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      {g}
+     </button>
+    ))}
+   </div>
+
+   {/* Summary bar */}
+   <div style={{background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}>
+    {(()=>{
+     const gb=settledFiltered.filter(b=>b.game===game);
+     const won=gb.filter(b=>b.status==="won").length;
+     const profit=gb.reduce((s,b)=>s+b.profit,0);
+     const staked=gb.reduce((s,b)=>s+b.stake,0);
+     const wr=gb.length>0?won/gb.length*100:0;
+     const roi=staked>0?profit/staked*100:0;
+     return[
+      {l:"Paris",v:gb.length,c:"#c4b5fd"},
+      {l:"WR",v:wr.toFixed(0)+"%",c:wr>55?"#22C55E":wr<45?"#EF4444":"#9CA3AF"},
+      {l:"ROI",v:(roi>=0?"+":"")+roi.toFixed(1)+"%",c:roi>=0?"#22C55E":"#EF4444"},
+      {l:"Profit total",v:(profit>=0?"+":"")+profit.toFixed(0)+"$",c:profit>=0?"#22C55E":"#EF4444"},
+     ].map(s=>(
+      <div key={s.l} style={{flex:"1 1 auto",textAlign:"center"}}>
+       <div style={{fontSize:14,fontWeight:900,color:s.c}}>{s.v}</div>
+       <div style={{fontSize:9,color:"#4a5a6e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+      </div>
+     ));
+    })()}
+   </div>
+
+   <div style={{fontSize:9,color:"#4a5a6e",marginBottom:10,textAlign:"center"}}>Min {MIN_BETS} paris pour apparaître · 🥇🥈🥉 = meilleurs · 💀🔴⚠️ = à éviter</div>
+
+   <SpotSection title="Par joueur" rows={spots.player} showTop={3}/>
+   <SpotSection title="Par stat (description)" rows={spots.line} showTop={3}/>
+   <SpotSection title="Over vs Under" rows={spots.overUnder} showTop={2}/>
+   {(game==="CS2"||game==="Valorant")&&<SpotSection title="Headshot vs Kills" rows={spots.hs} showTop={2}/>}
+   {game==="LoL"&&<SpotSection title="Par rôle" rows={spots.role} showTop={2}/>}
+   <SpotSection title="Par tranche de cote" rows={spots.oddsRange} showTop={3}/>
+   <SpotSection title="Live vs Non-Live" rows={spots.live} showTop={2}/>
+   {spots.ppEdge.length>0&&<SpotSection title="Par PP Edge" rows={spots.ppEdge} showTop={3}/>}
+   {spots.league.length>0&&<SpotSection title="Par ligue" rows={spots.league} showTop={3}/>}
+   {spots.mapType.length>0&&<SpotSection title="Par type de map (PP)" rows={spots.mapType} showTop={3}/>}
+  </div>
+ );
+}
+
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -6305,7 +6475,7 @@ export default function App(){
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"cote",l:"Cotes"},{k:"bookmaker",l:"Bookmakers"},{k:"avance",l:"Avancé"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"joueurs",l:"Joueurs"},{k:"tournois",l:"Tournois"},{k:"cote",l:"Cotes"},{k:"bookmaker",l:"Bookmakers"},{k:"spots",l:"🔥 Spots"},{k:"avance",l:"Avancé"},{k:"analyse",l:"Analyse"},{k:"plus",l:"Plus"}].map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} onClick={()=>setStatsTab(t.k)}
@@ -7301,6 +7471,7 @@ export default function App(){
  </>}
 
  {/* ONGLET ANALYSE */}
+ {statsTab==="spots"&&<SpotsTab settledFiltered={settledFiltered}/>}
  {statsTab==="avance"&&<AvanceTab settledFiltered={settledFiltered} bets={bets}/>}
 
  {statsTab==="analyse"&&(
