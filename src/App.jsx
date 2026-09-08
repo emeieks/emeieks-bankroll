@@ -3292,9 +3292,9 @@ export default function App(){
  localStorage.setItem("v7_saved_tourneys_bk",JSON.stringify(savedTourneys));
  // Serialize testFilter (Sets → Arrays for JSON)
  const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
- if(supaUrl&&supaKey){
+ if(SUPA_URL&&SUPA_KEY){
  const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
- fetch(supaUrl+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":"Bearer "+supaKey,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsRow)}).catch(function(){});
+ fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsRow)}).catch(function(){});
  }
  }catch(e){}
  },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,loaded]);
@@ -3512,6 +3512,35 @@ export default function App(){
  }
  }catch(e){}
  }
+ // Auto-découverte de tournois depuis les paris reçus
+ // Si un pari a b.tournament="Fissure" mais que Fissure n'est pas dans savedTourneys, l'ajouter
+ const discoveredTourneys={};
+ remote.forEach(b=>{
+  if(b.tournament&&b.game&&b.player!=="__SETTINGS__"){
+   if(!discoveredTourneys[b.game])discoveredTourneys[b.game]=new Set();
+   discoveredTourneys[b.game].add(b.tournament);
+  }
+ });
+ if(Object.keys(discoveredTourneys).length>0){
+  setSavedTourneys(prev=>{
+   const updated={...prev};
+   let changed=false;
+   Object.entries(discoveredTourneys).forEach(([game,names])=>{
+    if(!updated[game])updated[game]=[];
+    names.forEach(name=>{
+     if(!updated[game].includes(name)){updated[game]=[...updated[game],name];changed=true;}
+    });
+   });
+   if(changed){
+    try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(updated));}catch(e){}
+    if(!silentArg){
+     const newNames=[...Object.values(discoveredTourneys)].flatMap(s=>[...s]).filter((n,i,a)=>a.indexOf(n)===i);
+     showToast("📋 Tournois détectés: "+newNames.join(", "),"#A78BFA");
+    }
+   }
+   return changed?updated:prev;
+  });
+ }
  // Marquer comme pull pour éviter re-push automatique
  lastPulledRef.current=merged.length+":"+(merged[0]&&merged[0].id||"");
  // Re-apply any remaining overrides on top of merged data
@@ -3544,7 +3573,45 @@ export default function App(){
  },[showToast]);
 
  // Pull au chargement
- useEffect(()=>{if(!loaded)return;pullFromSupa(false);},[loaded]);
+ useEffect(()=>{
+ if(!loaded)return;
+ // Always fetch settings on startup regardless of 15s block
+ if(SUPA_URL&&SUPA_KEY){
+  supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description")
+  .then(sr=>{
+   if(!sr||!sr[0])return;
+   try{
+    const s=JSON.parse(sr[0].description||"{}");
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+     setActiveTourneys(s.activeTourneys);
+     localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
+    }
+    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
+     setSavedTourneys(prev=>{
+      const merged={};
+      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
+      allG.forEach(g=>{
+       merged[g]=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];
+      });
+      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
+      return merged;
+     });
+    }
+    if(s.tourneyCal&&s.tourneyCal.length>0){
+     setTourneyCal(prev=>{
+      const localIds=new Set(prev.map(t=>t.id));
+      const newE=s.tourneyCal.filter(t=>!localIds.has(t.id));
+      if(!newE.length)return prev;
+      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
+      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
+      return merged;
+     });
+    }
+   }catch(e){}
+  }).catch(()=>{});
+ }
+ pullFromSupa(false);
+},[loaded]);
 
  // Re-pull quand l app revient au premier plan (iOS background → foreground)
  useEffect(()=>{
@@ -8660,8 +8727,7 @@ export default function App(){
  </>
  );
  })()}
- </div>
- )}
+
 
  {/* Duels */}
  {gs.duels&&gs.duels.length>0&&(
@@ -8677,6 +8743,8 @@ export default function App(){
  </div>
  ))}
  </>
+ )}
+ </div>
  )}
  </div>
  );
@@ -9827,6 +9895,51 @@ export default function App(){
 
  {suiviOpen.cal&&(
  <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+
+ {/* Sync cloud */}
+ {SUPA_URL&&SUPA_KEY&&(
+  <button onClick={()=>{
+   supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description")
+   .then(sr=>{
+    if(!sr||!sr[0])return showToast("Aucun settings cloud trouvé","#EF4444");
+    const s=JSON.parse(sr[0].description||"{}");
+    let changed=false;
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+     setActiveTourneys(s.activeTourneys);
+     localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
+     changed=true;
+    }
+    if(s.savedTourneys){
+     setSavedTourneys(prev=>{
+      const merged={};
+      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
+      allG.forEach(g=>{merged[g]=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];});
+      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
+      return merged;
+     });
+     changed=true;
+    }
+    if(s.tourneyCal&&s.tourneyCal.length>0){
+     setTourneyCal(prev=>{
+      const localIds=new Set(prev.map(t=>t.id));
+      const newE=s.tourneyCal.filter(t=>!localIds.has(t.id));
+      if(!newE.length)return prev;
+      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
+      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
+      return merged;
+     });
+     changed=true;
+    }
+    if(changed){
+     const names=Object.values(s.activeTourneys||{}).filter(t=>t&&t.name).map(t=>t.name);
+     showToast("🔄 Sync OK"+(names.length?" · Actif: "+names.join(", "):""),"#A78BFA");
+    }else{showToast("Déjà à jour","#6B7280");}
+   }).catch(()=>showToast("Erreur sync","#EF4444"));
+  }}
+  style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(167,139,250,.3)",background:"rgba(167,139,250,.05)",color:"#a78bfa",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",marginBottom:8}}>
+  🔄 Sync tournois depuis le cloud
+  </button>
+ )}
 
  {/* Bouton ajouter */}
  {!showTourneyCalForm&&(
