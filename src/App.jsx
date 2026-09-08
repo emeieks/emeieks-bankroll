@@ -3366,7 +3366,23 @@ export default function App(){
  // Supabase: pull — Supabase est la source de vérité 
  const pullFromSupa=useCallback(async function(silentArg){
  // Block pull for 15s after a push to avoid race condition
- if(Date.now()-lastPushRef.current<15000){setSyncing(false);return;}
+ if(Date.now()-lastPushRef.current<15000){
+ // Still blocked for bets, but sync settings (tournois actifs)
+ try{
+  const sr=await supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description");
+  if(sr&&sr[0]&&sr[0].description){
+   const s=JSON.parse(sr[0].description||"{}");
+   if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+    setActiveTourneys(prev=>{
+     const changed=JSON.stringify(prev)!==JSON.stringify(s.activeTourneys);
+     if(changed){localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));return s.activeTourneys;}
+     return prev;
+    });
+   }
+  }
+ }catch(e){}
+ setSyncing(false);return;
+}
  setSyncing(true);
  try{
  // 1. Pousser les overrides locaux vers Supabase (changements manuels en attente)
@@ -3417,7 +3433,17 @@ export default function App(){
  if(settingsRow){
  try{
  const s=JSON.parse(settingsRow.description||"{}");
- if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){setActiveTourneys(s.activeTourneys);localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));}
+ if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+ const prevStr=JSON.stringify(activeTourneys||{});
+ const newStr=JSON.stringify(s.activeTourneys);
+ if(prevStr!==newStr){
+  setActiveTourneys(s.activeTourneys);
+  localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
+  // Notify user that tournament settings were synced from another device
+  const activeNames=Object.values(s.activeTourneys).filter(t=>t&&t.name).map(t=>t.name);
+  if(activeNames.length>0&&!silentArg){showToast("🔄 Tournois sync: "+activeNames.join(", "),"#A78BFA");}
+ }
+}
  // Restore MIB settings
  if(s.mibActive!==undefined){setMibActive(!!s.mibActive);}
  if(s.mibDate){setMibDate(s.mibDate);}
@@ -3490,7 +3516,7 @@ export default function App(){
  // Re-pull toutes les 60s si l app est visible
  useEffect(()=>{
  if(!loaded)return;
- const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},60000);
+ const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},30000);
  return()=>clearInterval(t);
  },[loaded,pullFromSupa]);
 
