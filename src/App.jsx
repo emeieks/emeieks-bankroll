@@ -3293,11 +3293,11 @@ export default function App(){
  // Serialize testFilter (Sets → Arrays for JSON)
  const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
  if(supaUrl&&supaKey){
- const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
+ const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
  fetch(supaUrl+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":supaKey,"Authorization":"Bearer "+supaKey,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsRow)}).catch(function(){});
  }
  }catch(e){}
- },[activeTourneys,savedTourneys,mibActive,mibDate,testFilter,loaded]);
+ },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,loaded]);
 
  // Save: localStorage (debounced) 
  useEffect(()=>{
@@ -3379,6 +3379,23 @@ export default function App(){
      return prev;
     });
    }
+   if(s.tourneyCal&&s.tourneyCal.length>0){
+    setTourneyCal(prev=>{
+     const localIds=new Set(prev.map(t=>t.id));
+     const newEntries=s.tourneyCal.filter(t=>!localIds.has(t.id));
+     if(newEntries.length===0)return prev;
+     const merged=[...prev,...newEntries].sort((a,b)=>a.start.localeCompare(b.start));
+     try{localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));}catch(e){}
+     showToast("🔄 "+newEntries.length+" tournoi(s) sync","#A78BFA");
+     return merged;
+    });
+    setSavedTourneys(prev=>{
+     const updated={...prev};
+     s.tourneyCal.forEach(t=>{if(!t.name||!t.game)return;if(!updated[t.game])updated[t.game]=[];if(!updated[t.game].includes(t.name))updated[t.game]=[...updated[t.game],t.name];});
+     try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(updated));}catch(e){}
+     return updated;
+    });
+   }
   }
  }catch(e){}
  setSyncing(false);return;
@@ -3444,6 +3461,29 @@ export default function App(){
   if(activeNames.length>0&&!silentArg){showToast("🔄 Tournois sync: "+activeNames.join(", "),"#A78BFA");}
  }
 }
+ // Restore tourneyCal (calendrier des tournois)
+ if(s.tourneyCal&&s.tourneyCal.length>0){
+  setTourneyCal(prev=>{
+   const localIds=new Set(prev.map(t=>t.id));
+   const newEntries=s.tourneyCal.filter(t=>!localIds.has(t.id));
+   if(newEntries.length===0)return prev;
+   const merged=[...prev,...newEntries].sort((a,b)=>a.start.localeCompare(b.start));
+   try{localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));}catch(e){}
+   if(!silentArg&&newEntries.length>0){showToast("🔄 "+newEntries.length+" tournoi(s) sync depuis cloud","#A78BFA");}
+   return merged;
+  });
+  // Also add to savedTourneys
+  setSavedTourneys(prev=>{
+   const updated={...prev};
+   s.tourneyCal.forEach(t=>{
+    if(!t.name||!t.game)return;
+    if(!updated[t.game])updated[t.game]=[];
+    if(!updated[t.game].includes(t.name))updated[t.game]=[...updated[t.game],t.name];
+   });
+   try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(updated));}catch(e){}
+   return updated;
+  });
+ }
  // Restore MIB settings
  if(s.mibActive!==undefined){setMibActive(!!s.mibActive);}
  if(s.mibDate){setMibDate(s.mibDate);}
