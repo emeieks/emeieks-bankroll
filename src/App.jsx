@@ -3620,12 +3620,64 @@ export default function App(){
  return()=>document.removeEventListener("visibilitychange",onVisible);
  },[pullFromSupa]);
 
- // Re-pull toutes les 60s si l app est visible
+ // Re-pull toutes les 30s si l app est visible
  useEffect(()=>{
  if(!loaded)return;
  const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},30000);
  return()=>clearInterval(t);
  },[loaded,pullFromSupa]);
+
+ // Sync settings (tournois actifs/sauvegardés) indépendamment des bets — toutes les 10s
+ useEffect(()=>{
+ if(!loaded)return;
+ const syncSettings=()=>{
+  if(document.visibilityState!=="visible"||!SUPA_URL||!SUPA_KEY)return;
+  supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description")
+  .then(sr=>{
+   if(!sr||!sr[0]||!sr[0].description)return;
+   try{
+    const s=JSON.parse(sr[0].description||"{}");
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+     setActiveTourneys(prev=>{
+      if(JSON.stringify(prev)===JSON.stringify(s.activeTourneys))return prev;
+      localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
+      const names=Object.values(s.activeTourneys).filter(t=>t&&t.name).map(t=>t.name);
+      if(names.length)showToast("🔄 Tournoi: "+names.join(", "),"#A78BFA");
+      return s.activeTourneys;
+     });
+    }
+    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
+     setSavedTourneys(prev=>{
+      const merged={};
+      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
+      let changed=false;
+      allG.forEach(g=>{
+       const u=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];
+       if(u.length!==(prev?.[g]||[]).length)changed=true;
+       merged[g]=u;
+      });
+      if(!changed)return prev;
+      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
+      return merged;
+     });
+    }
+    if(s.tourneyCal&&s.tourneyCal.length>0){
+     setTourneyCal(prev=>{
+      const ids=new Set(prev.map(t=>t.id));
+      const newE=s.tourneyCal.filter(t=>!ids.has(t.id));
+      if(!newE.length)return prev;
+      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
+      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
+      return merged;
+     });
+    }
+   }catch(e){}
+  }).catch(()=>{});
+ };
+ syncSettings();
+ const t2=setInterval(syncSettings,10000);
+ return()=>clearInterval(t2);
+ },[loaded]);
 
  // Reouvrir clavier iPhone au retour sur l'app 
  const lastFocusedRef = useRef(null);
