@@ -419,6 +419,30 @@ async function supaUpsertPlayer(data) {
  return Array.isArray(result) ? result[0] : result;
 }
 
+async function supaUpdateTeamLogo(game, team, logoUrl) {
+ // Update team_logo_url for all players of this team in Supabase
+ // Try players_full first, then players table
+ const headers = {
+  "apikey": SUPA_KEY,
+  "Authorization": "Bearer " + SUPA_KEY,
+  "Content-Type": "application/json",
+  "Prefer": "return=representation",
+ };
+ const body = JSON.stringify({team_logo_url: logoUrl || null});
+ // Try players_full
+ const r1 = await fetch(
+  SUPA_URL + "/rest/v1/players_full?game=eq." + encodeURIComponent(game) + "&team=eq." + encodeURIComponent(team),
+  {method: "PATCH", headers, body}
+ ).catch(()=>null);
+ if (r1 && r1.ok) return;
+ // Fallback: players table (if column exists)
+ await fetch(
+  SUPA_URL + "/rest/v1/players?game=eq." + encodeURIComponent(game) + "&team=eq." + encodeURIComponent(team),
+  {method: "PATCH", headers, body}
+ ).catch(()=>null);
+}
+
+
 async function supaDeletePlayer(id) {
  await fetch(SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(id), {
  method: "DELETE",
@@ -2373,17 +2397,34 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
   setEditPSaving(false);
  };
 
- const saveTeamLogo=()=>{
+ const saveTeamLogo=async()=>{
   if(!editTeam)return;
   setTeamLogoSaving(true);
   try{
    const key=editTeam.team+"__"+editTeam.game;
-   const updated={...teamLogos,[key]:teamLogoUrl};
-   setTeamLogos(updated);
-   localStorage.setItem("v7_team_logos",JSON.stringify(updated));
+   const url=teamLogoUrl||"";
+   // 1. Save to localStorage immediately
+   setTeamLogos(prev=>{
+    const updated={...prev,[key]:url};
+    try{localStorage.setItem("v7_team_logos",JSON.stringify(updated));}catch(e){}
+    return updated;
+   });
+   // 2. Push to Supabase (updates all players of this team)
+   await supaUpdateTeamLogo(editTeam.game, editTeam.team, url);
+   // 3. Update local players state so it reflects immediately
+   setPlayers(prev=>{
+    const n={...prev};
+    Object.keys(n).forEach(k=>{
+     if(n[k].team===editTeam.team&&n[k].game===editTeam.game){
+      n[k]={...n[k],team_logo_url:url};
+     }
+    });
+    return n;
+   });
    showToast("Logo mis à jour ","#22C55E");
-   setEditTeam(null);setTeamLogoUrl("");
-  }catch(e){showToast("Erreur","#EF4444");}
+   setEditTeam(null);
+   setTeamLogoUrl("");
+  }catch(e){console.error("saveTeamLogo error:",e);showToast("Erreur: "+e.message,"#EF4444");}
   setTeamLogoSaving(false);
  };
 
@@ -2535,12 +2576,12 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>Logo équipe</div>
                {editTeam?.team===team&&editTeam?.game===rosterGame?(
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                 <input value={teamLogoUrl} onChange={e=>setTeamLogoUrl(e.target.value)} placeholder="URL du logo (https://...)" autoFocus style={{flex:1,...inputStyle}}/>
-                 <button onClick={saveTeamLogo} disabled={teamLogoSaving} style={{padding:"6px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{teamLogoSaving?"...":"✓"}</button>
-                 <button onClick={()=>{setEditTeam(null);setTeamLogoUrl("");}} style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
+                 <input value={teamLogoUrl} onChange={e=>setTeamLogoUrl(e.target.value)} onClick={e=>e.stopPropagation()} placeholder="URL du logo (https://...)" autoFocus style={{flex:1,...inputStyle}}/>
+                 <button onClick={e=>{e.stopPropagation();saveTeamLogo();}} disabled={teamLogoSaving} style={{padding:"6px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{teamLogoSaving?"...":"✓"}</button>
+                 <button onClick={e=>{e.stopPropagation();setEditTeam(null);setTeamLogoUrl("");}} style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
                 </div>
                ):(
-                <button onClick={()=>{setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                <button onClick={e=>{e.stopPropagation();setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                  {logoUrl?"✏️ Modifier logo":"+ Ajouter logo"}
                 </button>
                )}
@@ -3566,6 +3607,12 @@ export default function App(){
  avatar_file: p.avatar_file || null,
  };
  });
+ // Populate teamLogos from Supabase data (authoritative source)
+ const logoMap={};
+ rows.forEach(p=>{if(p.team_logo_url&&p.team&&p.game){logoMap[p.team+"__"+p.game]=p.team_logo_url;}});
+ if(Object.keys(logoMap).length>0){
+  setTeamLogos(prev=>{const merged={...prev,...logoMap};localStorage.setItem("v7_team_logos",JSON.stringify(merged));return merged;});
+ }
  // Migrate roles to short form
  var RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle","Support":"Support","Sup":"Support","Supp":"Support"};
  Object.keys(obj).forEach(function(k){var r=obj[k].role;if(r&&RMIG[r])obj[k]=Object.assign({},obj[k],{role:RMIG[r]});});
