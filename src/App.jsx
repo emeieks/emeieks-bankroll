@@ -2342,10 +2342,25 @@ function DiagnosticTab({settledFiltered}){
 
 function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
+ const ROLES_BY_GAME={
+  CS2:["Rifler","AWPer","Entry","Lurker","Support","IGL","Coach"],
+  LoL:["Top","Jungle","Mid","ADC","Support","Coach"],
+  Valorant:["Duelist","Sentinel","Controller","Initiator","IGL","Coach"],
+  Dota2:["Carry","Midlaner","Offlaner","Support","Hard Support","Coach"],
+ };
  const accent="#A78BFA";
+ const [searchQ,setSearchQ]=useState("");
+ const [teamSearchQ,setTeamSearchQ]=useState("");
+ const [teamSuggestions,setTeamSuggestions]=useState([]);
 
- const openEdit=p=>{setEditP(p);setEditPForm({name:p.name,game:p.game||"LoL",league:p.league||"",role:p.role||"",team:p.team||""});setEditPPhotoUrl(p.photo_url||p.avatar_url||"");};
- const closeEdit=()=>{setEditP(null);setEditPForm({});setEditPPhotoUrl("");};
+ const openEdit=p=>{
+  setEditP(p);
+  setEditPForm({name:p.name,game:p.game||"CS2",league:p.league||"",role:p.role||"",team:p.team||""});
+  setEditPPhotoUrl(p.photo_url||p.avatar_url||"");
+  setTeamSearchQ(p.team||"");
+  setTeamSuggestions([]);
+ };
+ const closeEdit=()=>{setEditP(null);setEditPForm({});setEditPPhotoUrl("");setTeamSearchQ("");setTeamSuggestions([]);};
 
  const savePlayer=async()=>{
   if(!editP)return;
@@ -2384,7 +2399,32 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
   setTeamLogoSaving(false);
  };
 
+ // All unique teams for autocomplete
+ const allTeams=useMemo(()=>{
+  const set=new Set();
+  Object.values(players).forEach(p=>{if(p.team)set.add(p.team);});
+  return [...set].sort();
+ },[players]);
+
+ const onTeamInput=val=>{
+  setTeamSearchQ(val);
+  setEditPForm(f=>({...f,team:val}));
+  if(val.length<1){setTeamSuggestions([]);return;}
+  const q=val.toLowerCase();
+  setTeamSuggestions(allTeams.filter(t=>t.toLowerCase().includes(q)).slice(0,6));
+ };
+
+ // Search filter: match player name or team name
+ const searchLower=searchQ.toLowerCase();
+ const filteredPlayerKeys=searchQ.length>0
+  ? Object.keys(players).filter(k=>{
+     const p=players[k];
+     return (p.name||"").toLowerCase().includes(searchLower)||(p.team||"").toLowerCase().includes(searchLower);
+    })
+  : null;
+
  const cardStyle={background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:13,overflow:"hidden",marginBottom:8};
+ const inputStyle={width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",boxSizing:"border-box"};
 
  return(
   <div style={{marginBottom:8}}>
@@ -2400,21 +2440,66 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
 
    {rosterOpen&&(
     <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+
      {/* Game selector */}
-     <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+     <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
       {GAMES_R.map(g=>{
        const count=Object.values(players).filter(p=>p.game===g).length;
        const isActive=rosterGame===g;
        return(
-        <button key={g} onClick={()=>{setRosterGame(isActive?null:g);setRosterLeague(null);setRosterTeam(null);}}
-         style={{padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(isActive?accent:"#1F2937"),background:isActive?"rgba(167,139,250,.12)":"transparent",color:isActive?accent:"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-         {g} <span style={{opacity:.6}}>{count}</span>
+        <button key={g} onClick={()=>{setRosterGame(isActive?null:g);setRosterLeague(null);setRosterTeam(null);setSearchQ("");}}
+         style={{padding:"5px 10px",borderRadius:20,border:"1.5px solid "+(isActive?accent:"#1F2937"),background:isActive?"rgba(167,139,250,.12)":"transparent",color:isActive?accent:"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",gap:5}}>
+         <GameLogo game={g} size={14}/>
+         <span style={{opacity:.6,fontSize:10}}>{count}</span>
         </button>
        );
       })}
      </div>
 
-     {rosterGame&&(()=>{
+     {/* Search bar */}
+     <div style={{position:"relative",marginBottom:10}}>
+      <input
+       value={searchQ}
+       onChange={e=>setSearchQ(e.target.value)}
+       placeholder="🔍 Rechercher un joueur ou une équipe..."
+       style={{...inputStyle,padding:"8px 12px",borderRadius:10,fontSize:12,background:"#111827",border:"1px solid #1F2937"}}
+      />
+      {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:14}}>✕</button>}
+     </div>
+
+     {/* Search results */}
+     {searchQ.length>0&&(()=>{
+      const results=(filteredPlayerKeys||[]).map(k=>players[k]).filter(Boolean);
+      if(results.length===0)return <div style={{fontSize:11,color:"#4a5a6e",padding:"6px 0"}}>Aucun résultat pour "{searchQ}"</div>;
+      return(
+       <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
+        {results.map(p=>{
+         const isEditing=editP&&editP.id===p.id;
+         const avatar=p.photo_url||p.avatar_url||null;
+         return(
+          <div key={p.id||p.name} style={{...cardStyle,marginBottom:4}}>
+           {!isEditing?(
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
+             {avatar?<img src={avatar} alt={p.name} style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+              :<div style={{width:32,height:32,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
+             <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{p.name}</div>
+              <div style={{fontSize:10,color:"#6B7280"}}>{[p.team,p.role,p.game].filter(Boolean).join(" · ")}</div>
+             </div>
+             <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+            </div>
+           ):(
+            <div style={{padding:"10px 12px"}}>{renderEditForm(p)}</div>
+           )}
+          </div>
+         );
+        })}
+       </div>
+      );
+     })()}
+
+     {/* Game tree (only when no search) */}
+     {!searchQ&&rosterGame&&(()=>{
       const gameH=rosterHierarchy[rosterGame]||{};
       const leagues=Object.keys(gameH).sort();
       const needLeague=rosterGame==="LoL"||rosterGame==="Valorant";
@@ -2462,19 +2547,12 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>Logo équipe</div>
                {editTeam?.team===team&&editTeam?.game===rosterGame?(
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                 <input value={teamLogoUrl} onChange={e=>setTeamLogoUrl(e.target.value)}
-                  placeholder="URL du logo (https://...)" autoFocus
-                  style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
-                 <button onClick={saveTeamLogo} disabled={teamLogoSaving}
-                  style={{padding:"6px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                  {teamLogoSaving?"...":"✓"}
-                 </button>
-                 <button onClick={()=>{setEditTeam(null);setTeamLogoUrl("");}}
-                  style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
+                 <input value={teamLogoUrl} onChange={e=>setTeamLogoUrl(e.target.value)} placeholder="URL du logo (https://...)" autoFocus style={{flex:1,...inputStyle}}/>
+                 <button onClick={saveTeamLogo} disabled={teamLogoSaving} style={{padding:"6px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{teamLogoSaving?"...":"✓"}</button>
+                 <button onClick={()=>{setEditTeam(null);setTeamLogoUrl("");}} style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
                 </div>
                ):(
-                <button onClick={()=>{setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}}
-                 style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+                <button onClick={()=>{setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                  {logoUrl?"✏️ Modifier logo":"+ Ajouter logo"}
                 </button>
                )}
@@ -2493,54 +2571,10 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                     <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{p.name}</div>
                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.role,p.league].filter(Boolean).join(" · ")||"—"}</div>
                    </div>
-                   <button onClick={()=>openEdit(p)}
-                    style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                    Modifier
-                   </button>
+                   <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
                   </div>
                  ):(
-                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                   <div style={{fontSize:11,fontWeight:700,color:accent}}>{p.name}</div>
-                   <div>
-                    <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Photo URL</div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                     {editPPhotoUrl&&<img src={editPPhotoUrl} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
-                     <input value={editPPhotoUrl} onChange={e=>setEditPPhotoUrl(e.target.value)}
-                      placeholder="https://... (photo joueur)"
-                      style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
-                    </div>
-                   </div>
-                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                    {[["Pseudo","name"],["Poste","role"],["Équipe","team"],["Ligue","league"]].map(([label,field])=>(
-                     <div key={field}>
-                      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{label}</div>
-                      <input value={editPForm[field]||""} onChange={e=>setEditPForm(f=>({...f,[field]:e.target.value}))}
-                       style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
-                     </div>
-                    ))}
-                   </div>
-                   <div>
-                    <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Jeu</div>
-                    <div style={{display:"flex",gap:4}}>
-                     {GAMES_R.map(g=>(
-                      <button key={g} onClick={()=>setEditPForm(f=>({...f,game:g}))}
-                       style={{padding:"4px 8px",borderRadius:12,border:"1px solid "+(editPForm.game===g?accent:"#1F2937"),background:editPForm.game===g?"rgba(167,139,250,.12)":"transparent",color:editPForm.game===g?accent:"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                       {g}
-                      </button>
-                     ))}
-                    </div>
-                   </div>
-                   <div style={{display:"flex",gap:6}}>
-                    <button onClick={savePlayer} disabled={editPSaving}
-                     style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                     {editPSaving?"Sauvegarde...":"✓ Sauvegarder"}
-                    </button>
-                    <button onClick={closeEdit}
-                     style={{padding:"7px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>
-                     Annuler
-                    </button>
-                   </div>
-                  </div>
+                  <div style={{padding:"2px 0"}}>{renderEditForm(p)}</div>
                  )}
                 </div>
                );
@@ -2558,7 +2592,81 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
    )}
   </div>
  );
+
+ function renderEditForm(p){
+  const roles=ROLES_BY_GAME[editPForm.game||"CS2"]||ROLES_BY_GAME.CS2;
+  return(
+   <div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{fontSize:11,fontWeight:700,color:accent,marginBottom:2}}>{p.name}</div>
+    {/* Photo */}
+    <div>
+     <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Photo URL</div>
+     <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      {editPPhotoUrl&&<img src={editPPhotoUrl} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
+      <input value={editPPhotoUrl} onChange={e=>setEditPPhotoUrl(e.target.value)} placeholder="https://... (photo joueur)" style={inputStyle}/>
+     </div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+     {/* Pseudo */}
+     <div>
+      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Pseudo</div>
+      <input value={editPForm.name||""} onChange={e=>setEditPForm(f=>({...f,name:e.target.value}))} style={inputStyle}/>
+     </div>
+     {/* Poste - dropdown */}
+     <div>
+      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Poste</div>
+      <select value={editPForm.role||""} onChange={e=>setEditPForm(f=>({...f,role:e.target.value}))}
+       style={{...inputStyle,appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
+       <option value="">— Choisir —</option>
+       {roles.map(r=><option key={r} value={r}>{r}</option>)}
+      </select>
+     </div>
+     {/* Ligue */}
+     <div>
+      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Ligue</div>
+      <input value={editPForm.league||""} onChange={e=>setEditPForm(f=>({...f,league:e.target.value}))} style={inputStyle}/>
+     </div>
+     {/* Équipe - autocomplete */}
+     <div style={{position:"relative"}}>
+      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Équipe</div>
+      <input value={teamSearchQ} onChange={e=>onTeamInput(e.target.value)} placeholder="Rechercher..." style={inputStyle}/>
+      {teamSuggestions.length>0&&(
+       <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#111827",border:"1px solid #374151",borderRadius:6,zIndex:99,maxHeight:140,overflowY:"auto"}}>
+        {teamSuggestions.map(t=>(
+         <button key={t} onClick={()=>{setTeamSearchQ(t);setEditPForm(f=>({...f,team:t}));setTeamSuggestions([]);}}
+          style={{width:"100%",padding:"6px 10px",background:"transparent",border:"none",borderBottom:"1px solid #1F2937",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",cursor:"pointer",textAlign:"left"}}>
+          {t}
+         </button>
+        ))}
+       </div>
+      )}
+     </div>
+    </div>
+    {/* Jeu */}
+    <div>
+     <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Jeu</div>
+     <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+      {GAMES_R.map(g=>(
+       <button key={g} onClick={()=>setEditPForm(f=>({...f,game:g}))}
+        style={{padding:"4px 8px",borderRadius:12,border:"1px solid "+(editPForm.game===g?accent:"#1F2937"),background:editPForm.game===g?"rgba(167,139,250,.12)":"transparent",color:editPForm.game===g?accent:"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",gap:4}}>
+        <GameLogo game={g} size={12}/>{g}
+       </button>
+      ))}
+     </div>
+    </div>
+    {/* Actions */}
+    <div style={{display:"flex",gap:6}}>
+     <button onClick={savePlayer} disabled={editPSaving}
+      style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      {editPSaving?"Sauvegarde...":"✓ Sauvegarder"}
+     </button>
+     <button onClick={closeEdit} style={{padding:"7px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>Annuler</button>
+    </div>
+   </div>
+  );
+ }
 }
+
 
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
