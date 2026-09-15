@@ -10591,13 +10591,13 @@ export default function App(){
  {/* ── Edit (Roster Manager) ── */}
  {(()=>{
   const GAMES_ROSTER=["CS2","LoL","Dota2","Valorant"];
-  const [rosterOpen,setRosterOpen]=React.useState({});
-  const [rosterGame,setRosterGame]=React.useState(null);
-  const [rosterLeague,setRosterLeague]=React.useState(null);
-  const [rosterTeam,setRosterTeam]=React.useState(null);
+  const [rosterOpen,setRosterOpen]=useState({});
+  const [rosterGame,setRosterGame]=useState(null);
+  const [rosterLeague,setRosterLeague]=useState(null);
+  const [rosterTeam,setRosterTeam]=useState(null);
 
   // Build hierarchy from players
-  const hierarchy=React.useMemo(()=>{
+  const hierarchy=useMemo(()=>{
    const h={};
    GAMES_ROSTER.forEach(g=>{h[g]={};});
    Object.values(players).forEach(p=>{
@@ -10616,10 +10616,10 @@ export default function App(){
   const cardStyle={background:"rgba(10,12,28,.99)",border:"1px solid rgba(255,255,255,.07)",borderRadius:13,overflow:"hidden",marginBottom:8};
 
   // Player edit modal state
-  const [editP,setEditP]=React.useState(null);
-  const [editPForm,setEditPForm]=React.useState({});
-  const [editPSaving,setEditPSaving]=React.useState(false);
-  const [editPPhotoUrl,setEditPPhotoUrl]=React.useState("");
+  const [editP,setEditP]=useState(null);
+  const [editPForm,setEditPForm]=useState({});
+  const [editPSaving,setEditPSaving]=useState(false);
+  const [editPPhotoUrl,setEditPPhotoUrl]=useState("");
 
   const openEdit=p=>{setEditP(p);setEditPForm({name:p.name,game:p.game||"LoL",league:p.league||"",role:p.role||"",team:p.team||""});setEditPPhotoUrl(p.photo_url||p.avatar_url||"");};
   const closeEdit=()=>{setEditP(null);setEditPForm({});setEditPPhotoUrl("");};
@@ -10646,9 +10646,9 @@ export default function App(){
   };
 
   // Team logo editor
-  const [editTeam,setEditTeam]=React.useState(null);
-  const [teamLogoUrl,setTeamLogoUrl]=React.useState("");
-  const [teamLogoSaving,setTeamLogoSaving]=React.useState(false);
+  const [editTeam,setEditTeam]=useState(null);
+  const [teamLogoUrl,setTeamLogoUrl]=useState("");
+  const [teamLogoSaving,setTeamLogoSaving]=useState(false);
 
   const saveTeamLogo=async()=>{
    if(!editTeam||!teamLogoUrl)return;
