@@ -404,7 +404,6 @@ async function supaUpsertPlayer(data) {
  avatar_url: data.avatar_url || null,
  avatar_file: data.avatar_file || null,
  };
- if (data.team_logo_url !== undefined) payload.team_logo_url = data.team_logo_url || null;
  if (data.id) payload.id = data.id;
  const res = await fetch(SUPA_URL + "/rest/v1/players", {
  method: "POST",
@@ -424,7 +423,6 @@ async function supaUpsertPlayer(data) {
 async function supaUpdateTeamLogo(allLogos) {
  // Store all team logos as a special row in the bets table
  const row = {
-  id: "__team_logos__",
   player: "__TEAM_LOGOS__",
   description: JSON.stringify(allLogos),
   odds: 1, stake: 0, bookmaker: "", status: "pending",
@@ -433,13 +431,14 @@ async function supaUpdateTeamLogo(allLogos) {
   tournament: "", ppMapType: null, ppLine: null, ppEdge: null,
   updatedAt: Date.now(), archived: false, splits: null,
  };
+ // Delete old team_logos row then insert new
+ await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__TEAM_LOGOS__",{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});
  await fetch(SUPA_URL + "/rest/v1/bets", {
   method: "POST",
   headers: {
    "apikey": SUPA_KEY,
    "Authorization": "Bearer " + SUPA_KEY,
    "Content-Type": "application/json",
-   "Prefer": "resolution=merge-duplicates",
   },
   body: JSON.stringify(row),
  });
@@ -3830,8 +3829,13 @@ export default function App(){
  // Serialize testFilter (Sets → Arrays for JSON)
  const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
  if(SUPA_URL&&SUPA_KEY){
- const settingsRow={id:"__settings_tourneys__",player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
- fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsRow)}).catch(function(){});
+ const settingsRow={player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
+ (async()=>{
+   // Delete old settings row first (player is not a unique key in Supabase)
+   await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__SETTINGS__",{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});
+   // Insert new
+   fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY},body:JSON.stringify(settingsRow)}).catch(()=>{});
+  })();
  }
  }catch(e){}
  },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,loaded]);
@@ -3906,7 +3910,7 @@ export default function App(){
  if(Date.now()-lastPushRef.current<15000){
  // Still blocked for bets, but sync settings (tournois actifs)
  try{
-  const sr=await supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description");
+  const sr=await supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1");
   if(sr&&sr[0]&&sr[0].description){
    const s=JSON.parse(sr[0].description||"{}");
    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
@@ -4131,7 +4135,7 @@ export default function App(){
  if(!loaded)return;
  // Always fetch settings on startup regardless of 15s block
  if(SUPA_URL&&SUPA_KEY){
-  supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description")
+  supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
   .then(sr=>{
    if(!sr||!sr[0])return;
    try{
@@ -4186,7 +4190,7 @@ export default function App(){
  if(!loaded)return;
  const syncSettings=()=>{
   if(document.visibilityState!=="visible"||!SUPA_URL||!SUPA_KEY)return;
-  supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description")
+  supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
   .then(sr=>{
    if(!sr||!sr[0]||!sr[0].description)return;
    try{
@@ -10519,7 +10523,7 @@ export default function App(){
  {/* Sync cloud */}
  {SUPA_URL&&SUPA_KEY&&(
   <button onClick={()=>{
-   supaFetch("/rest/v1/bets?id=eq.__settings_tourneys__&select=description")
+   supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
    .then(sr=>{
     if(!sr||!sr[0])return showToast("Aucun settings cloud trouvé","#EF4444");
     const s=JSON.parse(sr[0].description||"{}");
