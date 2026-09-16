@@ -6946,9 +6946,7 @@ export default function App(){
  {/* Zone photo (38% de la carte) */}
  <div style={{width:"38%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden"}}>
  {/* Logo équipe en filigrane */}
- {form.autoInfo.team_logo_url&&(
- <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"70%",height:"70%",objectFit:"contain",opacity:.08,zIndex:0,pointerEvents:"none"}}/>
- )}
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")];return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"70%",height:"70%",objectFit:"contain",opacity:.08,zIndex:0,pointerEvents:"none"}}/>:null;})()}
  {/* Glow violet derrière la photo */}
  <div style={{position:"absolute",bottom:"-10%",left:"50%",transform:"translateX(-50%)",width:"80%",height:"90%",background:"radial-gradient(ellipse at 50% 80%,rgba(124,58,237,.35),transparent 70%)",pointerEvents:"none",zIndex:0}}/>
  {(()=>{
@@ -6988,12 +6986,8 @@ export default function App(){
  {form.autoInfo.team&&(
  <>
  <span style={{color:"#4a5a6e",fontSize:12,fontWeight:300}}>·</span>
- <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>
- {form.autoInfo.team_logo_url&&(
- <img src={form.autoInfo.team_logo_url} alt="" style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",marginRight:4,opacity:.9}} onError={e=>e.target.style.display='none'}/>
- )}
- {form.autoInfo.team}
- </span>
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")];return tl?<img src={tl} alt={form.autoInfo.team} style={{width:16,height:16,objectFit:"contain",verticalAlign:"middle",marginRight:3,borderRadius:3}} onError={e=>e.target.style.display='none'}/>:null;})()}
+ <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{form.autoInfo.team}</span>
  </>
  )}
  {form.autoInfo.role&&(
