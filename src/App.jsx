@@ -419,27 +419,28 @@ async function supaUpsertPlayer(data) {
  return Array.isArray(result) ? result[0] : result;
 }
 
-async function supaUpdateTeamLogo(game, team, logoUrl) {
- // Update team_logo_url for all players of this team in Supabase
- // Try players_full first, then players table
- const headers = {
-  "apikey": SUPA_KEY,
-  "Authorization": "Bearer " + SUPA_KEY,
-  "Content-Type": "application/json",
-  "Prefer": "return=representation",
+async function supaUpdateTeamLogo(allLogos) {
+ // Store all team logos as a special row in the bets table
+ const row = {
+  id: "__team_logos__",
+  player: "__TEAM_LOGOS__",
+  description: JSON.stringify(allLogos),
+  odds: 1, stake: 0, bookmaker: "", status: "pending",
+  game: "", league: "", role: "", team: "", datetime: "",
+  isHeadshot: false, isLive: false, mapTag: "", profit: 0,
+  tournament: "", ppMapType: null, ppLine: null, ppEdge: null,
+  updatedAt: Date.now(), archived: false, splits: null,
  };
- const body = JSON.stringify({team_logo_url: logoUrl || null});
- // Try players_full
- const r1 = await fetch(
-  SUPA_URL + "/rest/v1/players_full?game=eq." + encodeURIComponent(game) + "&team=eq." + encodeURIComponent(team),
-  {method: "PATCH", headers, body}
- ).catch(()=>null);
- if (r1 && r1.ok) return;
- // Fallback: players table (if column exists)
- await fetch(
-  SUPA_URL + "/rest/v1/players?game=eq." + encodeURIComponent(game) + "&team=eq." + encodeURIComponent(team),
-  {method: "PATCH", headers, body}
- ).catch(()=>null);
+ await fetch(SUPA_URL + "/rest/v1/bets", {
+  method: "POST",
+  headers: {
+   "apikey": SUPA_KEY,
+   "Authorization": "Bearer " + SUPA_KEY,
+   "Content-Type": "application/json",
+   "Prefer": "resolution=merge-duplicates",
+  },
+  body: JSON.stringify(row),
+ });
 }
 
 
@@ -2365,6 +2366,9 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
  };
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
+ const [sortMode,setSortMode]=useState(""); // "asc" | "desc" | ""
+ const [filterNoPhoto,setFilterNoPhoto]=useState(false);
+ const [filterNoLogo,setFilterNoLogo]=useState(false);
  const [teamSearchQ,setTeamSearchQ]=useState("");
  const [teamSuggestions,setTeamSuggestions]=useState([]);
 
@@ -2410,7 +2414,9 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
     return updated;
    });
    // 2. Push to Supabase (updates all players of this team)
-   await supaUpdateTeamLogo(editTeam.game, editTeam.team, url);
+   // Pass full updated logos map to Supabase
+   const updatedLogos = {...teamLogos, [key]: url};
+   await supaUpdateTeamLogo(updatedLogos);
    // 3. Update local players state so it reflects immediately
    setPlayers(prev=>{
     const n={...prev};
@@ -2485,6 +2491,22 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       })}
      </div>
 
+     {/* Filter bar */}
+     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+      <button onClick={()=>setSortMode(m=>m==="asc"?"desc":m==="desc"?"asc":"asc")}
+       style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(sortMode?"#60A5FA":"#1F2937"),background:sortMode?"rgba(96,165,250,.1)":"transparent",color:sortMode?"#60A5FA":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+       {sortMode==="asc"?"↑ Joueurs":"↓ Joueurs"}
+      </button>
+      <button onClick={()=>setFilterNoPhoto(f=>!f)}
+       style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(filterNoPhoto?"#F59E0B":"#1F2937"),background:filterNoPhoto?"rgba(245,158,11,.1)":"transparent",color:filterNoPhoto?"#F59E0B":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+       📷 Sans photo
+      </button>
+      <button onClick={()=>setFilterNoLogo(f=>!f)}
+       style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(filterNoLogo?"#A78BFA":"#1F2937"),background:filterNoLogo?"rgba(167,139,250,.1)":"transparent",color:filterNoLogo?"#A78BFA":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+       🛡️ Sans logo club
+      </button>
+     </div>
+
      {/* Search bar */}
      <div style={{position:"relative",marginBottom:10}}>
       <input
@@ -2533,7 +2555,7 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       const leagues=Object.keys(gameH).sort();
       const needLeague=rosterGame==="LoL"||rosterGame==="Valorant";
       const activeLeagues=needLeague?(rosterLeague?[rosterLeague]:leagues):leagues;
-      const teams=[];
+      let teams=[];
       activeLeagues.forEach(lg=>{
        Object.entries(gameH[lg]||{}).forEach(([t,ps])=>teams.push({league:lg,team:t,players:ps}));
       });
@@ -3607,12 +3629,7 @@ export default function App(){
  avatar_file: p.avatar_file || null,
  };
  });
- // Populate teamLogos from Supabase data (authoritative source)
- const logoMap={};
- rows.forEach(p=>{if(p.team_logo_url&&p.team&&p.game){logoMap[p.team+"__"+p.game]=p.team_logo_url;}});
- if(Object.keys(logoMap).length>0){
-  setTeamLogos(prev=>{const merged={...prev,...logoMap};localStorage.setItem("v7_team_logos",JSON.stringify(merged));return merged;});
- }
+
  // Migrate roles to short form
  var RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle","Support":"Support","Sup":"Support","Supp":"Support"};
  Object.keys(obj).forEach(function(k){var r=obj[k].role;if(r&&RMIG[r])obj[k]=Object.assign({},obj[k],{role:RMIG[r]});});
@@ -3822,6 +3839,20 @@ export default function App(){
  });
  // Restore tournament settings if present in Supabase data
  const settingsRow=remote.find(b=>b.player==="__SETTINGS__");
+ // Load team logos
+ const teamLogosRow=remote.find(b=>b.player==="__TEAM_LOGOS__");
+ if(teamLogosRow&&teamLogosRow.description){
+  try{
+   const logos=JSON.parse(teamLogosRow.description||"{}");
+   if(Object.keys(logos).length>0){
+    setTeamLogos(prev=>{
+     const merged={...prev,...logos};
+     localStorage.setItem("v7_team_logos",JSON.stringify(merged));
+     return merged;
+    });
+   }
+  }catch(e){}
+ }
  if(settingsRow){
  try{
  const s=JSON.parse(settingsRow.description||"{}");
@@ -3926,8 +3957,9 @@ export default function App(){
  if(!o)return b;
  return{...b,...(o.datetime?{datetime:o.datetime}:{}),...(o.settledAt?{settledAt:o.settledAt}:{}),...(o.bookmaker?{bookmaker:o.bookmaker}:{})};
  });
- setBets(finalMerged);
- localStorage.setItem("v7_bets",JSON.stringify(finalMerged));
+ const realBets=finalMerged.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__");
+ setBets(realBets);
+ localStorage.setItem("v7_bets",JSON.stringify(realBets));
  // Push les bets locaux plus récents vers Supabase pour les autres appareils
  const toSyncBack=merged.filter(b=>{
  const loc=localMap[String(b.id)];
@@ -10203,7 +10235,6 @@ export default function App(){
  })()}
  {view==="players"&&(
  <div className="view-enter">
- {/* Header */}
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
  <div>
  <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:-0.3}}>Suivi</div>
@@ -10481,452 +10512,24 @@ export default function App(){
  );
  })()}
 
- <PlayerSearchPanel allPlayers={allPlayers} custom={players} setPlayers={setPlayers} setEditingPlayer={setEditingPlayer} blacklist={blacklist} toggleBlacklist={toggleBlacklist} onSaveBulk={function(fromRole,toRole,updated){Object.entries(updated).forEach(function(e){var k=e[0],p=e[1];if(p.role===toRole&&allPlayers[k]&&allPlayers[k].role===fromRole){supaUpsertPlayer({name:k,...p}).catch(function(){});}});}}/>
- <div style={{fontSize:11,color:"#6B7280",textAlign:"center",padding:12}}>
- Recherche un joueur pour l'éditer (équipe, rôle, ligue)
- </div>
+ {/* ── Edit (Roster Manager) ── */}
+ <RosterEditor
+  players={players} setPlayers={setPlayers} allPlayers={allPlayers}
+  rosterOpen={rosterOpen} setRosterOpen={setRosterOpen}
+  rosterGame={rosterGame} setRosterGame={setRosterGame}
+  rosterLeague={rosterLeague} setRosterLeague={setRosterLeague}
+  rosterTeam={rosterTeam} setRosterTeam={setRosterTeam}
+  editP={editP} setEditP={setEditP}
+  editPForm={editPForm} setEditPForm={setEditPForm}
+  editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
+  editPSaving={editPSaving} setEditPSaving={setEditPSaving}
+  editTeam={editTeam} setEditTeam={setEditTeam}
+  teamLogoUrl={teamLogoUrl} setTeamLogoUrl={setTeamLogoUrl}
+  teamLogoSaving={teamLogoSaving} setTeamLogoSaving={setTeamLogoSaving}
+  rosterHierarchy={rosterHierarchy} showToast={showToast}
+ teamLogos={teamLogos} setTeamLogos={setTeamLogos}
+ />
 
- {/* GROS CARRÉ ANALYSE */}
- <button onClick={()=>setView("analyse")}
- style={{width:"100%",marginBottom:10,background:"linear-gradient(135deg,rgba(59,130,246,0.15),rgba(124,58,237,0.1))",border:"1.5px solid rgba(59,130,246,0.3)",borderRadius:18,padding:"22px 20px",cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:18,textAlign:"left",transition:"all .15s"}}>
- <div style={{width:52,height:52,borderRadius:14,background:"linear-gradient(135deg,#3B82F6,#7C3AED)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 16px rgba(59,130,246,0.4)"}}>
- <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
- <circle cx="11" cy="11" r="8"/>
- <line x1="21" y1="21" x2="16.65" y2="16.65"/>
- <line x1="11" y1="8" x2="11" y2="14"/>
- <line x1="8" y1="11" x2="14" y2="11"/>
- </svg>
- </div>
- <div>
- <div style={{fontSize:17,fontWeight:800,color:"#E5E7EB",marginBottom:3,letterSpacing:-0.3}}>Analyse</div>
- <div style={{fontSize:12,color:"#9CA3AF",fontWeight:500}}>Comparaisons · Tendances · Matchups</div>
- </div>
- <svg style={{marginLeft:"auto",flexShrink:0}} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
- </button>
-
- {/* JOUEURS MASQUÉS */}
- {blacklist.size>0&&(
- <div style={{marginBottom:16}}>
- <div style={{fontSize:11,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,fontWeight:600,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
- <span> Joueurs masqués ({blacklist.size})</span>
- <button onClick={()=>setBlacklist(new Set())&&localStorage.setItem("v7_blacklist","[]")}
- style={{fontSize:10,color:"#EF4444",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
- Tout restaurer
- </button>
- </div>
- <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden"}}>
- {[...blacklist].map(key=>{
- const p=players[key]||{game:"?",team:"?",role:"?"};
- return(
- <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #1F2937"}}>
- <div style={{display:"flex",alignItems:"center",gap:9}}>
- <GameLogo game={p.game} size={16}/>
- <div>
- <div style={{fontWeight:700,fontSize:13,color:"#6B7280",textTransform:"capitalize"}}>{key}</div>
- <div style={{fontSize:10,color:"#4B5563"}}>{p.team} · {p.role}</div>
- </div>
- </div>
- <button onClick={()=>toggleBlacklist(key)}
- style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:8,padding:"5px 10px",color:"#00E676",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
- Restaurer
- </button>
- </div>
- );
- })}
- </div>
- </div>
- )}
- {(()=>{
- // Palette premium PrizePicks-inspired 
- const PP={
- bg:"#070913",
- card:"#0D1020",
- border:"#1B1E35",
- hover:"#141933",
- text:"#FFFFFF",
- sub:"#A0A8C0",
- muted:"#6E7690",
- yellow:"#FFD84D",
- };
- const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
- const ppFiltered=ppData.filter(d=>{
- if(d.player_combo)return false;
- if(ppActiveLeague!=="all"&&d.league!==ppActiveLeague)return false;
- if(!ppActiveTiers.has(d.odds_tier))return false;
- if(ppSearch){
- const q=ppSearch.toLowerCase();
- if(!d.player_name.toLowerCase().includes(q)&&!(d.player_team||"").toLowerCase().includes(q)&&!d.stat.toLowerCase().includes(q))return false;
- }
- return true;
- });
- // Tier : couleur accent uniquement pour demon/goblin, sinon texte blanc
- const tierAccent=t=>t==="demon"?"#FF6B6B":t==="goblin"?"#4AE68A":null;
- const leagueLabels={LoL:"LoL",CS2:"CS2",VAL:"VAL",Dota2:"Dota2",NBA:"NBA",NFL:"NFL",MLB:"MLB"};
- // Formatage heure de début
- const fmtTime=str=>{
- if(!str)return null;
- const d=new Date(str);
- if(isNaN(d.getTime()))return null;
- return d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"});
- };
- const fmtDate=str=>{
- if(!str)return null;
- const d=new Date(str);
- if(isNaN(d.getTime()))return null;
- const now=new Date();
- const isToday=d.toDateString()===now.toDateString();
- if(isToday)return fmtTime(str);
- return d.toLocaleDateString("fr-CA",{month:"short",day:"numeric"})+" "+fmtTime(str);
- };
- // Stat label : sépare le nombre du texte (ex: "MAPS 1-3 Kills" → "Kills")
- const statLabel=s=>{
- const m=s.match(/([A-Za-z\s()\+\-]+)$/);
- return m?m[1].trim():s;
- };
- return(
- <div style={{marginBottom:8}}>
- {/* Header toggle */}
- <button onClick={()=>setSuiviOpen(s=>({...s,prizepicks:!s.prizepicks}))}
- style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0D1020",border:`1px solid ${suiviOpen.prizepicks?"#2A2E50":PP.border}`,borderRadius:suiviOpen.prizepicks?"13px 13px 0 0":"13px",padding:"13px 16px",cursor:"pointer",transition:"border-color .2s",fontFamily:"'Inter',sans-serif"}}>
- <div style={{display:"flex",alignItems:"center",gap:10}}>
- <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:20,height:20,borderRadius:4,objectFit:"cover",flexShrink:0}}/>
- <span style={{fontSize:13,fontWeight:600,color:PP.text,letterSpacing:-.1}}>PrizePicks</span>
- {ppData.length>0&&(
- <span style={{fontSize:11,fontWeight:500,color:PP.muted}}>{ppFiltered.length} props</span>
- )}
- </div>
- <span style={{color:PP.muted,fontSize:11,transition:"transform .2s",display:"inline-block",transform:suiviOpen.prizepicks?"rotate(180deg)":"none"}}></span>
- </button>
-
- {suiviOpen.prizepicks&&(
- <div style={{background:PP.bg,border:`1px solid ${PP.border}`,borderTop:"none",borderRadius:"0 0 13px 13px",overflow:"hidden",marginBottom:8}}>
-
- {/* État vide */}
- {ppData.length===0?(
- <div style={{padding:"40px 20px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
- <div style={{width:48,height:48,borderRadius:12,background:"#0D1020",border:`1px solid ${PP.border}`,display:"flex",alignItems:"center",justifyContent:"center"}}>
- <img src={_B64_PP_LOGO_B64} alt="" style={{width:28,height:28,objectFit:"cover",borderRadius:4,opacity:.5}}/>
- </div>
- <div>
- <div style={{fontSize:14,fontWeight:600,color:PP.text,marginBottom:4}}>Aucune donnée</div>
- <div style={{fontSize:12,color:PP.muted,lineHeight:1.6}}>Importe ton export JSON depuis Apify</div>
- </div>
- <label style={{marginTop:4,display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:8,color:PP.sub,fontWeight:500,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"border-color .15s"}}>
- <span style={{fontSize:14}}>↑</span> Charger JSON
- <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
- const file=e.target.files[0];if(!file)return;
- const r=new FileReader();
- r.onload=ev=>{try{const d=JSON.parse(ev.target.result);const arr=Array.isArray(d)?d:[d];setPpData(arr);try{localStorage.setItem("v7_pp_data",JSON.stringify(arr));}catch(e){}showToast(" "+arr.length+" props chargées","#4AE68A");}catch(e){showToast("JSON invalide","#EF4444");}};
- r.readAsText(file);
- }}/>
- </label>
- </div>
- ):(
- <>
- {/* Barre supérieure : résumé + recharger + fullscreen */}
- <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:`1px solid ${PP.border}`}}>
- <div style={{display:"flex",gap:20}}>
- {[
- {v:ppFiltered.length,l:"Props"},
- {v:new Set(ppFiltered.map(d=>d.player_id)).size,l:"Joueurs"},
- {v:ppFiltered.filter(d=>d.hot).length,l:"Hot",c:"#FFD84D"},
- ].map(({v,l,c})=>(
- <div key={l} style={{display:"flex",flexDirection:"column",gap:1}}>
- <span style={{fontSize:17,fontWeight:700,color:c||PP.text,letterSpacing:-.5,lineHeight:1}}>{v}</span>
- <span style={{fontSize:10,fontWeight:400,color:PP.muted,letterSpacing:.3}}>{l}</span>
- </div>
- ))}
- </div>
- <div style={{display:"flex",gap:8,alignItems:"center"}}>
- {ppData.length>0&&(
- <button onClick={()=>setPpFullscreen(true)}
- style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:7,color:PP.sub,fontWeight:500,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"border-color .15s"}}>
- <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
- Plein écran
- </button>
- )}
- <label style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:7,color:PP.sub,fontWeight:500,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- ↑ Recharger
- <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
- const file=e.target.files[0];if(!file)return;
- const r=new FileReader();
- r.onload=ev=>{try{const d=JSON.parse(ev.target.result);const arr=Array.isArray(d)?d:[d];setPpData(arr);setPpActiveLeague("all");try{localStorage.setItem("v7_pp_data",JSON.stringify(arr));}catch(e){}showToast(" "+arr.length+" props","#4AE68A");}catch(e){showToast("JSON invalide","#EF4444");}};
- r.readAsText(file);
- }}/>
- </label>
- </div>
- </div>
-
- {/* League tabs */}
- <div style={{display:"flex",overflowX:"auto",scrollbarWidth:"none",borderBottom:`1px solid ${PP.border}`}}>
- {ppLeagues.map(lg=>{
- const active=ppActiveLeague===lg;
- const count=lg==="all"?ppData.length:ppData.filter(d=>d.league===lg).length;
- return(
- <button key={lg} onClick={()=>setPpActiveLeague(lg)}
- style={{flex:"0 0 auto",padding:"11px 16px",background:"transparent",border:"none",borderBottom:`2px solid ${active?"#FFFFFF":"transparent"}`,color:active?PP.text:PP.muted,fontWeight:active?600:400,fontSize:13,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
- {lg==="all"?"Tous":(leagueLabels[lg]||lg)}
- <span style={{fontSize:11,color:active?PP.sub:PP.muted,fontWeight:400}}>{count}</span>
- </button>
- );
- })}
- </div>
-
- {/* Filtres tier + recherche */}
- <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 14px",borderBottom:`1px solid ${PP.border}`,flexWrap:"wrap"}}>
- {["standard","demon","goblin"].map(tier=>{
- const active=ppActiveTiers.has(tier);
- const ac=tierAccent(tier);
- const labels={standard:"Standard",demon:"Demon",goblin:"Goblin"};
- return(
- <button key={tier} onClick={()=>{
- const s=new Set(ppActiveTiers);
- if(s.has(tier))s.delete(tier);else s.add(tier);
- setPpActiveTiers(s);
- }} style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${active?(ac?ac+"55":PP.border+"aa"):PP.border}`,background:active?(ac?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.03)"):"transparent",color:active?(ac||PP.text):PP.muted,fontSize:12,fontWeight:active?500:400,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s",letterSpacing:.1}}>
- {labels[tier]}
- </button>
- );
- })}
- <input value={ppSearch} onChange={e=>setPpSearch(e.target.value)} placeholder="Rechercher un joueur..."
- style={{marginLeft:"auto",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:6,color:PP.text,fontSize:12,fontWeight:400,padding:"6px 11px",outline:"none",width:160,fontFamily:"'Inter',sans-serif"}}/>
- </div>
-
- {/* Grille de cartes */}
- {ppFiltered.length===0?(
- <div style={{padding:"32px",textAlign:"center",color:PP.muted,fontSize:13}}>Aucune prop avec ces filtres</div>
- ):(
- <div style={{padding:"14px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:10,maxHeight:560,overflowY:"auto",scrollbarWidth:"thin",scrollbarColor:`${PP.border} transparent`}}>
- {ppFiltered.map(d=>{
- // Matching joueur DB 
- const ppNames=(d.player_name||"").split(/\s*\+\s*/);
- const matchedPlayer=ppNames.reduce((found,nm)=>{
- if(found)return found;
- const key=nm.toLowerCase().trim();
- return allPlayers[key]||Object.values(allPlayers).find(p=>p.name&&p.name.toLowerCase()===key)||null;
- },null);
- const dbAvatar=matchedPlayer?getAvatarSrc(matchedPlayer):null;
- const initL=(d.player_name||d.player_team||"?")[0].toUpperCase();
- const fallbackSvg=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'><rect fill='%230D1020' width='56' height='56' rx='28'/><text x='28' y='37' text-anchor='middle' fill='%23A0A8C0' font-size='20' font-family='Inter,sans-serif' font-weight='600'>${initL}</text></svg>`;
- const imgSrc=dbAvatar||fallbackSvg;
- // Stat : sépare chiffre et label 
- const statLabelText=statLabel(d.stat);
- // Matchup 
- const matchup=d.description||"";
- // Heure 
- const gameTime=fmtDate(d.game_start||d.start_time);
- // Accent tier 
- const ac=tierAccent(d.odds_tier);
- return(
- <div key={d.projection_id}
- style={{
- background:"linear-gradient(180deg,#0E1124 0%,#0B0D1B 100%)",
- border:`1px solid ${PP.border}`,
- borderRadius:14,
- overflow:"hidden",
- boxShadow:"0 0 0 1px rgba(255,255,255,0.04)",
- display:"flex",
- flexDirection:"column",
- transition:"border-color .18s",
- fontFamily:"'Inter',sans-serif",
- }}>
-
- {/* Zone joueur */}
- <div style={{padding:"18px 16px 0",display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:0}}>
-
- {/* Photo */}
- <div style={{position:"relative",marginBottom:12}}>
- <img src={imgSrc} onError={ev=>{ev.target.src=fallbackSvg;}} alt=""
- style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",background:"#0D1020",border:`1px solid ${PP.border}`,display:"block"}}/>
- {d.is_live&&(
- <span style={{position:"absolute",bottom:0,right:0,width:12,height:12,borderRadius:"50%",background:"#4AE68A",border:"2px solid #0B0D1B"}}/>
- )}
- </div>
-
- {/* Équipe · Rôle */}
- <div style={{fontSize:12,fontWeight:400,color:PP.muted,letterSpacing:.1,marginBottom:4}}>
- {[d.player_team,d.player_position].filter(Boolean).join(" · ")||d.league}
- </div>
-
- {/* Nom du joueur */}
- <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.3,marginBottom:8,maxWidth:"100%",textAlign:"center",wordBreak:"break-word",width:"100%"}}>
- {d.player_name||d.player_team||"—"}
- </div>
-
- {/* Matchup + heure */}
- <div style={{fontSize:13,fontWeight:500,color:PP.muted,lineHeight:1.4,marginBottom:2,minHeight:18}}>
- {matchup&&<span>{matchup}</span>}
- </div>
- {gameTime&&(
- <div style={{fontSize:12,fontWeight:500,color:PP.yellow,marginBottom:0,letterSpacing:.1}}>{gameTime}</div>
- )}
- </div>
-
- {/* Séparateur */}
- <div style={{margin:"14px 0 0",borderTop:`1px solid ${PP.border}`}}/>
-
- {/* Statistique principale */}
- <div style={{padding:"18px 16px 16px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
- {/* Badges discrets */}
- <div style={{display:"flex",gap:4,justifyContent:"center",marginBottom:4,minHeight:16}}>
- {d.hot&&<span style={{fontSize:10,fontWeight:500,color:PP.yellow,letterSpacing:.2}}>HOT</span>}
-
- {d.adjusted_odds&&<span style={{fontSize:10,fontWeight:500,color:PP.muted,letterSpacing:.2}}>ADJ</span>}
- </div>
- {/* Valeur dominante */}
- <div style={{fontSize:36,fontWeight:700,color:ac||PP.text,letterSpacing:-1.5,lineHeight:1}}>
- {d.line}
- </div>
- {/* Label stat discret */}
- <div style={{fontSize:13,fontWeight:400,color:PP.muted,letterSpacing:.1,marginTop:2}}>
- {statLabelText}
- </div>
- </div>
-
-
- </div>
- );
- })}
- </div>
- )}
- </>
- )}
- </div>
- )}
- </div>
- );
- })()}
-
- {/* PRIZEPICKS FULLSCREEN */}
-
- {ppFullscreen&&(()=>{
- const PP={bg:"#070913",card:"#0D1020",border:"#1B1E35",hover:"#141933",text:"#FFFFFF",sub:"#A0A8C0",muted:"#6E7690",yellow:"#FFD84D"};
- const tierAccent=t=>t==="demon"?"#FF6B6B":t==="goblin"?"#4AE68A":null;
- const leagueLabels={LoL:"LoL",CS2:"CS2",VAL:"VAL",Dota2:"Dota2",NBA:"NBA",NFL:"NFL",MLB:"MLB"};
- const fmtTime=str=>{if(!str)return null;const d=new Date(str);if(isNaN(d.getTime()))return null;return d.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"});};
- const fmtDate=str=>{if(!str)return null;const d=new Date(str);if(isNaN(d.getTime()))return null;const now=new Date();const isToday=d.toDateString()===now.toDateString();if(isToday)return fmtTime(str);return d.toLocaleDateString("fr-CA",{month:"short",day:"numeric"})+" "+fmtTime(str);};
- const statLabel=s=>{const m=s.match(/([A-Za-z\s()+-]+)$/);return m?m[1].trim():s;};
- const ppLeagues=["all",...new Set(ppData.map(d=>d.league))];
- const ppFiltered=ppData.filter(d=>{
- if(d.player_combo)return false;
- if(ppActiveLeague!=="all"&&d.league!==ppActiveLeague)return false;
- if(!ppActiveTiers.has(d.odds_tier))return false;
- if(ppSearch){const q=ppSearch.toLowerCase();if(!d.player_name.toLowerCase().includes(q)&&!(d.player_team||"").toLowerCase().includes(q)&&!d.stat.toLowerCase().includes(q))return false;}
- return true;
- });
- return(
- <div style={{position:"fixed",inset:0,zIndex:9999,background:PP.bg,display:"flex",flexDirection:"column",fontFamily:"'Inter',sans-serif"}}>
-
- {/* Header */}
- <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 28px",borderBottom:`1px solid ${PP.border}`,flexShrink:0}}>
- <div style={{display:"flex",alignItems:"center",gap:12}}>
- <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:22,height:22,borderRadius:5,objectFit:"cover"}}/>
- <span style={{fontSize:15,fontWeight:600,color:PP.text,letterSpacing:-.2}}>PrizePicks</span>
- <span style={{fontSize:12,color:PP.muted,fontWeight:400}}>{ppFiltered.length} props</span>
- </div>
- <div style={{display:"flex",gap:28,alignItems:"center"}}>
- {[{v:ppFiltered.length,l:"Props"},{v:new Set(ppFiltered.map(d=>d.player_id)).size,l:"Joueurs"},{v:ppFiltered.filter(d=>d.hot).length,l:"Hot",c:"#FFD84D"}].map(({v,l,c})=>(
- <div key={l} style={{textAlign:"center"}}>
- <div style={{fontSize:16,fontWeight:700,color:c||PP.text,letterSpacing:-.3,lineHeight:1}}>{v}</div>
- <div style={{fontSize:10,color:PP.muted,marginTop:2}}>{l}</div>
- </div>
- ))}
- </div>
- <button onClick={()=>setPpFullscreen(false)}
- style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 16px",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:8,color:PP.sub,fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
- Réduire
- </button>
- </div>
-
- {/* Leagues + filtres */}
- <div style={{flexShrink:0,borderBottom:`1px solid ${PP.border}`}}>
- <div style={{display:"flex",overflowX:"auto",scrollbarWidth:"none",padding:"0 28px"}}>
- {ppLeagues.map(lg=>{
- const active=ppActiveLeague===lg;
- const count=lg==="all"?ppData.filter(d=>!d.player_combo).length:ppData.filter(d=>!d.player_combo&&d.league===lg).length;
- return(
- <button key={lg} onClick={()=>setPpActiveLeague(lg)}
- style={{flex:"0 0 auto",padding:"12px 18px",background:"transparent",border:"none",borderBottom:`2px solid ${active?"#FFFFFF":"transparent"}`,color:active?PP.text:PP.muted,fontWeight:active?600:400,fontSize:13,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
- {lg==="all"?"Tous":(leagueLabels[lg]||lg)}
- <span style={{fontSize:11,color:PP.muted,fontWeight:400}}>{count}</span>
- </button>
- );
- })}
- </div>
- <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 28px"}}>
- {["standard","demon","goblin"].map(tier=>{
- const active=ppActiveTiers.has(tier);
- const ac=tierAccent(tier);
- const labels={standard:"Standard",demon:"Demon",goblin:"Goblin"};
- return(
- <button key={tier} onClick={()=>{const s=new Set(ppActiveTiers);if(s.has(tier))s.delete(tier);else s.add(tier);setPpActiveTiers(s);}}
- style={{padding:"6px 14px",borderRadius:6,border:`1px solid ${active?(ac?ac+"55":PP.border+"aa"):PP.border}`,background:"transparent",color:active?(ac||PP.text):PP.muted,fontSize:12,fontWeight:active?500:400,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
- {labels[tier]}
- </button>
- );
- })}
- <input value={ppSearch} onChange={e=>setPpSearch(e.target.value)} placeholder="Rechercher un joueur..."
- style={{marginLeft:"auto",background:"transparent",border:`1px solid ${PP.border}`,borderRadius:6,color:PP.text,fontSize:12,padding:"7px 13px",outline:"none",width:220,fontFamily:"'Inter',sans-serif"}}/>
- </div>
- </div>
-
- {/* Grille 5 colonnes */}
- <div style={{flex:1,overflowY:"auto",padding:"20px 28px",scrollbarWidth:"thin",scrollbarColor:`${PP.border} transparent`}}>
- {ppFiltered.length===0?(
- <div style={{textAlign:"center",color:PP.muted,fontSize:14,paddingTop:60}}>Aucune prop avec ces filtres</div>
- ):(
- <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14}}>
- {ppFiltered.map(d=>{
- const ppNames=(d.player_name||"").split(/\s*\+\s*/);
- const matchedPlayer=ppNames.reduce((found,nm)=>{
- if(found)return found;
- const key=nm.toLowerCase().trim();
- return allPlayers[key]||Object.values(allPlayers).find(p=>p.name&&p.name.toLowerCase()===key)||null;
- },null);
- const dbAvatar=matchedPlayer?getAvatarSrc(matchedPlayer):null;
- const initL=(d.player_name||d.player_team||"?")[0].toUpperCase();
- const fallbackSvg=`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect fill='%230D1020' width='64' height='64' rx='32'/><text x='32' y='42' text-anchor='middle' fill='%23A0A8C0' font-size='22' font-family='Inter,sans-serif' font-weight='600'>${initL}</text></svg>`;
- const imgSrc=dbAvatar||fallbackSvg;
- const statLabelText=statLabel(d.stat);
- const matchup=d.description||"";
- const gameTime=fmtDate(d.game_start||d.start_time);
- const ac=tierAccent(d.odds_tier);
- return(
- <div key={d.projection_id} style={{background:"linear-gradient(180deg,#0E1124 0%,#0B0D1B 100%)",border:`1px solid ${PP.border}`,borderRadius:14,overflow:"hidden",boxShadow:"0 0 0 1px rgba(255,255,255,0.04)",display:"flex",flexDirection:"column",fontFamily:"'Inter',sans-serif"}}>
- <div style={{padding:"22px 18px 0",display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center"}}>
- <div style={{position:"relative",marginBottom:14}}>
- <img src={imgSrc} onError={ev=>{ev.target.src=fallbackSvg;}} alt="" style={{width:64,height:64,borderRadius:"50%",objectFit:"cover",background:"#0D1020",border:`1px solid ${PP.border}`,display:"block"}}/>
- {d.is_live&&<span style={{position:"absolute",bottom:1,right:1,width:13,height:13,borderRadius:"50%",background:"#4AE68A",border:"2px solid #0B0D1B"}}/>}
- </div>
- <div style={{fontSize:12,fontWeight:400,color:PP.muted,marginBottom:5}}>{[d.player_team,d.player_position].filter(Boolean).join(" · ")||d.league}</div>
- <div style={{fontSize:16,fontWeight:600,color:PP.text,letterSpacing:-.2,lineHeight:1.3,marginBottom:8,width:"100%",textAlign:"center",wordBreak:"break-word"}}>{d.player_name||d.player_team||"—"}</div>
- {matchup&&<div style={{fontSize:13,fontWeight:500,color:PP.muted,marginBottom:2}}>{matchup}</div>}
- {gameTime&&<div style={{fontSize:12,fontWeight:500,color:PP.yellow,letterSpacing:.1}}>{gameTime}</div>}
- </div>
- <div style={{margin:"16px 0 0",borderTop:`1px solid ${PP.border}`}}/>
- <div style={{padding:"20px 18px 18px",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
- <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:4,minHeight:16}}>
- {d.hot&&<span style={{fontSize:10,fontWeight:500,color:PP.yellow}}>HOT</span>}
- {d.adjusted_odds&&<span style={{fontSize:10,fontWeight:500,color:PP.muted}}>ADJ</span>}
- </div>
- <div style={{fontSize:40,fontWeight:700,color:ac||PP.text,letterSpacing:-2,lineHeight:1}}>{d.line}</div>
- <div style={{fontSize:13,fontWeight:400,color:PP.muted,marginTop:3}}>{statLabelText}</div>
- </div>
- </div>
- );
- })}
- </div>
- )}
- </div>
- </div>
- );
- })()}
-
-
-
- {/* BOOKMAKERS */}
- <div style={{marginBottom:20}}>
  <button onClick={()=>setSuiviOpen(s=>({...s,bookmakers:!s.bookmakers}))}
  style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:suiviOpen.bookmakers?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"border-radius .2s"}}>
  <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -10986,26 +10589,8 @@ export default function App(){
  style={{width:"100%",padding:"11px",background:"rgba(124,58,237,0.08)",border:"1px dashed rgba(124,58,237,0.3)",borderRadius:10,color:"#A78BFA",cursor:"pointer",fontSize:13,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
  + Ajouter un bookmaker
  </button>
- </div>
 
 
- {/* ── Edit (Roster Manager) ── */}
- <RosterEditor
-  players={players} setPlayers={setPlayers} allPlayers={allPlayers}
-  rosterOpen={rosterOpen} setRosterOpen={setRosterOpen}
-  rosterGame={rosterGame} setRosterGame={setRosterGame}
-  rosterLeague={rosterLeague} setRosterLeague={setRosterLeague}
-  rosterTeam={rosterTeam} setRosterTeam={setRosterTeam}
-  editP={editP} setEditP={setEditP}
-  editPForm={editPForm} setEditPForm={setEditPForm}
-  editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
-  editPSaving={editPSaving} setEditPSaving={setEditPSaving}
-  editTeam={editTeam} setEditTeam={setEditTeam}
-  teamLogoUrl={teamLogoUrl} setTeamLogoUrl={setTeamLogoUrl}
-  teamLogoSaving={teamLogoSaving} setTeamLogoSaving={setTeamLogoSaving}
-  rosterHierarchy={rosterHierarchy} showToast={showToast}
- teamLogos={teamLogos} setTeamLogos={setTeamLogos}
- />
 
  {/* ── Palier bankroll ── */}
  {(()=>{ const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
@@ -11054,6 +10639,7 @@ export default function App(){
    </div>
   );
  })()}
+ {/* ── Multiplicateurs d unités ── */}
  {/* ── Multiplicateurs d unités ── */}
  <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>{setQuickUnits(su);localStorage.setItem("v7_quick_units",JSON.stringify(su));}}/>
 
