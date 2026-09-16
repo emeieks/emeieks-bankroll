@@ -404,40 +404,55 @@ async function supaFetchPlayers() {
 }
 
 async function supaUpsertPlayer(data) {
+ const name = data.name.toLowerCase().trim();
  const payload = {
- name: data.name.toLowerCase().trim(),
- game: data.game || "LoL",
- league: data.league || "",
- role: data.role || "",
- team: data.team || "",
- photo_url: data.photo_url || data.avatar_url || null,
- avatar_url: data.avatar_url || null,
- avatar_file: data.avatar_file || null,
+  league: data.league || "",
+  role: data.role || "",
+  team: data.team || "",
+  photo_url: data.photo_url || data.avatar_url || null,
+  avatar_url: data.avatar_url || null,
+  avatar_file: data.avatar_file || null,
  };
  const headers = {
- "apikey": SUPA_KEY,
- "Authorization": "Bearer " + SUPA_KEY,
- "Content-Type": "application/json",
+  "apikey": SUPA_KEY,
+  "Authorization": "Bearer " + SUPA_KEY,
+  "Content-Type": "application/json",
  };
- let res;
  if (data.id) {
- // Existing player → PATCH by id (never sends id in body)
- res = await fetch(SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id), {
-  method: "PATCH",
-  headers: {...headers, "Prefer": "return=representation"},
-  body: JSON.stringify(payload),
- });
+  // Existing player → PATCH by id only, include name+game only if changed
+  payload.name = name;
+  payload.game = data.game || "LoL";
+  // First delete any duplicate (same name+game, different id) to avoid constraint
+  await fetch(
+   SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) +
+   "&game=eq." + encodeURIComponent(data.game||"LoL") +
+   "&id=neq." + encodeURIComponent(data.id),
+   {method:"DELETE", headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}
+  ).catch(()=>{});
+  const res = await fetch(
+   SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id),
+   {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
+  );
+  if (!res.ok) throw new Error(await res.text());
+  const result = await res.json();
+  return Array.isArray(result) ? result[0] : result;
  } else {
- // New player → POST without id
- res = await fetch(SUPA_URL + "/rest/v1/players", {
-  method: "POST",
-  headers: {...headers, "Prefer": "return=representation"},
-  body: JSON.stringify(payload),
- });
+  // New player → delete any existing with same name+game first, then insert
+  await fetch(
+   SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) +
+   "&game=eq." + encodeURIComponent(data.game||"LoL"),
+   {method:"DELETE", headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}
+  ).catch(()=>{});
+  payload.name = name;
+  payload.game = data.game || "LoL";
+  const res = await fetch(
+   SUPA_URL + "/rest/v1/players",
+   {method:"POST", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
+  );
+  if (!res.ok) throw new Error(await res.text());
+  const result = await res.json();
+  return Array.isArray(result) ? result[0] : result;
  }
- if (!res.ok) throw new Error(await res.text());
- const result = await res.json();
- return Array.isArray(result) ? result[0] : result;
 }
 
 async function supaUpdateTeamLogo(allLogos) {
