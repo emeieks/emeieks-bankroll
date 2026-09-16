@@ -498,6 +498,35 @@ async function supaUpdateMediaRow(rowId, data) {
  })}).catch(e=>console.warn("supaUpdateMediaRow:",e));
 }
 
+async function supaGetMedia(key) {
+ const res = await fetch(SUPA_URL+"/rest/v1/media_store?key=eq."+encodeURIComponent(key)+"&select=value", {
+  headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+ }).catch(()=>null);
+ if(!res||!res.ok)return null;
+ const rows = await res.json();
+ return rows&&rows[0]?rows[0].value:null;
+}
+
+async function supaSetMedia(key, value) {
+ const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"};
+ await fetch(SUPA_URL+"/rest/v1/media_store", {
+  method:"POST", headers:h,
+  body:JSON.stringify({key, value:JSON.stringify(value), updated_at:Date.now()})
+ }).catch(e=>console.warn("supaSetMedia:",e));
+}
+
+async function supaGetAllMedia() {
+ const res = await fetch(SUPA_URL+"/rest/v1/media_store?select=key,value", {
+  headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
+ }).catch(()=>null);
+ if(!res||!res.ok)return {};
+ const rows = await res.json();
+ const out = {};
+ (rows||[]).forEach(r=>{try{out[r.key]=JSON.parse(r.value);}catch(e){}});
+ return out;
+}
+
+
 async function supaUpdateTeamLogo(allLogos) {
  const row = {
   player: "__TEAM_LOGOS__",
@@ -4082,6 +4111,18 @@ export default function App(){
  }catch(e){}
  },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,loaded]);
 
+ // Sync bkPhotos to Supabase media_store
+ useEffect(()=>{
+  if(!loaded||!SUPA_URL)return;
+  supaSetMedia("bkPhotos",bkPhotos).catch(()=>{});
+ },[bkPhotos,loaded]);
+
+ // Sync mediaStore to Supabase media_store
+ useEffect(()=>{
+  if(!loaded||!SUPA_URL)return;
+  supaSetMedia("mediaStore",mediaStore).catch(()=>{});
+ },[mediaStore,loaded]);
+
  // Save: localStorage (debounced) 
  useEffect(()=>{
  if(!loaded)return;
@@ -4381,6 +4422,22 @@ export default function App(){
  },[showToast]);
 
  useEffect(()=>{applyMediaStore(mediaStore);},[mediaStore]);
+
+ // Load media from Supabase on startup
+ useEffect(()=>{
+  if(!loaded)return;
+  supaGetAllMedia().then(all=>{
+   if(all.bkPhotos&&Object.keys(all.bkPhotos).length>0){
+    setBkPhotos(all.bkPhotos);
+    localStorage.setItem("v7_bkphotos",JSON.stringify(all.bkPhotos));
+   }
+   if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
+    setMediaStore(all.mediaStore);
+    localStorage.setItem("v7_media_store",JSON.stringify(all.mediaStore));
+    applyMediaStore(all.mediaStore);
+   }
+  }).catch(()=>{});
+ },[loaded]);
 
  // Pull au chargement
  useEffect(()=>{
