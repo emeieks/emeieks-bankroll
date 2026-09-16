@@ -382,99 +382,110 @@ function getAvatarSrc(player) {
  return null; // → afficher les initiales
 }
 
-async function supaFetchPlayers() {
- const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY };
- const limit = 1000;
- async function fetchAll(endpoint, fields) {
- let all = []; let offset = 0;
- while (true) {
- const res = await fetch(SUPA_URL+"/rest/v1/"+endpoint+"?select="+fields+"&order=name.asc&limit="+limit+"&offset="+offset,{headers});
- if (!res.ok) return null;
- const batch = await res.json();
- if (!batch || batch.length === 0) break;
- all = [...all, ...batch];
- if (batch.length < limit) break;
- offset += limit;
- }
- return all;
- }
- const full = await fetchAll("players_full","id,name,game,league,role,team,photo_url,team_logo_url,team_id,avatar_url,avatar_file");
- if (full !== null) return full;
- return await fetchAll("players","id,name,game,league,role,team,photo_url,avatar_url,avatar_file");
-}
+// ── Player Supabase helpers ──────────────────────────────────────
 
-async function supaUpsertPlayer(data) {
- const name = data.name.toLowerCase().trim();
- const game = data.game || "LoL";
- const payload = {
-  name,
-  game,
-  league: data.league || "",
-  role: data.role || "",
-  team: data.team || "",
-  photo_url: data.photo_url || data.avatar_url || null,
-  avatar_url: data.avatar_url || null,
-  avatar_file: data.avatar_file || null,
- };
+async function _playerFetch(path, opts={}) {
  const headers = {
   "apikey": SUPA_KEY,
   "Authorization": "Bearer " + SUPA_KEY,
   "Content-Type": "application/json",
+  ...(opts.headers||{}),
  };
+ const res = await fetch(SUPA_URL + "/rest/v1/" + path, {...opts, headers});
+ if (!res.ok) {
+  let err;
+  try { err = await res.json(); } catch(e) { err = {message: await res.text()}; }
+  throw new Error(err.message || JSON.stringify(err));
+ }
+ const text = await res.text();
+ return text ? JSON.parse(text) : null;
+}
+
+async function supaFetchPlayers() {
+ const fields = "id,name,game,league,role,team,photo_url,avatar_url,avatar_file";
+ const limit = 1000;
+ let all = []; let offset = 0;
+ while (true) {
+  const batch = await _playerFetch(
+   `players?select=${fields}&order=name.asc&limit=${limit}&offset=${offset}`
+  ).catch(() => null);
+  if (!batch || batch.length === 0) break;
+  all = [...all, ...batch];
+  if (batch.length < limit) break;
+  offset += limit;
+ }
+ return all.length > 0 ? all : null;
+}
+
+async function supaUpsertPlayer(data) {
+ const name = (data.name || "").toLowerCase().trim();
+ const game = data.game || "LoL";
+ if (!name) throw new Error("Nom du joueur requis");
+
+ const payload = {
+  name, game,
+  league: data.league || "",
+  role:   data.role   || "",
+  team:   data.team   || "",
+  photo_url:   data.photo_url  || data.avatar_url || null,
+  avatar_url:  data.avatar_url || null,
+  avatar_file: data.avatar_file || null,
+ };
+
  if (data.id) {
-  // Existing player → PATCH by id, never deletes anything
-  const res = await fetch(
-   SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id),
-   {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
-  );
-  if (!res.ok) {
-   const err = await res.json().catch(()=>({}));
-   if(err.code==="23505"){
-    // Delete the conflicting duplicate (different id, same name+game), then retry
+  // Update existing row by id — PATCH never sends id in body
+  try {
+   const rows = await _playerFetch(
+    `players?id=eq.${encodeURIComponent(data.id)}`,
+    { method: "PATCH", headers: { "Prefer": "return=representation" }, body: JSON.stringify(payload) }
+   );
+   return Array.isArray(rows) ? rows[0] : rows;
+  } catch(e) {
+   if (e.message.includes("23505")) {
+    // Duplicate (name,game) with different id → delete the duplicate, then retry
     await fetch(
-     SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) + "&game=eq." + encodeURIComponent(game) + "&id=neq." + encodeURIComponent(data.id),
-     {method:"DELETE", headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}
-    ).catch(()=>{});
-    // Retry the PATCH
-    const res3 = await fetch(
-     SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id),
-     {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
+     SUPA_URL + `/rest/v1/players?name=eq.${encodeURIComponent(name)}&game=eq.${encodeURIComponent(game)}&id=neq.${encodeURIComponent(data.id)}`,
+     { method: "DELETE", headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY } }
+    ).catch(() => {});
+    const rows = await _playerFetch(
+     `players?id=eq.${encodeURIComponent(data.id)}`,
+     { method: "PATCH", headers: { "Prefer": "return=representation" }, body: JSON.stringify(payload) }
     );
-    if(!res3.ok) throw new Error(await res3.text());
-    const r3 = await res3.json();
-    return Array.isArray(r3)?r3[0]:r3;
+    return Array.isArray(rows) ? rows[0] : rows;
    }
-   throw new Error(JSON.stringify(err));
+   throw e;
   }
-  const result = await res.json();
-  return Array.isArray(result) ? result[0] : result;
  } else {
-  // New player → INSERT only, never deletes
-  const res = await fetch(
-   SUPA_URL + "/rest/v1/players",
-   {method:"POST", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
-  );
-  if (!res.ok) {
-   const err = await res.json().catch(()=>({}));
-   // If duplicate, update existing instead
-   if(err.code==="23505"){
-    const res2 = await fetch(
-     SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) + "&game=eq." + encodeURIComponent(game),
-     {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
+  // New player — POST without id
+  try {
+   const rows = await _playerFetch(
+    "players",
+    { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify(payload) }
+   );
+   return Array.isArray(rows) ? rows[0] : rows;
+  } catch(e) {
+   if (e.message.includes("23505")) {
+    // Already exists — update it instead
+    const rows = await _playerFetch(
+     `players?name=eq.${encodeURIComponent(name)}&game=eq.${encodeURIComponent(game)}`,
+     { method: "PATCH", headers: { "Prefer": "return=representation" }, body: JSON.stringify(payload) }
     );
-    if(!res2.ok) throw new Error(await res2.text());
-    const r2 = await res2.json();
-    return Array.isArray(r2)?r2[0]:r2;
+    return Array.isArray(rows) ? rows[0] : rows;
    }
-   throw new Error(JSON.stringify(err));
+   throw e;
   }
-  const result = await res.json();
-  return Array.isArray(result) ? result[0] : result;
  }
 }
 
+async function supaDeletePlayer(id) {
+ if (!id) return;
+ await _playerFetch(
+  `players?id=eq.${encodeURIComponent(id)}`,
+  { method: "DELETE" }
+ ).catch(e => { console.warn("supaDeletePlayer failed:", e.message); });
+}
+
 async function supaUpdateTeamLogo(allLogos) {
- // Store all team logos as a special row in the bets table
  const row = {
   player: "__TEAM_LOGOS__",
   description: JSON.stringify(allLogos),
@@ -484,26 +495,13 @@ async function supaUpdateTeamLogo(allLogos) {
   tournament: "", ppMapType: null, ppLine: null, ppEdge: null,
   updatedAt: Date.now(), archived: false, splits: null,
  };
- // Delete old team_logos row then insert new
- await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__TEAM_LOGOS__",{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});
- await fetch(SUPA_URL + "/rest/v1/bets", {
-  method: "POST",
-  headers: {
-   "apikey": SUPA_KEY,
-   "Authorization": "Bearer " + SUPA_KEY,
-   "Content-Type": "application/json",
-  },
-  body: JSON.stringify(row),
- });
+ const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
+ await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__TEAM_LOGOS__",{method:"DELETE",headers:h}).catch(()=>{});
+ await fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:h,body:JSON.stringify(row)}).catch(e=>console.warn("supaUpdateTeamLogo:",e));
 }
 
 
-async function supaDeletePlayer(id) {
- await fetch(SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(id), {
- method: "DELETE",
- headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY },
- });
-}
+
 
 async function supaUploadAvatar(file, playerName) {
  // Upload vers Supabase Storage bucket "avatars"
@@ -2439,16 +2437,16 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
   if(!window.confirm("Supprimer "+p.name+" ?"))return;
   try{
    if(p.id)await supaDeletePlayer(p.id);
-   setPlayers(prev=>{const n={...prev};delete n[p.name.toLowerCase().trim()];return n;});
+   setPlayers(prev=>{const n={...prev};delete n[(p.name||"").toLowerCase().trim()];return n;});
    showToast(p.name+" supprimé","#EF4444");
-   closeEdit();
-  }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
+   if(editP&&editP.id===p.id)closeEdit();
+  }catch(e){showToast("Erreur suppression: "+e.message,"#EF4444");}
  };
 
  const deleteTeam=async(team,game,tPlayers)=>{
   if(!window.confirm("Supprimer le club "+team+" et ses "+tPlayers.length+" joueurs ?"))return;
   try{
-   await Promise.all(tPlayers.filter(p=>p.id).map(p=>supaDeletePlayer(p.id)));
+   for(const p of tPlayers){if(p.id)await supaDeletePlayer(p.id);}
    setPlayers(prev=>{
     const n={...prev};
     tPlayers.forEach(p=>delete n[p.name.toLowerCase().trim()]);
