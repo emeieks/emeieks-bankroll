@@ -4062,7 +4062,7 @@ export default function App(){
  // Serialize testFilter (Sets → Arrays for JSON)
  const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
  if(SUPA_URL&&SUPA_KEY){
- const settingsRow={player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
+ const settingsRow={player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter,bkPhotos,teamLogos,mediaStore}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
  (async()=>{
    // Delete old settings row first (player is not a unique key in Supabase)
    await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__SETTINGS__",{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});
@@ -4071,7 +4071,7 @@ export default function App(){
   })();
  }
  }catch(e){}
- },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,loaded]);
+ },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,loaded]);
 
  // Save: localStorage (debounced) 
  useEffect(()=>{
@@ -4272,6 +4272,16 @@ export default function App(){
    return updated;
   });
  }
+ // Restore media data (bkPhotos, teamLogos, mediaStore)
+ if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
+  setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});
+ }
+ if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
+  setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+ }
+ if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
+  setMediaStore(prev=>{const m={...prev,...s.mediaStore};localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});
+ }
  // Restore MIB settings
  if(s.mibActive!==undefined){setMibActive(!!s.mibActive);}
  if(s.mibDate){setMibDate(s.mibDate);}
@@ -4411,6 +4421,15 @@ export default function App(){
       return merged;
      });
     }
+    if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
+     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});
+    }
+    if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
+     setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+    }
+    if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
+     setMediaStore(prev=>{const m={...prev,...s.mediaStore};localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});
+    }
    }catch(e){}
   }).catch(()=>{});
  }
@@ -4509,6 +4528,15 @@ export default function App(){
       localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
       return merged;
      });
+    }
+    if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
+     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});
+    }
+    if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
+     setTeamLogos(prev=>{const m={...prev,...s.teamLogos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+    }
+    if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
+     setMediaStore(prev=>{const m={...prev,...s.mediaStore};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});
     }
    }catch(e){}
   }).catch(()=>{});
