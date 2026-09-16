@@ -5562,27 +5562,21 @@ export default function App(){
  showToast(" Tournoi mis à jour ");
  }
 
- function savePlayer(){
+ async function savePlayer(){
  if(!pform.name.trim())return;
  const rawName=pform.name.toLowerCase().trim();
- // Clé unique = game:name pour éviter conflits entre jeux (ex: Bach CS2 vs Bach Dota2)
- const key=rawName;
  const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team,name:pform.name.trim()};
- // Si un joueur du même nom existe déjà dans un jeu différent, on garde les deux via un merge
- setPlayers(p=>{
- const existing=p[key];
- if(existing&&existing.game&&existing.game!==pform.game){
- // Stocker avec clé préfixée par le jeu pour éviter conflit
- const gKey=pform.game.toLowerCase()+":"+rawName;
- supaUpsertPlayer({name:gKey,...data}).catch(function(){});
- return{...p,[gKey]:data};
+ try{
+  const result=await supaUpsertPlayer(data);
+  const id=result&&result.id;
+  setPlayers(p=>({...p,[rawName]:{...data,id:id||undefined}}));
+  showToast(pform.name+" ajouté ","#22C55E");
+ }catch(e){
+  showToast("Erreur: "+e.message,"#EF4444");
+  return;
  }
- supaUpsertPlayer({name:key,...data}).catch(function(){});
- return{...p,[key]:data};
- });
  setPform({name:"",game:"LoL",league:"",role:"",team:""});
  setModalPlayer(false);
- showToast(pform.name+" ajouté ");
  }
  function saveBookmaker(){
  if(!newBK.trim())return;
@@ -11673,10 +11667,17 @@ export default function App(){
  try{
  const remote=await supaPullBets();
  const localIds=new Set(bets.map(b=>String(b.id)));
- const remoteIds=new Set(remote.map(b=>String(b.id)));
+ const remoteIds=new Set(remote.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__").map(b=>String(b.id)));
  const onlyLocal=bets.filter(b=>!remoteIds.has(String(b.id)));
- const onlyRemote=remote.filter(b=>!localIds.has(String(b.id)));
- setIntegrityReport({local:bets.length,remote:remote.length,onlyLocal,onlyRemote});
+ const onlyRemote=remote.filter(b=>!localIds.has(String(b.id))&&b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__");
+ // Orphan bets: bets whose player name doesn't exist in allPlayers
+ const playerNames=new Set(Object.values(allPlayers).map(p=>(p.name||"").toLowerCase().trim()));
+ const orphans=bets.filter(b=>{
+  if(!b.player)return false;
+  const n=(b.player||"").toLowerCase().trim();
+  return n&&!playerNames.has(n);
+ });
+ setIntegrityReport({local:bets.length,remote:remoteIds.size,onlyLocal,onlyRemote,orphans});
  }catch(e){setIntegrityReport({error:e.message});}
  setIntegrityChecking(false);
  }} disabled={integrityChecking}
@@ -11776,7 +11777,59 @@ export default function App(){
                 )}
  </>
  )}
- </>
+
+ {/* Orphan bets — paris sans joueur lié */}
+ {integrityReport.orphans&&integrityReport.orphans.length>0&&(
+  <div style={{marginTop:10}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,padding:"8px 10px",background:"rgba(245,158,11,.08)",borderRadius:8,border:"1px solid rgba(245,158,11,.2)"}}>
+    <span style={{fontSize:14}}>⚠️</span>
+    <div>
+     <div style={{fontSize:12,fontWeight:800,color:"#F59E0B"}}>{integrityReport.orphans.length} pari(s) sans joueur lié</div>
+     <div style={{fontSize:10,color:"#92400e"}}>Ces paris référencent un joueur supprimé de la base</div>
+    </div>
+   </div>
+   <div style={{maxHeight:260,overflowY:"auto",borderRadius:8,border:"1px solid rgba(245,158,11,.15)"}}>
+    {integrityReport.orphans.map((b,i)=>(
+     <div key={b.id} style={{padding:"9px 12px",borderBottom:"1px solid #1F2937",background:i%2===0?"rgba(0,0,0,.2)":"rgba(245,158,11,.02)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+       <span style={{fontSize:13,fontWeight:800,color:"#F59E0B"}}>{b.player||"?"}</span>
+       <span style={{fontSize:10,color:"#6B7280"}}>{b.game}</span>
+       <span style={{fontSize:11,fontWeight:700,color:b.profit>=0?"#22C55E":"#EF4444"}}>{b.profit>=0?"+":""}{(b.profit||0).toFixed(0)}$</span>
+      </div>
+      <div style={{fontSize:11,color:"#c4b5fd",marginBottom:2}}>{b.overUnder} {(b.description||"").replace(/^(Over|Under) /,"")}</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+       <span style={{fontSize:10,color:"#6B7280"}}>@{b.odds}</span>
+       <span style={{fontSize:10,color:"#6B7280"}}>{b.stake}$</span>
+       <span style={{fontSize:10,color:"#4a5a6e"}}>{b.bookmaker}</span>
+       <span style={{fontSize:10,color:"#374151",marginLeft:"auto"}}>{b.datetime?String(b.datetime).slice(0,10):""}</span>
+      </div>
+     </div>
+    ))}
+   </div>
+   <button onClick={async()=>{
+    const byKey={};
+    integrityReport.orphans.forEach(b=>{
+     if(!b.player||!b.game)return;
+     const k=(b.player||"").toLowerCase().trim()+"__"+b.game;
+     if(!byKey[k])byKey[k]={name:b.player.trim(),game:b.game};
+    });
+    const created=[];
+    for(const {name,game} of Object.values(byKey)){
+     try{
+      const result=await supaUpsertPlayer({name,game,league:"",role:"",team:""});
+      const id=result&&result.id;
+      setPlayers(prev=>({...prev,[name.toLowerCase().trim()]:{name,game,league:"",role:"",team:"",id}}));
+      created.push(name);
+     }catch(e){}
+    }
+    if(created.length>0)showToast(created.length+" joueur(s) recréé(s)","#F59E0B");
+    setIntegrityReport(r=>({...r,orphans:[]}));
+   }} style={{width:"100%",marginTop:8,padding:"8px",background:"rgba(245,158,11,.1)",border:"1px solid rgba(245,158,11,.3)",borderRadius:8,color:"#F59E0B",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+    🔧 Recréer les joueurs manquants
+   </button>
+  </div>
+ )} </>
+
  )}
  </div>
  )}
