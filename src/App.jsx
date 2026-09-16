@@ -2464,11 +2464,11 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
   setEditPSaving(true);
   try{
    const data={...editP,...editPForm,photo_url:editPPhotoUrl||editP.photo_url||null,avatar_url:editPPhotoUrl||editP.avatar_url||null};
-   // If no id, try to find it in loaded players
-   if(!data.id){
-    const found=Object.values(players).find(p=>p.name.toLowerCase().trim()===(data.name||"").toLowerCase().trim()&&p.game===data.game&&p.id);
-    if(found)data.id=found.id;
-   }
+   // Always resolve fresh id from players state (editP may be stale after creation)
+   const freshKey=(editPForm.name||editP.name||"").toLowerCase().trim();
+   const freshGame=editPForm.game||editP.game||"LoL";
+   const fresh=Object.values(players).find(p=>(p.name||"").toLowerCase().trim()===freshKey&&p.game===freshGame&&p.id);
+   if(fresh)data.id=fresh.id;
    const result=await supaUpsertPlayer(data);
    if(result&&result.id)data.id=result.id;
    setPlayers(prev=>{
