@@ -2684,7 +2684,17 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       activeLeagues.forEach(lg=>{
        Object.entries(gameH[lg]||{}).forEach(([t,ps])=>teams.push({league:lg,team:t,players:ps}));
       });
-      teams.sort((a,b)=>a.team.localeCompare(b.team));
+      // Apply filters
+      if(filterNoPhoto){
+       teams=teams.map(t=>({...t,players:t.players.filter(p=>!p.photo_url&&!p.avatar_url)})).filter(t=>t.players.length>0);
+      }
+      if(filterNoLogo){
+       teams=teams.filter(t=>!teamLogos[t.team+"__"+rosterGame]&&!t.players[0]?.team_logo_url);
+      }
+      // Sort
+      if(sortMode==="asc")teams.sort((a,b)=>a.players.length-b.players.length);
+      else if(sortMode==="desc")teams.sort((a,b)=>b.players.length-a.players.length);
+      else teams.sort((a,b)=>a.team.localeCompare(b.team));
       return(
        <div>
         {needLeague&&(
@@ -2805,20 +2815,30 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Ligue</div>
       <input value={editPForm.league||""} onChange={e=>setEditPForm(f=>({...f,league:e.target.value}))} style={inputStyle}/>
      </div>
-     {/* Équipe - autocomplete */}
-     <div style={{position:"relative"}}>
+     {/* Équipe - dropdown avec compteur */}
+     <div>
       <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Équipe</div>
-      <input value={teamSearchQ} onChange={e=>onTeamInput(e.target.value)} placeholder="Rechercher..." style={inputStyle}/>
-      {teamSuggestions.length>0&&(
-       <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#111827",border:"1px solid #374151",borderRadius:6,zIndex:99,maxHeight:140,overflowY:"auto"}}>
-        {teamSuggestions.map(t=>(
-         <button key={t} onClick={()=>{setTeamSearchQ(t);setEditPForm(f=>({...f,team:t}));setTeamSuggestions([]);}}
-          style={{width:"100%",padding:"6px 10px",background:"transparent",border:"none",borderBottom:"1px solid #1F2937",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",cursor:"pointer",textAlign:"left"}}>
-          {t}
-         </button>
-        ))}
-       </div>
-      )}
+      {(()=>{
+       // Build team list for current game with player counts
+       const gameTeams={};
+       Object.values(players).forEach(p=>{
+        if((p.game||"")!==(editPForm.game||editP?.game||""))return;
+        const t=p.team||"";if(!t)return;
+        if(!gameTeams[t])gameTeams[t]=0;
+        gameTeams[t]++;
+       });
+       const sortedTeams=Object.entries(gameTeams).sort((a,b)=>a[0].localeCompare(b[0]));
+       return(
+        <select value={editPForm.team||""} onChange={e=>setEditPForm(f=>({...f,team:e.target.value}))}
+         style={{...inputStyle,appearance:"none",WebkitAppearance:"none",cursor:"pointer",paddingRight:24}}>
+         <option value="">— Choisir un club —</option>
+         {sortedTeams.map(([t,count])=>(
+          <option key={t} value={t}>{t} ({count}p)</option>
+         ))}
+         <option value={editPForm.team&&!gameTeams[editPForm.team]?editPForm.team:""} disabled style={{display:"none"}}/>
+        </select>
+       );
+      })()}
      </div>
     </div>
     {/* Jeu */}
@@ -11296,7 +11316,22 @@ export default function App(){
  :["Duelist","Initiator","Controller","Sentinel","IGL"]
  ).map(r=><option key={r} value={r}>{r}</option>)}
  </select>
- <input className="ifield" placeholder="Equipe *" value={pform.team} onChange={e=>setPform(p=>({...p,team:e.target.value}))}/>
+  {(()=>{
+       const gameTeams={};
+       Object.values(allPlayers).forEach(p=>{
+        if((p.game||"")!==pform.game)return;
+        const t=p.team||"";if(!t)return;
+        if(!gameTeams[t])gameTeams[t]=0;
+        gameTeams[t]++;
+       });
+       const sorted=Object.entries(gameTeams).sort((a,b)=>a[0].localeCompare(b[0]));
+       return(
+        <select className="ifield" value={pform.team} onChange={e=>setPform(p=>({...p,team:e.target.value}))}>
+         <option value="">Club *...</option>
+         {sorted.map(([t,c])=><option key={t} value={t}>{t} ({c}p)</option>)}
+        </select>
+       );
+      })()}
  </div>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
  <button onClick={()=>setModalPlayer(false)} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
