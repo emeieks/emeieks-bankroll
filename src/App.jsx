@@ -82,7 +82,6 @@ async function supaPullBets() {
 }
 
 async function supaPushBets(bets) {
- // Forcer le format YYYY-MM-DDTHH:MM pour la datetime (éviter transformation Supabase)
  const safeDT=dt=>{
  if(!dt)return dt;
  const s=String(dt);
@@ -90,21 +89,33 @@ async function supaPushBets(bets) {
  return dt;
  };
  const now=Date.now();
- const rows = bets.map(({id,player,description,overUnder,odds,stake,bookmaker,
+ const makeRow=({id,player,description,overUnder,odds,stake,bookmaker,
  status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,
  ppMapType,ppLine,ppEdge})=>
  ({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,
  team,datetime:safeDT(datetime),isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
  splits:splits&&splits.length>0?JSON.stringify(splits):null,
  updatedAt:updatedAt||now,archived:false,
- pp_map_type:ppMapType||null,pp_line:ppLine||null,pp_edge:ppEdge!=null?ppEdge:null}));
- // Chunk en 500
- for(let i=0;i<rows.length;i+=500){
- await supaFetch("/rest/v1/bets",{
- method:"POST",
- body:JSON.stringify(rows.slice(i,i+500)),
- prefer:"resolution=merge-duplicates",
- });
+ pp_map_type:ppMapType||null,pp_line:ppLine||null,pp_edge:ppEdge!=null?ppEdge:null});
+ // Split: existing bets (have numeric id) → PATCH, new bets (no id) → POST
+ const existing=bets.filter(b=>b.id&&typeof b.id==="number"||typeof b.id==="string"&&/^\d+$/.test(String(b.id)));
+ const newBets=bets.filter(b=>!b.id||!(typeof b.id==="number"||/^\d+$/.test(String(b.id))));
+ // PATCH existing in chunks of 500 using merge-duplicates with id
+ for(let i=0;i<existing.length;i+=500){
+  const rows=existing.slice(i,i+500).map(makeRow);
+  await supaFetch("/rest/v1/bets",{
+   method:"POST",
+   body:JSON.stringify(rows),
+   prefer:"resolution=merge-duplicates",
+  });
+ }
+ // POST new bets without id
+ for(let i=0;i<newBets.length;i+=500){
+  const rows=newBets.slice(i,i+500).map(b=>{const r=makeRow(b);delete r.id;return r;});
+  await supaFetch("/rest/v1/bets",{
+   method:"POST",
+   body:JSON.stringify(rows),
+  });
  }
 }
 
@@ -393,7 +404,6 @@ async function supaFetchPlayers() {
 }
 
 async function supaUpsertPlayer(data) {
- // data: { id?, name, game, league, role, team, avatar_url?, avatar_file? }
  const payload = {
  name: data.name.toLowerCase().trim(),
  game: data.game || "LoL",
@@ -404,17 +414,27 @@ async function supaUpsertPlayer(data) {
  avatar_url: data.avatar_url || null,
  avatar_file: data.avatar_file || null,
  };
- if (data.id) payload.id = data.id;
- const res = await fetch(SUPA_URL + "/rest/v1/players", {
- method: "POST",
- headers: {
+ const headers = {
  "apikey": SUPA_KEY,
  "Authorization": "Bearer " + SUPA_KEY,
  "Content-Type": "application/json",
- "Prefer": "resolution=merge-duplicates,return=representation",
- },
- body: JSON.stringify(payload),
+ };
+ let res;
+ if (data.id) {
+ // Existing player → PATCH by id (never sends id in body)
+ res = await fetch(SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id), {
+  method: "PATCH",
+  headers: {...headers, "Prefer": "return=representation"},
+  body: JSON.stringify(payload),
  });
+ } else {
+ // New player → POST without id
+ res = await fetch(SUPA_URL + "/rest/v1/players", {
+  method: "POST",
+  headers: {...headers, "Prefer": "return=representation"},
+  body: JSON.stringify(payload),
+ });
+ }
  if (!res.ok) throw new Error(await res.text());
  const result = await res.json();
  return Array.isArray(result) ? result[0] : result;
