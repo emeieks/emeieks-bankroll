@@ -2769,6 +2769,7 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.role,p.league].filter(Boolean).join(" · ")||"—"}</div>
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+                   {p.team&&<button onClick={async e=>{e.stopPropagation();const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
                    <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
                   </div>
                  ):(
@@ -4970,11 +4971,11 @@ export default function App(){
   const GAMES_R=["CS2","LoL","Dota2","Valorant"];
   const h={};GAMES_R.forEach(g=>{h[g]={};});
   Object.values(players).forEach(p=>{
-   if(!p||!p.game)return;
+   if(!p||!p.game||!p.team)return; // Skip free agents — shown in FA club
    const g=p.game;if(!h[g])h[g]={};
    const league=p.league||"(Sans ligue)";
    if(!h[g][league])h[g][league]={};
-   const team=p.team||"(Sans équipe)";
+   const team=p.team;
    if(!h[g][league][team])h[g][league][team]=[];
    h[g][league][team].push(p);
   });
