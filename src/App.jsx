@@ -405,7 +405,10 @@ async function supaFetchPlayers() {
 
 async function supaUpsertPlayer(data) {
  const name = data.name.toLowerCase().trim();
+ const game = data.game || "LoL";
  const payload = {
+  name,
+  game,
   league: data.league || "",
   role: data.role || "",
   team: data.team || "",
@@ -419,37 +422,47 @@ async function supaUpsertPlayer(data) {
   "Content-Type": "application/json",
  };
  if (data.id) {
-  // Existing player → PATCH by id only, include name+game only if changed
-  payload.name = name;
-  payload.game = data.game || "LoL";
-  // First delete any duplicate (same name+game, different id) to avoid constraint
-  await fetch(
-   SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) +
-   "&game=eq." + encodeURIComponent(data.game||"LoL") +
-   "&id=neq." + encodeURIComponent(data.id),
-   {method:"DELETE", headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}
-  ).catch(()=>{});
+  // Existing player → PATCH by id, never deletes anything
   const res = await fetch(
    SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id),
    {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
   );
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+   const err = await res.json().catch(()=>({}));
+   // If unique constraint, PATCH the conflicting row instead
+   if(err.code==="23505"){
+    const res2 = await fetch(
+     SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) + "&game=eq." + encodeURIComponent(game),
+     {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
+    );
+    if(!res2.ok) throw new Error(await res2.text());
+    const r2 = await res2.json();
+    return Array.isArray(r2)?r2[0]:r2;
+   }
+   throw new Error(JSON.stringify(err));
+  }
   const result = await res.json();
   return Array.isArray(result) ? result[0] : result;
  } else {
-  // New player → delete any existing with same name+game first, then insert
-  await fetch(
-   SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) +
-   "&game=eq." + encodeURIComponent(data.game||"LoL"),
-   {method:"DELETE", headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}
-  ).catch(()=>{});
-  payload.name = name;
-  payload.game = data.game || "LoL";
+  // New player → INSERT only, never deletes
   const res = await fetch(
    SUPA_URL + "/rest/v1/players",
    {method:"POST", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
   );
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+   const err = await res.json().catch(()=>({}));
+   // If duplicate, update existing instead
+   if(err.code==="23505"){
+    const res2 = await fetch(
+     SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) + "&game=eq." + encodeURIComponent(game),
+     {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
+    );
+    if(!res2.ok) throw new Error(await res2.text());
+    const r2 = await res2.json();
+    return Array.isArray(r2)?r2[0]:r2;
+   }
+   throw new Error(JSON.stringify(err));
+  }
   const result = await res.json();
   return Array.isArray(result) ? result[0] : result;
  }
@@ -2535,6 +2548,57 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
 
    {rosterOpen&&(
     <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+
+     {/* Dédoublonnage */}
+     {(()=>{
+      const dups={};
+      Object.values(players).forEach(p=>{
+       const k=(p.name||"").toLowerCase().trim()+"__"+(p.game||"");
+       if(!dups[k])dups[k]=[];
+       dups[k].push(p);
+      });
+      const dupCount=Object.values(dups).filter(arr=>arr.length>1).length;
+      if(dupCount===0)return null;
+      return(
+       <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,padding:"8px 12px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:11,color:"#EF4444",flex:1}}>⚠️ {dupCount} club(s) en double détectés — certains joueurs ne peuvent pas être déplacés</span>
+        <button onClick={async()=>{
+         showToast("Fusion en cours...","#F59E0B");
+         let fixed=0;
+         const byKey={};
+         Object.values(players).forEach(p=>{
+          const k=(p.name||"").toLowerCase().trim()+"__"+(p.game||"");
+          if(!byKey[k])byKey[k]=[];
+          byKey[k].push(p);
+         });
+         for(const [k,arr] of Object.entries(byKey)){
+          if(arr.length<2)continue;
+          // Keep the one with the most data (most fields filled)
+          arr.sort((a,b)=>Object.values(b).filter(Boolean).length-Object.values(a).filter(Boolean).length);
+          const keep=arr[0];
+          const toDelete=arr.slice(1);
+          // Delete duplicates from Supabase
+          for(const p of toDelete){
+           if(p.id){
+            await fetch(SUPA_URL+"/rest/v1/players?id=eq."+encodeURIComponent(p.id),{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});
+            fixed++;
+           }
+          }
+          // Update local state — remove duplicates
+          setPlayers(prev=>{
+           const n={...prev};
+           toDelete.forEach(p=>delete n[(p.name||"").toLowerCase().trim()]);
+           return n;
+          });
+         }
+         showToast(fixed+" doublon(s) supprimé(s) ✓","#22C55E");
+        }}
+        style={{padding:"5px 10px",background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.3)",borderRadius:6,color:"#EF4444",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
+        Fusionner
+        </button>
+       </div>
+      );
+     })()}
 
      {/* Game selector */}
      <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
