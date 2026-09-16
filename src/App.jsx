@@ -402,7 +402,7 @@ async function _playerFetch(path, opts={}) {
 }
 
 async function supaFetchPlayers() {
- const fields = "id,name,game,league,role,team,photo_url,avatar_url,avatar_file";
+ const fields = "id,name,game,league,role,team,photo_url,avatar_url,avatar_file,team_logo_url";
  const limit = 1000;
  let all = []; let offset = 0;
  while (true) {
@@ -431,6 +431,7 @@ async function supaUpsertPlayer(data) {
   avatar_url:  data.avatar_url || null,
   avatar_file: data.avatar_file || null,
  };
+ if(data.team_logo_url !== undefined) payload.team_logo_url = data.team_logo_url || null;
 
  if (data.id) {
   // Update existing row by id — PATCH never sends id in body
@@ -2509,10 +2510,10 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
     try{localStorage.setItem("v7_team_logos",JSON.stringify(updated));}catch(e){}
     return updated;
    });
-   // 2. Push to Supabase (updates all players of this team)
-   // Pass full updated logos map to Supabase
-   const updatedLogos = {...teamLogos, [key]: url};
-   await supaUpdateTeamLogo(updatedLogos);
+   // 2. PATCH team_logo_url directly on all players of this team in Supabase
+   const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
+   await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(editTeam.team)+"&game=eq."+encodeURIComponent(editTeam.game),
+    {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:url||null})}).catch(e=>console.warn(e));
    // 3. Update local players state so it reflects immediately
    setPlayers(prev=>{
     const n={...prev};
@@ -3992,6 +3993,7 @@ export default function App(){
  supaFetchPlayers().then(rows=>{
  if(rows && rows.length > 0) {
  const obj = {};
+ const tLogos = {};
  rows.forEach(p => {
  obj[p.name.toLowerCase()] = {
  id: p.id,
@@ -4005,7 +4007,14 @@ export default function App(){
  avatar_url: p.avatar_url || null,
  avatar_file: p.avatar_file || null,
  };
+ // Populate teamLogos from players data
+ if(p.team&&p.game&&p.team_logo_url){
+  tLogos[p.team+"__"+p.game]=p.team_logo_url;
+ }
  });
+ if(Object.keys(tLogos).length>0){
+  setTeamLogos(prev=>{const m={...tLogos,...prev};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+ }
 
  // Migrate roles to short form
  var RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle","Support":"Support","Sup":"Support","Supp":"Support"};
