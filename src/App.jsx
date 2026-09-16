@@ -2828,23 +2828,33 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
      <div>
       <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Équipe</div>
       {(()=>{
-       // Build team list for current game with player counts
+       // Build team list: group by team+league to avoid merging duplicates
        const gameTeams={};
        Object.values(players).forEach(p=>{
         if((p.game||"")!==(editPForm.game||editP?.game||""))return;
         const t=p.team||"";if(!t)return;
-        if(!gameTeams[t])gameTeams[t]=0;
-        gameTeams[t]++;
+        const l=p.league||"";
+        const key=t+"|||"+l;
+        if(!gameTeams[key])gameTeams[key]={team:t,league:l,count:0};
+        gameTeams[key].count++;
        });
-       const sortedTeams=Object.entries(gameTeams).sort((a,b)=>a[0].localeCompare(b[0]));
+       const sortedTeams=Object.values(gameTeams).sort((a,b)=>a.team.localeCompare(b.team)||a.league.localeCompare(b.league));
+       const curTeam=editPForm.team||"";
+       const curLeague=editPForm.league||"";
        return(
-        <select value={editPForm.team||""} onChange={e=>setEditPForm(f=>({...f,team:e.target.value}))}
+        <select
+         value={curTeam+"|||"+curLeague}
+         onChange={e=>{
+          const [t,l]=e.target.value.split("|||");
+          setEditPForm(f=>({...f,team:t,league:l}));
+         }}
          style={{...inputStyle,appearance:"none",WebkitAppearance:"none",cursor:"pointer",paddingRight:24}}>
-         <option value="">— Choisir un club —</option>
-         {sortedTeams.map(([t,count])=>(
-          <option key={t} value={t}>{t} ({count}p)</option>
+         <option value="|||">— Choisir un club —</option>
+         {sortedTeams.map(({team,league,count})=>(
+          <option key={team+"|||"+league} value={team+"|||"+league}>
+           {team}{league?" · "+league:""} ({count}p)
+          </option>
          ))}
-         <option value={editPForm.team&&!gameTeams[editPForm.team]?editPForm.team:""} disabled style={{display:"none"}}/>
         </select>
        );
       })()}
@@ -11330,14 +11340,21 @@ export default function App(){
        Object.values(allPlayers).forEach(p=>{
         if((p.game||"")!==pform.game)return;
         const t=p.team||"";if(!t)return;
-        if(!gameTeams[t])gameTeams[t]=0;
-        gameTeams[t]++;
+        const l=p.league||"";
+        const key=t+"|||"+l;
+        if(!gameTeams[key])gameTeams[key]={team:t,league:l,count:0};
+        gameTeams[key].count++;
        });
-       const sorted=Object.entries(gameTeams).sort((a,b)=>a[0].localeCompare(b[0]));
+       const sorted=Object.values(gameTeams).sort((a,b)=>a.team.localeCompare(b.team)||a.league.localeCompare(b.league));
        return(
-        <select className="ifield" value={pform.team} onChange={e=>setPform(p=>({...p,team:e.target.value}))}>
-         <option value="">Club *...</option>
-         {sorted.map(([t,c])=><option key={t} value={t}>{t} ({c}p)</option>)}
+        <select className="ifield" value={pform.team+"|||"+(pform.league||"")}
+         onChange={e=>{const [t,l]=e.target.value.split("|||");setPform(p=>({...p,team:t,league:l}));}}>
+         <option value="|||">Club *...</option>
+         {sorted.map(({team,league,count})=>(
+          <option key={team+"|||"+league} value={team+"|||"+league}>
+           {team}{league?" · "+league:""} ({count}p)
+          </option>
+         ))}
         </select>
        );
       })()}
