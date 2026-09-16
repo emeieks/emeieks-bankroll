@@ -429,15 +429,20 @@ async function supaUpsertPlayer(data) {
   );
   if (!res.ok) {
    const err = await res.json().catch(()=>({}));
-   // If unique constraint, PATCH the conflicting row instead
    if(err.code==="23505"){
-    const res2 = await fetch(
-     SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) + "&game=eq." + encodeURIComponent(game),
+    // Delete the conflicting duplicate (different id, same name+game), then retry
+    await fetch(
+     SUPA_URL + "/rest/v1/players?name=eq." + encodeURIComponent(name) + "&game=eq." + encodeURIComponent(game) + "&id=neq." + encodeURIComponent(data.id),
+     {method:"DELETE", headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}
+    ).catch(()=>{});
+    // Retry the PATCH
+    const res3 = await fetch(
+     SUPA_URL + "/rest/v1/players?id=eq." + encodeURIComponent(data.id),
      {method:"PATCH", headers:{...headers,"Prefer":"return=representation"}, body:JSON.stringify(payload)}
     );
-    if(!res2.ok) throw new Error(await res2.text());
-    const r2 = await res2.json();
-    return Array.isArray(r2)?r2[0]:r2;
+    if(!res3.ok) throw new Error(await res3.text());
+    const r3 = await res3.json();
+    return Array.isArray(r3)?r3[0]:r3;
    }
    throw new Error(JSON.stringify(err));
   }
@@ -2459,7 +2464,13 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
   setEditPSaving(true);
   try{
    const data={...editP,...editPForm,photo_url:editPPhotoUrl||editP.photo_url||null,avatar_url:editPPhotoUrl||editP.avatar_url||null};
-   await supaUpsertPlayer(data);
+   // If no id, try to find it in loaded players
+   if(!data.id){
+    const found=Object.values(players).find(p=>p.name.toLowerCase().trim()===(data.name||"").toLowerCase().trim()&&p.game===data.game&&p.id);
+    if(found)data.id=found.id;
+   }
+   const result=await supaUpsertPlayer(data);
+   if(result&&result.id)data.id=result.id;
    setPlayers(prev=>{
     const key=(editPForm.name||editP.name).toLowerCase().trim();
     const n={...prev};
