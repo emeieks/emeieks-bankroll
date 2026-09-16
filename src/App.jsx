@@ -2969,7 +2969,7 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
 }
 
 
-function MediaManager({mediaStore,setMediaStore,showToast}){
+function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
  const MEDIA_ITEMS=[{key:"_B64_PP_LOGO_B64",label:"Logo PrizePicks"},{key:"_B64_AMERICAS",label:"VCT Americas"},{key:"_B64_CHINA",label:"VCT China"},{key:"_B64_PACIFIC",label:"VCT Pacific"},{key:"_B64_EMEA",label:"VCT EMEA"},{key:"_B64_WAGER",label:"Wager"},{key:"_B64_EWC",label:"EWC"},{key:"_B64_PGL",label:"PGL"},{key:"_B64_THEINTERNATIONAL",label:"The International"},{key:"_B64_CHAMPIONS",label:"Champions"},{key:"LOL_ROLE_TOP",label:"LoL Top"},{key:"LOL_ROLE_MID",label:"LoL Mid"},{key:"LOL_ROLE_BOT",label:"LoL Bot"},{key:"LOL_ROLE_SUP",label:"LoL Support"},{key:"LOL_ROLE_JUN",label:"LoL Jungle"},{key:"league_Americas",label:"Ligue Americas"},{key:"league_EMEA",label:"Ligue EMEA"},{key:"league_Pacific",label:"Ligue Pacific"},{key:"league_LCS",label:"LCS"},{key:"league_LEC",label:"LEC"},{key:"league_LCK",label:"LCK"},{key:"league_ESL",label:"ESL"},{key:"league_BLAST",label:"BLAST"},{key:"league_Riyadh Masters",label:"Riyadh Masters"},{key:"league_DreamLeague",label:"DreamLeague"},{key:"league_XSE Pro League",label:"XSE Pro League"},{key:"league_Stake Ranked",label:"Stake Ranked"},{key:"league_MSI",label:"MSI"},{key:"league_LPL",label:"LPL"}];
  const [open,setOpen]=useState(false);
  const [editingKey,setEditingKey]=useState(null);
@@ -3037,10 +3037,22 @@ function MediaManager({mediaStore,setMediaStore,showToast}){
        );
       })}
      </div>
-     <button onClick={()=>{setMediaStore({});localStorage.setItem("v7_media_store","{}");applyMediaStore({});supaUpdateMediaRow("__MEDIA_STORE__",{}).catch(()=>{});showToast("Médias réinitialisés","#EF4444");}}
-      style={{width:"100%",marginTop:10,padding:"7px",background:"rgba(239,68,68,.05)",border:"1px solid rgba(239,68,68,.15)",borderRadius:8,color:"#EF4444",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-      🗑️ Tout réinitialiser
-     </button>
+     <div style={{display:"flex",gap:6,marginTop:10}}>
+      <button onClick={async()=>{
+       // Force push everything to Supabase
+       await supaUpdateMediaRow("__MEDIA_STORE__",mediaStore).catch(()=>{});
+       await supaUpdateMediaRow("__BK_PHOTOS__",bkPhotos||{}).catch(()=>{});
+       await supaUpdateMediaRow("__TEAM_LOGOS__",teamLogos||{}).catch(()=>{});
+       showToast("✓ Médias synchronisés vers le cloud","#22C55E");
+      }}
+      style={{flex:1,padding:"7px",background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      ☁️ Sync vers cloud
+      </button>
+      <button onClick={()=>{setMediaStore({});localStorage.setItem("v7_media_store","{}");applyMediaStore({});supaUpdateMediaRow("__MEDIA_STORE__",{}).catch(()=>{});showToast("Médias réinitialisés","#EF4444");}}
+       style={{padding:"7px 10px",background:"rgba(239,68,68,.05)",border:"1px solid rgba(239,68,68,.15)",borderRadius:8,color:"#EF4444",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+       🗑️
+      </button>
+     </div>
     </div>
    )}
   </div>
@@ -11002,7 +11014,7 @@ export default function App(){
 
 
 
- <MediaManager mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/>
+ <MediaManager mediaStore={mediaStore} setMediaStore={setMediaStore} bkPhotos={bkPhotos} teamLogos={teamLogos} showToast={showToast}/>
 
  {/* ── Palier bankroll ── */}
  {(()=>{ const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
