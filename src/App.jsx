@@ -2769,12 +2769,6 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.role,p.league].filter(Boolean).join(" · ")||"—"}</div>
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
-                   {p.team&&<button title="Free agent" onClick={async()=>{
-                    const updated={...p,team:"",league:p.league||""};
-                    await supaUpsertPlayer(updated);
-                    setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...updated,id:p.id};return n;});
-                    showToast(p.name+" → Free Agent","#F59E0B");
-                   }} style={{padding:"5px 8px",background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,cursor:"pointer"}}>FA</button>}
                    <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
                   </div>
                  ):(
@@ -2879,12 +2873,25 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
      </div>
     </div>
     {/* Actions */}
-    <div style={{display:"flex",gap:6}}>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
      <button onClick={savePlayer} disabled={editPSaving}
       style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
       {editPSaving?"Sauvegarde...":"✓ Sauvegarder"}
      </button>
-     <button onClick={closeEdit} style={{padding:"7px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>Annuler</button>
+     {p.team&&(
+      <button onClick={async()=>{
+       const updated={...p,...editPForm,team:"",photo_url:editPPhotoUrl||p.photo_url||null,avatar_url:editPPhotoUrl||p.avatar_url||null};
+       try{
+        await supaUpsertPlayer(updated);
+        setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...updated,id:p.id};return n;});
+        showToast(p.name+" → Free Agent","#F59E0B");
+        closeEdit();
+       }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
+      }} style={{padding:"7px 10px",background:"rgba(245,158,11,.1)",border:"1px solid rgba(245,158,11,.3)",borderRadius:8,color:"#F59E0B",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      FA
+      </button>
+     )}
+     <button onClick={closeEdit} style={{padding:"7px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>✕</button>
      <button onClick={()=>deletePlayer(p)} style={{padding:"7px 10px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#EF4444",fontSize:12,cursor:"pointer"}}>🗑️</button>
     </div>
    </div>
