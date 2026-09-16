@@ -2421,6 +2421,8 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
  const [sortMode,setSortMode]=useState(""); // "asc" | "desc" | ""
  const [filterNoPhoto,setFilterNoPhoto]=useState(false);
  const [filterNoLogo,setFilterNoLogo]=useState(false);
+ const [addToTeam,setAddToTeam]=useState(null); // {team, league, game}
+ const [addSearch,setAddSearch]=useState("");
  const [teamSearchQ,setTeamSearchQ]=useState("");
  const [teamSuggestions,setTeamSuggestions]=useState([]);
 
@@ -2724,8 +2726,9 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
           const logoUrl=teamLogos[team+"__"+rosterGame]||tPlayers[0]?.team_logo_url||null;
           return(
            <div key={key} style={cardStyle}>
+            <div style={{display:"flex",width:"100%",alignItems:"center"}}>
             <button onClick={()=>setRosterTeam(isOpen?null:key)}
-             style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+             style={{flex:1,display:"flex",alignItems:"center",gap:10,padding:"10px 10px 10px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
              {logoUrl?<img src={logoUrl} alt={team} style={{width:28,height:28,borderRadius:6,objectFit:"cover",flexShrink:0}}/>
               :<div style={{width:28,height:28,borderRadius:6,background:"rgba(167,139,250,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:accent,fontWeight:800}}>{team[0]||"?"}</div>}
              <div style={{flex:1}}>
@@ -2737,6 +2740,54 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
               style={{padding:"3px 7px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer",flexShrink:0}}>🗑️</button>
              <span style={{color:"#6B7280",fontSize:10,transform:isOpen?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
             </button>
+            <button
+             onClick={e=>{e.stopPropagation();setAddToTeam(addToTeam?.team===team&&addToTeam?.league===league?null:{team,league,game:rosterGame});setAddSearch("");}}
+             style={{padding:"0 12px",height:"100%",minHeight:48,background:"transparent",border:"none",borderLeft:"1px solid rgba(255,255,255,.05)",cursor:"pointer",color:"#22C55E",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+             {addToTeam?.team===team&&addToTeam?.league===league?"✕":"+"}
+            </button>
+            </div>
+            {/* Add player to team panel */}
+            {addToTeam?.team===team&&addToTeam?.league===league&&(()=>{
+             const q=addSearch.toLowerCase();
+             const results=Object.values(players).filter(p=>
+              p.game===rosterGame&&
+              (p.team!==team||p.league!==league)&&
+              (p.name||"").toLowerCase().includes(q)
+             ).sort((a,b)=>a.name.localeCompare(b.name));
+             return(
+              <div style={{borderTop:"1px solid rgba(34,197,94,.15)",background:"rgba(34,197,94,.03)",padding:"10px 12px"}}>
+               <input autoFocus value={addSearch} onChange={e=>setAddSearch(e.target.value)}
+                placeholder={"Chercher un joueur "+rosterGame+"..."}
+                style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"7px 12px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",marginBottom:8,boxSizing:"border-box"}}/>
+               {addSearch.length>0&&(
+                <div style={{maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+                 {results.length===0&&<div style={{fontSize:11,color:"#4a5a6e",padding:"4px 0"}}>Aucun résultat</div>}
+                 {results.map(p=>{
+                  const av=p.photo_url||p.avatar_url||null;
+                  return(
+                   <div key={p.id||p.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"rgba(255,255,255,.03)",borderRadius:6,border:"1px solid rgba(255,255,255,.05)"}}>
+                    {av?<img src={av} alt={p.name} style={{width:26,height:26,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+                     :<div style={{width:26,height:26,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
+                    <div style={{flex:1}}>
+                     <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{p.name}</div>
+                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.team||"Free Agent",p.role].filter(Boolean).join(" · ")}</div>
+                    </div>
+                    <button onClick={async()=>{
+                     const updated={...p,team,league};
+                     await supaUpsertPlayer(updated);
+                     setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...updated,id:p.id};return n;});
+                     showToast(p.name+" → "+team,"#22C55E");
+                    }} style={{padding:"4px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
+                     + Ajouter
+                    </button>
+                   </div>
+                  );
+                 })}
+                </div>
+               )}
+              </div>
+             );
+            })()}
             {isOpen&&(
              <div style={{borderTop:"1px solid #1F2937",padding:"8px 0"}}>
               {/* Logo équipe */}
@@ -2745,6 +2796,7 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                {editTeam?.team===team&&editTeam?.game===rosterGame?(
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                  <input value={teamLogoUrl} onChange={e=>setTeamLogoUrl(e.target.value)} onClick={e=>e.stopPropagation()} placeholder="URL du logo (https://...)" autoFocus style={{flex:1,...inputStyle}}/>
+                 {teamLogoUrl&&<button onClick={e=>{e.stopPropagation();setTeamLogoUrl("");}} style={{padding:"6px 8px",background:"rgba(255,255,255,.05)",border:"1px solid #374151",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer",flexShrink:0}}>✕</button>}
                  <button onClick={e=>{e.stopPropagation();saveTeamLogo();}} disabled={teamLogoSaving} style={{padding:"6px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{teamLogoSaving?"...":"✓"}</button>
                  <button onClick={e=>{e.stopPropagation();setEditTeam(null);setTeamLogoUrl("");}} style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
                 </div>
@@ -2802,7 +2854,8 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Photo URL</div>
      <div style={{display:"flex",gap:6,alignItems:"center"}}>
       {editPPhotoUrl&&<img src={editPPhotoUrl} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
-      <input value={editPPhotoUrl} onChange={e=>setEditPPhotoUrl(e.target.value)} placeholder="https://... (photo joueur)" style={inputStyle}/>
+      <input value={editPPhotoUrl} onChange={e=>setEditPPhotoUrl(e.target.value)} placeholder="https://... (photo joueur)" style={{...inputStyle,flex:1}}/>
+      {editPPhotoUrl&&<button onClick={()=>setEditPPhotoUrl("")} style={{padding:"3px 7px",background:"rgba(255,255,255,.05)",border:"1px solid #374151",borderRadius:5,color:"#6B7280",fontSize:11,cursor:"pointer",flexShrink:0}}>✕</button>}
      </div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
@@ -2851,11 +2904,14 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
          }}
          style={{...inputStyle,appearance:"none",WebkitAppearance:"none",cursor:"pointer",paddingRight:24}}>
          <option value="|||">— Choisir un club —</option>
-         {sortedTeams.map(({team,league,count})=>(
-          <option key={team+"|||"+league} value={team+"|||"+league}>
-           {team}{league?" · "+league:""} ({count}p)
-          </option>
-         ))}
+         {sortedTeams.map(({team,league,count})=>{
+          const hasLogo=!!(teamLogos[team+"__"+(editPForm.game||editP?.game||"")]);
+          return(
+           <option key={team+"|||"+league} value={team+"|||"+league}>
+            {hasLogo?"✓ ":""}{team}{league?" · "+league:""} ({count}p)
+           </option>
+          );
+         })}
         </select>
        );
       })()}
