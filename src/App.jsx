@@ -2383,6 +2383,30 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
  };
  const closeEdit=()=>{setEditP(null);setEditPForm({});setEditPPhotoUrl("");setTeamSearchQ("");setTeamSuggestions([]);};
 
+ const deletePlayer=async(p)=>{
+  if(!window.confirm("Supprimer "+p.name+" ?"))return;
+  try{
+   if(p.id)await supaDeletePlayer(p.id);
+   setPlayers(prev=>{const n={...prev};delete n[p.name.toLowerCase().trim()];return n;});
+   showToast(p.name+" supprimé","#EF4444");
+   closeEdit();
+  }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
+ };
+
+ const deleteTeam=async(team,game,tPlayers)=>{
+  if(!window.confirm("Supprimer le club "+team+" et ses "+tPlayers.length+" joueurs ?"))return;
+  try{
+   await Promise.all(tPlayers.filter(p=>p.id).map(p=>supaDeletePlayer(p.id)));
+   setPlayers(prev=>{
+    const n={...prev};
+    tPlayers.forEach(p=>delete n[p.name.toLowerCase().trim()]);
+    return n;
+   });
+   setRosterTeam(null);
+   showToast(team+" supprimé","#EF4444");
+  }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
+ };
+
  const savePlayer=async()=>{
   if(!editP)return;
   setEditPSaving(true);
@@ -2540,6 +2564,7 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
               <div style={{fontSize:10,color:"#6B7280"}}>{[p.team,p.role,p.game].filter(Boolean).join(" · ")}</div>
              </div>
              <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+             <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
             </div>
            ):(
             <div style={{padding:"10px 12px"}}>{renderEditForm(p)}</div>
@@ -2591,6 +2616,8 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
               {needLeague&&<div style={{fontSize:9,color:"#4a5a6e",fontWeight:600}}>{league}</div>}
              </div>
              <span style={{fontSize:10,color:"#6B7280"}}>{tPlayers.length}p</span>
+             <button onClick={e=>{e.stopPropagation();deleteTeam(team,rosterGame,tPlayers);}}
+              style={{padding:"3px 7px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer",flexShrink:0}}>🗑️</button>
              <span style={{color:"#6B7280",fontSize:10,transform:isOpen?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
             </button>
             {isOpen&&(
@@ -2625,6 +2652,7 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.role,p.league].filter(Boolean).join(" · ")||"—"}</div>
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+                   <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
                   </div>
                  ):(
                   <div style={{padding:"2px 0"}}>{renderEditForm(p)}</div>
@@ -2714,12 +2742,90 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       {editPSaving?"Sauvegarde...":"✓ Sauvegarder"}
      </button>
      <button onClick={closeEdit} style={{padding:"7px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>Annuler</button>
+     <button onClick={()=>deletePlayer(p)} style={{padding:"7px 10px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#EF4444",fontSize:12,cursor:"pointer"}}>🗑️</button>
     </div>
    </div>
   );
  }
 }
 
+
+function MediaManager({mediaStore,setMediaStore,showToast}){
+ const MEDIA_ITEMS=[{key:"_B64_PP_LOGO_B64",label:"Logo PrizePicks"},{key:"_B64_AMERICAS",label:"VCT Americas"},{key:"_B64_CHINA",label:"VCT China"},{key:"_B64_PACIFIC",label:"VCT Pacific"},{key:"_B64_EMEA",label:"VCT EMEA"},{key:"_B64_WAGER",label:"Wager"},{key:"_B64_EWC",label:"EWC"},{key:"_B64_PGL",label:"PGL"},{key:"_B64_THEINTERNATIONAL",label:"The International"},{key:"_B64_CHAMPIONS",label:"Champions"},{key:"LOL_ROLE_TOP",label:"LoL Top"},{key:"LOL_ROLE_MID",label:"LoL Mid"},{key:"LOL_ROLE_BOT",label:"LoL Bot"},{key:"LOL_ROLE_SUP",label:"LoL Support"},{key:"LOL_ROLE_JUN",label:"LoL Jungle"},{key:"league_Americas",label:"Ligue Americas"},{key:"league_EMEA",label:"Ligue EMEA"},{key:"league_Pacific",label:"Ligue Pacific"},{key:"league_LCS",label:"LCS"},{key:"league_LEC",label:"LEC"},{key:"league_LCK",label:"LCK"},{key:"league_ESL",label:"ESL"},{key:"league_BLAST",label:"BLAST"},{key:"league_Riyadh Masters",label:"Riyadh Masters"},{key:"league_DreamLeague",label:"DreamLeague"},{key:"league_XSE Pro League",label:"XSE Pro League"},{key:"league_Stake Ranked",label:"Stake Ranked"},{key:"league_MSI",label:"MSI"},{key:"league_LPL",label:"LPL"}];
+ const [open,setOpen]=useState(false);
+ const [editingKey,setEditingKey]=useState(null);
+ const [urlInput,setUrlInput]=useState("");
+ const missing=MEDIA_ITEMS.filter(m=>!mediaStore[m.key]).length;
+
+ const save=(key,url)=>{
+  const s={...mediaStore,[key]:url.trim()};
+  setMediaStore(s);
+  localStorage.setItem("v7_media_store",JSON.stringify(s));
+  applyMediaStore(s);
+  setEditingKey(null);setUrlInput("");
+  showToast("✓ Mis à jour","#22C55E");
+ };
+
+ return(
+  <div style={{marginBottom:8}}>
+   <button onClick={()=>setOpen(o=>!o)}
+    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s"}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{fontSize:14}}>🖼️</span>
+     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Médias</span>
+     {missing>0&&<span style={{background:"rgba(239,68,68,.15)",color:"#EF4444",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{missing} manquants</span>}
+     {missing===0&&<span style={{background:"rgba(34,197,94,.12)",color:"#22C55E",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>✓ Complets</span>}
+    </div>
+    <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+   </button>
+   {open&&(
+    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+     <div style={{fontSize:10,color:"#4a5a6e",marginBottom:10}}>Colle une URL pour chaque image. Les logos s'affichent immédiatement partout dans l'app.</div>
+     <div style={{display:"flex",flexDirection:"column",gap:4}}>
+      {MEDIA_ITEMS.map(item=>{
+       const isEdit=editingKey===item.key;
+       const cur=mediaStore[item.key]||null;
+       return(
+        <div key={item.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"rgba(255,255,255,.02)",borderRadius:8,border:"1px solid rgba(255,255,255,.04)"}}>
+         <div style={{width:28,height:28,borderRadius:6,background:"#111827",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+          {cur?<img src={cur} alt={item.label} style={{width:28,height:28,objectFit:"cover"}} onError={e=>e.target.style.opacity=".2"}/>:<span style={{fontSize:8,color:"#374151"}}>?</span>}
+         </div>
+         <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:11,fontWeight:600,color:cur?"#E5E7EB":"#6B7280"}}>{item.label}</div>
+          {!isEdit&&cur&&<div style={{fontSize:9,color:"#22C55E",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>✓ {cur.slice(0,50)}</div>}
+          {!isEdit&&!cur&&<div style={{fontSize:9,color:"#EF4444"}}>Aucune image</div>}
+          {isEdit&&(
+           <div style={{display:"flex",gap:4,marginTop:3}}>
+            <input autoFocus value={urlInput} onChange={e=>setUrlInput(e.target.value)}
+             onKeyDown={e=>{if(e.key==="Enter")save(item.key,urlInput);}}
+             placeholder="https://..."
+             style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:5,padding:"4px 7px",color:"#E5E7EB",fontSize:10,fontFamily:"Inter,sans-serif"}}/>
+            <button onClick={()=>save(item.key,urlInput)}
+             style={{padding:"4px 8px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:5,color:"#22C55E",fontSize:10,fontWeight:700,cursor:"pointer"}}>✓</button>
+            <button onClick={()=>{setEditingKey(null);setUrlInput("");}}
+             style={{padding:"4px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:5,color:"#6B7280",fontSize:10,cursor:"pointer"}}>✕</button>
+           </div>
+          )}
+         </div>
+         {!isEdit&&(
+          <button onClick={()=>{setEditingKey(item.key);setUrlInput(cur||"");}}
+           style={{padding:"4px 8px",background:cur?"rgba(255,255,255,.05)":"rgba(167,139,250,.08)",border:"1px solid "+(cur?"#1F2937":"rgba(167,139,250,.2)"),borderRadius:6,color:cur?"#6B7280":"#A78BFA",fontSize:10,fontWeight:600,cursor:"pointer",flexShrink:0}}>
+           {cur?"Modifier":"+ URL"}
+          </button>
+         )}
+        </div>
+       );
+      })}
+     </div>
+     <button onClick={()=>{setMediaStore({});localStorage.setItem("v7_media_store","{}");applyMediaStore({});showToast("Médias réinitialisés","#EF4444");}}
+      style={{width:"100%",marginTop:10,padding:"7px",background:"rgba(239,68,68,.05)",border:"1px solid rgba(239,68,68,.15)",borderRadius:8,color:"#EF4444",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      🗑️ Tout réinitialiser
+     </button>
+    </div>
+   )}
+  </div>
+ );
+}
 
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
@@ -3426,8 +3532,7 @@ export default function App(){
  const [editDepotId,setEditDepotId]=useState(null); // id du depot en cours d'edition
  const [viewDepots,setViewDepots]=useState(false);
  const [depotForm,setDepotForm]=useState({site:"",username:"",type:"depot",sol:"",solPrice:"",date:new Date().toISOString().slice(0,10)});
- const [players,setPlayers]=useState({
- }); // { name_lowercase: {id,name,game,league,role,team,avatar_url,avatar_file} }
+ const [players,setPlayers]=useState({}); // { name_lowercase: {id,name,game,league,role,team,avatar_url,avatar_file} }
 
  const [blacklist,setBlacklist]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_blacklist")||"[]"));}catch(e){return new Set();}});
  function toggleBlacklist(key){
@@ -10634,81 +10739,7 @@ export default function App(){
 
 
 
- {/* ── Gestionnaire de médias ── */}
- {(()=>{
-  const mediaItems=[{key:"_B64_PP_LOGO_B64",label:"Logo PrizePicks"},{key:"_B64_AMERICAS",label:"VCT Americas"},{key:"_B64_CHINA",label:"VCT China"},{key:"_B64_PACIFIC",label:"VCT Pacific"},{key:"_B64_EMEA",label:"VCT EMEA"},{key:"_B64_WAGER",label:"Wager"},{key:"_B64_EWC",label:"EWC"},{key:"_B64_PGL",label:"PGL"},{key:"_B64_THEINTERNATIONAL",label:"The International"},{key:"_B64_CHAMPIONS",label:"Champions"},{key:"LOL_ROLE_TOP",label:"LoL Top"},{key:"LOL_ROLE_MID",label:"LoL Mid"},{key:"LOL_ROLE_BOT",label:"LoL Bot"},{key:"LOL_ROLE_SUP",label:"LoL Support"},{key:"LOL_ROLE_JUN",label:"LoL Jungle"},{key:"league_Americas",label:"Ligue Americas"},{key:"league_EMEA",label:"Ligue EMEA"},{key:"league_Pacific",label:"Ligue Pacific"},{key:"league_LCS",label:"LCS"},{key:"league_LEC",label:"LEC"},{key:"league_LCK",label:"LCK"},{key:"league_ESL",label:"ESL"},{key:"league_BLAST",label:"BLAST"},{key:"league_Riyadh Masters",label:"Riyadh Masters"},{key:"league_DreamLeague",label:"DreamLeague"},{key:"league_XSE Pro League",label:"XSE Pro League"},{key:"league_Stake Ranked",label:"Stake Ranked"},{key:"league_MSI",label:"MSI"},{key:"league_LPL",label:"LPL"}];
-  const [mediaOpen,setMediaOpen]=useState(false);
-  const [editingKey,setEditingKey]=useState(null);
-  const [urlInput,setUrlInput]=useState("");
-  const missing=mediaItems.filter(m=>!mediaStore[m.key]).length;
-  const saveMedia=(key,url)=>{
-   const s={...mediaStore,[key]:url.trim()};
-   setMediaStore(s);
-   localStorage.setItem("v7_media_store",JSON.stringify(s));
-   applyMediaStore(s);
-   setEditingKey(null);setUrlInput("");
-   showToast("✓ Mis à jour","#22C55E");
-  };
-  return(
-   <div style={{marginBottom:8}}>
-    <button onClick={()=>setMediaOpen(o=>!o)}
-     style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:mediaOpen?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s"}}>
-     <div style={{display:"flex",alignItems:"center",gap:8}}>
-      <span style={{fontSize:14}}>🖼️</span>
-      <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Médias</span>
-      {missing>0&&<span style={{background:"rgba(239,68,68,.15)",color:"#EF4444",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{missing} manquants</span>}
-      {missing===0&&<span style={{background:"rgba(34,197,94,.12)",color:"#22C55E",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>✓ Complets</span>}
-     </div>
-     <span style={{color:"#6B7280",fontSize:12,transform:mediaOpen?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
-    </button>
-    {mediaOpen&&(
-     <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
-      <div style={{fontSize:10,color:"#4a5a6e",marginBottom:10}}>Colle une URL pour chaque image. Les logos s'affichent immédiatement partout dans l'app.</div>
-      <div style={{display:"flex",flexDirection:"column",gap:4}}>
-       {mediaItems.map(item=>{
-        const isEdit=editingKey===item.key;
-        const cur=mediaStore[item.key]||null;
-        return(
-         <div key={item.key} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"rgba(255,255,255,.02)",borderRadius:8,border:"1px solid rgba(255,255,255,.04)"}}>
-          <div style={{width:28,height:28,borderRadius:6,background:"#111827",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-           {cur?<img src={cur} alt={item.label} style={{width:28,height:28,objectFit:"cover"}} onError={e=>e.target.style.opacity=".2"}/>:<span style={{fontSize:8,color:"#374151"}}>?</span>}
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-           <div style={{fontSize:11,fontWeight:600,color:cur?"#E5E7EB":"#6B7280"}}>{item.label}</div>
-           {!isEdit&&cur&&<div style={{fontSize:9,color:"#22C55E"}}>✓ {cur.slice(0,45)}...</div>}
-           {!isEdit&&!cur&&<div style={{fontSize:9,color:"#EF4444"}}>Aucune image</div>}
-           {isEdit&&(
-            <div style={{display:"flex",gap:4,marginTop:3}}>
-             <input autoFocus value={urlInput} onChange={e=>setUrlInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter")saveMedia(item.key,urlInput);}}
-              placeholder="https://..."
-              style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:5,padding:"4px 7px",color:"#E5E7EB",fontSize:10,fontFamily:"Inter,sans-serif"}}/>
-             <button onClick={()=>saveMedia(item.key,urlInput)}
-              style={{padding:"4px 8px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:5,color:"#22C55E",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✓</button>
-             <button onClick={()=>{setEditingKey(null);setUrlInput("");}}
-              style={{padding:"4px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:5,color:"#6B7280",fontSize:10,cursor:"pointer"}}>✕</button>
-            </div>
-           )}
-          </div>
-          {!isEdit&&(
-           <button onClick={()=>{setEditingKey(item.key);setUrlInput(cur||"");}}
-            style={{padding:"4px 8px",background:cur?"rgba(255,255,255,.05)":"rgba(167,139,250,.08)",border:"1px solid "+(cur?"#1F2937":"rgba(167,139,250,.2)"),borderRadius:6,color:cur?"#6B7280":"#A78BFA",fontSize:10,fontWeight:600,cursor:"pointer",flexShrink:0}}>
-            {cur?"Modifier":"+ URL"}
-           </button>
-          )}
-         </div>
-        );
-       })}
-      </div>
-      <button onClick={()=>{setMediaStore({});localStorage.setItem("v7_media_store","{}");showToast("Médias réinitialisés","#EF4444");}}
-       style={{width:"100%",marginTop:10,padding:"7px",background:"rgba(239,68,68,.05)",border:"1px solid rgba(239,68,68,.15)",borderRadius:8,color:"#EF4444",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-       🗑️ Tout réinitialiser
-      </button>
-     </div>
-    )}
-   </div>
-  );
- })()}
+ <MediaManager mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/>
 
  {/* ── Palier bankroll ── */}
  {(()=>{ const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
