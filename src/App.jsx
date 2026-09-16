@@ -2626,9 +2626,9 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
 
      {/* Filter bar */}
      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-      <button onClick={()=>setSortMode(m=>m==="asc"?"desc":m==="desc"?"asc":"asc")}
+      <button onClick={()=>setSortMode(m=>m===""?"asc":m==="asc"?"desc":"")}
        style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(sortMode?"#60A5FA":"#1F2937"),background:sortMode?"rgba(96,165,250,.1)":"transparent",color:sortMode?"#60A5FA":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-       {sortMode==="asc"?"↑ Joueurs":"↓ Joueurs"}
+       {sortMode==="asc"?"↑ Joueurs":sortMode==="desc"?"↓ Joueurs":"Trier"}
       </button>
       <button onClick={()=>setFilterNoPhoto(f=>!f)}
        style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(filterNoPhoto?"#F59E0B":"#1F2937"),background:filterNoPhoto?"rgba(245,158,11,.1)":"transparent",color:filterNoPhoto?"#F59E0B":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
@@ -2769,6 +2769,12 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.role,p.league].filter(Boolean).join(" · ")||"—"}</div>
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+                   {p.team&&<button title="Free agent" onClick={async()=>{
+                    const updated={...p,team:"",league:p.league||""};
+                    await supaUpsertPlayer(updated);
+                    setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...updated,id:p.id};return n;});
+                    showToast(p.name+" → Free Agent","#F59E0B");
+                   }} style={{padding:"5px 8px",background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,cursor:"pointer"}}>FA</button>}
                    <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
                   </div>
                  ):(
