@@ -3240,6 +3240,49 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
  );
 }
 
+function PhotoMigrator({allPlayers,setPlayers,showToast}){
+ const [migrating,setMigrating]=useState(false);
+ const [result,setResult]=useState(null);
+
+ const migrate=async()=>{
+  setMigrating(true);setResult(null);
+  const toMigrate=Object.values(allPlayers).filter(p=>
+   p.photo_url&&p.photo_url.startsWith('http')&&!p.photo_url.includes('/storage/v1/object/public/')
+  );
+  showToast("Migration de "+toMigrate.length+" photos...","#A78BFA");
+  let done=0,skipped=0,failed=0;
+  for(const p of toMigrate){
+   try{
+    const permUrl=await supaUploadPhotoFromUrl(p.photo_url,'players');
+    if(permUrl!==p.photo_url){
+     await supaUpsertPlayer({...p,photo_url:permUrl,avatar_url:permUrl});
+     setPlayers(prev=>{const n={...prev};const k=(p.name||"").toLowerCase().trim();if(n[k])n[k]={...n[k],photo_url:permUrl,avatar_url:permUrl};return n;});
+     done++;
+    }else skipped++;
+   }catch(e){failed++;console.warn("Migration failed for",p.name,e);}
+  }
+  setResult({done,skipped,failed});
+  setMigrating(false);
+  showToast("✓ "+done+" photos migrées","#22C55E");
+ };
+
+ return(
+  <div style={{marginTop:10}}>
+   <button onClick={migrate} disabled={migrating}
+    style={{width:"100%",padding:"11px",background:"rgba(167,139,250,0.08)",border:"1px solid rgba(167,139,250,0.25)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:13,cursor:migrating?"not-allowed":"pointer",fontFamily:"'Inter',sans-serif",marginBottom:result?8:0}}>
+    {migrating?"⏳ Migration en cours...":"☁️ Migrer toutes les photos vers Supabase Storage"}
+   </button>
+   {result&&(
+    <div style={{background:"rgba(167,139,250,.06)",border:"1px solid rgba(167,139,250,.15)",borderRadius:10,padding:"10px 14px",fontSize:12}}>
+     <div style={{color:"#22C55E",fontWeight:700}}>✓ {result.done} photos migrées</div>
+     {result.skipped>0&&<div style={{color:"#6B7280"}}>↷ {result.skipped} déjà en storage</div>}
+     {result.failed>0&&<div style={{color:"#EF4444"}}>✗ {result.failed} échouées</div>}
+    </div>
+   )}
+  </div>
+ );
+}
+
 function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -12165,47 +12208,8 @@ export default function App(){
  )}
  </div>
 
- {/* Migrer photos vers Supabase Storage */}
- {(()=>{
-  const [migrating,setMigrating]=useState(false);
-  const [migrateResult,setMigrateResult]=useState(null);
-  return(
-   <div style={{marginTop:10}}>
-    <button onClick={async()=>{
-     setMigrating(true);setMigrateResult(null);
-     let done=0,skipped=0,failed=0;
-     const toMigrate=Object.values(allPlayers).filter(p=>
-      p.photo_url&&p.photo_url.startsWith('http')&&!p.photo_url.includes('/storage/v1/object/public/')
-     );
-     showToast("Migration de "+toMigrate.length+" photos...","#A78BFA");
-     for(const p of toMigrate){
-      try{
-       const permUrl=await supaUploadPhotoFromUrl(p.photo_url,'players');
-       if(permUrl!==p.photo_url){
-        await supaUpsertPlayer({...p,photo_url:permUrl,avatar_url:permUrl});
-        setPlayers(prev=>{const n={...prev};const k=(p.name||"").toLowerCase().trim();if(n[k])n[k]={...n[k],photo_url:permUrl,avatar_url:permUrl};return n;});
-        done++;
-       } else skipped++;
-      }catch(e){failed++;console.warn("Migration failed for",p.name,e);}
-     }
-     setMigrateResult({done,skipped,failed,total:toMigrate.length});
-     setMigrating(false);
-     showToast("✓ "+done+" photos migrées","#22C55E");
-    }} disabled={migrating}
-    style={{width:"100%",padding:"11px",background:"rgba(167,139,250,0.08)",border:"1px solid rgba(167,139,250,0.25)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:13,cursor:migrating?"not-allowed":"pointer",fontFamily:"'Inter',sans-serif",marginBottom:migrateResult?8:0}}>
-     {migrating?"⏳ Migration en cours...":"☁️ Migrer toutes les photos vers Supabase Storage"}
-    </button>
-    {migrateResult&&(
-     <div style={{background:"rgba(167,139,250,.06)",border:"1px solid rgba(167,139,250,.15)",borderRadius:10,padding:"10px 14px",fontSize:12}}>
-      <div style={{color:"#22C55E",fontWeight:700}}>✓ {migrateResult.done} photos migrées avec succès</div>
-      {migrateResult.skipped>0&&<div style={{color:"#6B7280"}}>↷ {migrateResult.skipped} déjà en storage ou inaccessibles</div>}
-      {migrateResult.failed>0&&<div style={{color:"#EF4444"}}>✗ {migrateResult.failed} échouées</div>}
-     </div>
-    )}
-   </div>
-  );
- })()}
 
+ <PhotoMigrator allPlayers={allPlayers} setPlayers={setPlayers} showToast={showToast}/>
  {/* Actions manuelles */}
  <button onClick={()=>{
  setSyncing(true);
