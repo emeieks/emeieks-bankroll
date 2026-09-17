@@ -417,6 +417,39 @@ async function supaFetchPlayers() {
  return all.length > 0 ? all : null;
 }
 
+async function supaUploadPhoto(file, folder) {
+ // Upload image to Supabase Storage and return permanent public URL
+ const ext = file.name.split('.').pop() || 'png';
+ const fileName = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
+ const res = await fetch(SUPA_URL + '/storage/v1/object/photos/' + fileName, {
+  method: 'POST',
+  headers: {
+   'apikey': SUPA_KEY,
+   'Authorization': 'Bearer ' + SUPA_KEY,
+   'Content-Type': file.type || 'image/png',
+   'x-upsert': 'true',
+  },
+  body: file,
+ });
+ if (!res.ok) throw new Error('Upload failed: ' + await res.text());
+ return SUPA_URL + '/storage/v1/object/public/photos/' + fileName;
+}
+
+async function supaUploadPhotoFromUrl(url, folder) {
+ // Fetch an image URL and upload to Supabase Storage for permanent storage
+ try {
+  const r = await fetch(url);
+  if (!r.ok) return url; // fallback to original URL if fetch fails
+  const blob = await r.blob();
+  const ext = url.split('.').pop().split('?')[0] || 'png';
+  const file = new File([blob], 'photo.' + ext, {type: blob.type || 'image/png'});
+  return await supaUploadPhoto(file, folder);
+ } catch(e) {
+  return url; // fallback to original URL
+ }
+}
+
+
 async function supaUpsertPlayer(data) {
  const name = (data.name || "").toLowerCase().trim();
  const game = data.game || "LoL";
@@ -2511,6 +2544,10 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
    const freshGame=editPForm.game||editP.game||"LoL";
    const fresh=Object.values(players).find(p=>(p.name||"").toLowerCase().trim()===freshKey&&p.game===freshGame&&p.id);
    if(fresh)data.id=fresh.id;
+   // Upload photo permanently to Supabase Storage
+   if(data.photo_url&&data.photo_url.startsWith('http')&&!data.photo_url.includes('/storage/v1/object/public/')){
+    try{const permUrl=await supaUploadPhotoFromUrl(data.photo_url,'players');data.photo_url=permUrl;data.avatar_url=permUrl;}catch(e){}
+   }
    const result=await supaUpsertPlayer(data);
    if(result&&result.id)data.id=result.id;
    setPlayers(prev=>{
@@ -3083,6 +3120,120 @@ function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
        🗑️
       </button>
      </div>
+    </div>
+   )}
+  </div>
+ );
+}
+
+function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,setBookmakers,showToast}){
+ const [open,setOpen]=useState(false);
+ const [tab,setTab]=useState("club");
+ const [clubName,setClubName]=useState("");
+ const [clubGame,setClubGame]=useState("CS2");
+ const [clubUrl,setClubUrl]=useState("");
+ const [clubSaving,setClubSaving]=useState(false);
+ const [bkName,setBkName]=useState("");
+ const [bkUrl,setBkUrl]=useState("");
+ const [bkSaving,setBkSaving]=useState(false);
+
+ const saveClub=async()=>{
+  if(!clubName.trim())return showToast("Nom requis","#EF4444");
+  setClubSaving(true);
+  if(clubUrl.trim()){
+   const key=clubName.trim()+"__"+clubGame;
+   setTeamLogos(prev=>{const m={...prev,[key]:clubUrl.trim()};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+   const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
+   await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(clubName.trim())+"&game=eq."+encodeURIComponent(clubGame),
+    {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:clubUrl.trim()})}).catch(()=>{});
+  }
+  showToast("Club "+clubName.trim()+" créé ✓","#22C55E");
+  setClubName("");setClubUrl("");setClubSaving(false);
+ };
+
+ const saveBK=async()=>{
+  if(!bkName.trim())return showToast("Nom requis","#EF4444");
+  setBkSaving(true);
+  const updated={...bkPhotos,[bkName.trim()]:bkUrl.trim()||""};
+  setBkPhotos(updated);
+  localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
+  if(!bookmakers.includes(bkName.trim()))setBookmakers(prev=>[...prev,bkName.trim()]);
+  showToast("Bookmaker "+bkName.trim()+" ajouté ✓","#22C55E");
+  setBkName("");setBkUrl("");setBkSaving(false);
+ };
+
+ const iStyle={width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"7px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",boxSizing:"border-box"};
+
+ return(
+  <div style={{marginBottom:8}}>
+   <button onClick={()=>setOpen(o=>!o)}
+    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s"}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{fontSize:14}}>➕</span>
+     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Créer</span>
+     <span style={{fontSize:10,color:"#6B7280"}}>Club ou Bookmaker</span>
+    </div>
+    <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+   </button>
+   {open&&(
+    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+     <div style={{display:"flex",gap:6,marginBottom:12}}>
+      {[["club","🏟️ Club"],["bk","📚 Bookmaker"]].map(([id,label])=>(
+       <button key={id} onClick={()=>setTab(id)}
+        style={{flex:1,padding:"7px",borderRadius:8,border:"1px solid "+(tab===id?"rgba(167,139,250,.3)":"#1F2937"),background:tab===id?"rgba(167,139,250,.1)":"transparent",color:tab===id?"#A78BFA":"#6B7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+        {label}
+       </button>
+      ))}
+     </div>
+     {tab==="club"&&(
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+       <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6}}>
+        <div>
+         <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Nom du club *</div>
+         <input value={clubName} onChange={e=>setClubName(e.target.value)} placeholder="ex: Vitality" style={iStyle}/>
+        </div>
+        <div>
+         <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Jeu</div>
+         <select value={clubGame} onChange={e=>setClubGame(e.target.value)}
+          style={{background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"7px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",cursor:"pointer",appearance:"none"}}>
+          {["CS2","LoL","Dota2","Valorant"].map(g=><option key={g} value={g}>{g}</option>)}
+         </select>
+        </div>
+       </div>
+       <div>
+        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>URL Logo</div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+         {clubUrl&&<img src={clubUrl} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.display="none"}/>}
+         <input value={clubUrl} onChange={e=>setClubUrl(e.target.value)} placeholder="https://..." style={{...iStyle,flex:1,width:"auto"}}/>
+         {clubUrl&&<button onClick={()=>setClubUrl("")} style={{padding:"5px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:5,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>}
+        </div>
+       </div>
+       <button onClick={saveClub} disabled={clubSaving||!clubName.trim()}
+        style={{width:"100%",padding:"8px",background:clubName.trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+(clubName.trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:8,color:clubName.trim()?"#22C55E":"#374151",fontSize:12,fontWeight:700,cursor:clubName.trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
+        {clubSaving?"Création...":"✓ Créer le club"}
+       </button>
+      </div>
+     )}
+     {tab==="bk"&&(
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+       <div>
+        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Nom du bookmaker *</div>
+        <input value={bkName} onChange={e=>setBkName(e.target.value)} placeholder="ex: Stake" style={iStyle}/>
+       </div>
+       <div>
+        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>URL Logo</div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+         {bkUrl&&<img src={bkUrl} alt="" style={{width:28,height:28,borderRadius:8,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.display="none"}/>}
+         <input value={bkUrl} onChange={e=>setBkUrl(e.target.value)} placeholder="https://..." style={{...iStyle,flex:1,width:"auto"}}/>
+         {bkUrl&&<button onClick={()=>setBkUrl("")} style={{padding:"5px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:5,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>}
+        </div>
+       </div>
+       <button onClick={saveBK} disabled={bkSaving||!bkName.trim()}
+        style={{width:"100%",padding:"8px",background:bkName.trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+(bkName.trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:8,color:bkName.trim()?"#22C55E":"#374151",fontSize:12,fontWeight:700,cursor:bkName.trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
+        {bkSaving?"Ajout...":"✓ Ajouter le bookmaker"}
+       </button>
+      </div>
+     )}
     </div>
    )}
   </div>
@@ -5734,6 +5885,14 @@ export default function App(){
  const rawName=pform.name.toLowerCase().trim();
  const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team,name:pform.name.trim()};
  try{
+  // Upload photo permanently to Supabase Storage if URL is external
+  if(data.photo_url&&data.photo_url.startsWith('http')&&!data.photo_url.includes('/storage/v1/object/public/')){
+   try{
+    const permUrl=await supaUploadPhotoFromUrl(data.photo_url,'players');
+    data.photo_url=permUrl;
+    data.avatar_url=permUrl;
+   }catch(e){console.warn('Photo upload failed:',e);}
+  }
   const result=await supaUpsertPlayer(data);
   const id=result&&result.id;
   setPlayers(p=>({...p,[rawName]:{...data,id:id||undefined}}));
@@ -5922,6 +6081,16 @@ export default function App(){
  )}
 
  {/* HOME */}
+ <div style={{display:view==="players"?"block":"none"}}>
+  <MediaManager mediaStore={mediaStore} setMediaStore={setMediaStore} bkPhotos={bkPhotos} teamLogos={teamLogos} showToast={showToast}/>
+  <CreateSection
+   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
+   bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
+   bookmakers={bookmakers} setBookmakers={setBookmakers}
+   showToast={showToast}
+  />
+ </div>
+
  {!viewPending&&view==="home"&&(
  <div className="view-enter" style={{paddingBottom:8,paddingTop:(isTestActive||mibActive)?34:0}}>
 
@@ -11108,8 +11277,6 @@ export default function App(){
 
 
 
- <MediaManager mediaStore={mediaStore} setMediaStore={setMediaStore} bkPhotos={bkPhotos} teamLogos={teamLogos} showToast={showToast}/>
-
  {/* ── Palier bankroll ── */}
  {(()=>{ const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
   const autoTier=Math.max(5000,Math.floor((bankroll+totalProfit)/2500)*2500);
@@ -11998,6 +12165,47 @@ export default function App(){
  )}
  </div>
 
+ {/* Migrer photos vers Supabase Storage */}
+ {(()=>{
+  const [migrating,setMigrating]=useState(false);
+  const [migrateResult,setMigrateResult]=useState(null);
+  return(
+   <div style={{marginTop:10}}>
+    <button onClick={async()=>{
+     setMigrating(true);setMigrateResult(null);
+     let done=0,skipped=0,failed=0;
+     const toMigrate=Object.values(allPlayers).filter(p=>
+      p.photo_url&&p.photo_url.startsWith('http')&&!p.photo_url.includes('/storage/v1/object/public/')
+     );
+     showToast("Migration de "+toMigrate.length+" photos...","#A78BFA");
+     for(const p of toMigrate){
+      try{
+       const permUrl=await supaUploadPhotoFromUrl(p.photo_url,'players');
+       if(permUrl!==p.photo_url){
+        await supaUpsertPlayer({...p,photo_url:permUrl,avatar_url:permUrl});
+        setPlayers(prev=>{const n={...prev};const k=(p.name||"").toLowerCase().trim();if(n[k])n[k]={...n[k],photo_url:permUrl,avatar_url:permUrl};return n;});
+        done++;
+       } else skipped++;
+      }catch(e){failed++;console.warn("Migration failed for",p.name,e);}
+     }
+     setMigrateResult({done,skipped,failed,total:toMigrate.length});
+     setMigrating(false);
+     showToast("✓ "+done+" photos migrées","#22C55E");
+    }} disabled={migrating}
+    style={{width:"100%",padding:"11px",background:"rgba(167,139,250,0.08)",border:"1px solid rgba(167,139,250,0.25)",borderRadius:10,color:"#A78BFA",fontWeight:700,fontSize:13,cursor:migrating?"not-allowed":"pointer",fontFamily:"'Inter',sans-serif",marginBottom:migrateResult?8:0}}>
+     {migrating?"⏳ Migration en cours...":"☁️ Migrer toutes les photos vers Supabase Storage"}
+    </button>
+    {migrateResult&&(
+     <div style={{background:"rgba(167,139,250,.06)",border:"1px solid rgba(167,139,250,.15)",borderRadius:10,padding:"10px 14px",fontSize:12}}>
+      <div style={{color:"#22C55E",fontWeight:700}}>✓ {migrateResult.done} photos migrées avec succès</div>
+      {migrateResult.skipped>0&&<div style={{color:"#6B7280"}}>↷ {migrateResult.skipped} déjà en storage ou inaccessibles</div>}
+      {migrateResult.failed>0&&<div style={{color:"#EF4444"}}>✗ {migrateResult.failed} échouées</div>}
+     </div>
+    )}
+   </div>
+  );
+ })()}
+
  {/* Actions manuelles */}
  <button onClick={()=>{
  setSyncing(true);
@@ -12077,13 +12285,13 @@ class ErrorBoundary extends React.Component{
 
 // PP Board Analyzer 
 function PPBoardAnalyzer(){
- const [gameFilter,setGameFilter]=React.useState("CS2");
- const [img12,setImg12]=React.useState(null);
- const [img3,setImg3]=React.useState(null);
- const [rows,setRows]=React.useState([]);
- const [loading,setLoading]=React.useState(false);
- const [error,setError]=React.useState("");
- const [open,setOpen]=React.useState(false);
+ const [gameFilter,setGameFilter]=useState("CS2");
+ const [img12,setImg12]=useState(null);
+ const [img3,setImg3]=useState(null);
+ const [rows,setRows]=useState([]);
+ const [loading,setLoading]=useState(false);
+ const [error,setError]=useState("");
+ const [open,setOpen]=useState(false);
 
  function handleFile(e,which){
  var file=e.target.files&&e.target.files[0];
