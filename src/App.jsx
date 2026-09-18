@@ -436,17 +436,30 @@ async function supaUploadPhoto(file, folder) {
 }
 
 async function supaUploadPhotoFromUrl(url, folder) {
- // Fetch an image URL and upload to Supabase Storage for permanent storage
- try {
-  const r = await fetch(url);
-  if (!r.ok) return url; // fallback to original URL if fetch fails
-  const blob = await r.blob();
-  const ext = url.split('.').pop().split('?')[0] || 'png';
-  const file = new File([blob], 'photo.' + ext, {type: blob.type || 'image/png'});
-  return await supaUploadPhoto(file, folder);
- } catch(e) {
-  return url; // fallback to original URL
- }
+ // Use canvas to load image (bypasses CORS for display) then upload to Supabase
+ return new Promise((resolve) => {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = async () => {
+   try {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || 200;
+    canvas.height = img.naturalHeight || 200;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    canvas.toBlob(async (blob) => {
+     if (!blob) return resolve(url);
+     try {
+      const file = new File([blob], 'photo.png', {type: 'image/png'});
+      const permUrl = await supaUploadPhoto(file, folder);
+      resolve(permUrl);
+     } catch(e) { resolve(url); }
+    }, 'image/png');
+   } catch(e) { resolve(url); }
+  };
+  img.onerror = () => resolve(url);
+  img.src = url;
+ });
 }
 
 
@@ -2576,11 +2589,17 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
     try{localStorage.setItem("v7_team_logos",JSON.stringify(updated));}catch(e){}
     return updated;
    });
-   // 2. PATCH team_logo_url directly on all players of this team in Supabase
+   // 2. Upload logo to Supabase Storage if external URL
+   let finalUrl=url;
+   if(url&&url.startsWith('http')&&!url.includes('/storage/v1/object/public/')){
+    try{finalUrl=await supaUploadPhotoFromUrl(url,'teams');}catch(e){finalUrl=url;}
+   }
+   // 3. PATCH team_logo_url directly on all players of this team in Supabase
    const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
    await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(editTeam.team)+"&game=eq."+encodeURIComponent(editTeam.game),
-    {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:url||null})}).catch(e=>console.warn(e));
-   // 3. Update local players state so it reflects immediately
+    {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:finalUrl||null})}).catch(e=>console.warn(e));
+   url=finalUrl;
+   // 4. Update local players state so it reflects immediately
    setPlayers(prev=>{
     const n={...prev};
     Object.keys(n).forEach(k=>{
@@ -3043,8 +3062,12 @@ function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
  const [urlInput,setUrlInput]=useState("");
  const missing=MEDIA_ITEMS.filter(m=>!mediaStore[m.key]).length;
 
- const save=(key,url)=>{
-  const s={...mediaStore,[key]:url.trim()};
+ const save=async(key,url)=>{
+  let finalUrl=url.trim();
+  if(finalUrl&&finalUrl.startsWith('http')&&!finalUrl.includes('/storage/v1/object/public/')){
+   try{finalUrl=await supaUploadPhotoFromUrl(finalUrl,'media');}catch(e){}
+  }
+  const s={...mediaStore,[key]:finalUrl};
   setMediaStore(s);
   localStorage.setItem("v7_media_store",JSON.stringify(s));
   applyMediaStore(s);
@@ -3141,11 +3164,15 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
   if(!clubName.trim())return showToast("Nom requis","#EF4444");
   setClubSaving(true);
   if(clubUrl.trim()){
+   let logoUrl=clubUrl.trim();
+   if(logoUrl.startsWith('http')&&!logoUrl.includes('/storage/v1/object/public/')){
+    try{logoUrl=await supaUploadPhotoFromUrl(logoUrl,'teams');}catch(e){}
+   }
    const key=clubName.trim()+"__"+clubGame;
-   setTeamLogos(prev=>{const m={...prev,[key]:clubUrl.trim()};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+   setTeamLogos(prev=>{const m={...prev,[key]:logoUrl};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
    const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
    await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(clubName.trim())+"&game=eq."+encodeURIComponent(clubGame),
-    {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:clubUrl.trim()})}).catch(()=>{});
+    {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:logoUrl})}).catch(()=>{});
   }
   showToast("Club "+clubName.trim()+" créé ✓","#22C55E");
   setClubName("");setClubUrl("");setClubSaving(false);
@@ -3154,7 +3181,11 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
  const saveBK=async()=>{
   if(!bkName.trim())return showToast("Nom requis","#EF4444");
   setBkSaving(true);
-  const updated={...bkPhotos,[bkName.trim()]:bkUrl.trim()||""};
+  let bkLogoUrl=bkUrl.trim();
+  if(bkLogoUrl&&bkLogoUrl.startsWith('http')&&!bkLogoUrl.includes('/storage/v1/object/public/')){
+   try{bkLogoUrl=await supaUploadPhotoFromUrl(bkLogoUrl,'bookmakers');}catch(e){}
+  }
+  const updated={...bkPhotos,[bkName.trim()]:bkLogoUrl||""};
   setBkPhotos(updated);
   localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
   if(!bookmakers.includes(bkName.trim()))setBookmakers(prev=>[...prev,bkName.trim()]);
@@ -11294,7 +11325,7 @@ export default function App(){
  <button title="URL du logo" onClick={()=>{
  const url=prompt("URL du logo pour "+bk+":",bkPhotos[bk]||"");
  if(url===null)return;
- const updated={...bkPhotos,[bk]:url.trim()};
+ let fu=url.trim();if(fu&&fu.startsWith('http')&&!fu.includes('/storage/v1/object/public/')){supaUploadPhotoFromUrl(fu,'bookmakers').then(u=>{fu=u;const updated={...bkPhotos,[bk]:fu};setBkPhotos(updated);try{localStorage.setItem("v7_bkphotos",JSON.stringify(updated));}catch(e){}supaUpdateMediaRow("__BK_PHOTOS__",updated).catch(()=>{});showToast("Logo mis à jour","#22C55E");}).catch(()=>{});return;}const updated={...bkPhotos,[bk]:fu};
  setBkPhotos(updated);
  try{localStorage.setItem("v7_bkphotos",JSON.stringify(updated));}catch(e){}
  supaUpdateMediaRow("__BK_PHOTOS__",updated).catch(()=>{});
