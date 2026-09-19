@@ -3337,45 +3337,51 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
  const GAMES=["CS2","LoL","Dota2","Valorant"];
  const [open,setOpen]=useState(false);
  const [activeGame,setActiveGame]=useState("CS2");
- const [editKey,setEditKey]=useState(null);
+ const [selected,setSelected]=useState({CS2:"",LoL:"",Dota2:"",Valorant:""});
  const [urlInput,setUrlInput]=useState("");
- const [tourName,setTourName]=useState("");
+ const [saving,setSaving]=useState(false);
 
- // Get tournaments for current game from mediaStore
- const getTourneys=(game)=>{
-  const prefix="tourney_"+game+"_";
-  return Object.entries(mediaStore)
-   .filter(([k])=>k.startsWith(prefix))
-   .map(([k,v])=>({key:k,name:k.replace(prefix,""),url:v}))
-   .sort((a,b)=>a.name.localeCompare(b.name));
+ // Known tournaments per game
+ const KNOWN={
+  CS2:["ESL Pro League","BLAST Premier","PGL Major","IEM Cologne","IEM Katowice","ESL One","BLAST Open","Antwerp Major","Paris Major","Copenhagen Major","Rio Major","Stockholm Major","EWC","Riyadh Masters","Fissure Universe"],
+  LoL:["MSI","Worlds","LCK Spring","LCK Summer","LEC Winter","LEC Spring","LEC Summer","LCS Spring","LCS Summer","LPL Spring","LPL Summer","CBLOL","LJL","VCS"],
+  Dota2:["The International","ESL One","DreamLeague","PGL Wallachia","BetBoom Dacha","Riyadh Masters","EWC","Lima Major","Berlin Major","Bali Major","ESL Birmingham","PGL Bucharest"],
+  Valorant:["Champions","Masters Tokyo","Masters Madrid","Masters Shanghai","Champions 2024","LOCK//IN","VCT Americas","VCT EMEA","VCT Pacific","VCT China","EWC","Ascension"],
  };
 
+ // Tournaments with logos from mediaStore
+ const getKey=(game,name)=>"tourney_"+game+"_"+name;
+ const getLogo=(game,name)=>mediaStore[getKey(game,name)]||null;
+
  const save=async()=>{
-  if(!tourName.trim())return showToast("Nom requis","#EF4444");
-  const key="tourney_"+activeGame+"_"+tourName.trim();
-  let finalUrl=urlInput.trim();
-  if(finalUrl&&finalUrl.startsWith('http')&&!finalUrl.includes('/storage/v1/object/public/')){
-   try{finalUrl=await supaUploadPhotoFromUrl(finalUrl,'tourneys');}catch(e){}
+  if(!selected[activeGame])return showToast("Sélectionne un tournoi","#EF4444");
+  if(!urlInput.trim())return showToast("URL requise","#EF4444");
+  setSaving(true);
+  let url=urlInput.trim();
+  if(url.startsWith('http')&&!url.includes('/storage/v1/object/public/')){
+   try{url=await supaUploadPhotoFromUrl(url,'tourneys');}catch(e){}
   }
-  const s={...mediaStore,[key]:finalUrl};
+  const key=getKey(activeGame,selected[activeGame]);
+  const s={...mediaStore,[key]:url};
   setMediaStore(s);
   localStorage.setItem("v7_media_store",JSON.stringify(s));
   applyMediaStore(s);
   supaSetMedia("mediaStore",s).catch(()=>{});
-  showToast("✓ "+tourName.trim()+" ajouté","#22C55E");
-  setTourName("");setUrlInput("");setEditKey(null);
+  showToast("✓ "+selected[activeGame]+" mis à jour","#22C55E");
+  setUrlInput("");setSaving(false);
  };
 
- const remove=(key)=>{
-  const s={...mediaStore};
-  delete s[key];
+ const remove=(game,name)=>{
+  const key=getKey(game,name);
+  const s={...mediaStore};delete s[key];
   setMediaStore(s);
   localStorage.setItem("v7_media_store",JSON.stringify(s));
   supaSetMedia("mediaStore",s).catch(()=>{});
-  showToast("Supprimé","#EF4444");
+  showToast("Logo supprimé","#EF4444");
  };
 
- const GAME_COLORS={"CS2":"#F59E0B","LoL":"#A78BFA","Dota2":"#EF4444","Valorant":"#22C55E"};
+ const GAME_COLORS={CS2:"#F59E0B",LoL:"#A78BFA",Dota2:"#EF4444",Valorant:"#22C55E"};
+ const isOK=(url)=>url&&url.includes('/storage/v1/object/public/');
 
  return(
   <div style={{marginBottom:8}}>
@@ -3384,8 +3390,8 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
     <div style={{display:"flex",alignItems:"center",gap:10}}>
      <span style={{fontSize:16}}>🏆</span>
      <div>
-      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Tournois</div>
-      <div style={{fontSize:10,color:"#6B7280"}}>Logos par jeu</div>
+      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Logos Tournois</div>
+      <div style={{fontSize:10,color:"#6B7280"}}>{Object.keys(mediaStore).filter(k=>k.startsWith("tourney_")).length} logos</div>
      </div>
     </div>
     <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
@@ -3393,63 +3399,187 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
    {open&&(
     <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"14px"}}>
      {/* Game tabs */}
-     <div style={{display:"flex",gap:6,marginBottom:14}}>
+     <div style={{display:"flex",gap:6,marginBottom:12}}>
       {GAMES.map(g=>(
-       <button key={g} onClick={()=>setActiveGame(g)}
+       <button key={g} onClick={()=>{setActiveGame(g);setSelected(s=>({...s,[g]:""}));setUrlInput("");}}
         style={{flex:1,padding:"6px 4px",borderRadius:10,border:"2px solid "+(activeGame===g?GAME_COLORS[g]:"transparent"),background:activeGame===g?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <GameLogo game={g} size={18}/>
        </button>
       ))}
      </div>
 
-     {/* Tournament list */}
+     {/* Existing logos */}
      {(()=>{
-      const tourneys=getTourneys(activeGame);
+      const existing=KNOWN[activeGame].filter(t=>getLogo(activeGame,t));
+      if(existing.length===0)return <div style={{fontSize:11,color:"#4a5a6e",marginBottom:12,textAlign:"center"}}>Aucun logo pour {activeGame}</div>;
       return(
-       <div>
-        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
-         {tourneys.length===0&&<div style={{fontSize:11,color:"#4a5a6e",padding:"8px 0",textAlign:"center"}}>Aucun tournoi pour {activeGame}</div>}
-         {tourneys.map(t=>(
-          <div key={t.key} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"rgba(255,255,255,.03)",borderRadius:10,border:"1px solid rgba(255,255,255,.05)"}}>
-           <div style={{width:32,height:32,borderRadius:8,background:"#111827",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-            {t.url?<img src={t.url} alt={t.name} style={{width:32,height:32,objectFit:"contain"}} onError={e=>e.target.style.opacity=".2"}/>:<span style={{fontSize:10,color:"#374151"}}>?</span>}
-           </div>
-           <div style={{flex:1,fontWeight:600,fontSize:12,color:"#E5E7EB"}}>{t.name}</div>
-           <button onClick={()=>{setEditKey(t.key);setTourName(t.name);setUrlInput(t.url||"");}}
-            style={{padding:"4px 8px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:"#A78BFA",fontSize:10,cursor:"pointer"}}>✏️</button>
-           <button onClick={()=>remove(t.key)}
-            style={{padding:"4px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:10,cursor:"pointer"}}>🗑️</button>
+       <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
+        {existing.map(t=>{
+         const url=getLogo(activeGame,t);
+         return(
+          <div key={t} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"rgba(255,255,255,.03)",borderRadius:8}}>
+           <img src={url.replace('__FAILED__','')} alt={t} style={{width:26,height:26,borderRadius:6,objectFit:"contain"}} onError={e=>e.target.style.opacity=".2"}/>
+           <div style={{flex:1,fontSize:11,color:"#E5E7EB",fontWeight:600}}>{t}</div>
+           <span style={{fontSize:9,color:isOK(url)?"#22C55E":"#F59E0B",fontWeight:700}}>{isOK(url)?"● OK":"● Ext"}</span>
+           <button onClick={()=>remove(activeGame,t)} style={{padding:"3px 6px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer"}}>✕</button>
           </div>
-         ))}
-        </div>
-
-        {/* Add / Edit form */}
-        <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:12}}>
-         <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:8}}>
-          {editKey?"Modifier":"+ Ajouter un tournoi"}
-         </div>
-         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <input value={tourName} onChange={e=>setTourName(e.target.value)} placeholder="Nom du tournoi"
-           style={{background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"8px 12px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif"}}/>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-           {urlInput&&<img src={urlInput} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>}
-           <input value={urlInput} onChange={e=>setUrlInput(e.target.value)} placeholder="URL du logo (https://...)"
-            style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"8px 12px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif"}}/>
-           {urlInput&&<button onClick={()=>setUrlInput("")} style={{padding:"6px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>}
-          </div>
-          <div style={{display:"flex",gap:6}}>
-           <button onClick={save} disabled={!tourName.trim()}
-            style={{flex:1,padding:"8px",background:tourName.trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+(tourName.trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:8,color:tourName.trim()?"#22C55E":"#374151",fontSize:12,fontWeight:700,cursor:tourName.trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
-            {editKey?"✓ Modifier":"✓ Ajouter"}
-           </button>
-           {editKey&&<button onClick={()=>{setEditKey(null);setTourName("");setUrlInput("");}}
-            style={{padding:"8px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>Annuler</button>}
-          </div>
-         </div>
-        </div>
+         );
+        })}
        </div>
       );
      })()}
+
+     {/* Add/select tournament */}
+     <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:12}}>
+      <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:8}}>Ajouter un logo</div>
+      <select value={selected[activeGame]} onChange={e=>setSelected(s=>({...s,[activeGame]:e.target.value}))}
+       style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"8px 12px",color:selected[activeGame]?"#E5E7EB":"#6B7280",fontSize:12,fontFamily:"Inter,sans-serif",marginBottom:8,cursor:"pointer",appearance:"none"}}>
+       <option value="">— Sélectionner un tournoi —</option>
+       {KNOWN[activeGame].map(t=>(
+        <option key={t} value={t}>{t}{getLogo(activeGame,t)?" ✓":""}</option>
+       ))}
+      </select>
+      {selected[activeGame]&&(
+       <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        {urlInput&&<img src={urlInput} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>}
+        <input value={urlInput} onChange={e=>setUrlInput(e.target.value)} placeholder="URL du logo"
+         style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"7px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif"}}/>
+        {urlInput&&<button onClick={()=>setUrlInput("")} style={{padding:"6px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>}
+        <button onClick={save} disabled={saving||!urlInput.trim()}
+         style={{padding:"7px 12px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
+         {saving?"...":"✓"}
+        </button>
+       </div>
+      )}
+     </div>
+    </div>
+   )}
+  </div>
+ );
+}
+
+
+function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showToast}){
+ const [open,setOpen]=useState(false);
+ const [editingBK,setEditingBK]=useState(null); // null=none, "new"=new, bkName=editing
+ const [bkNameInput,setBkNameInput]=useState("");
+ const [bkUrlInput,setBkUrlInput]=useState("");
+ const [saving,setSaving]=useState(false);
+
+ const saveBK=async()=>{
+  if(!bkNameInput.trim())return showToast("Nom requis","#EF4444");
+  setSaving(true);
+  let url=bkUrlInput.trim();
+  if(url&&url.startsWith('http')&&!url.includes('/storage/v1/object/public/')){
+   try{url=await supaUploadPhotoFromUrl(url,'bookmakers');}catch(e){}
+  }
+  const updated={...bkPhotos,[bkNameInput.trim()]:url};
+  setBkPhotos(updated);
+  localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
+  supaSetMedia("bkPhotos",updated).catch(()=>{});
+  if(!bookmakers.includes(bkNameInput.trim())){
+   setBookmakers(prev=>[...prev,bkNameInput.trim()].sort());
+  }
+  showToast("✓ "+bkNameInput.trim(),"#22C55E");
+  setEditingBK(null);setBkNameInput("");setBkUrlInput("");setSaving(false);
+ };
+
+ const deleteBK=(bk)=>{
+  if(!window.confirm("Supprimer "+bk+" ?"))return;
+  setBookmakers(prev=>prev.filter(b=>b!==bk));
+  const updated={...bkPhotos};delete updated[bk];
+  setBkPhotos(updated);
+  localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
+  supaSetMedia("bkPhotos",updated).catch(()=>{});
+  showToast(bk+" supprimé","#EF4444");
+ };
+
+ const startEdit=(bk)=>{
+  setEditingBK(bk);
+  setBkNameInput(bk);
+  setBkUrlInput(bkPhotos[bk]||"");
+ };
+
+ const isStoraged=(url)=>url&&url.includes('/storage/v1/object/public/');
+
+ return(
+  <div style={{marginBottom:8}}>
+   <button onClick={()=>setOpen(o=>!o)}
+    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"linear-gradient(135deg,rgba(30,35,60,.9),rgba(20,25,45,.9))",border:"1px solid rgba(255,255,255,.08)",borderRadius:open?"14px 14px 0 0":"14px",padding:"13px 16px",cursor:"pointer",transition:"all .2s"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     <span style={{fontSize:16}}>📚</span>
+     <div>
+      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Bookmakers</div>
+      <div style={{fontSize:10,color:"#6B7280"}}>{bookmakers.length} bookmakers</div>
+     </div>
+    </div>
+    <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
+   </button>
+   {open&&(
+    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"12px"}}>
+     {/* BK list */}
+     <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:12}}>
+      {bookmakers.map(bk=>{
+       const logo=bkPhotos[bk]||null;
+       const isEdit=editingBK===bk;
+       return(
+        <div key={bk}>
+         {!isEdit?(
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:"rgba(255,255,255,.03)",borderRadius:10,border:"1px solid rgba(255,255,255,.05)"}}>
+           <div style={{width:32,height:32,borderRadius:8,background:"#111827",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+            {logo?<img src={logo.replace('__FAILED__','')} alt={bk} style={{width:32,height:32,objectFit:"cover"}} onError={e=>e.target.style.opacity=".2"}/>
+             :<span style={{fontSize:11,fontWeight:700,color:"#374151"}}>{bk.slice(0,2).toUpperCase()}</span>}
+           </div>
+           <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{bk}</div>
+            {logo&&<div style={{fontSize:9,color:isStoraged(logo)?"#22C55E":"#F59E0B",fontWeight:600}}>{isStoraged(logo)?"● Supabase":"● Externe"}</div>}
+           </div>
+           <button onClick={()=>startEdit(bk)} style={{padding:"4px 8px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:"#A78BFA",fontSize:10,cursor:"pointer"}}>✏️</button>
+           <button onClick={()=>deleteBK(bk)} style={{padding:"4px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:10,cursor:"pointer"}}>🗑️</button>
+          </div>
+         ):(
+          <div style={{padding:"10px",background:"rgba(167,139,250,.05)",borderRadius:10,border:"1px solid rgba(167,139,250,.15)"}}>
+           <div style={{fontSize:10,color:"#A78BFA",fontWeight:700,marginBottom:8}}>Modifier {bk}</div>
+           <input value={bkNameInput} onChange={e=>setBkNameInput(e.target.value)} placeholder="Nom"
+            style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",marginBottom:6,boxSizing:"border-box"}}/>
+           <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+            {bkUrlInput&&<img src={bkUrlInput.replace('__FAILED__','')} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
+            <input value={bkUrlInput} onChange={e=>setBkUrlInput(e.target.value)} placeholder="URL logo (https://...)"
+             style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
+            {bkUrlInput&&<span style={{padding:"3px 6px",background:isStoraged(bkUrlInput)?"rgba(34,197,94,.15)":"rgba(245,158,11,.1)",border:"1px solid "+(isStoraged(bkUrlInput)?"rgba(34,197,94,.3)":"rgba(245,158,11,.3)"),borderRadius:5,color:isStoraged(bkUrlInput)?"#22C55E":"#F59E0B",fontSize:9,fontWeight:700,flexShrink:0}}>{isStoraged(bkUrlInput)?"● OK":"● Ext"}</span>}
+           </div>
+           <div style={{display:"flex",gap:6}}>
+            <button onClick={saveBK} disabled={saving} style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{saving?"...":"✓ Sauvegarder"}</button>
+            <button onClick={()=>{setEditingBK(null);setBkNameInput("");setBkUrlInput("");}} style={{padding:"7px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
+           </div>
+          </div>
+         )}
+        </div>
+       );
+      })}
+     </div>
+     {/* Add new */}
+     {editingBK==="new"?(
+      <div style={{padding:"10px",background:"rgba(34,197,94,.04)",borderRadius:10,border:"1px solid rgba(34,197,94,.15)"}}>
+       <div style={{fontSize:10,color:"#22C55E",fontWeight:700,marginBottom:8}}>Nouveau bookmaker</div>
+       <input value={bkNameInput} onChange={e=>setBkNameInput(e.target.value)} placeholder="Nom *"
+        style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",marginBottom:6,boxSizing:"border-box"}}/>
+       <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+        {bkUrlInput&&<img src={bkUrlInput} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
+        <input value={bkUrlInput} onChange={e=>setBkUrlInput(e.target.value)} placeholder="URL logo (optionnel)"
+         style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
+       </div>
+       <div style={{display:"flex",gap:6}}>
+        <button onClick={saveBK} disabled={saving||!bkNameInput.trim()} style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{saving?"...":"✓ Ajouter"}</button>
+        <button onClick={()=>{setEditingBK(null);setBkNameInput("");setBkUrlInput("");}} style={{padding:"7px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
+       </div>
+      </div>
+     ):(
+      <button onClick={()=>{setEditingBK("new");setBkNameInput("");setBkUrlInput("");}}
+       style={{width:"100%",padding:"8px",background:"rgba(34,197,94,.06)",border:"1px dashed rgba(34,197,94,.25)",borderRadius:10,color:"#22C55E",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+       + Ajouter un bookmaker
+      </button>
+     )}
     </div>
    )}
   </div>
@@ -11215,7 +11345,63 @@ export default function App(){
   showToast={showToast}
  />
 
- {/* ── Multiplicateurs d unités ── */}
+ <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(167,139,250,.15),transparent)",margin:"8px 0"}}/>
+
+ {/* ── Edit roster ── */}
+ <RosterEditor
+  players={players} setPlayers={setPlayers} allPlayers={allPlayers}
+  rosterOpen={rosterOpen} setRosterOpen={setRosterOpen}
+  rosterGame={rosterGame} setRosterGame={setRosterGame}
+  rosterLeague={rosterLeague} setRosterLeague={setRosterLeague}
+  rosterTeam={rosterTeam} setRosterTeam={setRosterTeam}
+  editP={editP} setEditP={setEditP}
+  editPForm={editPForm} setEditPForm={setEditPForm}
+  editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
+  editPSaving={editPSaving} setEditPSaving={setEditPSaving}
+  editTeam={editTeam} setEditTeam={setEditTeam}
+  teamLogoUrl={teamLogoUrl} setTeamLogoUrl={setTeamLogoUrl}
+  teamLogoSaving={teamLogoSaving} setTeamLogoSaving={setTeamLogoSaving}
+  rosterHierarchy={rosterHierarchy} showToast={showToast}
+  teamLogos={teamLogos} setTeamLogos={setTeamLogos}
+ />
+
+ <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(96,165,250,.15),transparent)",margin:"8px 0"}}/>
+
+ {/* ── Bookmakers ── */}
+ <BookmarkersSection
+  bookmakers={bookmakers} setBookmakers={setBookmakers}
+  bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
+  showToast={showToast}
+ />
+
+ <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(34,197,94,.15),transparent)",margin:"8px 0"}}/>
+
+ {/* ── Palier bankroll ── */}
+ {(()=>{ const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
+  const autoTier=Math.max(5000,Math.floor((bankroll+totalProfit)/2500)*2500);
+  const isAuto=!manualTier;
+  const activeTier=manualTier||autoTier;
+  return(
+   <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"14px 16px",marginBottom:8}}>
+    <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>Palier actif</div>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:isAuto?0:10}}>
+     {PALIERS.map(p=>(
+      <button key={p} onClick={()=>{setManualTier(p===activeTier&&!isAuto?null:p);localStorage.setItem("v7_manual_tier",String(p));}}
+       style={{padding:"5px 10px",borderRadius:20,border:"1.5px solid "+(p===activeTier?"#22C55E":"#1F2937"),background:p===activeTier?"rgba(34,197,94,.12)":"transparent",color:p===activeTier?"#22C55E":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+       {(p/1000).toFixed(p%1000===0?0:1)}k
+      </button>
+     ))}
+    </div>
+    {!isAuto&&(
+     <button onClick={()=>{setManualTier(null);localStorage.removeItem("v7_manual_tier");}}
+      style={{width:"100%",padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif",marginTop:8}}>
+      ↺ Repasser en automatique (palier actuel : {autoTier.toFixed(0)}$)
+     </button>
+    )}
+   </div>
+  );
+ })()}
+
  {/* ── Multiplicateurs d unités ── */}
 
 <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>{setQuickUnits(su);localStorage.setItem("v7_quick_units",JSON.stringify(su));}}/>
