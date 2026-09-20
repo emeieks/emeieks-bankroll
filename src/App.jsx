@@ -4279,6 +4279,13 @@ function applyMediaStore(store){
 applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));
 
 export default function App(){
+ // Register Service Worker for image caching
+ useEffect(()=>{
+  if('serviceWorker' in navigator){
+   navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  }
+ },[]);
+
  const [bets,setBets]=useState([]);
  const [bankroll,setBankroll]=useState(5000);
  const [manualTier,setManualTier]=useState(()=>{try{const s=localStorage.getItem("v7_manual_tier");return s?parseInt(s):null;}catch(e){return null;}});
