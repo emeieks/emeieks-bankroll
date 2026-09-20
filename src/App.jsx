@@ -621,6 +621,7 @@ async function supaGetAllMedia() {
 
 async function supaUpdateTeamLogo(allLogos) {
  const row = {
+  id: -2,
   player: "__TEAM_LOGOS__",
   description: JSON.stringify(allLogos),
   odds: 1, stake: 0, bookmaker: "", status: "pending",
@@ -629,8 +630,7 @@ async function supaUpdateTeamLogo(allLogos) {
   tournament: "", ppMapType: null, ppLine: null, ppEdge: null,
   updatedAt: Date.now(), archived: false, splits: null,
  };
- const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
- await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__TEAM_LOGOS__",{method:"DELETE",headers:h}).catch(()=>{});
+ const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"};
  await fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:h,body:JSON.stringify(row)}).catch(e=>console.warn("supaUpdateTeamLogo:",e));
 }
 
@@ -3250,7 +3250,7 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
     const existing=prev[g]||[];
     // Don't duplicate
     if(existing.some(cl=>cl.name.toLowerCase()===clubName.trim().toLowerCase()))return prev;
-    return {...prev,[g]:[...existing,{name:clubName.trim(),league:"",logoUrl:finalLogoUrl||""}]};
+    return {...prev,[g]:[...existing,{name:clubName.trim(),league:"",logoUrl:logoUrl||""}]};
    });
   }
   showToast("Club "+clubName.trim()+" créé ✓","#22C55E");
@@ -5027,10 +5027,9 @@ export default function App(){
  if(SUPA_URL&&SUPA_KEY){
  const settingsRow={player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter,bkPhotos,teamLogos,mediaStore}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
  (async()=>{
-   // Delete old settings row first (player is not a unique key in Supabase)
-   await fetch(SUPA_URL+"/rest/v1/bets?player=eq.__SETTINGS__",{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});
-   // Insert new
-   fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY},body:JSON.stringify(settingsRow)}).catch(()=>{});
+   // Upsert settings row with fixed id=-1
+   const settingsWithId={...settingsRow,id:-1};
+   await fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsWithId)}).catch(()=>{});
   })();
  }
  }catch(e){}
