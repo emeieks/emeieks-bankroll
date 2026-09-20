@@ -59,26 +59,31 @@ async function supaFetch(path, opts) { opts=opts||{};
  try { return text ? JSON.parse(text) : null; } catch { return null; }
 }
 
-async function supaPullBets() {
- // Paginer pour dépasser la limite de 1000 de Supabase
- const limit = 1000;
- let all = [];
- let offset = 0;
- while(true) {
- const batch = await supaFetch(`/rest/v1/bets?select=id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge&order=datetime.desc&limit=${limit}&offset=${offset}&archived=is.false`);
- if(!batch || batch.length === 0) break;
- all = [...all, ...batch];
- if(batch.length < limit) break;
- offset += limit;
- }
- return all.map(b=>{
+function normalizeBetRow(b){
  const splits=b.splits?JSON.parse(b.splits):undefined;
  return normalizeBet({...b,splits,
- ppMapType:b.pp_map_type||null,
- ppLine:b.pp_line||null,
- ppEdge:b.pp_edge!=null?b.pp_edge:null,
+  ppMapType:b.pp_map_type||null,
+  ppLine:b.pp_line||null,
+  ppEdge:b.pp_edge!=null?b.pp_edge:null,
  });
- });
+}
+
+// Progressive pull: onBatch called with each page so UI shows data immediately
+async function supaPullBets(onBatch) {
+ const SELECT="id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge";
+ const limit=500; // smaller pages = faster first render
+ let all=[];
+ let offset=0;
+ while(true){
+  const batch=await supaFetch(`/rest/v1/bets?select=${SELECT}&order=datetime.desc&limit=${limit}&offset=${offset}&archived=is.false`);
+  if(!batch||batch.length===0)break;
+  const normalized=batch.map(normalizeBetRow);
+  all=[...all,...normalized];
+  if(onBatch)onBatch(normalized,offset===0); // first page flag
+  if(batch.length<limit)break;
+  offset+=limit;
+ }
+ return all;
 }
 
 async function supaPushBets(bets) {
@@ -166,11 +171,11 @@ const L={
  Pacific:_B64_PACIFIC,
  EMEA:_B64_EMEA
 ,Wager:_B64_WAGER};
-function GameLogo({game,size=18}){
+const GameLogo=memo(function GameLogo({game,size=18}){
  const src=L[game];
  if(!src) return <span style={{fontSize:size-2,display:"block",width:size,height:size}}></span>;
  return <img src={src} alt={game} style={{width:size,height:size,objectFit:"cover",display:"block",flexShrink:0}}/>;
-}
+});
 
 // Bankroll Chart 
 function BankrollChart({points,h=150}){
@@ -683,12 +688,12 @@ function getLolRoleLogo(role){
  if(r==="jungle"||r==="jungler"||r==="jun"||r==="jgl")return LOL_ROLE_JUN;
  return null;
 }
-function RoleLogo({role,size=16}){
+const RoleLogo=memo(function RoleLogo({role,size=16}){
  const src=getLolRoleLogo(role);
  if(!src)return null;
  return <img src={src} alt={role} style={{width:size,height:size,borderRadius:3,objectFit:"contain",flexShrink:0}}/>;
-}
-function FmtProfit({v,fontSize=12,fontWeight=800}){
+});
+const FmtProfit=memo(function FmtProfit({v,fontSize=12,fontWeight=800}){
  const pos=v>=0;
  const color=pos?"#00E676":"#f87171";
  const abs=Math.abs(Math.round(v));
@@ -699,7 +704,7 @@ function FmtProfit({v,fontSize=12,fontWeight=800}){
  <span style={{opacity:.7,marginLeft:1,fontSize:fontSize*0.85}}>$</span>
  </span>
  );
-}
+});
 const FR_MONTHS=["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
 const FR_DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
 const MAP_TAGS=["Map 1","Map 2","Map 3","Map 4","Map 5"];
@@ -1255,6 +1260,30 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
 
 // BetRow component 
 const EMPTY_OBJ={};
+
+// ── VIRTUAL BET LIST ── renders only visible rows for performance with 10k+ bets
+const BET_ROW_HEIGHT = 88; // approximate height per BetRow in px
+const VIRTUAL_OVERSCAN = 5; // extra rows above/below viewport
+
+function useVirtualList(items, containerRef, rowHeight=BET_ROW_HEIGHT) {
+ const [range, setRange] = React.useState({start:0, end:30});
+ React.useEffect(()=>{
+  const el = containerRef.current;
+  if(!el) return;
+  const update = ()=>{
+   const scrollTop = el.scrollTop;
+   const height = el.clientHeight;
+   const start = Math.max(0, Math.floor(scrollTop/rowHeight) - VIRTUAL_OVERSCAN);
+   const end = Math.min(items.length, Math.ceil((scrollTop+height)/rowHeight) + VIRTUAL_OVERSCAN);
+   setRange(r => (r.start===start && r.end===end) ? r : {start, end});
+  };
+  el.addEventListener('scroll', update, {passive:true});
+  update();
+  return ()=> el.removeEventListener('scroll', update);
+ }, [items.length, rowHeight, containerRef]);
+ return range;
+}
+
 const APP_ICON="";
 // Set PWA icon
 (()=>{
@@ -1311,7 +1340,7 @@ function effectiveTournament(b,allPlayers){
 
 
 // LeagueLogo component 
-function LeagueLogo({league,size=18}){
+const LeagueLogo=memo(function LeagueLogo({league,size=18}){
  if(!league)return null;
  // Normalize league name to key
  var KEY_MAP={
@@ -1358,7 +1387,7 @@ function LeagueLogo({league,size=18}){
  }
  if(!src)return <span style={{fontSize:size*0.65,color:"#4a5a6e",fontWeight:700,lineHeight:1}}>{league.slice(0,3).toUpperCase()}</span>;
  return <img src={src.replace('__FAILED__','')} alt={league} style={{width:size,height:size,objectFit:"contain",verticalAlign:"middle",borderRadius:2}} onError={e=>e.target.style.opacity=".2"}/>;
-}
+});
 
 
 // League logos 
@@ -1391,6 +1420,34 @@ const LEAGUE_LOGOS={
  "LPL":null,
 };
 
+
+
+// Virtualized list for a single day's bets
+const VirtualizedDayBets = memo(function VirtualizedDayBets({bets=[], onStatus, onDelete, onDuplicate, onEdit, onSplit, bkPhotos, onSave, allTourneys, savedTourneys}) {
+ // For small lists (<20), render directly - no virtualization overhead needed
+ if(!bets||bets.length === 0) return null;
+ if(bets.length <= 20) {
+  return bets.map(b=>(
+   <BetRow key={b.id} bet={b} onStatus={onStatus} onDelete={onDelete} onDuplicate={onDuplicate} onEdit={onEdit} onSplit={onSplit} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
+  ));
+ }
+ // For large lists, use windowed rendering
+ const [visibleEnd, setVisibleEnd] = React.useState(20);
+ return (
+  <div>
+   {bets.slice(0, visibleEnd).map(b=>(
+    <BetRow key={b.id} bet={b} onStatus={onStatus} onDelete={onDelete} onDuplicate={onDuplicate} onEdit={onEdit} onSplit={onSplit} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
+   ))}
+   {visibleEnd < bets.length && (
+    <div style={{textAlign:"center",padding:"10px 0"}}>
+     <button onClick={()=>setVisibleEnd(v=>v+50)} style={{background:"rgba(124,58,237,.15)",border:"1px solid rgba(124,58,237,.3)",borderRadius:8,color:"#a78bfa",padding:"6px 18px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      Voir {Math.min(50, bets.length-visibleEnd)} de plus ({bets.length-visibleEnd} restants)
+     </button>
+    </div>
+   )}
+  </div>
+ );
+});
 
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
  const [open,setOpen]=useState(false);
@@ -1712,14 +1769,14 @@ const BetRowSelectable=memo(function BetRowSelectable({bet,selected,onToggle,onE
 
 // Main App 
 // Nav Icons (outside App to avoid recreating on every render) 
-function NavIconHome({active}){
+const NavIconHome=memo(function NavIconHome({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
  <path d="M3 12L12 3l9 9v8a1 1 0 01-1 1H4a1 1 0 01-1-1z" fill={active?"rgba(167,139,250,0.1)":"none"}/>
  <polyline points="9,21 9,12 15,12 15,21"/>
  </svg>);
-}
-function NavIconParis({active,count}){
+});
+const NavIconParis=memo(function NavIconParis({active,count}){
  const c=active?"#A78BFA":"#6B7280";
  return(<div style={{position:"relative",display:"inline-flex"}}>
  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -1730,15 +1787,15 @@ function NavIconParis({active,count}){
  </svg>
  {count>0&&<span style={{position:"absolute",top:-4,right:-6,background:"#3B82F6",color:"#fff",borderRadius:8,fontSize:8,fontWeight:800,padding:"1px 4px",minWidth:14,textAlign:"center",lineHeight:"13px",border:"1.5px solid #0D1526"}}>{count}</span>}
  </div>);
-}
-function NavIconAnalyse({active}){
+});
+const NavIconAnalyse=memo(function NavIconAnalyse({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
  <circle cx="10" cy="10" r="6" fill={active?"rgba(167,139,250,0.1)":"none"}/>
  <line x1="14.5" y1="14.5" x2="20" y2="20"/>
  <line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/>
  </svg>);
-}
+});
 
 function QuickUnitsEditor({quickUnits,setQuickUnits}){
  const [open,setOpen]=useState(false);
@@ -1801,7 +1858,7 @@ function QuickUnitsEditor({quickUnits,setQuickUnits}){
 }
 
 
-function CoteTab({settledFiltered}){
+const CoteTab=memo(function CoteTab({settledFiltered}){
  const [coteStep,setCoteStep]=useState(0.05);
  const steps=Array.from({length:20},(_,i)=>parseFloat((0.01*(i+1)).toFixed(2)));
  const coteRanges=useMemo(()=>{
@@ -1873,9 +1930,9 @@ function CoteTab({settledFiltered}){
    </div>
   </div>
  );
-}
+});
 
-function AvanceTab({settledFiltered,bets}){
+const AvanceTab=memo(function AvanceTab({settledFiltered,bets}){
  const [activeSection,setActiveSection]=useState("courbe");
  const sections=[{k:"courbe",l:"📈 Courbe"},{k:"mois",l:"📅 Mois"},{k:"calibration",l:"🎯 Calibration"},{k:"performance",l:"⚡ Performance"}];
 
@@ -2210,9 +2267,9 @@ function AvanceTab({settledFiltered,bets}){
    })()}
   </div>
  );
-}
+});
 
-function SpotsTab({settledFiltered}){
+const SpotsTab=memo(function SpotsTab({settledFiltered}){
  const ALL_GAMES=["CS2","LoL","Dota2","Valorant"];
  const [game,setGame]=useState("CS2");
  const [drill,setDrill]=useState(null); // {key, label, bets}
@@ -2309,7 +2366,7 @@ function SpotsTab({settledFiltered}){
     </div>
    </div>
   );
- }
+};
 
  // ── SECTION ──
  const SpotSection=({title,rows,showTop=3})=>{
@@ -2405,7 +2462,7 @@ function SpotsTab({settledFiltered}){
    {spots.mapType.length>0&&<SpotSection title="Par type de map PP" rows={spots.mapType} showTop={3}/>}
   </div>
  );
-}
+});
 
 function DiagEdgeTable({rows,dir,sum,MIN}){
  const wrc=wr=>wr>=60?"#22C55E":wr>=50?"#9CA3AF":"#EF4444";
@@ -2459,7 +2516,7 @@ function DiagEdgeTable({rows,dir,sum,MIN}){
  );
 }
 
-function DiagnosticTab({settledFiltered}){
+const DiagnosticTab=memo(function DiagnosticTab({settledFiltered}){
  const GAMES=["CS2","LoL","Dota2","Valorant"];
  const MIN=5;
  const wrc=wr=>wr>=60?"#22C55E":wr>=50?"#9CA3AF":"#EF4444";
@@ -2555,7 +2612,7 @@ function DiagnosticTab({settledFiltered}){
    )}
   </div>
  );
-}
+});
 
 const ROLES_BY_GAME={
   CS2:["Rifler","AWPer","Entry","Lurker","Support","IGL","Coach"],
@@ -2564,7 +2621,7 @@ const ROLES_BY_GAME={
   Dota2:["Carry","Midlaner","Offlaner","Support","Hard Support","Coach"],
  };
 
-function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
+const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
@@ -2692,13 +2749,13 @@ function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setC
   return [...set].sort();
  },[players,customClubs,teamLogos]);
 
- const onTeamInput=val=>{
+ const onTeamInput=useCallback(val=>{
   setTeamSearchQ(val);
   setEditPForm(f=>({...f,team:val}));
   if(val.length<1){setTeamSuggestions([]);return;}
   const q=val.toLowerCase();
   setTeamSuggestions(allTeams.filter(t=>t.toLowerCase().includes(q)).slice(0,6));
- };
+ },[allTeams]);
 
  // Search filter: match player name or team name
  const searchLower=searchQ.toLowerCase();
@@ -3124,7 +3181,7 @@ function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setC
    </div>
   );
  }
-}
+});
 
 
 function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
@@ -3220,7 +3277,7 @@ function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
  );
 }
 
-function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,setBookmakers,customClubs,setCustomClubs,showToast}){
+const CreateSection=memo(function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,setBookmakers,customClubs,setCustomClubs,showToast}){
  const [open,setOpen]=useState(false);
  const [tab,setTab]=useState("club");
  const [clubName,setClubName]=useState("");
@@ -3351,7 +3408,7 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
    )}
   </div>
  );
-}
+});
 
 function PhotoMigrator({allPlayers,setPlayers,showToast}){
  const [migrating,setMigrating]=useState(false);
@@ -3396,7 +3453,7 @@ function PhotoMigrator({allPlayers,setPlayers,showToast}){
  );
 }
 
-function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},savedTourneys={}}){
+const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},savedTourneys={}}){
  const GAMES=["CS2","LoL","Dota2","Valorant"];
  const [open,setOpen]=useState(false);
  const [activeGame,setActiveGame]=useState("CS2");
@@ -3527,10 +3584,10 @@ function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},save
    )}
   </div>
  );
-}
+});
 
 
-function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showToast}){
+const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showToast}){
  const [open,setOpen]=useState(false);
  const [editingBK,setEditingBK]=useState(null); // null=none, "new"=new, bkName=editing
  const [bkNameInput,setBkNameInput]=useState("");
@@ -3650,7 +3707,7 @@ function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showT
    )}
   </div>
  );
-}
+});
 
 function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px", showToast}){
  const [uploading, setUploading] = useState(false);
@@ -3737,7 +3794,7 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
  );
 }
 
-function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose, onDelete, onFA, editMode:editModeProp, editP, editPForm, setEditPForm, editPPhotoUrl, setEditPPhotoUrl, editPSaving, savePlayer, closeEdit, inputStyle, accent}){
+const PlayerCard=memo(function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose, onDelete, onFA, editMode:editModeProp, editP, editPForm, setEditPForm, editPPhotoUrl, setEditPPhotoUrl, editPSaving, savePlayer, closeEdit, inputStyle, accent}){
  const [editMode, setEditMode] = useState(editModeProp||false);
  // Compute stats for this player
  const playerBets = bets.filter(b=>
@@ -3969,7 +4026,7 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
    )}
   </div>
  );
-}
+});
 
 function SyncRoleBtn({playerName, newRole, oldRole, showToast}){
  const [syncing,setSyncing]=useState(false);
@@ -4008,7 +4065,7 @@ function SyncRoleBtn({playerName, newRole, oldRole, showToast}){
  );
 }
 
-function NavIconSuivi({active}){
+const NavIconSuivi=memo(function NavIconSuivi({active}){
  const c=active?"#A78BFA":"#6B7280";
  return(<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
  <circle cx="12" cy="8" r="3" fill={active?"rgba(167,139,250,0.1)":"none"}/>
@@ -4016,7 +4073,7 @@ function NavIconSuivi({active}){
  <circle cx="19" cy="17" r="2.2" fill={active?"rgba(167,139,250,0.08)":"none"}/>
  <path d="M12 11c-4 0-6 2-6 4"/><path d="M12 11c4 0 6 2 6 4"/>
  </svg>);
-}
+});
 
 // SelectionModal — sélection multiple + date + tournoi 
 function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={},onAfterPush,allPlayers={}}){
@@ -4121,7 +4178,6 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  });
  setBets(updated);
  // Sauvegarder immédiatement en localStorage
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  // Stocker les overrides séparément pour survivre au pull Supabase
  try{
  const ovRaw=localStorage.getItem("v7_overrides");
@@ -4378,7 +4434,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
 }
 
 // MesParisView 
-function MesParisView({
+const MesParisView=memo(function MesParisView({
  bets,setBets,bookmakers,bkPhotos,hiddenBKs,updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
  fBKs,setFBKs,setView,supaPushBets,supaDeleteManyBets,supaDeleteOneBet,setDeletedBets,BK_LOGOS,
  fGames,setFGames,fStatus,setFStatus,fOverUnder,setFOverUnder,
@@ -4469,10 +4525,9 @@ function MesParisView({
  },[settled]);
 
  useEffect(()=>{
- if(monthKeys.length>2){
+ if(!monthKeys||monthKeys.length<=2)return;
  setCollapsedMonths(prev=>{if(prev.size>0)return prev;return new Set(monthKeys.slice(1));});
- }
- },[monthKeys.length]);
+ },[monthKeys]);
 
  return(
  <div className="view-enter" style={{position:"relative"}}>
@@ -4621,8 +4676,7 @@ function MesParisView({
  <span style={{fontSize:13,fontWeight:700,color:"#b8c8de"}}>{fmtDay(dk)}</span>
  <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#00E676":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
  </div>
- {dayBets.map(b=>(
- <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
+   <VirtualizedDayBets bets={dayBets||[]} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
  ))}
  </div>
  );
@@ -4659,7 +4713,7 @@ function MesParisView({
  )}
  </div>
  );
-}
+});
 
 
 // Apply media store to module-level vars
@@ -4700,6 +4754,40 @@ function applyMediaStore(store){
 // Apply on page load
 applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));
 
+
+// ── STATS WEB WORKER ── heavy calculations off the main thread
+const STATS_WORKER_SRC = `
+self.onmessage = function(e) {
+ const {bets, type} = e.data;
+ if(type === 'settledFiltered') {
+  const settled = bets.filter(b => b.status !== 'pending');
+  // Streak calculation
+  const chron = [...settled].sort((a,b) => String(a.datetime||'').localeCompare(String(b.datetime||'')));
+  let curStreak=0,curType='',bestWin=0,bestLoss=0,tmpW=0,tmpL=0;
+  chron.forEach(b=>{
+   if(b.status==='won'){tmpW++;tmpL=0;if(tmpW>bestWin)bestWin=tmpW;}
+   else{tmpL++;tmpW=0;if(tmpL>bestLoss)bestLoss=tmpL;}
+  });
+  // ROI / WR
+  const won = settled.filter(b=>b.status==='won').length;
+  const totalStaked = settled.reduce((s,b)=>s+(b.stake||0),0);
+  const totalProfit = settled.reduce((s,b)=>s+(b.profit||0),0);
+  const roi = totalStaked > 0 ? totalProfit/totalStaked*100 : 0;
+  const wr = settled.length > 0 ? won/settled.length*100 : 0;
+  self.postMessage({type:'settledFiltered', result:{bestWin,bestLoss,roi,wr,count:settled.length,totalProfit,totalStaked}});
+ }
+};
+`;
+let _statsWorker = null;
+function getStatsWorker() {
+ if(_statsWorker) return _statsWorker;
+ try {
+  const blob = new Blob([STATS_WORKER_SRC], {type:'application/javascript'});
+  _statsWorker = new Worker(URL.createObjectURL(blob));
+ } catch(e) { _statsWorker = null; }
+ return _statsWorker;
+}
+
 export default function App(){
  // Register Service Worker for image caching
  useEffect(()=>{
@@ -4737,14 +4825,10 @@ export default function App(){
  const [lockedStatus,setLockedStatus]=useState(null);
  const [view,setViewRaw]=useState("home");
  const [viewPending,setViewPending]=useState(false);
- const setView=v=>{
- setViewPending(true);
- setTimeout(()=>{
- setViewRaw(v);
- setViewPending(false);
+ const setView=useCallback(v=>{
  try{window.scrollTo({top:0,behavior:"instant"});}catch(e){}
- },0);
- };
+ setViewRaw(v);
+ },[]);
  const [loaded,setLoaded]=useState(false);
  // Les joueurs viennent uniquement de Supabase — pas de localStorage
  const [toast,setToast]=useState(null);
@@ -4809,7 +4893,7 @@ export default function App(){
  const [teamLogos,setTeamLogos]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_team_logos")||"{}");}catch(e){return {};}});
  const DEFAULT_HIDDEN_BKS=[];
  const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
- const toggleHideBK=bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;});
+ const toggleHideBK=useCallback(bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;}),[]);
  const visibleBKs=bookmakers.filter(bk=>!hiddenBKs.has(bk));
  const [modalPlayer,setModalPlayer]=useState(false);
  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
@@ -4922,6 +5006,7 @@ export default function App(){
 }
  const [collapsedMonths,setCollapsedMonths]=useState(new Set());
  function toggleMonth(mk){setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});}
+
  function toggleHideAnalyseBet(key){
  setHiddenAnalyseBets(prev=>{
  const n=new Set(prev);
@@ -5183,27 +5268,42 @@ export default function App(){
  localStorage.removeItem("v7_overrides");
  }
  }
- // 2. Pull Supabase
- const remote=await supaPullBets();
- setSupaOk(true);
- if(!remote||remote.length===0){setSyncing(false);return;}
- // 3. Merge local-first : le plus récent (updatedAt) gagne
- // Si Supabase est indisponible, l app fonctionne avec le localStorage
+ // 2. Pull Supabase avec chargement progressif
  const localRaw=localStorage.getItem("v7_bets");
  const localBets=localRaw?JSON.parse(localRaw):[];
  const localMap={};
  localBets.forEach(b=>{if(b&&b.id)localMap[String(b.id)]=b;});
+ let allRemote=[];
+ const remote=await supaPullBets((pageBets,isFirst)=>{
+  // Merge et afficher immédiatement dès la première page
+  allRemote=[...allRemote,...pageBets];
+  const remoteMap={};
+  allRemote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
+  const allIds=new Set([...Object.keys(localMap),...Object.keys(remoteMap)]);
+  const merged=[];
+  allIds.forEach(sid=>{
+   const loc=localMap[sid];
+   const rem=remoteMap[sid];
+   if(!rem)return;
+   if(!loc){merged.push(rem);return;}
+   const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
+   const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
+   merged.push(locTs>=remTs?loc:rem);
+  });
+  setBets(merged); // Update UI progressively
+  if(isFirst)setSupaOk(true);
+ });
+ if(!remote||remote.length===0){setSyncing(false);return;}
+ // Final merge with complete dataset
  const remoteMap={};
  remote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
- // Union des deux sets d'ids
  const allIds=new Set([...Object.keys(localMap),...Object.keys(remoteMap)]);
  const merged=[];
  allIds.forEach(sid=>{
  const loc=localMap[sid];
  const rem=remoteMap[sid];
- if(!rem)return; // Pari supprimé sur Supabase → ne pas garder le local
+ if(!rem)return;
  if(!loc){merged.push(normalizeBet(rem));return;}
- // Le plus récent gagne (updatedAt comme arbitre)
  const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
  const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
  merged.push(normalizeBet(locTs>=remTs?loc:rem));
@@ -5472,12 +5572,6 @@ export default function App(){
  return()=>document.removeEventListener("visibilitychange",onVisible);
  },[pullFromSupa]);
 
- // Re-pull toutes les 30s si l app est visible
- useEffect(()=>{
- if(!loaded)return;
- const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},30000);
- return()=>clearInterval(t);
- },[loaded,pullFromSupa]);
 
  // Sync settings (tournois actifs/sauvegardés) indépendamment des bets — toutes les 10s
  useEffect(()=>{
@@ -5754,7 +5848,7 @@ export default function App(){
   }).catch(()=>{});
  };
  syncSettings();
- const t2=setInterval(syncSettings,10000);
+ const t2=setInterval(syncSettings,30000);
  return()=>clearInterval(t2);
  },[loaded]);
 
@@ -5825,6 +5919,18 @@ export default function App(){
  },[allPlayers]);
 
  const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
+
+ // Worker-computed stats (updates asynchronously to avoid blocking UI)
+ const [workerStats,setWorkerStats]=React.useState({bestWin:0,bestLoss:0,roi:0,wr:0,count:0,totalProfit:0,totalStaked:0});
+ React.useEffect(()=>{
+  const worker=getStatsWorker();
+  if(!worker||!settled.length)return;
+  const handler=e=>{if(e.data.type==='settledFiltered')setWorkerStats(e.data.result);};
+  worker.addEventListener('message',handler);
+  // Debounce: wait 300ms after last change before computing
+  const t=setTimeout(()=>worker.postMessage({type:'settledFiltered',bets:settled}),300);
+  return()=>{clearTimeout(t);worker.removeEventListener('message',handler);};
+ },[settled]);
 
  // Filtre Test + MIB 
  const isTestActive=useMemo(()=>{
@@ -5898,7 +6004,7 @@ export default function App(){
  const weekList=Object.values(weeks).sort((a,b)=>a.key.localeCompare(b.key));
 
  // 2. Séries (streaks)
- const chron=[...settledFiltered].sort((a,b)=>(String(a.datetime)||"").localeCompare(String(b.datetime)||""));
+ const chron=useMemo(()=>[...settledFiltered].sort((a,b)=>(String(a.datetime)||"").localeCompare(String(b.datetime)||"")),[settledFiltered]);
  let curStreak=0,curType="",bestWin=0,bestLoss=0,tmpW=0,tmpL=0;
  chron.forEach(b=>{
  if(b.status==="won"){tmpW++;tmpL=0;if(tmpW>bestWin)bestWin=tmpW;}
@@ -6511,6 +6617,18 @@ export default function App(){
  return{allSortedBets:sorted,byDay:bd,dayKeys:dk,byMonth:bm,monthKeys:Object.keys(bm).sort((a,z)=>z.localeCompare(a))};
  },[bets,betsForDisplay,isTestActive]);
 
+ // Auto-collapse months older than 2 months to avoid rendering thousands of BetRows
+ React.useEffect(()=>{
+  if(!monthKeys||monthKeys.length<=2)return;
+  const now=new Date();
+  const keep=new Set();
+  for(let i=0;i<2;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);keep.add(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));}
+  setCollapsedMonths(prev=>{
+   const next=new Set(prev);
+   monthKeys.forEach(mk=>{if(!keep.has(mk))next.add(mk);});
+   return next.size===prev.size&&[...next].every(v=>prev.has(v))?prev:next;
+  });
+ },[monthKeys]);
 
  const homeSettled=useMemo(function(){
  let s=isTestActive?filteredByTest(settled):settled;
@@ -6665,7 +6783,6 @@ export default function App(){
  setBets(b=>{
  const updated=[newBet,...b];
  // Write to localStorage immediately to prevent stale reads
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  return updated;
  });
  // Mark push time to block auto-pull for 15s
@@ -6705,7 +6822,6 @@ export default function App(){
  const sessionBK=form.bookmaker;
  setBets(b=>{
  const updated=[...newBets,...b];
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  return updated;
  });
  lastPushRef.current=Date.now();
@@ -6816,7 +6932,6 @@ export default function App(){
  const u={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null,updatedAt:now};
  changed.push(u);return u;
  });
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
  return updated;
  });
@@ -6828,7 +6943,6 @@ export default function App(){
  const changed=[];
  setBets(b=>{
  const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,bookmaker:bulkBK};changed.push(u);return u;});
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
  return updated;
  });
@@ -6869,7 +6983,6 @@ export default function App(){
  const changed=[];
  setBets(b=>{
  const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,mapTag:bulkMap};changed.push(u);return u;});
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
  return updated;
  });
@@ -6880,7 +6993,6 @@ export default function App(){
  const changed=[];
  setBets(b=>{
  const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,tournament:name};changed.push(u);return u;});
- try{localStorage.setItem("v7_bets",JSON.stringify(updated));}catch(e){}
  setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
  return updated;
  });
@@ -7019,7 +7131,7 @@ export default function App(){
  .cal-cell:active{transform:scale(.94);}
  .cal-cell.today{border-color:rgba(124,58,237,.5);}
  .cal-cell.selected{background:rgba(124,58,237,.12);border-color:#7C3AED;}
- .view-enter{animation:fadeUp .2s cubic-bezier(.32,.72,0,1);will-change:opacity,transform;}
+ .view-enter{animation:fadeUp .12s cubic-bezier(.32,.72,0,1);will-change:opacity,transform;}
  @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
  .month-header{font-size:13px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px;padding:14px 4px 6px;}
  .day-header{font-size:12px;color:#6B7280;font-weight:600;padding:8px 0 5px;display:flex;justify-content:space-between;align-items:center;}
@@ -7080,16 +7192,9 @@ export default function App(){
  )}
 
  {/* VUE EN CHARGEMENT */}
- {viewPending&&(
- <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",gap:16}}>
- <div style={{width:32,height:32,border:"2px solid rgba(99,102,241,.3)",borderTop:"2px solid #6366f1",borderRadius:"50%",animation:"spin 0.7s linear infinite"}}/>
- <span style={{fontSize:11,color:"#4a5a6e"}}>Chargement…</span>
- <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
- </div>
- )}
 
  {/* HOME */}
- {!viewPending&&view==="home"&&(
+ {view==="home"&&(
  <div className="view-enter" style={{paddingBottom:8,paddingTop:(isTestActive||mibActive)?34:0}}>
 
  {/* TOP BAR */}
@@ -7389,7 +7494,7 @@ export default function App(){
  )}
 
  {/* MES PARIS */}
- {!viewPending&&view==="mesparis"&&(
+ {view==="mesparis"&&(
  <MesParisView
  bets={betsForDisplay}
  setBets={setBets}
@@ -8934,7 +9039,7 @@ export default function App(){
 
 
  {/* STATS */}
- {!viewPending&&view==="statistiques"&&(
+ {view==="statistiques"&&(
  <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
  <div style={{fontSize:16,fontWeight:800,textTransform:"uppercase",letterSpacing:1.5,color:"#dce8ff",marginBottom:14}}>Statistiques</div>
 
@@ -8953,8 +9058,8 @@ export default function App(){
 
  {/* TESTING PANEL */}
  {statsTab==="plus"&&testingOpen&&(()=>{
- const allTourneys=[...new Set(settled.map(b=>b.tournament||"Hors tournoi"))].sort();
- const allLeagues=[...new Set(settled.map(b=>b.league).filter(Boolean))].sort();
+       const allTourneys=useMemo(()=>[...new Set(settled.map(b=>b.tournament||"Hors tournoi"))].sort(),[settled]);
+       const allLeagues=useMemo(()=>[...new Set(settled.map(b=>b.league).filter(Boolean))].sort(),[settled]);
  const f=testFilterDraft;
 
  // Check if draft differs from applied
