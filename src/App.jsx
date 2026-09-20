@@ -59,27 +59,20 @@ async function supaFetch(path, opts) { opts=opts||{};
  try { return text ? JSON.parse(text) : null; } catch { return null; }
 }
 
-function normalizeBetRow(b){
- const splits=b.splits?JSON.parse(b.splits):undefined;
- return normalizeBet({...b,splits,
-  ppMapType:b.pp_map_type||null,
-  ppLine:b.pp_line||null,
-  ppEdge:b.pp_edge!=null?b.pp_edge:null,
- });
-}
-
-// Progressive pull: onBatch called with each page so UI shows data immediately
-async function supaPullBets(onBatch) {
+// Full pull - loads all bets before updating UI to avoid sync issues
+async function supaPullBets() {
  const SELECT="id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge";
- const limit=500; // smaller pages = faster first render
+ const limit=1000;
  let all=[];
  let offset=0;
  while(true){
-  const batch=await supaFetch(`/rest/v1/bets?select=${SELECT}&order=datetime.desc&limit=${limit}&offset=${offset}&archived=is.false`);
+  const batch=await supaFetch(`/rest/v1/bets?select=${SELECT}&order=datetime.desc&limit=${limit}&offset=${offset}`);
   if(!batch||batch.length===0)break;
-  const normalized=batch.map(normalizeBetRow);
-  all=[...all,...normalized];
-  if(onBatch)onBatch(normalized,offset===0); // first page flag
+  const splits_parsed=batch.map(b=>{
+   const splits=b.splits?JSON.parse(b.splits):undefined;
+   return normalizeBet({...b,splits,ppMapType:b.pp_map_type||null,ppLine:b.pp_line||null,ppEdge:b.pp_edge!=null?b.pp_edge:null});
+  });
+  all=[...all,...splits_parsed];
   if(batch.length<limit)break;
   offset+=limit;
  }
@@ -5268,33 +5261,15 @@ export default function App(){
  localStorage.removeItem("v7_overrides");
  }
  }
- // 2. Pull Supabase avec chargement progressif
+ // 2. Pull Supabase
+ const remote=await supaPullBets();
+ setSupaOk(true);
+ if(!remote||!remote.length){setSyncing(false);return;}
+ // 3. Merge local-first : le plus récent (updatedAt) gagne
  const localRaw=localStorage.getItem("v7_bets");
  const localBets=localRaw?JSON.parse(localRaw):[];
  const localMap={};
  localBets.forEach(b=>{if(b&&b.id)localMap[String(b.id)]=b;});
- let allRemote=[];
- const remote=await supaPullBets((pageBets,isFirst)=>{
-  // Merge et afficher immédiatement dès la première page
-  allRemote=[...allRemote,...pageBets];
-  const remoteMap={};
-  allRemote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
-  const allIds=new Set([...Object.keys(localMap),...Object.keys(remoteMap)]);
-  const merged=[];
-  allIds.forEach(sid=>{
-   const loc=localMap[sid];
-   const rem=remoteMap[sid];
-   if(!rem)return;
-   if(!loc){merged.push(rem);return;}
-   const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
-   const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
-   merged.push(locTs>=remTs?loc:rem);
-  });
-  setBets(merged); // Update UI progressively
-  if(isFirst)setSupaOk(true);
- });
- if(!remote||!remote.length){setSyncing(false);return;}
- // Final merge with complete dataset
  const remoteMap={};
  remote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
  const allIds=new Set([...Object.keys(localMap),...Object.keys(remoteMap)]);
