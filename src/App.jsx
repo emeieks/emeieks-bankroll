@@ -2687,6 +2687,8 @@ function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setC
  const allTeams=useMemo(()=>{
   const set=new Set();
   Object.values(players).forEach(p=>{if(p.team)set.add(p.team);});
+  // Ajouter les clubs créés manuellement
+  Object.entries(customClubs||{}).forEach(([,clubs])=>{clubs.forEach(cl=>{if(cl.name)set.add(cl.name);});});
   return [...set].sort();
  },[players,customClubs,teamLogos]);
 
@@ -12490,6 +12492,11 @@ export default function App(){
         const key=t+"|||"+l;
         if(!gameTeams[key])gameTeams[key]={team:t,league:l,count:0};
         gameTeams[key].count++;
+       });
+       // Ajouter les clubs custom
+       (customClubs[pform.game]||[]).forEach(cl=>{
+        const key=(cl.name||"")+"|||"+(cl.league||"");
+        if(!gameTeams[key])gameTeams[key]={team:cl.name,league:cl.league||"",count:0};
        });
        const sorted=Object.values(gameTeams).sort((a,b)=>a.team.localeCompare(b.team)||a.league.localeCompare(b.league));
        return(
