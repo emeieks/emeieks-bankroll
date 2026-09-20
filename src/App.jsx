@@ -5028,8 +5028,8 @@ export default function App(){
  localStorage.setItem("v7_saved_tourneys_bk",JSON.stringify(savedTourneys));
  // Serialize testFilter (Sets → Arrays for JSON)
  const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
- if(SUPA_URL&&SUPA_KEY){
- // Push settings to media_store table (reliable, no id constraint)
+ // Ne push vers Supabase qu'après le chargement initial (évite d'écraser avec des données vides)
+ if(SUPA_URL&&SUPA_KEY&&mediaLoadedRef.current){
  const settingsData={activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter,bookmakers};
  supaSetMedia("settings",settingsData).catch(()=>{});
  }
@@ -11973,7 +11973,7 @@ export default function App(){
  }}
  style={{flex:1,background:"#0B1220",border:"1px solid "+(hasActive?"rgba(124,58,237,0.4)":"#1F2937"),borderRadius:8,padding:"7px 10px",color:hasActive?"#E5E7EB":"#4B5563",fontWeight:hasActive?600:400,fontSize:12,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",colorScheme:"dark"}}>
  <option value="">Aucun tournoi actif</option>
- {saved.map(s=><option key={s} value={s}>{s}</option>)}
+ {[...new Set([...(t&&t.name?[t.name]:[]),...saved])].map(s=><option key={s} value={s}>{s}</option>)}
  </select>
  <button onClick={()=>setModalTourney(game)}
  style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:8,padding:"6px 10px",color:"#A78BFA",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:700,flexShrink:0}}>
