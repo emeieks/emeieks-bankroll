@@ -2696,18 +2696,13 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
 
  return(
   <div style={{marginBottom:8}}>
-   <button onClick={()=>setRosterOpen(o=>!o)}
-    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:rosterOpen?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"border-radius .2s"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-     <span style={{fontSize:14}}>✏️</span>
-     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Edit</span>
-     <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:20}}>{Object.keys(allPlayers).length} joueurs</span>
-    </div>
-    <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:rosterOpen?"rotate(180deg)":"none"}}></span>
-   </button>
+   <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",background:"#111827",border:"1px solid #1F2937",borderRadius:"13px 13px 0 0"}}>
+    <span style={{fontSize:14}}>✏️</span>
+    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Edit</span>
+    <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:20}}>{Object.keys(allPlayers).length} joueurs</span>
+   </div>
 
-   {rosterOpen&&(
-    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+   <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
 
      {/* Dédoublonnage */}
      {(()=>{
@@ -2990,7 +2985,6 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       );
      })()}
     </div>
-   )}
   </div>
  );
 
@@ -3362,7 +3356,7 @@ function PhotoMigrator({allPlayers,setPlayers,showToast}){
  );
 }
 
-function TourneyLogos({mediaStore,setMediaStore,showToast}){
+function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={}}){
  const GAMES=["CS2","LoL","Dota2","Valorant"];
  const [open,setOpen]=useState(false);
  const [activeGame,setActiveGame]=useState("CS2");
@@ -3409,6 +3403,13 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
   showToast("Logo supprimé","#EF4444");
  };
 
+ // Merge active tourneys into the known list for each game
+ const KNOWN_WITH_ACTIVE={...KNOWN};
+ Object.entries(activeTourneys).forEach(([game,t])=>{
+  if(t&&t.name&&KNOWN_WITH_ACTIVE[game]&&!KNOWN_WITH_ACTIVE[game].includes(t.name)){
+   KNOWN_WITH_ACTIVE[game]=[t.name,...KNOWN_WITH_ACTIVE[game]];
+  }
+ });
  const GAME_COLORS={CS2:"#F59E0B",LoL:"#A78BFA",Dota2:"#EF4444",Valorant:"#22C55E"};
  const isOK=(url)=>url&&url.includes('/storage/v1/object/public/');
 
@@ -3439,7 +3440,7 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
 
      {/* Existing logos */}
      {(()=>{
-      const existing=KNOWN[activeGame].filter(t=>getLogo(activeGame,t));
+      const existing=KNOWN_WITH_ACTIVE[activeGame].filter(t=>getLogo(activeGame,t));
       if(existing.length===0)return <div style={{fontSize:11,color:"#4a5a6e",marginBottom:12,textAlign:"center"}}>Aucun logo pour {activeGame}</div>;
       return(
        <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
@@ -3464,7 +3465,7 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
       <select value={selected[activeGame]} onChange={e=>setSelected(s=>({...s,[activeGame]:e.target.value}))}
        style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"8px 12px",color:selected[activeGame]?"#E5E7EB":"#6B7280",fontSize:12,fontFamily:"Inter,sans-serif",marginBottom:8,cursor:"pointer",appearance:"none"}}>
        <option value="">— Sélectionner un tournoi —</option>
-       {KNOWN[activeGame].map(t=>(
+       {KNOWN_WITH_ACTIVE[activeGame].map(t=>(
         <option key={t} value={t}>{t}{getLogo(activeGame,t)?" ✓":""}</option>
        ))}
       </select>
@@ -11455,10 +11456,7 @@ export default function App(){
  </div>}
  </div>
 
- <TourneyLogos
-  mediaStore={mediaStore} setMediaStore={setMediaStore}
-  showToast={showToast}
- />
+ <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(167,139,250,.15),transparent)",margin:"8px 0"}}/>
 
  <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(167,139,250,.15),transparent)",margin:"8px 0"}}/>
 
@@ -11478,6 +11476,11 @@ export default function App(){
   teamLogoSaving={teamLogoSaving} setTeamLogoSaving={setTeamLogoSaving}
   rosterHierarchy={rosterHierarchy} showToast={showToast}
   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
+ />
+
+ <TourneyLogos
+  mediaStore={mediaStore} setMediaStore={setMediaStore}
+  showToast={showToast} activeTourneys={activeTourneys}
  />
 
  <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(96,165,250,.15),transparent)",margin:"8px 0"}}/>
