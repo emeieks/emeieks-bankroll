@@ -2557,14 +2557,15 @@ function DiagnosticTab({settledFiltered}){
  );
 }
 
-function RosterEditor({players,setPlayers,allPlayers,bets=[],rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
- const GAMES_R=["CS2","LoL","Dota2","Valorant"];
- const ROLES_BY_GAME={
+const ROLES_BY_GAME={
   CS2:["Rifler","AWPer","Entry","Lurker","Support","IGL","Coach"],
   LoL:["Top","Jungle","Mid","ADC","Support","Coach"],
   Valorant:["Duelist","Sentinel","Controller","Initiator","IGL","Coach"],
   Dota2:["Carry","Midlaner","Offlaner","Support","Hard Support","Coach"],
  };
+
+function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
+ const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
  const [sortMode,setSortMode]=useState(""); // "asc" | "desc" | ""
@@ -2687,7 +2688,7 @@ function RosterEditor({players,setPlayers,allPlayers,bets=[],rosterOpen,setRoste
   const set=new Set();
   Object.values(players).forEach(p=>{if(p.team)set.add(p.team);});
   return [...set].sort();
- },[players]);
+ },[players,customClubs,teamLogos]);
 
  const onTeamInput=val=>{
   setTeamSearchQ(val);
@@ -3217,7 +3218,7 @@ function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
  );
 }
 
-function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,setBookmakers,showToast}){
+function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,setBookmakers,customClubs,setCustomClubs,showToast}){
  const [open,setOpen]=useState(false);
  const [tab,setTab]=useState("club");
  const [clubName,setClubName]=useState("");
@@ -3241,6 +3242,16 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
    const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
    await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(clubName.trim())+"&game=eq."+encodeURIComponent(clubGame),
     {method:"PATCH",headers:h,body:JSON.stringify({team_logo_url:logoUrl})}).catch(()=>{});
+  }
+  // Save club to customClubs for persistence
+  if(setCustomClubs){
+   setCustomClubs(prev=>{
+    const g=clubGame;
+    const existing=prev[g]||[];
+    // Don't duplicate
+    if(existing.some(cl=>cl.name.toLowerCase()===clubName.trim().toLowerCase()))return prev;
+    return {...prev,[g]:[...existing,{name:clubName.trim(),league:"",logoUrl:finalLogoUrl||""}]};
+   });
   }
   showToast("Club "+clubName.trim()+" créé ✓","#22C55E");
   setClubName("");setClubUrl("");setClubSaving(false);
@@ -3723,7 +3734,8 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
  );
 }
 
-function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose, onDelete, onFA, editMode, editP, editPForm, setEditPForm, editPPhotoUrl, setEditPPhotoUrl, editPSaving, savePlayer, closeEdit, inputStyle, accent}){
+function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose, onDelete, onFA, editMode:editModeProp, editP, editPForm, setEditPForm, editPPhotoUrl, setEditPPhotoUrl, editPSaving, savePlayer, closeEdit, inputStyle, accent}){
+ const [editMode, setEditMode] = useState(editModeProp||false);
  // Compute stats for this player
  const playerBets = bets.filter(b=>
   b.player&&b.player.toLowerCase().trim()===(p.name||"").toLowerCase().trim()&&
@@ -3772,7 +3784,7 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
  const pc=v=>v>=0?"#00E676":"#EF4444";
  const wrc=v=>v>=55?"#00E676":v<45?"#EF4444":"#9CA3AF";
 
- const StatRow=({label,n,wr,profit,roi})=>(
+ const StatRow=({label,n,wr,profit})=>(
   <div style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
    <div style={{flex:1,fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
    <div style={{width:36,textAlign:"right",fontSize:11,color:"#6B7280"}}>{n}p</div>
@@ -3833,7 +3845,7 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
       style={{flex:1,padding:"8px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
       {editPSaving?"...":"✓ Sauvegarder"}
      </button>
-     <button onClick={closeEdit} style={{padding:"8px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>✕</button>
+     <button onClick={()=>{setEditMode(false);if(closeEdit)closeEdit();}} style={{padding:"8px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>✕</button>
      <button onClick={()=>onDelete(p)} style={{padding:"8px 10px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#EF4444",fontSize:12,cursor:"pointer"}}>🗑️</button>
     </div>
     {/* Sync role to bets history */}
@@ -3867,7 +3879,7 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
     </div>
     {/* Action buttons */}
     <div style={{display:"flex",gap:5,flexShrink:0,alignSelf:"flex-start"}}>
-     <button onClick={onEdit} title="Modifier" style={{padding:"6px 10px",background:"rgba(167,139,250,.1)",border:"1px solid rgba(167,139,250,.2)",borderRadius:8,color:accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✏️</button>
+     <button onClick={()=>{ setEditMode(true); if(onEdit)onEdit(); }} title="Modifier" style={{padding:"6px 10px",background:"rgba(167,139,250,.1)",border:"1px solid rgba(167,139,250,.2)",borderRadius:8,color:accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✏️</button>
      {p.team&&<button onClick={()=>onFA(p)} title="Free Agent" style={{padding:"6px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:8,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
     </div>
    </div>
@@ -3876,7 +3888,7 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
     <>
     {/* Global stats */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
-     {[["WR",wr.toFixed(0)+"%",wrc(wr)],["ROI",(roi>=0?"+":"")+roi.toFixed(1)+"%",pc(roi)],["PROFIT",(profit>=0?"+":"")+profit.toFixed(0)+"$",pc(profit)],["COT. MOY.","@"+avgOdds.toFixed(2),"#9CA3AF"]].map(([l,v,c])=>(
+     {[["PARIS",total+"p","#E5E7EB"],["ROI",(roi>=0?"+":"")+roi.toFixed(1)+"%",pc(roi)],["PROFIT",(profit>=0?"+":"")+profit.toFixed(0)+"$",pc(profit)],["COT. MOY.","@"+avgOdds.toFixed(2),"#9CA3AF"]].map(([l,v,c])=>(
       <div key={l} style={{background:"rgba(255,255,255,.03)",borderRadius:8,padding:"8px 6px",textAlign:"center",border:"1px solid rgba(255,255,255,.05)"}}>
        <div style={{fontSize:8,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{l}</div>
        <div style={{fontSize:14,fontWeight:800,color:c}}>{v}</div>
@@ -3908,17 +3920,48 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
      </div>
     )}
 
-    {/* Kill lines */}
-    {Object.keys(byKill).length>0&&(
-     <div style={{background:"rgba(10,12,28,.8)",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",marginBottom:8,overflow:"hidden"}}>
-      <div style={{padding:"8px 12px",background:"rgba(167,139,250,.06)",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
-       <span style={{fontSize:10,fontWeight:700,color:"#A78BFA",textTransform:"uppercase",letterSpacing:.7}}>Lignes Kills</span>
+    {/* Kill lines — exclude headshot */}
+    {(()=>{
+     const killEntries=Object.entries(byKill).filter(([k])=>!k.toLowerCase().includes("hs")&&!k.toLowerCase().includes("headshot"));
+     if(killEntries.length===0)return null;
+     return(
+      <div style={{background:"rgba(10,12,28,.8)",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",marginBottom:8,overflow:"hidden"}}>
+       <div style={{padding:"8px 12px",background:"rgba(167,139,250,.06)",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#A78BFA",textTransform:"uppercase",letterSpacing:.7}}>Lignes Kills</span>
+       </div>
+       {killEntries.sort((a,b)=>a[0].localeCompare(b[0])).slice(0,10).map(([k,v])=>(
+        <StatRow key={k} label={k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit}/>
+       ))}
       </div>
-      {Object.entries(byKill).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,8).map(([k,v])=>(
-       <StatRow key={k} label={k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit} roi={v.staked>0?v.profit/v.staked*100:0}/>
-      ))}
-     </div>
-    )}
+     );
+    })()}
+    {/* CS2 only: Headshot section */}
+    {p.game==="CS2"&&(()=>{
+     const hsEntries=Object.entries(byKill).filter(([k])=>k.toLowerCase().includes("hs")||k.toLowerCase().includes("headshot"));
+     // Also check isHeadshot bets
+     const hsBets=playerBets.filter(b=>b.isHeadshot);
+     const hsByOU={};
+     hsBets.forEach(b=>{
+      const k=b.overUnder||"?";
+      if(!hsByOU[k])hsByOU[k]={cnt:0,won:0,profit:0};
+      hsByOU[k].cnt++;hsByOU[k].profit+=b.profit;
+      if(b.status==="won")hsByOU[k].won++;
+     });
+     if(hsEntries.length===0&&hsBets.length===0)return null;
+     return(
+      <div style={{background:"rgba(10,12,28,.8)",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",marginBottom:8,overflow:"hidden"}}>
+       <div style={{padding:"8px 12px",background:"rgba(239,68,68,.06)",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+        <span style={{fontSize:10,fontWeight:700,color:"#EF4444",textTransform:"uppercase",letterSpacing:.7}}>🎯 Headshots</span>
+       </div>
+       {hsBets.length>0&&Object.entries(hsByOU).map(([k,v])=>(
+        <StatRow key={"hs_"+k} label={"HS "+k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit}/>
+       ))}
+       {hsEntries.sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>(
+        <StatRow key={k} label={k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit}/>
+       ))}
+      </div>
+     );
+    })()}
     </>
    )}
   </div>
@@ -4757,6 +4800,7 @@ export default function App(){
  const [newBK,setNewBK]=useState("");
  const [newBKPhoto,setNewBKPhoto]=useState("");
  const [bkPhotos,setBkPhotos]=useState({});
+ const [customClubs,setCustomClubs]=useState({}); // {game: [{name, league, logoUrl}]}
  const [mediaStore,setMediaStore]=useState({});
  const mediaLoadedRef=useRef(false); // true after initial Supabase load
  const [teamLogos,setTeamLogos]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_team_logos")||"{}");}catch(e){return {};}});
@@ -5003,6 +5047,12 @@ export default function App(){
   if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
   supaSetMedia("mediaStore",mediaStore).catch(()=>{});
  },[mediaStore]);
+
+ // Sync customClubs to Supabase
+ useEffect(()=>{
+  if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
+  supaSetMedia("customClubs",customClubs).catch(()=>{});
+ },[customClubs]);
 
  // Save: localStorage (debounced) 
  useEffect(()=>{
@@ -5317,6 +5367,9 @@ export default function App(){
    if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
     setMediaStore(all.mediaStore);
     applyMediaStore(all.mediaStore);
+   }
+   if(all.customClubs&&Object.keys(all.customClubs).length>0){
+    setCustomClubs(all.customClubs);
    }
    mediaLoadedRef.current=true;
   }).catch(()=>{mediaLoadedRef.current=true;});
@@ -6083,6 +6136,19 @@ export default function App(){
    const team=p.team;
    if(!h[g][league][team])h[g][league][team]=[];
    h[g][league][team].push(p);
+  });
+  // Add custom clubs (may have 0 players)
+  Object.entries(customClubs||{}).forEach(([game,clubs])=>{
+   if(!h[game])h[game]={};
+   clubs.forEach(cl=>{
+    const league=cl.league||"(Sans ligue)";
+    if(!h[game][league])h[game][league]={};
+    if(!h[game][league][cl.name])h[game][league][cl.name]=[];
+    // Save logo if provided
+    if(cl.logoUrl&&!teamLogos[cl.name+"__"+game]){
+     // logo will be in teamLogos already from CreateSection
+    }
+   });
   });
   return h;
  },[players]);
@@ -11746,6 +11812,7 @@ export default function App(){
   teamLogoSaving={teamLogoSaving} setTeamLogoSaving={setTeamLogoSaving}
   rosterHierarchy={rosterHierarchy} showToast={showToast}
   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
+  customClubs={customClubs} setCustomClubs={setCustomClubs}
  />
 
  <TourneyLogos
@@ -11791,6 +11858,15 @@ export default function App(){
   );
  })()}
 
+
+ <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)",margin:"8px 0"}}/>
+ <CreateSection
+  teamLogos={teamLogos} setTeamLogos={setTeamLogos}
+  bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
+  bookmakers={bookmakers} setBookmakers={setBookmakers}
+  customClubs={customClubs} setCustomClubs={setCustomClubs}
+  showToast={showToast}
+ />
  {/* ── Multiplicateurs d unités ── */}
 
 <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>{setQuickUnits(su);localStorage.setItem("v7_quick_units",JSON.stringify(su));}}/>
