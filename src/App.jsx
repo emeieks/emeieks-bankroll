@@ -1347,13 +1347,24 @@ function LeagueLogo({league,size=18}){
  else key=Object.keys(KEY_MAP).find(function(k){return league.toLowerCase().includes(k.toLowerCase());})||null;
  }
  var src=key?LEAGUE_LOGOS[key]:null;
+ // Also check mediaStore for custom tournament logos: tourney_<game>_<name>
+ if(!src){
+  // Try all games
+  const games=["CS2","LoL","Dota2","Valorant"];
+  for(const g of games){
+   const mkey="tourney_"+g+"_"+league;
+   if(_GLOBAL_MEDIA_STORE[mkey]){src=_GLOBAL_MEDIA_STORE[mkey];break;}
+  }
+ }
  if(!src)return <span style={{fontSize:size*0.65,color:"#4a5a6e",fontWeight:700,lineHeight:1}}>{league.slice(0,3).toUpperCase()}</span>;
- return <img src={src} alt={league} style={{width:size,height:size,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>;
+ return <img src={src.replace('__FAILED__','')} alt={league} style={{width:size,height:size,objectFit:"contain",verticalAlign:"middle",borderRadius:2}} onError={e=>e.target.style.opacity=".2"}/>;
 }
 
 
 // League logos 
 const HEADSHOT_LOGO_B64="data:image/png;base64,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";
+// Global mediaStore ref for LeagueLogo (updated by App)
+let _GLOBAL_MEDIA_STORE={};
 const LEAGUE_LOGOS={
  "Americas":null,
  "EMEA":null,
@@ -1463,7 +1474,11 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  else if(lc.includes("msi")||lc.includes("mid-season")||lc.includes("mid season"))tkey="MSI";
  else if(lc.includes("valorant champions")||lc.includes("vct champions"))tkey="Valorant Champions";
  else if(lc.includes("worlds")||lc.includes("world 20"))tkey="LCK";
- return tkey?LEAGUE_LOGOS[tkey]:null;
+ const fromStatic=tkey?LEAGUE_LOGOS[tkey]:null;
+ if(fromStatic)return fromStatic;
+ const games2=["CS2","LoL","Dota2","Valorant"];
+ for(const g of games2){const mk="tourney_"+g+"_"+currentVal;if(_GLOBAL_MEDIA_STORE[mk])return _GLOBAL_MEDIA_STORE[mk];}
+ return null;
  })();
  const displayLabel=currentVal?(function(){
  var lc=currentVal.toLowerCase();
@@ -5020,7 +5035,10 @@ export default function App(){
  setSyncing(false);
  },[showToast]);
 
- useEffect(()=>{applyMediaStore(mediaStore);},[mediaStore]);
+ useEffect(()=>{
+  applyMediaStore(mediaStore);
+  _GLOBAL_MEDIA_STORE=mediaStore; // Update global ref for LeagueLogo
+ },[mediaStore]);
 
  // Load media from Supabase on startup
  useEffect(()=>{
