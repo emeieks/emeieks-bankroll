@@ -3836,6 +3836,10 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
      <button onClick={closeEdit} style={{padding:"8px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>✕</button>
      <button onClick={()=>onDelete(p)} style={{padding:"8px 10px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#EF4444",fontSize:12,cursor:"pointer"}}>🗑️</button>
     </div>
+    {/* Sync role to bets history */}
+    {editPForm.role&&editPForm.role!==(p.role||"")&&(
+     <SyncRoleBtn playerName={p.name} newRole={editPForm.role} oldRole={p.role||""} showToast={showToast}/>
+    )}
    </div>
   );
  }
@@ -3918,6 +3922,43 @@ function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose,
     </>
    )}
   </div>
+ );
+}
+
+function SyncRoleBtn({playerName, newRole, oldRole, showToast}){
+ const [syncing,setSyncing]=useState(false);
+ const [done,setDone]=useState(false);
+
+ const sync=async()=>{
+  setSyncing(true);
+  try{
+   // PATCH all bets where player=name to update role
+   const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
+   const res=await fetch(
+    SUPA_URL+"/rest/v1/bets?player=ilike."+encodeURIComponent(playerName)+"&role=eq."+encodeURIComponent(oldRole),
+    {method:"PATCH",headers:{...h,"Prefer":"return=representation"},body:JSON.stringify({role:newRole})}
+   );
+   if(!res.ok)throw new Error(await res.text());
+   const rows=await res.json();
+   setDone(true);
+   showToast("✓ "+rows.length+" paris mis à jour → "+newRole,"#22C55E");
+  }catch(e){
+   showToast("Erreur: "+e.message,"#EF4444");
+  }
+  setSyncing(false);
+ };
+
+ if(done)return(
+  <div style={{padding:"8px 12px",background:"rgba(34,197,94,.06)",borderRadius:8,border:"1px solid rgba(34,197,94,.15)",fontSize:11,color:"#22C55E",textAlign:"center"}}>
+   ✓ Historique mis à jour
+  </div>
+ );
+
+ return(
+  <button onClick={sync} disabled={syncing}
+   style={{width:"100%",padding:"8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.25)",borderRadius:8,color:"#F59E0B",fontSize:11,fontWeight:700,cursor:syncing?"not-allowed":"pointer",fontFamily:"Inter,sans-serif"}}>
+   {syncing?"⏳ Mise à jour...":"🔄 Appliquer "+newRole+" sur tout l'historique (remplace "+oldRole+")"}
+  </button>
  );
 }
 
