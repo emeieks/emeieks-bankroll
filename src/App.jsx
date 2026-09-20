@@ -3342,52 +3342,54 @@ function PhotoMigrator({allPlayers,setPlayers,showToast}){
 }
 
 function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},savedTourneys={}}){
+ const GAMES=["CS2","LoL","Dota2","Valorant"];
  const [open,setOpen]=useState(false);
+ const [activeGame,setActiveGame]=useState("CS2");
  const [urlInput,setUrlInput]=useState({});
  const [saving,setSaving]=useState({});
- const GAMES=["CS2","LoL","Dota2","Valorant"];
+ const GAME_COLORS={CS2:"#F59E0B",LoL:"#A78BFA",Dota2:"#EF4444",Valorant:"#22C55E"};
 
  const getKey=(game,name)=>"tourney_"+game+"_"+name;
  const getLogo=(game,name)=>mediaStore[getKey(game,name)]||null;
  const isOK=(url)=>url&&url.includes('/storage/v1/object/public/');
 
+ // Get all tourneys per game (active + saved)
+ const getTourneys=(game)=>{
+  const names=[];
+  if(activeTourneys[game]&&activeTourneys[game].name) names.push(activeTourneys[game].name);
+  if(savedTourneys&&savedTourneys[game]) savedTourneys[game].forEach(n=>{if(!names.includes(n))names.push(n);});
+  return names;
+ };
+
  const save=async(game,name)=>{
-  const url=(urlInput[key2]||"").trim();
+  const k=game+"_"+name;
+  const url=(urlInput[k]||"").trim();
   if(!url)return showToast("URL requise","#EF4444");
-  setSaving(s=>({...s,[key2]:true}));
+  setSaving(s=>({...s,[k]:true}));
   let finalUrl=url;
   if(finalUrl.startsWith('http')&&!finalUrl.includes('/storage/v1/object/public/')){
    try{finalUrl=await supaUploadPhotoFromUrl(finalUrl,'tourneys');}catch(e){}
   }
-  const key=getKey(game,name);
-  const s={...mediaStore,[key]:finalUrl};
+  const s={...mediaStore,[getKey(game,name)]:finalUrl};
   setMediaStore(s);
   localStorage.setItem("v7_media_store",JSON.stringify(s));
   applyMediaStore(s);
   supaSetMedia("mediaStore",s).catch(()=>{});
-  showToast("✓ Logo "+name+" mis à jour","#22C55E");
-  setUrlInput(u=>({...u,[key2]:""}));
-  setSaving(s=>({...s,[key2]:false}));
+  showToast("✓ "+name,"#22C55E");
+  setUrlInput(u=>({...u,[k]:""}));
+  setSaving(s=>({...s,[k]:false}));
  };
 
  const remove=(game,name)=>{
   const key=getKey(game,name);
   const s={...mediaStore};delete s[key];
-  setMediaStore(s);
-  localStorage.setItem("v7_media_store",JSON.stringify(s));
+  setMediaStore(s);localStorage.setItem("v7_media_store",JSON.stringify(s));
   supaSetMedia("mediaStore",s).catch(()=>{});
   showToast("Logo supprimé","#EF4444");
  };
 
- // Collect ALL tournaments from activeTourneys + savedTourneys
- const allTourneyNames={};
- GAMES.forEach(g=>{
-  allTourneyNames[g]=[];
-  if(activeTourneys[g]&&activeTourneys[g].name) allTourneyNames[g].push(activeTourneys[g].name);
-  if(savedTourneys&&savedTourneys[g]) savedTourneys[g].forEach(n=>{if(!allTourneyNames[g].includes(n))allTourneyNames[g].push(n);});
- });
- const activeGames=GAMES.filter(g=>allTourneyNames[g].length>0);
- if(activeGames.length===0)return null;
+ const gamesWithTourneys=GAMES.filter(g=>getTourneys(g).length>0);
+ if(gamesWithTourneys.length===0)return null;
 
  return(
   <div style={{marginBottom:8}}>
@@ -3396,52 +3398,77 @@ function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},save
     <div style={{display:"flex",alignItems:"center",gap:10}}>
      <span style={{fontSize:16}}>🏆</span>
      <div>
-      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Logos Tournois actifs</div>
-      <div style={{fontSize:10,color:"#6B7280"}}>{activeGames.length} tournoi(s) actif(s)</div>
+      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Logos Tournois</div>
+      <div style={{fontSize:10,color:"#6B7280"}}>{gamesWithTourneys.length} jeu(x) · {gamesWithTourneys.reduce((a,g)=>a+getTourneys(g).length,0)} tournois</div>
      </div>
     </div>
     <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
    </button>
    {open&&(
-    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"12px",display:"flex",flexDirection:"column",gap:10}}>
-     {activeGames.map(game=>(
-      <div key={game} style={{background:"rgba(255,255,255,.03)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(255,255,255,.05)"}}>
-       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-        <GameLogo game={game} size={18}/>
-        <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{game}</span>
-        <span style={{fontSize:10,color:"#6B7280"}}>— {allTourneyNames[game].length} tournoi(s)</span>
+    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"12px"}}>
+     {/* Game tabs */}
+     <div style={{display:"flex",gap:6,marginBottom:12}}>
+      {GAMES.map(g=>{
+       const count=getTourneys(g).length;
+       const isActive=activeGame===g;
+       return(
+        <button key={g} onClick={()=>setActiveGame(g)}
+         style={{flex:1,padding:"8px 4px",borderRadius:10,border:"2px solid "+(isActive?GAME_COLORS[g]:"transparent"),background:isActive?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,opacity:count===0?.35:1}}>
+         <GameLogo game={g} size={18}/>
+         {count>0&&<span style={{fontSize:8,color:isActive?GAME_COLORS[g]:"#6B7280",fontWeight:700}}>{count}</span>}
+        </button>
+       );
+      })}
+     </div>
+
+     {/* Tourneys for active game */}
+     {(()=>{
+      const tourneys=getTourneys(activeGame);
+      if(tourneys.length===0)return(
+       <div style={{textAlign:"center",fontSize:11,color:"#4a5a6e",padding:"20px 0"}}>
+        Aucun tournoi pour {activeGame}
        </div>
-       {allTourneyNames[game].map(name=>{
-        const logo=getLogo(game,name);
-        const inputKey=game+"_"+name;
-        const isActive=activeTourneys[game]&&activeTourneys[game].name===name;
-        return(
-         <div key={name} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,.04)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-           <div style={{flex:1,fontSize:11,fontWeight:600,color:"#E5E7EB"}}>{name}{isActive&&<span style={{marginLeft:6,fontSize:9,color:"#22C55E",fontWeight:700}}>● ACTIF</span>}</div>
-           {logo&&(
-            <div style={{display:"flex",alignItems:"center",gap:5}}>
-             <img src={logo.replace('__FAILED__','')} alt={name} style={{width:24,height:24,borderRadius:4,objectFit:"contain"}} onError={e=>e.target.style.opacity=".2"}/>
-             <span style={{fontSize:9,color:isOK(logo)?"#22C55E":"#F59E0B",fontWeight:700}}>{isOK(logo)?"● OK":"● Ext"}</span>
-             <button onClick={()=>remove(game,name)} style={{padding:"2px 5px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:4,color:"#EF4444",fontSize:9,cursor:"pointer"}}>✕</button>
+      );
+      return(
+       <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {tourneys.map(name=>{
+         const k=activeGame+"_"+name;
+         const logo=getLogo(activeGame,name);
+         const isActif=activeTourneys[activeGame]&&activeTourneys[activeGame].name===name;
+         return(
+          <div key={name} style={{background:"rgba(255,255,255,.03)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(255,255,255,.05)"}}>
+           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            {logo
+             ?<img src={logo.replace('__FAILED__','')} alt={name} style={{width:32,height:32,borderRadius:6,objectFit:"contain",flexShrink:0}} onError={e=>e.target.style.opacity=".2"}/>
+             :<div style={{width:32,height:32,borderRadius:6,background:"#111827",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#374151"}}>?</div>}
+            <div style={{flex:1}}>
+             <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{name}</div>
+             <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
+              {isActif&&<span style={{fontSize:9,color:"#22C55E",fontWeight:700}}>● ACTIF</span>}
+              {logo&&<span style={{fontSize:9,color:isOK(logo)?"#22C55E":"#F59E0B",fontWeight:700}}>{isOK(logo)?"● Supabase":"● Externe"}</span>}
+             </div>
             </div>
+            {logo&&<button onClick={()=>remove(activeGame,name)} style={{padding:"4px 7px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer"}}>✕</button>}
+           </div>
+           <ImageInput
+            value={urlInput[k]||""}
+            onChange={v=>setUrlInput(u=>({...u,[k]:v}))}
+            folder="tourneys" size={26} radius="6px"
+            placeholder={logo?"Changer le logo...":"URL ou 📁 fichier..."}
+            showToast={showToast}
+           />
+           {(urlInput[k]||"").trim()&&(
+            <button onClick={()=>save(activeGame,name)} disabled={saving[k]}
+             style={{width:"100%",marginTop:6,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+             {saving[k]?"⏳ Sauvegarde...":"✓ Sauvegarder"}
+            </button>
            )}
           </div>
-          <ImageInput
-           value={urlInput[inputKey]||""}
-           onChange={v=>setUrlInput(u=>({...u,[inputKey]:v}))}
-           folder="tourneys" size={24} placeholder={"URL logo "+name}
-           showToast={showToast}
-          />
-          <button onClick={()=>save(game,name,inputKey)} disabled={saving[inputKey]||!(urlInput[inputKey]||"").trim()}
-           style={{width:"100%",marginTop:5,padding:"6px",background:(urlInput[inputKey]||"").trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+((urlInput[inputKey]||"").trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:7,color:(urlInput[inputKey]||"").trim()?"#22C55E":"#374151",fontSize:11,fontWeight:700,cursor:(urlInput[inputKey]||"").trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
-           {saving[inputKey]?"⏳...":"✓ Sauvegarder"}
-          </button>
-         </div>
-        );
-       })}
-      </div>
-     ))}
+         );
+        })}
+       </div>
+      );
+     })()}
     </div>
    )}
   </div>
