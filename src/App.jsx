@@ -4931,6 +4931,7 @@ export default function App(){
  const [syncing,setSyncing]=useState(false);
  const [supaOk,setSupaOk]=useState(false);
  const [supaModal,setSupaModal]=useState(false);
+ const [supaError,setSupaError]=useState("");
  const [integrityChecking,setIntegrityChecking]=useState(false);
  const [integrityReport,setIntegrityReport]=useState(null);
 
@@ -5025,15 +5026,19 @@ export default function App(){
  // Serialize testFilter (Sets → Arrays for JSON)
  const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
  if(SUPA_URL&&SUPA_KEY){
- const settingsRow={player:"__SETTINGS__",description:JSON.stringify({activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter,bkPhotos,teamLogos,mediaStore}),odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,updatedAt:Date.now(),archived:false,splits:null};
- (async()=>{
-   // Upsert settings row with fixed id=-1
-   const settingsWithId={...settingsRow,id:-1};
-   await fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(settingsWithId)}).catch(()=>{});
-  })();
+ // Push settings to media_store table (reliable, no id constraint)
+ const settingsData={activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter,bookmakers};
+ supaSetMedia("settings",settingsData).catch(()=>{});
  }
  }catch(e){}
  },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,loaded]);
+
+
+ // Persist bookmakers to localStorage + Supabase on change
+ useEffect(()=>{
+  if(!loaded)return;
+  try{localStorage.setItem("v7_bmakers",JSON.stringify(bookmakers));}catch(e){}
+ },[bookmakers,loaded]);
 
  // Sync bkPhotos to Supabase media_store (only after initial load)
  useEffect(()=>{
@@ -5290,6 +5295,14 @@ export default function App(){
  }
  }catch(e){}
  }
+ // Restore bookmakers from Supabase (merge with DEFAULT_BK)
+ if(s.bookmakers&&Array.isArray(s.bookmakers)&&s.bookmakers.length>0){
+ setBookmakers(prev=>{
+ const merged=[...new Set([...s.bookmakers,...DEFAULT_BK])];
+ try{localStorage.setItem("v7_bmakers",JSON.stringify(merged));}catch(e){}
+ return merged;
+ });
+ }
  // Auto-découverte de tournois depuis les paris reçus
  // Si un pari a b.tournament="Fissure" mais que Fissure n'est pas dans savedTourneys, l'ajouter
  const discoveredTourneys={};
@@ -5369,6 +5382,198 @@ export default function App(){
    }
    if(all.customClubs&&Object.keys(all.customClubs).length>0){
     setCustomClubs(all.customClubs);
+   }
+   if(all.settings){
+    const s=all.settings;
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0) setActiveTourneys(s.activeTourneys);
+    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0) setSavedTourneys(s.savedTourneys);
+    if(s.tourneyCal&&s.tourneyCal.length>0) setTourneyCal(s.tourneyCal);
+    if(s.mibActive!==undefined) setMibActive(!!s.mibActive);
+    if(s.mibDate) setMibDate(s.mibDate);
+   }
+   mediaLoadedRef.current=true;
+  }).catch(()=>{mediaLoadedRef.current=true;});
+ },[loaded]);
+
+ // Pull au chargement
+ useEffect(()=>{
+ if(!loaded)return;
+ // Always fetch settings on startup regardless of 15s block
+ if(SUPA_URL&&SUPA_KEY){
+  // Pull media rows (bkPhotos, mediaStore, teamLogos) on startup
+  supaFetch("/rest/v1/bets?player=in.(__BK_PHOTOS__,__MEDIA_STORE__,__TEAM_LOGOS__)&select=player,description&order=id.desc").then(rows=>{
+   if(!rows)return;
+   rows.forEach(row=>{
+    try{
+     const d=JSON.parse(row.description||"{}");
+     if(!Object.keys(d).length)return;
+     if(row.player==="__BK_PHOTOS__"){setBkPhotos(prev=>{const m={...prev,...d};return m;});}
+     if(row.player==="__MEDIA_STORE__"){setMediaStore(prev=>{const m={...prev,...d};applyMediaStore(m);return m;});}
+     if(row.player==="__TEAM_LOGOS__"){setTeamLogos(prev=>{const m={...prev,...d};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});}
+    }catch(e){}
+   });
+  }).catch(()=>{});
+  supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
+  .then(sr=>{
+   if(!sr||!sr[0])return;
+   try{
+    const s=JSON.parse(sr[0].description||"{}");
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+     setActiveTourneys(s.activeTourneys);
+     localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
+    }
+    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
+     setSavedTourneys(prev=>{
+      const merged={};
+      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
+      allG.forEach(g=>{
+       merged[g]=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];
+      });
+      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
+      return merged;
+     });
+    }
+    if(s.tourneyCal&&s.tourneyCal.length>0){
+     setTourneyCal(prev=>{
+      const localIds=new Set(prev.map(t=>t.id));
+      const newE=s.tourneyCal.filter(t=>!localIds.has(t.id));
+      if(!newE.length)return prev;
+      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
+      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
+      return merged;
+     });
+    }
+    if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
+     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};return m;});
+    }
+    if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
+     setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
+    }
+    if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
+     setMediaStore(prev=>{const m={...prev,...s.mediaStore};applyMediaStore(m);return m;});
+    }
+   }catch(e){}
+  }).catch(()=>{});
+ }
+ pullFromSupa(false);
+},[loaded]);
+
+ // Re-pull quand l app revient au premier plan (iOS background → foreground)
+ useEffect(()=>{
+ const onVisible=()=>{if(document.visibilityState==="visible")pullFromSupa(true);};
+ document.addEventListener("visibilitychange",onVisible);
+ return()=>document.removeEventListener("visibilitychange",onVisible);
+ },[pullFromSupa]);
+
+ // Re-pull toutes les 30s si l app est visible
+ useEffect(()=>{
+ if(!loaded)return;
+ const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},30000);
+ return()=>clearInterval(t);
+ },[loaded,pullFromSupa]);
+
+ // Sync settings (tournois actifs/sauvegardés) indépendamment des bets — toutes les 10s
+ useEffect(()=>{
+ if(!loaded)return;
+ const syncSettings=()=>{
+  if(document.visibilityState!=="visible"||!SUPA_URL||!SUPA_KEY)return;
+  // Pull media rows (bkPhotos, mediaStore, teamLogos)
+  supaFetch("/rest/v1/bets?player=in.(__BK_PHOTOS__,__MEDIA_STORE__,__TEAM_LOGOS__)&select=player,description&order=id.desc").then(rows=>{
+   if(!rows)return;
+   rows.forEach(row=>{
+    try{
+     const d=JSON.parse(row.description||"{}");
+     if(row.player==="__BK_PHOTOS__"&&Object.keys(d).length>0){
+      setBkPhotos(prev=>{
+       const merged={...d,...prev}; // local takes precedence? No — remote is authoritative
+       const m={...prev,...d};
+       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
+       
+       return m;
+      });
+     }
+     if(row.player==="__MEDIA_STORE__"&&Object.keys(d).length>0){
+      setMediaStore(prev=>{
+       const m={...prev,...d};
+       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
+   applyMediaStore(m);
+       return m;
+      });
+     }
+     if(row.player==="__TEAM_LOGOS__"&&Object.keys(d).length>0){
+      setTeamLogos(prev=>{
+       const m={...prev,...d};
+       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
+       localStorage.setItem("v7_team_logos",JSON.stringify(m));
+       return m;
+      });
+     }
+    }catch(e){}
+   });
+  }).catch(()=>{});
+  // Read settings from media_store
+  supaGetMedia("settings").then(val=>{
+   if(!val)return;
+   try{
+    const s=typeof val==="string"?JSON.parse(val):val;
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
+     setActiveTourneys(prev=>{
+      if(JSON.stringify(prev)===JSON.stringify(s.activeTourneys))return prev;
+      return s.activeTourneys;
+     });
+    }
+    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
+     setSavedTourneys(prev=>{
+      if(JSON.stringify(prev)===JSON.stringify(s.savedTourneys))return prev;
+      return s.savedTourneys;
+     });
+    }
+    if(s.bookmakers&&Array.isArray(s.bookmakers)&&s.bookmakers.length>0){
+     setBookmakers(prev=>{
+      const merged=[...s.bookmakers];
+      DEFAULT_BK.forEach(bk=>{if(!merged.includes(bk))merged.push(bk);});
+      if(JSON.stringify(merged)===JSON.stringify(prev))return prev;
+      try{localStorage.setItem("v7_bmakers",JSON.stringify(merged));}catch(e){}
+      return merged;
+     });
+    }
+   }catch(e){}
+  }).catch(()=>{});
+ };
+ const iv=setInterval(
+  syncSettings,10000);
+ syncSettings();
+ return()=>clearInterval(iv);
+ },[loaded]);
+
+
+
+ useEffect(()=>{
+  applyMediaStore(mediaStore);
+  _GLOBAL_MEDIA_STORE=mediaStore; // Update global ref for LeagueLogo
+ },[mediaStore]);
+
+ // Load media from Supabase on startup
+ useEffect(()=>{
+  if(!loaded)return;
+  supaGetAllMedia().then(all=>{
+   if(all.bkPhotos&&Object.keys(all.bkPhotos).length>0){
+    setBkPhotos(all.bkPhotos);
+   }
+   if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
+    setMediaStore(all.mediaStore);
+    applyMediaStore(all.mediaStore);
+   }
+   if(all.customClubs&&Object.keys(all.customClubs).length>0){
+    setCustomClubs(all.customClubs);
+   }
+   if(all.settings){
+    const s=all.settings;
+    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0) setActiveTourneys(s.activeTourneys);
+    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0) setSavedTourneys(s.savedTourneys);
+    if(s.tourneyCal&&s.tourneyCal.length>0) setTourneyCal(s.tourneyCal);
+    if(s.mibActive!==undefined) setMibActive(!!s.mibActive);
+    if(s.mibDate) setMibDate(s.mibDate);
    }
    mediaLoadedRef.current=true;
   }).catch(()=>{mediaLoadedRef.current=true;});
