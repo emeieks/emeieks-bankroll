@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo, forwardRef, useImperativeHandle } from "react";
 
 
 // Normalize datetime helper 
@@ -428,7 +428,7 @@ async function supaFetchPlayers() {
   if (batch.length < limit) break;
   offset += limit;
  }
- return all.length > 0 ? all : null;
+ return all;
 }
 
 async function supaUploadFile(file, folder) {
@@ -1266,8 +1266,8 @@ const BET_ROW_HEIGHT = 88; // approximate height per BetRow in px
 const VIRTUAL_OVERSCAN = 5; // extra rows above/below viewport
 
 function useVirtualList(items, containerRef, rowHeight=BET_ROW_HEIGHT) {
- const [range, setRange] = React.useState({start:0, end:30});
- React.useEffect(()=>{
+ const [range, setRange] = useState({start:0, end:30});
+ useEffect(()=>{
   const el = containerRef.current;
   if(!el) return;
   const update = ()=>{
@@ -1432,7 +1432,7 @@ const VirtualizedDayBets = memo(function VirtualizedDayBets({bets=[], onStatus, 
   ));
  }
  // For large lists, use windowed rendering
- const [visibleEnd, setVisibleEnd] = React.useState(20);
+ const [visibleEnd, setVisibleEnd] = useState(20);
  return (
   <div>
    {bets.slice(0, visibleEnd).map(b=>(
@@ -5293,7 +5293,7 @@ export default function App(){
   setBets(merged); // Update UI progressively
   if(isFirst)setSupaOk(true);
  });
- if(!remote||remote.length===0){setSyncing(false);return;}
+ if(!remote||!remote.length){setSyncing(false);return;}
  // Final merge with complete dataset
  const remoteMap={};
  remote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
@@ -5921,8 +5921,8 @@ export default function App(){
  const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
 
  // Worker-computed stats (updates asynchronously to avoid blocking UI)
- const [workerStats,setWorkerStats]=React.useState({bestWin:0,bestLoss:0,roi:0,wr:0,count:0,totalProfit:0,totalStaked:0});
- React.useEffect(()=>{
+ const [workerStats,setWorkerStats]=useState({bestWin:0,bestLoss:0,roi:0,wr:0,count:0,totalProfit:0,totalStaked:0});
+ useEffect(()=>{
   const worker=getStatsWorker();
   if(!worker||!settled.length)return;
   const handler=e=>{if(e.data.type==='settledFiltered')setWorkerStats(e.data.result);};
@@ -6004,7 +6004,7 @@ export default function App(){
  const weekList=Object.values(weeks).sort((a,b)=>a.key.localeCompare(b.key));
 
  // 2. Séries (streaks)
- const chron=useMemo(()=>[...settledFiltered].sort((a,b)=>(String(a.datetime)||"").localeCompare(String(b.datetime)||"")),[settledFiltered]);
+ const chron=[...settledFiltered].sort((a,b)=>(String(a.datetime)||"").localeCompare(String(b.datetime)||""));
  let curStreak=0,curType="",bestWin=0,bestLoss=0,tmpW=0,tmpL=0;
  chron.forEach(b=>{
  if(b.status==="won"){tmpW++;tmpL=0;if(tmpW>bestWin)bestWin=tmpW;}
@@ -6618,7 +6618,7 @@ export default function App(){
  },[bets,betsForDisplay,isTestActive]);
 
  // Auto-collapse months older than 2 months to avoid rendering thousands of BetRows
- React.useEffect(()=>{
+ useEffect(()=>{
   if(!monthKeys||monthKeys.length<=2)return;
   const now=new Date();
   const keep=new Set();
@@ -12860,6 +12860,7 @@ export default function App(){
  setIntegrityChecking(true);setIntegrityReport(null);
  try{
  const remote=await supaPullBets();
+ if(!remote||!remote.length){showToast("Erreur sync","#EF4444");setSyncing(false);return;}
  const localIds=new Set(bets.map(b=>String(b.id)));
  const remoteIds=new Set(remote.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__").map(b=>String(b.id)));
  const onlyLocal=bets.filter(b=>!remoteIds.has(String(b.id)));
