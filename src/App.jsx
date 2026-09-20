@@ -944,7 +944,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  return(
  <div style={{display:"flex",gap:4,alignItems:"center"}}>
  {p.league&&!hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
- {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:3}}>{(()=>{const tl=mediaStore&&mediaStore["tourney_"+(p.game||"")+"_"+t.name];return tl?<img src={tl.replace('__FAILED__','')} alt={t.name} style={{width:12,height:12,objectFit:"contain",borderRadius:1}} onError={e=>e.target.style.display="none"}/>:null;})()}{t.name}</span>}
+ {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:3}}>{(()=>{const tl=_GLOBAL_MEDIA_STORE&&_GLOBAL_MEDIA_STORE["tourney_"+(p.game||"")+"_"+t.name];return tl?<img src={tl.replace('__FAILED__','')} alt={t.name} style={{width:12,height:12,objectFit:"contain",borderRadius:1}} onError={e=>e.target.style.display="none"}/>:null;})()}{t.name}</span>}
  <span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>
  {isSelected&&<span style={{color:"#00E676",fontSize:14,fontWeight:700,marginLeft:2}}></span>}
  </div>
@@ -8986,7 +8986,7 @@ export default function App(){
  {(bkLogo||b.bookmaker)&&<span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span>}
  {bkLogo?<img src={bkLogo} alt={b.bookmaker} style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>:<span style={{fontSize:11,color:"#7a9cbd"}}>{b.bookmaker}</span>}
  {b.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span><span style={{fontSize:11,color:"#7a9cbd"}}>{b.stake}$</span></>}
- {b.tournament&&(()=>{const tl=mediaStore&&mediaStore["tourney_"+(b.game||"")+"_"+b.tournament];return <><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span>{tl?<img src={tl.replace('__FAILED__','')} alt={b.tournament} style={{width:14,height:14,objectFit:"contain",borderRadius:2,verticalAlign:"middle"}} onError={e=>e.target.style.display="none"}/>:null}<span style={{fontSize:10,color:"#7a9cbd",marginLeft:tl?3:0}}>{b.tournament.split(" ")[0]}</span></>;})()}
+ {b.tournament&&(()=>{const tl=_GLOBAL_MEDIA_STORE&&_GLOBAL_MEDIA_STORE["tourney_"+(b.game||"")+"_"+b.tournament];return <><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span>{tl?<img src={tl.replace('__FAILED__','')} alt={b.tournament} style={{width:14,height:14,objectFit:"contain",borderRadius:2,verticalAlign:"middle"}} onError={e=>e.target.style.display="none"}/>:null}<span style={{fontSize:10,color:"#7a9cbd",marginLeft:tl?3:0}}>{b.tournament.split(" ")[0]}</span></>;})()}
  </div>
  </div>
  <div style={{flexShrink:0,textAlign:"right"}}>
