@@ -417,6 +417,25 @@ async function supaFetchPlayers() {
  return all.length > 0 ? all : null;
 }
 
+async function supaUploadFile(file, folder) {
+ // Upload a File object directly to Supabase Storage
+ const ext = file.name.split('.').pop().toLowerCase() || 'png';
+ const fileName = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
+ const res = await fetch(SUPA_URL + '/storage/v1/object/photos/' + fileName, {
+  method: 'POST',
+  headers: {
+   'apikey': SUPA_KEY,
+   'Authorization': 'Bearer ' + SUPA_KEY,
+   'Content-Type': file.type || 'image/png',
+   'x-upsert': 'true',
+  },
+  body: file,
+ });
+ if (!res.ok) throw new Error('Upload failed: ' + await res.text());
+ return SUPA_URL + '/storage/v1/object/public/photos/' + fileName;
+}
+
+
 async function supaUploadPhoto(file, folder) {
  // Upload image to Supabase Storage and return permanent public URL
  const ext = file.name.split('.').pop() || 'png';
@@ -436,29 +455,45 @@ async function supaUploadPhoto(file, folder) {
 }
 
 async function supaUploadPhotoFromUrl(url, folder) {
- // Use canvas to load image (bypasses CORS for display) then upload to Supabase
- return new Promise((resolve) => {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = async () => {
-   try {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth || 200;
-    canvas.height = img.naturalHeight || 200;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    canvas.toBlob(async (blob) => {
-     if (!blob) return resolve(url);
-     try {
-      const file = new File([blob], 'photo.png', {type: 'image/png'});
-      const permUrl = await supaUploadPhoto(file, folder);
-      resolve(permUrl);
-     } catch(e) { resolve(url); }
-    }, 'image/png');
-   } catch(e) { resolve(url); }
+ if(!url||url.includes('/storage/v1/object/public/'))return url;
+ const name = Date.now()+'_'+Math.random().toString(36).slice(2);
+
+ // Method 1: Edge Function (server-side, no CORS)
+ try{
+  const r = await fetch(SUPA_URL+'/functions/v1/rehost-image', {
+   method:'POST',
+   headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'},
+   body:JSON.stringify({url,name,folder})
+  });
+  if(r.ok){const d=await r.json();if(d.url)return d.url;}
+ }catch(e){}
+
+ // Method 2: Direct fetch with CORS
+ try{
+  const r = await fetch(url,{mode:'cors'});
+  if(r.ok){
+   const blob = await r.blob();
+   const file = new File([blob],'photo.'+((blob.type||'').split('/')[1]||'png'),{type:blob.type||'image/png'});
+   return await supaUploadPhoto(file,folder);
+  }
+ }catch(e){}
+
+ // Method 3: Canvas crossOrigin (last resort)
+ return new Promise((resolve)=>{
+  const img=new Image();img.crossOrigin='anonymous';
+  img.onload=async()=>{
+   try{
+    const c=document.createElement('canvas');c.width=img.naturalWidth||200;c.height=img.naturalHeight||200;
+    c.getContext('2d').drawImage(img,0,0);
+    c.toBlob(async(blob)=>{
+     if(!blob)return resolve(url);
+     try{resolve(await supaUploadPhoto(new File([blob],'photo.png',{type:'image/png'}),folder));}
+     catch(e){resolve(url);}
+    },'image/png');
+   }catch(e){resolve(url);}
   };
-  img.onerror = () => resolve(url);
-  img.src = url;
+  img.onerror=()=>resolve(url);
+  img.src=url;
  });
 }
 
@@ -2898,15 +2933,9 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:6}}>Logo équipe</div>
                {editTeam?.team===team&&editTeam?.game===rosterGame?(
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                 <input value={teamLogoUrl} onChange={e=>setTeamLogoUrl(e.target.value)} onClick={e=>e.stopPropagation()} placeholder="URL du logo (https://...)" autoFocus style={{flex:1,...inputStyle}}/>
-                 {teamLogoUrl&&(
-                  teamLogoUrl.includes('/storage/v1/object/public/')
-                   ?<span title="✓ Stocké dans Supabase — permanent" style={{padding:"4px 7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:5,color:"#22C55E",fontSize:10,fontWeight:700,flexShrink:0}}>● OK</span>
-                   :teamLogoUrl.startsWith('__FAILED__')
-                    ?<span title="✗ Échec — essaie une autre source" style={{padding:"4px 7px",background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.3)",borderRadius:5,color:"#EF4444",fontSize:10,fontWeight:700,flexShrink:0}}>● Échec</span>
-                    :<span title="À sauvegarder — sera copiée dans Supabase" style={{padding:"4px 7px",background:"rgba(245,158,11,.1)",border:"1px solid rgba(245,158,11,.3)",borderRadius:5,color:"#F59E0B",fontSize:10,fontWeight:700,flexShrink:0}}>● À faire</span>
-                 )}
-                 {teamLogoUrl&&<button onClick={e=>{e.stopPropagation();setTeamLogoUrl("");}} style={{padding:"6px 8px",background:"rgba(255,255,255,.05)",border:"1px solid #374151",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer",flexShrink:0}}>✕</button>}
+                 <div onClick={e=>e.stopPropagation()} style={{flex:1}}>
+                  <ImageInput value={teamLogoUrl} onChange={setTeamLogoUrl} folder="teams" size={32} placeholder="URL du logo" showToast={showToast}/>
+                 </div>
                  <button onClick={e=>{e.stopPropagation();saveTeamLogo();}} disabled={teamLogoSaving} style={{padding:"6px 10px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{teamLogoSaving?"...":"✓"}</button>
                  <button onClick={e=>{e.stopPropagation();setEditTeam(null);setTeamLogoUrl("");}} style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
                 </div>
@@ -2961,19 +2990,8 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
     <div style={{fontSize:11,fontWeight:700,color:accent,marginBottom:2}}>{p.name}</div>
     {/* Photo */}
     <div>
-     <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Photo URL</div>
-     <div style={{display:"flex",gap:6,alignItems:"center"}}>
-      {editPPhotoUrl&&<img src={editPPhotoUrl.replace('__FAILED__','')} alt="" style={{width:28,height:28,borderRadius:"50%",objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
-      <input value={editPPhotoUrl} onChange={e=>setEditPPhotoUrl(e.target.value)} placeholder="https://... (photo joueur)" style={{...inputStyle,flex:1}}/>
-      {editPPhotoUrl&&(
-       editPPhotoUrl.includes('/storage/v1/object/public/')
-        ?<span title="✓ Stockée dans Supabase — permanente" style={{padding:"3px 8px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:5,color:"#22C55E",fontSize:10,fontWeight:700,flexShrink:0,cursor:"default"}}>● OK</span>
-        :editPPhotoUrl.startsWith('__FAILED__')
-         ?<span title="✗ Échec — le site bloque la copie. Essaie une autre source." style={{padding:"3px 8px",background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.3)",borderRadius:5,color:"#EF4444",fontSize:10,fontWeight:700,flexShrink:0,cursor:"default"}}>● Échec</span>
-         :<span title="À sauvegarder — sera copiée dans Supabase" style={{padding:"3px 8px",background:"rgba(245,158,11,.1)",border:"1px solid rgba(245,158,11,.3)",borderRadius:5,color:"#F59E0B",fontSize:10,fontWeight:700,flexShrink:0,cursor:"default"}}>● À faire</span>
-      )}
-      {editPPhotoUrl&&<button onClick={()=>setEditPPhotoUrl("")} style={{padding:"3px 7px",background:"rgba(255,255,255,.05)",border:"1px solid #374151",borderRadius:5,color:"#6B7280",fontSize:11,cursor:"pointer",flexShrink:0}}>✕</button>}
-     </div>
+     <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Photo joueur</div>
+     <ImageInput value={editPPhotoUrl} onChange={setEditPPhotoUrl} folder="players" radius="50%" size={36} placeholder="https://... (photo joueur)" showToast={showToast}/>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
      {/* Pseudo */}
@@ -3440,16 +3458,15 @@ function TourneyLogos({mediaStore,setMediaStore,showToast}){
        ))}
       </select>
       {selected[activeGame]&&(
-       <div style={{display:"flex",gap:6,alignItems:"center"}}>
-        {urlInput&&<img src={urlInput} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>}
-        <input value={urlInput} onChange={e=>setUrlInput(e.target.value)} placeholder="URL du logo"
-         style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"7px 10px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif"}}/>
-        {urlInput&&<button onClick={()=>setUrlInput("")} style={{padding:"6px 8px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>}
-        <button onClick={save} disabled={saving||!urlInput.trim()}
-         style={{padding:"7px 12px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
-         {saving?"...":"✓"}
-        </button>
+       <>
+       <div style={{marginBottom:8}}>
+        <ImageInput value={urlInput} onChange={setUrlInput} folder="tourneys" size={32} radius="6px" placeholder="URL du logo" showToast={showToast}/>
        </div>
+       <button onClick={save} disabled={saving||!urlInput.trim()}
+        style={{width:"100%",padding:"8px",background:urlInput.trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+(urlInput.trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:8,color:urlInput.trim()?"#22C55E":"#374151",fontSize:12,fontWeight:700,cursor:urlInput.trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
+        {saving?"⏳ Sauvegarde...":"✓ Sauvegarder"}
+       </button>
+       </>
       )}
      </div>
     </div>
@@ -3542,11 +3559,8 @@ function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showT
            <div style={{fontSize:10,color:"#A78BFA",fontWeight:700,marginBottom:8}}>Modifier {bk}</div>
            <input value={bkNameInput} onChange={e=>setBkNameInput(e.target.value)} placeholder="Nom"
             style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",marginBottom:6,boxSizing:"border-box"}}/>
-           <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
-            {bkUrlInput&&<img src={bkUrlInput.replace('__FAILED__','')} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
-            <input value={bkUrlInput} onChange={e=>setBkUrlInput(e.target.value)} placeholder="URL logo (https://...)"
-             style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
-            {bkUrlInput&&<span style={{padding:"3px 6px",background:isStoraged(bkUrlInput)?"rgba(34,197,94,.15)":"rgba(245,158,11,.1)",border:"1px solid "+(isStoraged(bkUrlInput)?"rgba(34,197,94,.3)":"rgba(245,158,11,.3)"),borderRadius:5,color:isStoraged(bkUrlInput)?"#22C55E":"#F59E0B",fontSize:9,fontWeight:700,flexShrink:0}}>{isStoraged(bkUrlInput)?"● OK":"● Ext"}</span>}
+           <div style={{marginBottom:8}}>
+            <ImageInput value={bkUrlInput} onChange={setBkUrlInput} folder="bookmakers" size={32} placeholder="URL logo" showToast={showToast}/>
            </div>
            <div style={{display:"flex",gap:6}}>
             <button onClick={saveBK} disabled={saving} style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{saving?"...":"✓ Sauvegarder"}</button>
@@ -3564,10 +3578,8 @@ function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showT
        <div style={{fontSize:10,color:"#22C55E",fontWeight:700,marginBottom:8}}>Nouveau bookmaker</div>
        <input value={bkNameInput} onChange={e=>setBkNameInput(e.target.value)} placeholder="Nom *"
         style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",marginBottom:6,boxSizing:"border-box"}}/>
-       <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
-        {bkUrlInput&&<img src={bkUrlInput} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"cover"}} onError={e=>e.target.style.display="none"}/>}
-        <input value={bkUrlInput} onChange={e=>setBkUrlInput(e.target.value)} placeholder="URL logo (optionnel)"
-         style={{flex:1,background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif"}}/>
+       <div style={{marginBottom:8}}>
+        <ImageInput value={bkUrlInput} onChange={setBkUrlInput} folder="bookmakers" size={32} placeholder="URL logo (optionnel)" showToast={showToast}/>
        </div>
        <div style={{display:"flex",gap:6}}>
         <button onClick={saveBK} disabled={saving||!bkNameInput.trim()} style={{flex:1,padding:"7px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{saving?"...":"✓ Ajouter"}</button>
@@ -3582,6 +3594,91 @@ function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showT
      )}
     </div>
    )}
+  </div>
+ );
+}
+
+function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px", showToast}){
+ const [uploading, setUploading] = useState(false);
+ const inputRef = useRef(null);
+ const isOK = value && value.includes('/storage/v1/object/public/');
+ const isFailed = value && value.startsWith('__FAILED__');
+ const displayUrl = value ? value.replace('__FAILED__', '') : '';
+
+ const handleFile = async(e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  setUploading(true);
+  try {
+   const url = await supaUploadFile(file, folder);
+   onChange(url);
+   if(showToast) showToast("✓ Image uploadée","#22C55E");
+  } catch(err) {
+   if(showToast) showToast("Erreur upload: "+err.message,"#EF4444");
+  }
+  setUploading(false);
+  e.target.value = "";
+ };
+
+ const handlePaste = async() => {
+  if(!navigator.clipboard?.read){
+   if(showToast) showToast("Presse-papier non supporté sur ce navigateur","#EF4444");
+   return;
+  }
+  setUploading(true);
+  try{
+   const items = await navigator.clipboard.read();
+   for(const item of items){
+    const imageType = item.types.find(t=>t.startsWith('image/'));
+    if(imageType){
+     const blob = await item.getType(imageType);
+     const ext = imageType.split('/')[1]||'png';
+     const file = new File([blob],'paste.'+ext,{type:imageType});
+     const url = await supaUploadFile(file,folder);
+     onChange(url);
+     if(showToast) showToast("✓ Image collée et uploadée","#22C55E");
+     setUploading(false);
+     return;
+    }
+   }
+   if(showToast) showToast("Aucune image dans le presse-papier","#F59E0B");
+  }catch(e){
+   if(showToast) showToast("Erreur: "+e.message,"#EF4444");
+  }
+  setUploading(false);
+ };
+
+ return(
+  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+   {/* Preview + status */}
+   {displayUrl&&(
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <img src={displayUrl} alt="" style={{width:size,height:size,borderRadius:radius,objectFit:"cover",flexShrink:0}} onError={e=>e.target.style.opacity=".2"}/>
+     <span style={{fontSize:9,padding:"2px 6px",borderRadius:4,fontWeight:700,
+      background:isOK?"rgba(34,197,94,.15)":isFailed?"rgba(239,68,68,.15)":"rgba(245,158,11,.1)",
+      border:"1px solid "+(isOK?"rgba(34,197,94,.3)":isFailed?"rgba(239,68,68,.3)":"rgba(245,158,11,.3)"),
+      color:isOK?"#22C55E":isFailed?"#EF4444":"#F59E0B"}}>
+      {isOK?"● Supabase":isFailed?"● Échec":"● Externe"}
+     </span>
+     <button onClick={()=>onChange("")} style={{marginLeft:"auto",padding:"2px 6px",background:"transparent",border:"1px solid #374151",borderRadius:4,color:"#6B7280",fontSize:10,cursor:"pointer"}}>✕</button>
+    </div>
+   )}
+   {/* URL input */}
+   <input value={displayUrl} onChange={e=>onChange(e.target.value)}
+    placeholder={placeholder||"https://... (URL)"}
+    style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:6,padding:"6px 10px",color:"#E5E7EB",fontSize:11,fontFamily:"Inter,sans-serif",boxSizing:"border-box"}}/>
+   {/* File upload + clipboard paste */}
+   <input ref={inputRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleFile}/>
+   <div style={{display:"flex",gap:5}}>
+    <button onClick={()=>inputRef.current&&inputRef.current.click()} disabled={uploading}
+     style={{flex:1,padding:"6px",background:"rgba(167,139,250,.06)",border:"1px dashed rgba(167,139,250,.25)",borderRadius:6,color:uploading?"#6B7280":"#A78BFA",fontSize:11,fontWeight:600,cursor:uploading?"not-allowed":"pointer",fontFamily:"Inter,sans-serif"}}>
+     {uploading?"⏳ Upload...":"📁 Fichier"}
+    </button>
+    <button onClick={handlePaste} disabled={uploading}
+     style={{padding:"6px 10px",background:"rgba(96,165,250,.06)",border:"1px dashed rgba(96,165,250,.25)",borderRadius:6,color:uploading?"#6B7280":"#60A5FA",fontSize:11,fontWeight:600,cursor:uploading?"not-allowed":"pointer",fontFamily:"Inter,sans-serif",flexShrink:0}}>
+     📋 Coller
+    </button>
+   </div>
   </div>
  );
 }
