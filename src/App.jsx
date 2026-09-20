@@ -3232,8 +3232,9 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
  const saveClub=async()=>{
   if(!clubName.trim())return showToast("Nom requis","#EF4444");
   setClubSaving(true);
+  let logoUrl="";
   if(clubUrl.trim()){
-   let logoUrl=clubUrl.trim();
+   logoUrl=clubUrl.trim();
    if(logoUrl.startsWith('http')&&!logoUrl.includes('/storage/v1/object/public/')){
     try{logoUrl=await supaUploadPhotoFromUrl(logoUrl,'teams');}catch(e){}
    }
@@ -5031,13 +5032,14 @@ export default function App(){
  supaSetMedia("settings",settingsData).catch(()=>{});
  }
  }catch(e){}
- },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,loaded]);
+ },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,bookmakers,loaded]);
 
 
  // Persist bookmakers to localStorage + Supabase on change
  useEffect(()=>{
   if(!loaded)return;
   try{localStorage.setItem("v7_bmakers",JSON.stringify(bookmakers));}catch(e){}
+  if(SUPA_URL&&SUPA_KEY){supaSetMedia("settings",{activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,bookmakers}).catch(()=>{});}
  },[bookmakers,loaded]);
 
  // Sync bkPhotos to Supabase media_store (only after initial load)
@@ -5390,6 +5392,9 @@ export default function App(){
     if(s.tourneyCal&&s.tourneyCal.length>0) setTourneyCal(s.tourneyCal);
     if(s.mibActive!==undefined) setMibActive(!!s.mibActive);
     if(s.mibDate) setMibDate(s.mibDate);
+    if(s.bookmakers&&Array.isArray(s.bookmakers)&&s.bookmakers.length>0){
+     setBookmakers(prev=>{const merged=[...new Set([...s.bookmakers,...DEFAULT_BK])];try{localStorage.setItem("v7_bmakers",JSON.stringify(merged));}catch(e){}return merged;});
+    }
    }
    mediaLoadedRef.current=true;
   }).catch(()=>{mediaLoadedRef.current=true;});
