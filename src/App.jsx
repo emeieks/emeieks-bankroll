@@ -2557,7 +2557,7 @@ function DiagnosticTab({settledFiltered}){
  );
 }
 
-function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
+function RosterEditor({players,setPlayers,allPlayers,bets=[],rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const ROLES_BY_GAME={
   CS2:["Rifler","AWPer","Entry","Lurker","Support","IGL","Coach"],
@@ -2820,7 +2820,18 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
              <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
             </div>
            ):(
-            <div style={{padding:"10px 12px"}}>{renderEditForm(p)}</div>
+            <div style={{padding:"10px 12px"}}>
+             <PlayerCard
+              p={p} bets={bets} teamLogos={teamLogos} allPlayers={players}
+              showToast={showToast} editMode={false}
+              onEdit={()=>openEdit(p)} onDelete={deletePlayer}
+              onFA={async(p)=>{const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → FA","#F59E0B");closeEdit();}}
+              editP={editP} editPForm={editPForm} setEditPForm={setEditPForm}
+              editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
+              editPSaving={editPSaving} savePlayer={savePlayer} closeEdit={closeEdit}
+              inputStyle={inputStyle} accent={accent}
+             />
+            </div>
            )}
           </div>
          );
@@ -2876,7 +2887,12 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
              {logoUrl?<img src={logoUrl} alt={team} style={{width:28,height:28,borderRadius:6,objectFit:"cover",flexShrink:0}}/>
               :<div style={{width:28,height:28,borderRadius:6,background:"rgba(167,139,250,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:accent,fontWeight:800}}>{team[0]||"?"}</div>}
              <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{team}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+               <span style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{team}</span>
+               {rosterGame==="CS2"&&!tPlayers.some(p=>(p.role||"").toLowerCase().includes("awp"))&&(
+                <span title="Aucun AWPer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",color:"#EF4444",fontSize:9,fontWeight:900,flexShrink:0}}>!</span>
+               )}
+              </div>
               {needLeague&&<div style={{fontSize:9,color:"#4a5a6e",fontWeight:600}}>{league}</div>}
              </div>
              <span style={{fontSize:10,color:"#6B7280"}}>{tPlayers.length}p</span>
@@ -2970,7 +2986,18 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
                    <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
                   </div>
                  ):(
-                  <div style={{padding:"2px 0"}}>{renderEditForm(p)}</div>
+                  <div style={{padding:"10px 12px"}}>
+                   <PlayerCard
+                    p={p} bets={bets} teamLogos={teamLogos} allPlayers={players}
+                    showToast={showToast} editMode={true}
+                    onEdit={()=>openEdit(p)} onDelete={deletePlayer}
+                    onFA={async(p)=>{const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → FA","#F59E0B");closeEdit();}}
+                    editP={editP} editPForm={editPForm} setEditPForm={setEditPForm}
+                    editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
+                    editPSaving={editPSaving} savePlayer={savePlayer} closeEdit={closeEdit}
+                    inputStyle={inputStyle} accent={accent}
+                   />
+                  </div>
                  )}
                 </div>
                );
@@ -3692,6 +3719,204 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
      📋 Coller
     </button>
    </div>
+  </div>
+ );
+}
+
+function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose, onDelete, onFA, editMode, editP, editPForm, setEditPForm, editPPhotoUrl, setEditPPhotoUrl, editPSaving, savePlayer, closeEdit, inputStyle, accent}){
+ // Compute stats for this player
+ const playerBets = bets.filter(b=>
+  b.player&&b.player.toLowerCase().trim()===(p.name||"").toLowerCase().trim()&&
+  (b.status==="won"||b.status==="lost")
+ );
+ const total=playerBets.length;
+ const won=playerBets.filter(b=>b.status==="won").length;
+ const profit=playerBets.reduce((s,b)=>s+(b.profit||0),0);
+ const staked=playerBets.reduce((s,b)=>s+(b.stake||0),0);
+ const wr=total>0?(won/total*100):0;
+ const roi=staked>0?(profit/staked*100):0;
+ const avgOdds=total>0?(playerBets.reduce((s,b)=>s+(b.odds||0),0)/total):0;
+
+ // Stats by Over/Under
+ const byOU={};
+ playerBets.forEach(b=>{
+  const k=b.overUnder||"?";
+  if(!byOU[k])byOU[k]={cnt:0,won:0,profit:0,staked:0};
+  byOU[k].cnt++;byOU[k].profit+=b.profit;byOU[k].staked+=b.stake;
+  if(b.status==="won")byOU[k].won++;
+ });
+
+ // Stats by map
+ const byMap={};
+ playerBets.forEach(b=>{
+  const k=b.mapTag||"Sans tag";
+  if(!byMap[k])byMap[k]={cnt:0,won:0,profit:0,staked:0};
+  byMap[k].cnt++;byMap[k].profit+=b.profit;byMap[k].staked+=b.stake;
+  if(b.status==="won")byMap[k].won++;
+ });
+
+ // Stats by kill line
+ const byKill={};
+ playerBets.filter(b=>b.description).forEach(b=>{
+  const parts=b.description.split(" ");
+  if(parts.length>=3){
+   const k=parts[1]+" "+parts[2];
+   if(!byKill[k])byKill[k]={cnt:0,won:0,profit:0,staked:0};
+   byKill[k].cnt++;byKill[k].profit+=b.profit;byKill[k].staked+=b.stake;
+   if(b.status==="won")byKill[k].won++;
+  }
+ });
+
+ const teamLogo=teamLogos[(p.team||"")+"__"+(p.game||"")]||p.team_logo_url||null;
+ const photo=p.photo_url||p.avatar_url||null;
+ const pc=v=>v>=0?"#00E676":"#EF4444";
+ const wrc=v=>v>=55?"#00E676":v<45?"#EF4444":"#9CA3AF";
+
+ const StatRow=({label,n,wr,profit,roi})=>(
+  <div style={{display:"flex",alignItems:"center",padding:"8px 12px",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+   <div style={{flex:1,fontSize:12,fontWeight:600,color:"#E5E7EB"}}>{label}</div>
+   <div style={{width:36,textAlign:"right",fontSize:11,color:"#6B7280"}}>{n}p</div>
+   <div style={{width:48,textAlign:"right",fontSize:11,fontWeight:700,color:wrc(wr)}}>{wr.toFixed(0)}%</div>
+   <div style={{width:64,textAlign:"right",fontSize:11,fontWeight:700,color:pc(profit)}}>{profit>=0?"+":""}{profit.toFixed(0)}$</div>
+  </div>
+ );
+
+ if(editMode){
+  // Edit form
+  const roles=ROLES_BY_GAME[editPForm.game||"CS2"]||ROLES_BY_GAME.CS2;
+  return(
+   <div style={{display:"flex",flexDirection:"column",gap:10,padding:"4px 0"}}>
+    <div style={{fontSize:10,color:"#A78BFA",fontWeight:700,textTransform:"uppercase",letterSpacing:.7}}>Modifier {p.name}</div>
+    <div>
+     <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:4}}>Photo joueur</div>
+     <ImageInput value={editPPhotoUrl} onChange={setEditPPhotoUrl} folder="players" radius="50%" size={36} placeholder="https://... (photo joueur)" showToast={showToast}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+     <div>
+      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Pseudo</div>
+      <input value={editPForm.name||""} onChange={e=>setEditPForm(f=>({...f,name:e.target.value}))} style={inputStyle}/>
+     </div>
+     <div>
+      <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Poste</div>
+      <select value={editPForm.role||""} onChange={e=>setEditPForm(f=>({...f,role:e.target.value}))} style={{...inputStyle,cursor:"pointer",appearance:"none"}}>
+       <option value="">—</option>
+       {roles.map(r=><option key={r} value={r}>{r}</option>)}
+      </select>
+     </div>
+    </div>
+    <div>
+     <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Équipe</div>
+     {(()=>{
+      const gameTeams={};
+      Object.values(allPlayers).forEach(pl=>{
+       if((pl.game||"")!==(editPForm.game||p?.game||""))return;
+       const t=pl.team||"";if(!t)return;
+       const l=pl.league||"";
+       const key=t+"|||"+l;
+       if(!gameTeams[key])gameTeams[key]={team:t,league:l,count:0};
+       gameTeams[key].count++;
+      });
+      const sorted=Object.values(gameTeams).sort((a,b)=>a.team.localeCompare(b.team)||a.league.localeCompare(b.league));
+      const curTeam=editPForm.team||"";const curLeague=editPForm.league||"";
+      return(
+       <select value={curTeam+"|||"+curLeague} onChange={e=>{const [t,l]=e.target.value.split("|||");setEditPForm(f=>({...f,team:t,league:l}));}} style={{...inputStyle,cursor:"pointer",appearance:"none"}}>
+        <option value="|||">— Club —</option>
+        {sorted.map(({team,league,count})=>(
+         <option key={team+"|||"+league} value={team+"|||"+league}>{team}{league?" · "+league:""} ({count}p)</option>
+        ))}
+       </select>
+      );
+     })()}
+    </div>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+     <button onClick={savePlayer} disabled={editPSaving}
+      style={{flex:1,padding:"8px",background:"rgba(34,197,94,.15)",border:"1px solid rgba(34,197,94,.3)",borderRadius:8,color:"#22C55E",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      {editPSaving?"...":"✓ Sauvegarder"}
+     </button>
+     <button onClick={closeEdit} style={{padding:"8px 12px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:12,cursor:"pointer"}}>✕</button>
+     <button onClick={()=>onDelete(p)} style={{padding:"8px 10px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#EF4444",fontSize:12,cursor:"pointer"}}>🗑️</button>
+    </div>
+   </div>
+  );
+ }
+
+ return(
+  <div>
+   {/* Header — photo + info + actions */}
+   <div style={{display:"flex",gap:12,marginBottom:12,position:"relative"}}>
+    {/* Team logo background */}
+    {teamLogo&&<img src={teamLogo.replace('__FAILED__','')} alt="" style={{position:"absolute",right:0,top:0,width:80,height:80,objectFit:"contain",opacity:.08,pointerEvents:"none"}} onError={e=>e.target.style.display="none"}/>}
+    {/* Player photo */}
+    <div style={{width:64,height:64,borderRadius:"50%",background:"#111827",flexShrink:0,overflow:"hidden",border:"2px solid rgba(167,139,250,.2)"}}>
+     {photo?<img src={photo.replace('__FAILED__','')} alt={p.name} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>e.target.style.opacity=".2"}/>
+      :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
+    </div>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:-.3}}>{p.name}</div>
+     <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,flexWrap:"wrap"}}>
+      {teamLogo&&<img src={teamLogo.replace('__FAILED__','')} alt={p.team} style={{width:16,height:16,objectFit:"contain",borderRadius:2}} onError={e=>e.target.style.display="none"}/>}
+      {p.team&&<span style={{fontSize:11,color:"#c8d4e8",fontWeight:600}}>{p.team}</span>}
+      {p.team&&p.role&&<span style={{color:"#4a5a6e",fontSize:10}}>·</span>}
+      {p.role&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:600}}>{p.role}</span>}
+     </div>
+     {total===0&&<div style={{fontSize:10,color:"#4a5a6e",marginTop:4}}>Aucun pari enregistré</div>}
+    </div>
+    {/* Action buttons */}
+    <div style={{display:"flex",gap:5,flexShrink:0,alignSelf:"flex-start"}}>
+     <button onClick={onEdit} title="Modifier" style={{padding:"6px 10px",background:"rgba(167,139,250,.1)",border:"1px solid rgba(167,139,250,.2)",borderRadius:8,color:accent,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✏️</button>
+     {p.team&&<button onClick={()=>onFA(p)} title="Free Agent" style={{padding:"6px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:8,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
+    </div>
+   </div>
+
+   {total>0&&(
+    <>
+    {/* Global stats */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+     {[["WR",wr.toFixed(0)+"%",wrc(wr)],["ROI",(roi>=0?"+":"")+roi.toFixed(1)+"%",pc(roi)],["PROFIT",(profit>=0?"+":"")+profit.toFixed(0)+"$",pc(profit)],["COT. MOY.","@"+avgOdds.toFixed(2),"#9CA3AF"]].map(([l,v,c])=>(
+      <div key={l} style={{background:"rgba(255,255,255,.03)",borderRadius:8,padding:"8px 6px",textAlign:"center",border:"1px solid rgba(255,255,255,.05)"}}>
+       <div style={{fontSize:8,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>{l}</div>
+       <div style={{fontSize:14,fontWeight:800,color:c}}>{v}</div>
+      </div>
+     ))}
+    </div>
+
+    {/* Over/Under */}
+    {Object.keys(byOU).length>0&&(
+     <div style={{background:"rgba(10,12,28,.8)",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",marginBottom:8,overflow:"hidden"}}>
+      <div style={{padding:"8px 12px",background:"rgba(167,139,250,.06)",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+       <span style={{fontSize:10,fontWeight:700,color:"#A78BFA",textTransform:"uppercase",letterSpacing:.7}}>Over / Under</span>
+      </div>
+      {Object.entries(byOU).sort((a,b)=>b[1].profit-a[1].profit).map(([k,v])=>(
+       <StatRow key={k} label={k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit} roi={v.staked>0?v.profit/v.staked*100:0}/>
+      ))}
+     </div>
+    )}
+
+    {/* By Map */}
+    {Object.keys(byMap).length>1&&(
+     <div style={{background:"rgba(10,12,28,.8)",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",marginBottom:8,overflow:"hidden"}}>
+      <div style={{padding:"8px 12px",background:"rgba(167,139,250,.06)",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+       <span style={{fontSize:10,fontWeight:700,color:"#A78BFA",textTransform:"uppercase",letterSpacing:.7}}>Maps</span>
+      </div>
+      {Object.entries(byMap).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>(
+       <StatRow key={k} label={k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit} roi={v.staked>0?v.profit/v.staked*100:0}/>
+      ))}
+     </div>
+    )}
+
+    {/* Kill lines */}
+    {Object.keys(byKill).length>0&&(
+     <div style={{background:"rgba(10,12,28,.8)",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",marginBottom:8,overflow:"hidden"}}>
+      <div style={{padding:"8px 12px",background:"rgba(167,139,250,.06)",borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+       <span style={{fontSize:10,fontWeight:700,color:"#A78BFA",textTransform:"uppercase",letterSpacing:.7}}>Lignes Kills</span>
+      </div>
+      {Object.entries(byKill).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,8).map(([k,v])=>(
+       <StatRow key={k} label={k} n={v.cnt} wr={v.won/v.cnt*100} profit={v.profit} roi={v.staked>0?v.profit/v.staked*100:0}/>
+      ))}
+     </div>
+    )}
+    </>
+   )}
   </div>
  );
 }
@@ -11466,6 +11691,7 @@ export default function App(){
  {/* ── Edit roster ── */}
  <RosterEditor
   players={players} setPlayers={setPlayers} allPlayers={allPlayers}
+  bets={settledFiltered}
   rosterOpen={rosterOpen} setRosterOpen={setRosterOpen}
   rosterGame={rosterGame} setRosterGame={setRosterGame}
   rosterLeague={rosterLeague} setRosterLeague={setRosterLeague}
