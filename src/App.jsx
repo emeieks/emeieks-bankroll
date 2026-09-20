@@ -4492,6 +4492,7 @@ export default function App(){
  const [newBKPhoto,setNewBKPhoto]=useState("");
  const [bkPhotos,setBkPhotos]=useState({});
  const [mediaStore,setMediaStore]=useState({});
+ const mediaLoadedRef=useRef(false); // true after initial Supabase load
  const [teamLogos,setTeamLogos]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_team_logos")||"{}");}catch(e){return {};}});
  const DEFAULT_HIDDEN_BKS=[];
  const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
@@ -4725,17 +4726,17 @@ export default function App(){
  }catch(e){}
  },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,loaded]);
 
- // Sync bkPhotos to Supabase media_store
+ // Sync bkPhotos to Supabase media_store (only after initial load)
  useEffect(()=>{
-  if(!loaded||!SUPA_URL)return;
+  if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
   supaSetMedia("bkPhotos",bkPhotos).catch(()=>{});
- },[bkPhotos,loaded]);
+ },[bkPhotos]);
 
- // Sync mediaStore to Supabase media_store
+ // Sync mediaStore to Supabase media_store (only after initial load)
  useEffect(()=>{
-  if(!loaded||!SUPA_URL)return;
+  if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
   supaSetMedia("mediaStore",mediaStore).catch(()=>{});
- },[mediaStore,loaded]);
+ },[mediaStore]);
 
  // Save: localStorage (debounced) 
  useEffect(()=>{
@@ -5046,13 +5047,13 @@ export default function App(){
   supaGetAllMedia().then(all=>{
    if(all.bkPhotos&&Object.keys(all.bkPhotos).length>0){
     setBkPhotos(all.bkPhotos);
-    
    }
    if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
     setMediaStore(all.mediaStore);
-   applyMediaStore(all.mediaStore);
+    applyMediaStore(all.mediaStore);
    }
-  }).catch(()=>{});
+   mediaLoadedRef.current=true;
+  }).catch(()=>{mediaLoadedRef.current=true;});
  },[loaded]);
 
  // Pull au chargement
