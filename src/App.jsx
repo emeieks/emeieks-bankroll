@@ -5422,8 +5422,16 @@ export default function App(){
  return{...b,...(o.datetime?{datetime:o.datetime}:{}),...(o.settledAt?{settledAt:o.settledAt}:{}),...(o.bookmaker?{bookmaker:o.bookmaker}:{})};
  });
  const realBets=finalMerged.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__"&&b.player!=="__BK_PHOTOS__"&&b.player!=="__MEDIA_STORE__");
- setBets(realBets);
- localStorage.setItem("v7_bets",JSON.stringify(realBets));
+ // Only update state if data actually changed - prevents unnecessary re-renders on periodic sync
+ setBets(prev=>{
+  if(prev.length===realBets.length){
+   const prevIds=prev.map(b=>String(b.id)+String(b.updatedAt||0)).join(",");
+   const newIds=realBets.map(b=>String(b.id)+String(b.updatedAt||0)).join(",");
+   if(prevIds===newIds)return prev;
+  }
+  localStorage.setItem("v7_bets",JSON.stringify(realBets));
+  return realBets;
+ });
  // Push les bets locaux plus récents vers Supabase pour les autres appareils
  const toSyncBack=merged.filter(b=>{
  const loc=localMap[String(b.id)];
