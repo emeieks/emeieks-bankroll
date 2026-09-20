@@ -944,7 +944,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  return(
  <div style={{display:"flex",gap:4,alignItems:"center"}}>
  {p.league&&!hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
- {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4}}>{t.name}</span>}
+ {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:3}}>{(()=>{const tl=mediaStore&&mediaStore["tourney_"+(p.game||"")+"_"+t.name];return tl?<img src={tl.replace('__FAILED__','')} alt={t.name} style={{width:12,height:12,objectFit:"contain",borderRadius:1}} onError={e=>e.target.style.display="none"}/>:null;})()}{t.name}</span>}
  <span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>
  {isSelected&&<span style={{color:"#00E676",fontSize:14,fontWeight:700,marginLeft:2}}></span>}
  </div>
@@ -3096,8 +3096,7 @@ function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
   }
   const s={...mediaStore,[key]:finalUrl};
   setMediaStore(s);
-  localStorage.setItem("v7_media_store",JSON.stringify(s));
-  applyMediaStore(s);
+   applyMediaStore(s);
   supaUpdateMediaRow("__MEDIA_STORE__",s).catch(()=>{});
   setEditingKey(null);setUrlInput("");
   showToast("✓ Mis à jour","#22C55E");
@@ -3165,7 +3164,7 @@ function MediaManager({mediaStore,setMediaStore,bkPhotos,teamLogos,showToast}){
       style={{flex:1,padding:"7px",background:"rgba(34,197,94,.08)",border:"1px solid rgba(34,197,94,.2)",borderRadius:8,color:"#22C55E",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
       ☁️ Sync vers cloud
       </button>
-      <button onClick={()=>{setMediaStore({});localStorage.setItem("v7_media_store","{}");applyMediaStore({});supaUpdateMediaRow("__MEDIA_STORE__",{}).catch(()=>{});showToast("Médias réinitialisés","#EF4444");}}
+      <button onClick={()=>{setMediaStore({});applyMediaStore({});supaUpdateMediaRow("__MEDIA_STORE__",{}).catch(()=>{});showToast("Médias réinitialisés","#EF4444");}}
        style={{padding:"7px 10px",background:"rgba(239,68,68,.05)",border:"1px solid rgba(239,68,68,.15)",borderRadius:8,color:"#EF4444",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
        🗑️
       </button>
@@ -3214,7 +3213,7 @@ function CreateSection({teamLogos,setTeamLogos,bkPhotos,setBkPhotos,bookmakers,s
   }
   const updated={...bkPhotos,[bkName.trim()]:bkLogoUrl||""};
   setBkPhotos(updated);
-  localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
+  
   if(!bookmakers.includes(bkName.trim()))setBookmakers(prev=>[...prev,bkName.trim()]);
   showToast("Bookmaker "+bkName.trim()+" ajouté ✓","#22C55E");
   setBkName("");setBkUrl("");setBkSaving(false);
@@ -3372,8 +3371,7 @@ function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},save
   }
   const s={...mediaStore,[getKey(game,name)]:finalUrl};
   setMediaStore(s);
-  localStorage.setItem("v7_media_store",JSON.stringify(s));
-  applyMediaStore(s);
+   applyMediaStore(s);
   supaSetMedia("mediaStore",s).catch(()=>{});
   showToast("✓ "+name,"#22C55E");
   setUrlInput(u=>({...u,[k]:""}));
@@ -3383,7 +3381,7 @@ function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},save
  const remove=(game,name)=>{
   const key=getKey(game,name);
   const s={...mediaStore};delete s[key];
-  setMediaStore(s);localStorage.setItem("v7_media_store",JSON.stringify(s));
+  setMediaStore(s);
   supaSetMedia("mediaStore",s).catch(()=>{});
   showToast("Logo supprimé","#EF4444");
  };
@@ -3492,7 +3490,7 @@ function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showT
   }
   const updated={...bkPhotos,[bkNameInput.trim()]:url};
   setBkPhotos(updated);
-  localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
+  
   supaSetMedia("bkPhotos",updated).catch(()=>{});
   if(!bookmakers.includes(bkNameInput.trim())){
    setBookmakers(prev=>[...prev,bkNameInput.trim()].sort());
@@ -3506,7 +3504,7 @@ function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showT
   setBookmakers(prev=>prev.filter(b=>b!==bk));
   const updated={...bkPhotos};delete updated[bk];
   setBkPhotos(updated);
-  localStorage.setItem("v7_bkphotos",JSON.stringify(updated));
+  
   supaSetMedia("bkPhotos",updated).catch(()=>{});
   showToast(bk+" supprimé","#EF4444");
  };
@@ -4478,7 +4476,7 @@ export default function App(){
  const [newBK,setNewBK]=useState("");
  const [newBKPhoto,setNewBKPhoto]=useState("");
  const [bkPhotos,setBkPhotos]=useState({});
- const [mediaStore,setMediaStore]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_media_store")||"{}");}catch(e){return {};}});
+ const [mediaStore,setMediaStore]=useState({});
  const [teamLogos,setTeamLogos]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_team_logos")||"{}");}catch(e){return {};}});
  const DEFAULT_HIDDEN_BKS=[];
  const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
@@ -4925,13 +4923,13 @@ export default function App(){
  }
  // Restore media data (bkPhotos, teamLogos, mediaStore)
  if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-  setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});
+  setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};return m;});
  }
  if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
   setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
  }
  if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-  setMediaStore(prev=>{const m={...prev,...s.mediaStore};localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});
+  setMediaStore(prev=>{const m={...prev,...s.mediaStore};applyMediaStore(m);return m;});
  }
  // Restore MIB settings
  if(s.mibActive!==undefined){setMibActive(!!s.mibActive);}
@@ -5030,12 +5028,11 @@ export default function App(){
   supaGetAllMedia().then(all=>{
    if(all.bkPhotos&&Object.keys(all.bkPhotos).length>0){
     setBkPhotos(all.bkPhotos);
-    localStorage.setItem("v7_bkphotos",JSON.stringify(all.bkPhotos));
+    
    }
    if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
     setMediaStore(all.mediaStore);
-    localStorage.setItem("v7_media_store",JSON.stringify(all.mediaStore));
-    applyMediaStore(all.mediaStore);
+   applyMediaStore(all.mediaStore);
    }
   }).catch(()=>{});
  },[loaded]);
@@ -5052,8 +5049,8 @@ export default function App(){
     try{
      const d=JSON.parse(row.description||"{}");
      if(!Object.keys(d).length)return;
-     if(row.player==="__BK_PHOTOS__"){setBkPhotos(prev=>{const m={...prev,...d};localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});}
-     if(row.player==="__MEDIA_STORE__"){setMediaStore(prev=>{const m={...prev,...d};localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});}
+     if(row.player==="__BK_PHOTOS__"){setBkPhotos(prev=>{const m={...prev,...d};return m;});}
+     if(row.player==="__MEDIA_STORE__"){setMediaStore(prev=>{const m={...prev,...d};applyMediaStore(m);return m;});}
      if(row.player==="__TEAM_LOGOS__"){setTeamLogos(prev=>{const m={...prev,...d};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});}
     }catch(e){}
    });
@@ -5089,13 +5086,13 @@ export default function App(){
      });
     }
     if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});
+     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};return m;});
     }
     if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
      setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
     }
     if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-     setMediaStore(prev=>{const m={...prev,...s.mediaStore};localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});
+     setMediaStore(prev=>{const m={...prev,...s.mediaStore};applyMediaStore(m);return m;});
     }
    }catch(e){}
   }).catch(()=>{});
@@ -5133,7 +5130,7 @@ export default function App(){
        const merged={...d,...prev}; // local takes precedence? No — remote is authoritative
        const m={...prev,...d};
        if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-       localStorage.setItem("v7_bkphotos",JSON.stringify(m));
+       
        return m;
       });
      }
@@ -5141,8 +5138,7 @@ export default function App(){
       setMediaStore(prev=>{
        const m={...prev,...d};
        if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-       localStorage.setItem("v7_media_store",JSON.stringify(m));
-       applyMediaStore(m);
+   applyMediaStore(m);
        return m;
       });
      }
@@ -5197,13 +5193,13 @@ export default function App(){
      });
     }
     if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_bkphotos",JSON.stringify(m));return m;});
+     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;return m;});
     }
     if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
      setTeamLogos(prev=>{const m={...prev,...s.teamLogos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
     }
     if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-     setMediaStore(prev=>{const m={...prev,...s.mediaStore};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_media_store",JSON.stringify(m));applyMediaStore(m);return m;});
+     setMediaStore(prev=>{const m={...prev,...s.mediaStore};if(JSON.stringify(m)===JSON.stringify(prev))return prev;applyMediaStore(m);return m;});
     }
    }catch(e){}
   }).catch(()=>{});
@@ -6360,7 +6356,7 @@ export default function App(){
  if(newBKPhoto){
  const updated={...bkPhotos,[newBK.trim()]:newBKPhoto};
  setBkPhotos(updated);
- try{localStorage.setItem("v7_bkphotos",JSON.stringify(updated));}catch(e){}
+ 
  supaUpdateMediaRow("__BK_PHOTOS__",updated).catch(()=>{});
  }
  setNewBK("");setNewBKPhoto("");setModalBK(false);
@@ -8971,7 +8967,7 @@ export default function App(){
  {(bkLogo||b.bookmaker)&&<span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span>}
  {bkLogo?<img src={bkLogo} alt={b.bookmaker} style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>:<span style={{fontSize:11,color:"#7a9cbd"}}>{b.bookmaker}</span>}
  {b.stake&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span><span style={{fontSize:11,color:"#7a9cbd"}}>{b.stake}$</span></>}
- {b.tournament&&<><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span><span style={{fontSize:10,color:"#7a9cbd"}}> {b.tournament.split(" ")[0]}</span></>}
+ {b.tournament&&(()=>{const tl=mediaStore&&mediaStore["tourney_"+(b.game||"")+"_"+b.tournament];return <><span style={{color:"#3a4e62",margin:"0 5px",fontSize:11}}>·</span>{tl?<img src={tl.replace('__FAILED__','')} alt={b.tournament} style={{width:14,height:14,objectFit:"contain",borderRadius:2,verticalAlign:"middle"}} onError={e=>e.target.style.display="none"}/>:null}<span style={{fontSize:10,color:"#7a9cbd",marginLeft:tl?3:0}}>{b.tournament.split(" ")[0]}</span></>;})()}
  </div>
  </div>
  <div style={{flexShrink:0,textAlign:"right"}}>
