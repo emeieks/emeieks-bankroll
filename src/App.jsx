@@ -508,12 +508,14 @@ async function supaUploadPhotoFromUrl(url, folder) {
 
 
 async function supaUpsertPlayer(data) {
- const name = (data.name || "").toLowerCase().trim();
+ const name = (data.name || "").trim(); // Keep original case
+ const nameLower = name.toLowerCase();
  const game = data.game || "LoL";
  if (!name) throw new Error("Nom du joueur requis");
 
  const payload = {
-  name, game,
+  name: name, // original case preserved
+  game,
   league: data.league || "",
   role:   data.role   || "",
   team:   data.team   || "",
@@ -933,7 +935,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  {freq>0&&<span style={{fontSize:9,color:"#A78BFA",background:"rgba(124,58,237,0.1)",padding:"1px 5px",borderRadius:4,fontWeight:700,flexShrink:0}}>{freq}p</span>}
  <GameLogo game={p.game} size={16}/>
  <div style={{flex:1}}>
- <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{key}</span>
+ <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB"}}>{key}</span>
  <span style={{fontSize:11,color:"#9CA3AF",marginLeft:7}}>{p.team}</span>
  </div>
  {(()=>{
@@ -4634,9 +4636,9 @@ export default function App(){
  const obj = {};
  const tLogos = {};
  rows.forEach(p => {
- obj[p.name.toLowerCase()] = {
+ obj[(p.name||"").toLowerCase()] = {
  id: p.id,
- name: p.name,
+ name: p.name, // original case from DB
  game: p.game,
  league: p.league,
  role: p.role,
@@ -6341,8 +6343,8 @@ export default function App(){
 
  async function savePlayer(){
  if(!pform.name.trim())return;
- const rawName=pform.name.toLowerCase().trim();
- const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team,name:pform.name.trim()};
+ const rawName=pform.name.trim();
+ const data={game:pform.game,league:pform.league,role:pform.role,team:pform.team,name:rawName};
  try{
   // Upload photo permanently to Supabase Storage if URL is external
   if(data.photo_url&&data.photo_url.startsWith('http')&&!data.photo_url.includes('/storage/v1/object/public/')){
