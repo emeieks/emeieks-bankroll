@@ -2770,21 +2770,6 @@ function RosterEditor({players,setPlayers,allPlayers,rosterOpen,setRosterOpen,ro
       })}
      </div>
 
-     {/* Filter bar */}
-     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-      <button onClick={()=>setSortMode(m=>m===""?"asc":m==="asc"?"desc":"")}
-       style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(sortMode?"#60A5FA":"#1F2937"),background:sortMode?"rgba(96,165,250,.1)":"transparent",color:sortMode?"#60A5FA":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-       {sortMode==="asc"?"↑ Joueurs":sortMode==="desc"?"↓ Joueurs":"Trier"}
-      </button>
-      <button onClick={()=>setFilterNoPhoto(f=>!f)}
-       style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(filterNoPhoto?"#F59E0B":"#1F2937"),background:filterNoPhoto?"rgba(245,158,11,.1)":"transparent",color:filterNoPhoto?"#F59E0B":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-       📷 Sans photo
-      </button>
-      <button onClick={()=>setFilterNoLogo(f=>!f)}
-       style={{padding:"4px 10px",borderRadius:14,border:"1px solid "+(filterNoLogo?"#A78BFA":"#1F2937"),background:filterNoLogo?"rgba(167,139,250,.1)":"transparent",color:filterNoLogo?"#A78BFA":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-       🛡️ Sans logo club
-      </button>
-     </div>
 
      {/* Search bar */}
      <div style={{position:"relative",marginBottom:10}}>
@@ -3356,42 +3341,33 @@ function PhotoMigrator({allPlayers,setPlayers,showToast}){
  );
 }
 
-function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={}}){
- const GAMES=["CS2","LoL","Dota2","Valorant"];
+function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},savedTourneys={}}){
  const [open,setOpen]=useState(false);
- const [activeGame,setActiveGame]=useState("CS2");
- const [selected,setSelected]=useState({CS2:"",LoL:"",Dota2:"",Valorant:""});
- const [urlInput,setUrlInput]=useState("");
- const [saving,setSaving]=useState(false);
+ const [urlInput,setUrlInput]=useState({});
+ const [saving,setSaving]=useState({});
+ const GAMES=["CS2","LoL","Dota2","Valorant"];
 
- // Known tournaments per game
- const KNOWN={
-  CS2:["ESL Pro League","BLAST Premier","PGL Major","IEM Cologne","IEM Katowice","ESL One","BLAST Open","Antwerp Major","Paris Major","Copenhagen Major","Rio Major","Stockholm Major","EWC","Riyadh Masters","Fissure Universe"],
-  LoL:["MSI","Worlds","LCK Spring","LCK Summer","LEC Winter","LEC Spring","LEC Summer","LCS Spring","LCS Summer","LPL Spring","LPL Summer","CBLOL","LJL","VCS"],
-  Dota2:["The International","ESL One","DreamLeague","PGL Wallachia","BetBoom Dacha","Riyadh Masters","EWC","Lima Major","Berlin Major","Bali Major","ESL Birmingham","PGL Bucharest"],
-  Valorant:["Champions","Masters Tokyo","Masters Madrid","Masters Shanghai","Champions 2024","LOCK//IN","VCT Americas","VCT EMEA","VCT Pacific","VCT China","EWC","Ascension"],
- };
-
- // Tournaments with logos from mediaStore
  const getKey=(game,name)=>"tourney_"+game+"_"+name;
  const getLogo=(game,name)=>mediaStore[getKey(game,name)]||null;
+ const isOK=(url)=>url&&url.includes('/storage/v1/object/public/');
 
- const save=async()=>{
-  if(!selected[activeGame])return showToast("Sélectionne un tournoi","#EF4444");
-  if(!urlInput.trim())return showToast("URL requise","#EF4444");
-  setSaving(true);
-  let url=urlInput.trim();
-  if(url.startsWith('http')&&!url.includes('/storage/v1/object/public/')){
-   try{url=await supaUploadPhotoFromUrl(url,'tourneys');}catch(e){}
+ const save=async(game,name)=>{
+  const url=(urlInput[key2]||"").trim();
+  if(!url)return showToast("URL requise","#EF4444");
+  setSaving(s=>({...s,[key2]:true}));
+  let finalUrl=url;
+  if(finalUrl.startsWith('http')&&!finalUrl.includes('/storage/v1/object/public/')){
+   try{finalUrl=await supaUploadPhotoFromUrl(finalUrl,'tourneys');}catch(e){}
   }
-  const key=getKey(activeGame,selected[activeGame]);
-  const s={...mediaStore,[key]:url};
+  const key=getKey(game,name);
+  const s={...mediaStore,[key]:finalUrl};
   setMediaStore(s);
   localStorage.setItem("v7_media_store",JSON.stringify(s));
   applyMediaStore(s);
   supaSetMedia("mediaStore",s).catch(()=>{});
-  showToast("✓ "+selected[activeGame]+" mis à jour","#22C55E");
-  setUrlInput("");setSaving(false);
+  showToast("✓ Logo "+name+" mis à jour","#22C55E");
+  setUrlInput(u=>({...u,[key2]:""}));
+  setSaving(s=>({...s,[key2]:false}));
  };
 
  const remove=(game,name)=>{
@@ -3403,15 +3379,15 @@ function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={}}){
   showToast("Logo supprimé","#EF4444");
  };
 
- // Merge active tourneys into the known list for each game
- const KNOWN_WITH_ACTIVE={...KNOWN};
- Object.entries(activeTourneys).forEach(([game,t])=>{
-  if(t&&t.name&&KNOWN_WITH_ACTIVE[game]&&!KNOWN_WITH_ACTIVE[game].includes(t.name)){
-   KNOWN_WITH_ACTIVE[game]=[t.name,...KNOWN_WITH_ACTIVE[game]];
-  }
+ // Collect ALL tournaments from activeTourneys + savedTourneys
+ const allTourneyNames={};
+ GAMES.forEach(g=>{
+  allTourneyNames[g]=[];
+  if(activeTourneys[g]&&activeTourneys[g].name) allTourneyNames[g].push(activeTourneys[g].name);
+  if(savedTourneys&&savedTourneys[g]) savedTourneys[g].forEach(n=>{if(!allTourneyNames[g].includes(n))allTourneyNames[g].push(n);});
  });
- const GAME_COLORS={CS2:"#F59E0B",LoL:"#A78BFA",Dota2:"#EF4444",Valorant:"#22C55E"};
- const isOK=(url)=>url&&url.includes('/storage/v1/object/public/');
+ const activeGames=GAMES.filter(g=>allTourneyNames[g].length>0);
+ if(activeGames.length===0)return null;
 
  return(
   <div style={{marginBottom:8}}>
@@ -3420,67 +3396,52 @@ function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={}}){
     <div style={{display:"flex",alignItems:"center",gap:10}}>
      <span style={{fontSize:16}}>🏆</span>
      <div>
-      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Logos Tournois</div>
-      <div style={{fontSize:10,color:"#6B7280"}}>{Object.keys(mediaStore).filter(k=>k.startsWith("tourney_")).length} logos</div>
+      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Logos Tournois actifs</div>
+      <div style={{fontSize:10,color:"#6B7280"}}>{activeGames.length} tournoi(s) actif(s)</div>
      </div>
     </div>
     <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
    </button>
    {open&&(
-    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"14px"}}>
-     {/* Game tabs */}
-     <div style={{display:"flex",gap:6,marginBottom:12}}>
-      {GAMES.map(g=>(
-       <button key={g} onClick={()=>{setActiveGame(g);setSelected(s=>({...s,[g]:""}));setUrlInput("");}}
-        style={{flex:1,padding:"6px 4px",borderRadius:10,border:"2px solid "+(activeGame===g?GAME_COLORS[g]:"transparent"),background:activeGame===g?"rgba(255,255,255,.05)":"rgba(255,255,255,.02)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <GameLogo game={g} size={18}/>
-       </button>
-      ))}
-     </div>
-
-     {/* Existing logos */}
-     {(()=>{
-      const existing=KNOWN_WITH_ACTIVE[activeGame].filter(t=>getLogo(activeGame,t));
-      if(existing.length===0)return <div style={{fontSize:11,color:"#4a5a6e",marginBottom:12,textAlign:"center"}}>Aucun logo pour {activeGame}</div>;
-      return(
-       <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
-        {existing.map(t=>{
-         const url=getLogo(activeGame,t);
-         return(
-          <div key={t} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:"rgba(255,255,255,.03)",borderRadius:8}}>
-           <img src={url.replace('__FAILED__','')} alt={t} style={{width:26,height:26,borderRadius:6,objectFit:"contain"}} onError={e=>e.target.style.opacity=".2"}/>
-           <div style={{flex:1,fontSize:11,color:"#E5E7EB",fontWeight:600}}>{t}</div>
-           <span style={{fontSize:9,color:isOK(url)?"#22C55E":"#F59E0B",fontWeight:700}}>{isOK(url)?"● OK":"● Ext"}</span>
-           <button onClick={()=>remove(activeGame,t)} style={{padding:"3px 6px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer"}}>✕</button>
+    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"12px",display:"flex",flexDirection:"column",gap:10}}>
+     {activeGames.map(game=>(
+      <div key={game} style={{background:"rgba(255,255,255,.03)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(255,255,255,.05)"}}>
+       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+        <GameLogo game={game} size={18}/>
+        <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{game}</span>
+        <span style={{fontSize:10,color:"#6B7280"}}>— {allTourneyNames[game].length} tournoi(s)</span>
+       </div>
+       {allTourneyNames[game].map(name=>{
+        const logo=getLogo(game,name);
+        const inputKey=game+"_"+name;
+        const isActive=activeTourneys[game]&&activeTourneys[game].name===name;
+        return(
+         <div key={name} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,.04)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+           <div style={{flex:1,fontSize:11,fontWeight:600,color:"#E5E7EB"}}>{name}{isActive&&<span style={{marginLeft:6,fontSize:9,color:"#22C55E",fontWeight:700}}>● ACTIF</span>}</div>
+           {logo&&(
+            <div style={{display:"flex",alignItems:"center",gap:5}}>
+             <img src={logo.replace('__FAILED__','')} alt={name} style={{width:24,height:24,borderRadius:4,objectFit:"contain"}} onError={e=>e.target.style.opacity=".2"}/>
+             <span style={{fontSize:9,color:isOK(logo)?"#22C55E":"#F59E0B",fontWeight:700}}>{isOK(logo)?"● OK":"● Ext"}</span>
+             <button onClick={()=>remove(game,name)} style={{padding:"2px 5px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:4,color:"#EF4444",fontSize:9,cursor:"pointer"}}>✕</button>
+            </div>
+           )}
           </div>
-         );
-        })}
-       </div>
-      );
-     })()}
-
-     {/* Add/select tournament */}
-     <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:12}}>
-      <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:8}}>Ajouter un logo</div>
-      <select value={selected[activeGame]} onChange={e=>setSelected(s=>({...s,[activeGame]:e.target.value}))}
-       style={{width:"100%",background:"#111827",border:"1px solid #374151",borderRadius:8,padding:"8px 12px",color:selected[activeGame]?"#E5E7EB":"#6B7280",fontSize:12,fontFamily:"Inter,sans-serif",marginBottom:8,cursor:"pointer",appearance:"none"}}>
-       <option value="">— Sélectionner un tournoi —</option>
-       {KNOWN_WITH_ACTIVE[activeGame].map(t=>(
-        <option key={t} value={t}>{t}{getLogo(activeGame,t)?" ✓":""}</option>
-       ))}
-      </select>
-      {selected[activeGame]&&(
-       <>
-       <div style={{marginBottom:8}}>
-        <ImageInput value={urlInput} onChange={setUrlInput} folder="tourneys" size={32} radius="6px" placeholder="URL du logo" showToast={showToast}/>
-       </div>
-       <button onClick={save} disabled={saving||!urlInput.trim()}
-        style={{width:"100%",padding:"8px",background:urlInput.trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+(urlInput.trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:8,color:urlInput.trim()?"#22C55E":"#374151",fontSize:12,fontWeight:700,cursor:urlInput.trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
-        {saving?"⏳ Sauvegarde...":"✓ Sauvegarder"}
-       </button>
-       </>
-      )}
-     </div>
+          <ImageInput
+           value={urlInput[inputKey]||""}
+           onChange={v=>setUrlInput(u=>({...u,[inputKey]:v}))}
+           folder="tourneys" size={24} placeholder={"URL logo "+name}
+           showToast={showToast}
+          />
+          <button onClick={()=>save(game,name,inputKey)} disabled={saving[inputKey]||!(urlInput[inputKey]||"").trim()}
+           style={{width:"100%",marginTop:5,padding:"6px",background:(urlInput[inputKey]||"").trim()?"rgba(34,197,94,.15)":"rgba(255,255,255,.03)",border:"1px solid "+((urlInput[inputKey]||"").trim()?"rgba(34,197,94,.3)":"#1F2937"),borderRadius:7,color:(urlInput[inputKey]||"").trim()?"#22C55E":"#374151",fontSize:11,fontWeight:700,cursor:(urlInput[inputKey]||"").trim()?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
+           {saving[inputKey]?"⏳...":"✓ Sauvegarder"}
+          </button>
+         </div>
+        );
+       })}
+      </div>
+     ))}
     </div>
    )}
   </div>
@@ -11481,6 +11442,7 @@ export default function App(){
  <TourneyLogos
   mediaStore={mediaStore} setMediaStore={setMediaStore}
   showToast={showToast} activeTourneys={activeTourneys}
+  savedTourneys={savedTourneys}
  />
 
  <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(96,165,250,.15),transparent)",margin:"8px 0"}}/>
