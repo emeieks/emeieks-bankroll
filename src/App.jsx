@@ -4063,7 +4063,7 @@ const NavIconSuivi=memo(function NavIconSuivi({active}){
 });
 
 // SelectionModal — sélection multiple + date + tournoi 
-function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={},onAfterPush,allPlayers={}}){
+function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDay,monthKeys,byMonth,allByDay,allByMonth,allMonthKeys,bookmakers=[],BK_LOGOS={},bkPhotos={},savedTourneys={},onAfterPush,allPlayers={},hiddenBKs=new Set()}){
  const [selected,setSelected]=useState(new Set());
  const [newDate,setNewDate]=useState("");
  const [newTournament,setNewTournament]=useState("");
@@ -4688,6 +4688,7 @@ const MesParisView=memo(function MesParisView({
  byDay={allByDay}
  monthKeys={allMonthKeys}
  byMonth={allByMonth}
+ hiddenBKs={hiddenBKs}
  bookmakers={bookmakers}
  BK_LOGOS={BK_LOGOS}
  bkPhotos={bkPhotos}
@@ -7395,7 +7396,7 @@ export default function App(){
  <div>
  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Bookmakers</div>
  <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
- {bookmakers.filter(bk=>!hiddenBKs||!hiddenBKs.has(bk)).map(bk=>{
+ {visibleBKs.map(bk=>{
  const on=homeChartFilters.bookmakers.includes(bk);
  const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
  return(
