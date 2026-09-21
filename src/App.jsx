@@ -1254,29 +1254,6 @@ const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,cal
 // BetRow component 
 const EMPTY_OBJ={};
 
-// ── VIRTUAL BET LIST ── renders only visible rows for performance with 10k+ bets
-const BET_ROW_HEIGHT = 88; // approximate height per BetRow in px
-const VIRTUAL_OVERSCAN = 5; // extra rows above/below viewport
-
-function useVirtualList(items, containerRef, rowHeight=BET_ROW_HEIGHT) {
- const [range, setRange] = useState({start:0, end:30});
- useEffect(()=>{
-  const el = containerRef.current;
-  if(!el) return;
-  const update = ()=>{
-   const scrollTop = el.scrollTop;
-   const height = el.clientHeight;
-   const start = Math.max(0, Math.floor(scrollTop/rowHeight) - VIRTUAL_OVERSCAN);
-   const end = Math.min(items.length, Math.ceil((scrollTop+height)/rowHeight) + VIRTUAL_OVERSCAN);
-   setRange(r => (r.start===start && r.end===end) ? r : {start, end});
-  };
-  el.addEventListener('scroll', update, {passive:true});
-  update();
-  return ()=> el.removeEventListener('scroll', update);
- }, [items.length, rowHeight, containerRef]);
- return range;
-}
-
 const APP_ICON="";
 // Set PWA icon
 (()=>{
@@ -2614,7 +2591,7 @@ const ROLES_BY_GAME={
   Dota2:["Carry","Midlaner","Offlaner","Support","Hard Support","Coach"],
  };
 
-const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos}){
+const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
@@ -2680,15 +2657,28 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
    }
    const result=await supaUpsertPlayer(data);
    if(result&&result.id)data.id=result.id;
+   const oldName=editP.name||"";
+   const newName=editPForm.name||editP.name||"";
    setPlayers(prev=>{
-    const key=(editPForm.name||editP.name).toLowerCase().trim();
+    const key=newName.toLowerCase().trim();
     const n={...prev};
-    const oldKey=editP.name.toLowerCase().trim();
+    const oldKey=oldName.toLowerCase().trim();
     if(oldKey!==key)delete n[oldKey];
     n[key]={...data,id:editP.id};
     return n;
    });
-   showToast("Joueur mis à jour ","#22C55E");
+   // Rename player in all bets if name changed
+   if(oldName&&newName&&oldName.toLowerCase().trim()!==newName.toLowerCase().trim()){
+    setBets(prev=>{
+     const updated=prev.map(b=>b.player===oldName?{...b,player:newName,updatedAt:Date.now()}:b);
+     const changed=updated.filter(b=>b.player===newName&&prev.find(p=>p.id===b.id&&p.player===oldName));
+     if(changed.length>0)setTimeout(()=>supaPushBets(changed).catch(()=>{}),0);
+     return updated;
+    });
+    showToast("Joueur renommé: "+oldName+" → "+newName,"#22C55E");
+   } else {
+    showToast("Joueur mis à jour ","#22C55E");
+   }
    closeEdit();
   }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
   setEditPSaving(false);
@@ -3580,7 +3570,7 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
 });
 
 
-const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showToast}){
+const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmakers,bkPhotos,setBkPhotos,showToast,hiddenBKs=new Set(),toggleHideBK}){
  const [open,setOpen]=useState(false);
  const [editingBK,setEditingBK]=useState(null); // null=none, "new"=new, bkName=editing
  const [bkNameInput,setBkNameInput]=useState("");
@@ -3655,6 +3645,10 @@ const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmak
             <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{bk}</div>
             {logo&&<div style={{fontSize:9,color:isStoraged(logo)?"#22C55E":"#F59E0B",fontWeight:600}}>{isStoraged(logo)?"● Supabase":"● Externe"}</div>}
            </div>
+           <button onClick={()=>toggleHideBK&&toggleHideBK(bk)} title={hiddenBKs.has(bk)?"Afficher dans paris":"Masquer dans paris"}
+            style={{padding:"4px 8px",background:hiddenBKs.has(bk)?"rgba(239,68,68,.08)":"rgba(34,197,94,.06)",border:"1px solid "+(hiddenBKs.has(bk)?"rgba(239,68,68,.2)":"rgba(34,197,94,.2)"),borderRadius:6,color:hiddenBKs.has(bk)?"#EF4444":"#22C55E",fontSize:10,cursor:"pointer"}}>
+            {hiddenBKs.has(bk)?"🙈":"👁️"}
+           </button>
            <button onClick={()=>startEdit(bk)} style={{padding:"4px 8px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:"#A78BFA",fontSize:10,cursor:"pointer"}}>✏️</button>
            <button onClick={()=>deleteBK(bk)} style={{padding:"4px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:10,cursor:"pointer"}}>🗑️</button>
           </div>
@@ -4283,13 +4277,12 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  <div>
  <div style={{fontSize:11,color:"#9CA3AF",fontWeight:700,textTransform:"uppercase",letterSpacing:.8,marginBottom:8}}>Bookmaker</div>
  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
- {bookmakers.map(bk=>{
+ {bookmakers.filter(bk=>!hiddenBKs||!hiddenBKs.has(bk)).map(bk=>{
  const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
  const isOn=newBK===bk;
  return(
- <button key={bk} onClick={()=>setNewBK(isOn?"":bk)} title={bk}
- style={{width:40,height:40,borderRadius:10,border:"2px solid "+(isOn?"#A78BFA":"rgba(255,255,255,0.08)"),background:isOn?"rgba(124,58,237,0.18)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",boxShadow:isOn?"0 0 10px rgba(124,58,237,0.35)":"none"}}>
- {logo?(<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>):(<span style={{fontSize:10,fontWeight:700,color:isOn?"#A78BFA":"#6B7280"}}>{bk.slice(0,3)}</span>)}
+ <button key={bk} onClick={()=>setNewBK(isOn?"":bk)} title={bk} style={{minWidth:logo?40:"auto",height:40,borderRadius:10,border:"2px solid "+(isOn?"#A78BFA":"rgba(255,255,255,0.08)"),background:isOn?"rgba(124,58,237,0.18)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:logo?"0":"0 10px",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",boxShadow:isOn?"0 0 10px rgba(124,58,237,0.35)":"none"}}>
+ {logo?(<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>):(<span style={{fontSize:10,fontWeight:700,color:isOn?"#A78BFA":"#6B7280",whiteSpace:"nowrap"}}>{bk}</span>)}
  </button>
  );
  })}
@@ -4670,7 +4663,6 @@ const MesParisView=memo(function MesParisView({
  <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#00E676":"#EF4444"}}>{dayProfit>=0?"+":""}{dayProfit.toFixed(0)}$</span>
  </div>
    <VirtualizedDayBets bets={dayBets||[]} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
- ))}
  </div>
  );
  })}
@@ -4748,38 +4740,6 @@ function applyMediaStore(store){
 applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));
 
 
-// ── STATS WEB WORKER ── heavy calculations off the main thread
-const STATS_WORKER_SRC = `
-self.onmessage = function(e) {
- const {bets, type} = e.data;
- if(type === 'settledFiltered') {
-  const settled = bets.filter(b => b.status !== 'pending');
-  // Streak calculation
-  const chron = [...settled].sort((a,b) => String(a.datetime||'').localeCompare(String(b.datetime||'')));
-  let curStreak=0,curType='',bestWin=0,bestLoss=0,tmpW=0,tmpL=0;
-  chron.forEach(b=>{
-   if(b.status==='won'){tmpW++;tmpL=0;if(tmpW>bestWin)bestWin=tmpW;}
-   else{tmpL++;tmpW=0;if(tmpL>bestLoss)bestLoss=tmpL;}
-  });
-  // ROI / WR
-  const won = settled.filter(b=>b.status==='won').length;
-  const totalStaked = settled.reduce((s,b)=>s+(b.stake||0),0);
-  const totalProfit = settled.reduce((s,b)=>s+(b.profit||0),0);
-  const roi = totalStaked > 0 ? totalProfit/totalStaked*100 : 0;
-  const wr = settled.length > 0 ? won/settled.length*100 : 0;
-  self.postMessage({type:'settledFiltered', result:{bestWin,bestLoss,roi,wr,count:settled.length,totalProfit,totalStaked}});
- }
-};
-`;
-let _statsWorker = null;
-function getStatsWorker() {
- if(_statsWorker) return _statsWorker;
- try {
-  const blob = new Blob([STATS_WORKER_SRC], {type:'application/javascript'});
-  _statsWorker = new Worker(URL.createObjectURL(blob));
- } catch(e) { _statsWorker = null; }
- return _statsWorker;
-}
 
 export default function App(){
  // Register Service Worker for image caching
@@ -5903,17 +5863,7 @@ export default function App(){
 
  const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
 
- // Worker-computed stats (updates asynchronously to avoid blocking UI)
- const [workerStats,setWorkerStats]=useState({bestWin:0,bestLoss:0,roi:0,wr:0,count:0,totalProfit:0,totalStaked:0});
- useEffect(()=>{
-  const worker=getStatsWorker();
-  if(!worker||!settled.length)return;
-  const handler=e=>{if(e.data.type==='settledFiltered')setWorkerStats(e.data.result);};
-  worker.addEventListener('message',handler);
-  // Debounce: wait 300ms after last change before computing
-  const t=setTimeout(()=>worker.postMessage({type:'settledFiltered',bets:settled}),300);
-  return()=>{clearTimeout(t);worker.removeEventListener('message',handler);};
- },[settled]);
+ 
 
  // Filtre Test + MIB 
  const isTestActive=useMemo(()=>{
@@ -7445,7 +7395,7 @@ export default function App(){
  <div>
  <div style={{fontSize:9,color:"#6B7280",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Bookmakers</div>
  <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
- {bookmakers.map(bk=>{
+ {bookmakers.filter(bk=>!hiddenBKs||!hiddenBKs.has(bk)).map(bk=>{
  const on=homeChartFilters.bookmakers.includes(bk);
  const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
  return(
@@ -12112,6 +12062,7 @@ export default function App(){
   rosterHierarchy={rosterHierarchy} showToast={showToast}
   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
   customClubs={customClubs} setCustomClubs={setCustomClubs}
+  setBets={setBets} supaPushBets={supaPushBets}
  />
 
  <TourneyLogos
@@ -12127,6 +12078,7 @@ export default function App(){
   bookmakers={bookmakers} setBookmakers={setBookmakers}
   bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
   showToast={showToast}
+  hiddenBKs={hiddenBKs} toggleHideBK={toggleHideBK}
  />
 
  <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(34,197,94,.15),transparent)",margin:"8px 0"}}/>
@@ -12846,7 +12798,7 @@ export default function App(){
  if(!remote||!remote.length){showToast("Erreur sync","#EF4444");setSyncing(false);return;}
  const localIds=new Set(bets.map(b=>String(b.id)));
  const remoteIds=new Set(remote.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__").map(b=>String(b.id)));
- const onlyLocal=bets.filter(b=>!remoteIds.has(String(b.id)));
+ const onlyLocal=bets.filter(b=>!remoteIds.has(String(b.id))&&b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__"&&b.player!=="__BK_PHOTOS__"&&b.player!=="__MEDIA_STORE__");
  const onlyRemote=remote.filter(b=>!localIds.has(String(b.id))&&b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__");
  // Orphan bets: bets whose player name doesn't exist in allPlayers
  const playerNames=new Set(Object.values(allPlayers).map(p=>(p.name||"").toLowerCase().trim()));
