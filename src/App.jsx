@@ -2642,10 +2642,18 @@ async function clipboardImageToUrl(folder){
  try{return await supaUploadPhotoFromUrl(r.url,folder);}catch(e){return r.url;}
 }
 
+// Ligne "équipe · rôle · jeu" avec IGL / AWPer en gras blanc
+function roleLine(parts,role){
+ const list=parts.filter(Boolean);if(!list.length)return "—";
+ const hi=/^(igl|awp(er)?)$/i.test(String(role||"").trim());
+ return list.map((x,i)=><React.Fragment key={i}>{i?" · ":""}{hi&&x===role?<b style={{color:"#fff",fontWeight:800}}>{x}</b>:x}</React.Fragment>);
+}
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
+ const [secOpen,setSecOpen]=useState(()=>{try{return localStorage.getItem("emeieks_roster_open")!=="0";}catch(e){return true;}});
+ useEffect(()=>{try{localStorage.setItem("emeieks_roster_open",secOpen?"1":"0");}catch(e){}},[secOpen]);
  const [sortMode,setSortMode]=useState(""); // "asc" | "desc" | ""
  const [filterNoPhoto,setFilterNoPhoto]=useState(false);
  const [filterNoLogo,setFilterNoLogo]=useState(false);
@@ -2816,6 +2824,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
  const filteredPlayerKeys=searchQ.length>0
   ? Object.keys(players).filter(k=>{
      const p=players[k];
+     if(rosterGame&&p.game!==rosterGame)return false;
      return (p.name||"").toLowerCase().includes(searchLower)||(p.team||"").toLowerCase().includes(searchLower);
     })
   : null;
@@ -2825,9 +2834,10 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
 
  return(
   <div style={{marginBottom:8}}>
-   <SuiviHead n="users" color="#a78bfa" title="Joueurs" sub={Object.keys(allPlayers).length+" joueurs · photos, équipes, rôles"} flat/>
+   <SuiviHead n="users" color="#a78bfa" title="Joueurs" sub={Object.keys(allPlayers).length+" joueurs · photos, équipes, rôles"}
+    open={secOpen} onClick={()=>setSecOpen(v=>!v)}/>
 
-   <div style={SV_BODY}>
+   <div style={{...SV_BODY,display:secOpen?undefined:"none"}}>
 
      {/* Dédoublonnage */}
      {(()=>{
@@ -2909,10 +2919,36 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
 
      {/* Search results */}
      {searchQ.length>0&&(()=>{
-      const results=(filteredPlayerKeys||[]).map(k=>players[k]).filter(Boolean);
-      if(results.length===0)return <div style={{fontSize:11,color:"#4a5a6e",padding:"6px 0"}}>Aucun résultat pour "{searchQ}"</div>;
+      const all=(filteredPlayerKeys||[]).map(k=>players[k]).filter(Boolean);
+      // 1) clubs · 2) joueurs dont le nom correspond · 3) joueurs des clubs trouvés
+      const byName=all.filter(p=>(p.name||"").toLowerCase().includes(searchLower))
+       .sort((a,b)=>((a.name||"").toLowerCase().startsWith(searchLower)?0:1)-((b.name||"").toLowerCase().startsWith(searchLower)?0:1)||(a.name||"").localeCompare(b.name||""));
+      const byClub=all.filter(p=>!(p.name||"").toLowerCase().includes(searchLower))
+       .sort((a,b)=>(a.team||"").localeCompare(b.team||"")||(a.game||"").localeCompare(b.game||"")||(a.name||"").localeCompare(b.name||""));
+      const results=[...byName,...byClub];
+      const clubMap={};
+      Object.values(players).forEach(p=>{if(p&&p.team&&(!rosterGame||p.game===rosterGame)&&p.team.toLowerCase().includes(searchLower)){const k=p.team+"__"+p.game;if(!clubMap[k])clubMap[k]={team:p.team,game:p.game,league:p.league||"",n:0,logo:null};clubMap[k].n++;if(!clubMap[k].logo)clubMap[k].logo=teamLogos[k]||p.team_logo_url||null;}});
+      const clubList=Object.values(clubMap).sort((a,b)=>b.n-a.n);
+      if(results.length===0&&clubList.length===0)return <div style={{fontSize:11,color:"#4a5a6e",padding:"6px 0"}}>Aucun résultat pour "{searchQ}"</div>;
+      const Sep=({t,n})=>(<div style={{display:"flex",alignItems:"center",gap:10,margin:"10px 2px 6px"}}>
+       <span style={{fontSize:11,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"#8b93a7"}}>{t}</span>
+       <span style={{fontSize:11,color:"#5b6478"}}>{n}</span><span style={{flex:1,height:1,background:"rgba(255,255,255,.07)"}}/></div>);
       return(
        <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
+        {clubList.length>0&&<Sep t="Clubs" n={clubList.length}/>}
+        {clubList.map(c=>(
+         <button key={c.team+c.game} onClick={()=>{setRosterGame(c.game);setRosterLeague((c.game==="LoL"||c.game==="Valorant")&&c.league?c.league:null);setRosterTeam(c.team+c.league);setSearchQ("");}}
+          style={{...cardStyle,marginBottom:4,display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif",width:"100%"}}>
+          <span style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+           {c.logo?<img src={c.logo} alt="" style={{width:30,height:30,objectFit:"contain"}}/>:<span style={{fontSize:11,fontWeight:800,color:"#9ca3af"}}>{c.team.slice(0,3).toUpperCase()}</span>}</span>
+          <span style={{flex:1,minWidth:0}}>
+           <span style={{display:"block",fontWeight:800,fontSize:14,color:"#E5E7EB"}}>{c.team}</span>
+           <span style={{fontSize:11,color:"#6B7280"}}>{[c.game,c.league,c.n+" joueur"+(c.n>1?"s":"")].filter(Boolean).join(" · ")}</span></span>
+          <GameLogo game={c.game} size={18}/>
+          <span style={{color:"#6B7280",fontSize:16}}>›</span>
+         </button>
+        ))}
+        {results.length>0&&<Sep t="Joueurs" n={results.length}/>}
         {results.map(p=>{
          const isEditing=editP&&editP.id===p.id;
          const avatar=p.photo_url||p.avatar_url||null;
@@ -2924,7 +2960,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               :<div style={{width:32,height:32,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
              <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{p.name}</div>
-              <div style={{fontSize:10,color:"#6B7280"}}>{[p.team,p.role,p.game].filter(Boolean).join(" · ")}</div>
+              <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.team,p.role,p.game],p.role)}</div>
              </div>
              <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
              <button onClick={e=>{e.stopPropagation();quickPlayerPhoto(p);}} title="Coller une photo (remplace l'ancienne)" style={{padding:"5px 9px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Photo</button>
@@ -3040,7 +3076,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                      :<div style={{width:26,height:26,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
                     <div style={{flex:1}}>
                      <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{p.name}</div>
-                     <div style={{fontSize:10,color:"#6B7280"}}>{[p.team||"Free Agent",p.role].filter(Boolean).join(" · ")}</div>
+                     <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.team||"Free Agent",p.role],p.role)}</div>
                     </div>
                     <button onClick={async()=>{
                      const updated={...p,team,league};
@@ -3095,7 +3131,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                     :<div style={{width:32,height:32,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
                    <div style={{flex:1}}>
                     <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{p.name}</div>
-                    <div style={{fontSize:10,color:"#6B7280"}}>{[p.role,p.league].filter(Boolean).join(" · ")||"—"}</div>
+                    <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.role,p.league],p.role)}</div>
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
                    {p.team&&<button onClick={async e=>{e.stopPropagation();const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
