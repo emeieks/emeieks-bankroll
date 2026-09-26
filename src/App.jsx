@@ -4863,6 +4863,25 @@ function PlayerSheet({name,player,bets,teamLogos,allPlayers={},activeTourneys={}
        </div>
       ))}
      </div>
+     {(()=>{
+      const isHS=b=>!!b.isHeadshot||/Headshot/i.test(b.description||"");
+      const pairs=game==="CS2"?[["Paris kills",mine.filter(b=>!isHS(b)),"#fbbf24"],["Paris headshots",mine.filter(isHS),"#818cf8"]]
+       :game==="LoL"?[["Live",mine.filter(b=>b.isLive),"#fb7185"],["Non-live",mine.filter(b=>!b.isLive),"#60a5fa"]]:null;
+      if(!pairs)return null;
+      return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+       {pairs.map(([l,list,c])=>{const st=psAgg(list);return(
+        <div key={l} style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"12px 14px"}}>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontSize:14,fontWeight:800,color:c}}>{l}</span><span style={{fontSize:12,color:"#6b7489"}}>{st.n} paris</span></div>
+         <div style={{fontSize:24,fontWeight:800,color:st.n?pc(st.profit):"#4b5366",marginTop:6}}>{st.n?money(st.profit):"–"}</div>
+         {st.n?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 10px",marginTop:10,fontSize:12}}>
+          <span style={{color:"#8b93a7"}}>Réussite <b style={{color:st.wr>=55?"#00E676":st.wr<45?"#f87171":"#e5e7eb"}}>{st.wr.toFixed(0)}%</b></span>
+          <span style={{color:"#8b93a7"}}>ROI <b style={{color:pc(st.roi)}}>{(st.roi>=0?"+":"")+st.roi.toFixed(1)}%</b></span>
+          <span style={{color:"#8b93a7"}}>Bilan <b style={{color:"#e5e7eb"}}>{st.won}G-{st.lost}P</b></span>
+          <span style={{color:"#8b93a7"}}>Misé <b style={{color:"#e5e7eb"}}>{st.staked.toFixed(0)}$</b></span>
+         </div>:<div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>Aucun pari</div>}
+        </div>);})}
+      </div>);
+     })()}
      <Table title="PAR LIGNE DE KILLS" groups={byLine}/>
      <Table title="PAR MAP" groups={byMap}/>
      {/* Derniers paris */}
@@ -5022,7 +5041,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
  const dirty=JSON.stringify(f)!==JSON.stringify({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
  return(
   <div onClick={e=>{e.stopPropagation();onClose();}} style={{position:"fixed",inset:0,zIndex:470,background:"rgba(0,0,0,.75)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",overflowY:"auto",animation:"overlayIn .2s ease"}}>
-   <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",paddingBottom:96}}>
+   <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",display:"flex",flexDirection:"column"}}>
     <PlayerBanner name={f.name} photo={f.photo} role={f.role} game={f.game} team={f.team} league={f.league} logo={f.logo}>
      <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",alignItems:"center",zIndex:3}}>
       <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
@@ -5030,7 +5049,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
      </div>
     </PlayerBanner>
 
-    <div style={{padding:"14px 14px 0"}}>
+    <div style={{padding:"14px 14px 0",flex:1}}>
      {/* Identité */}
      <div style={C}>
       <div style={T}><Ic n="users" s={16} c="#a78bfa"/>Joueur</div>
@@ -5104,7 +5123,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
     </div>
 
     {/* Barre d'enregistrement */}
-    <div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:471,background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.07)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",padding:"12px 14px calc(12px + env(safe-area-inset-bottom))"}}>
+    <div style={{position:"sticky",bottom:0,zIndex:5,marginTop:14,background:"rgba(9,14,28,.97)",borderTop:"1px solid rgba(255,255,255,.07)",padding:"12px 14px calc(12px + env(safe-area-inset-bottom))"}}>
      <div style={{maxWidth:732,margin:"0 auto",display:"flex",gap:8}}>
       <button onClick={onClose} style={{flex:1,padding:"14px",borderRadius:14,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
       <button onClick={save} disabled={!!busy||!f.name.trim()||!dirty}
