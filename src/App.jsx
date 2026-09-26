@@ -1569,17 +1569,22 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  if(draftDate&&draftDate!==cur&&onSave)onSave(Object.assign({},bet,{datetime:draftDate,updatedAt:Date.now()}));
  setDraftDate("");
  };
+ const chip={display:"inline-flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:8,border:"1px solid rgba(167,139,250,.25)",background:"rgba(124,58,237,.06)",cursor:"pointer",fontFamily:"Inter,sans-serif"};
+ if(draftDate)return(
+ <span onClick={e=>e.stopPropagation()} style={{display:"inline-flex",alignItems:"center",gap:6}}>
+ <input ref={dateInputRef} type="datetime-local" autoFocus value={draftDate}
+ onChange={e=>setDraftDate(e.target.value)}
+ onKeyDown={e=>{if(e.key==="Enter")commit();if(e.key==="Escape")setDraftDate("");}}
+ style={{background:"rgba(18,12,30,.98)",border:"1px solid rgba(167,139,250,.5)",borderRadius:8,padding:"4px 8px",color:"#e9d5ff",fontSize:13,fontFamily:"Inter,sans-serif",colorScheme:"dark",outline:"none"}}/>
+ <button type="button" onClick={commit} style={{border:"none",borderRadius:8,padding:"5px 10px",background:"#7C3AED",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>OK</button>
+ <button type="button" onClick={()=>setDraftDate("")} style={{border:"1px solid rgba(255,255,255,.12)",borderRadius:8,padding:"4px 9px",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer"}}>Annuler</button>
+ </span>
+ );
  return(
- <label onClick={e=>{e.stopPropagation();const el=dateInputRef.current;if(el&&el.showPicker){try{el.showPicker();}catch(err){}}}}
- style={{position:"relative",display:"inline-flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:8,border:"1px solid rgba(167,139,250,.25)",background:"rgba(124,58,237,.06)",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+ <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();setDraftDate(cur||nowDT());}} style={chip}>
  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
  <span style={{fontSize:11,color:"#c4b5fd",fontWeight:600}}>{label}</span>
- <input ref={dateInputRef} type="datetime-local" value={shown||nowDT()}
- onClick={e=>e.stopPropagation()}
- onChange={e=>setDraftDate(e.target.value)}
- onBlur={commit}
- style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0,cursor:"pointer",border:"none",padding:0,margin:0,colorScheme:"dark",fontSize:16}}/>
- </label>
+ </span>
  );
 })()}
  {/* Tournament inline edit */}
