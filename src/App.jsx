@@ -1400,7 +1400,8 @@ const VirtualizedDayBets = memo(function VirtualizedDayBets({bets=[], onStatus, 
 });
 
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
- const [editDate,setEditDate]=useState(null);
+ const [draftDate,setDraftDate]=useState("");
+ const dateInputRef=useRef(null);
  const [open,setOpen]=useState(false);
  const [confirmDel,setConfirmDel]=useState(false);
  const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
@@ -1560,28 +1561,28 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  {/* Date + Tournament */}
  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px 0",flexWrap:"wrap"}}>
  {/* Date cliquable → édition */}
- {editDate===null?(
- <button type="button" onClick={e=>{e.stopPropagation();setEditDate((bet.datetime&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(bet.datetime)))?String(bet.datetime).slice(0,16):nowDT());}}
- style={{background:"none",border:"none",padding:"2px 0",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,fontFamily:"Inter,sans-serif"}}>
- <span style={{fontSize:11,color:"#6a7a8e",fontWeight:600,textDecoration:"underline dotted",textDecorationColor:"#3a4a5e"}}>
- {(()=>{const dt=bet.datetime?String(bet.datetime):"";if(!dt||dt.includes("NaN")||!/^\d{4}-\d{2}-\d{2}/.test(dt))return " Date";const mo=parseInt(dt.slice(5,7))-1;const mn=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][mo]||"";return dt.slice(8,10)+" "+mn+" "+dt.slice(0,4)+" · "+dt.slice(11,16);})()}
- </span>
- <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6a7a8e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
- </button>
- ):(
- <div onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",width:"100%"}}>
- <input type="datetime-local" autoFocus value={editDate} onChange={e=>setEditDate(e.target.value)}
- style={{flex:"1 1 170px",minWidth:0,background:"rgba(8,14,28,.95)",border:"1px solid rgba(167,139,250,.45)",borderRadius:9,padding:"7px 10px",color:"#E5E7EB",fontSize:13,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark"}}/>
- <button type="button" disabled={!editDate} onClick={()=>{
- if(!editDate)return;
- if(editDate!==String(bet.datetime||"").slice(0,16)&&onSave)onSave(Object.assign({},bet,{datetime:editDate,updatedAt:Date.now()}));
- setEditDate(null);
- }}
- style={{padding:"7px 12px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Enregistrer</button>
- <button type="button" onClick={()=>setEditDate(null)}
- style={{padding:"7px 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#6B7280",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
- </div>
- )}
+{(()=>{
+ const cur=(bet.datetime&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(bet.datetime)))?String(bet.datetime).slice(0,16):"";
+ const shown=draftDate||cur;
+ const mn=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][parseInt(shown.slice(5,7))-1]||"";
+ const label=shown?shown.slice(8,10)+" "+mn+" "+shown.slice(0,4)+" · "+shown.slice(11,16):"Date";
+ const commit=()=>{
+ if(draftDate&&draftDate!==cur&&onSave)onSave(Object.assign({},bet,{datetime:draftDate,updatedAt:Date.now()}));
+ setDraftDate("");
+ };
+ return(
+ <label onClick={e=>{e.stopPropagation();const el=dateInputRef.current;if(el&&el.showPicker){try{el.showPicker();}catch(err){}}}}
+ style={{position:"relative",display:"inline-flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:8,border:"1px solid rgba(167,139,250,.25)",background:"rgba(124,58,237,.06)",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+ <span style={{fontSize:11,color:"#c4b5fd",fontWeight:600}}>{label}</span>
+ <input ref={dateInputRef} type="datetime-local" value={shown||nowDT()}
+ onClick={e=>e.stopPropagation()}
+ onChange={e=>setDraftDate(e.target.value)}
+ onBlur={commit}
+ style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0,cursor:"pointer",border:"none",padding:0,margin:0,colorScheme:"dark",fontSize:16}}/>
+ </label>
+ );
+})()}
  {/* Tournament inline edit */}
  <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:"auto"}}>
  <span style={{fontSize:11,color:"#fbbf24"}}><Ic n="trophy" s={12}/></span>
