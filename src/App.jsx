@@ -8579,11 +8579,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
 
  {/* Infos joueur (droite) */}
- <div style={{flex:1,padding:"14px 12px 12px 6px",display:"flex",flexDirection:"column",justifyContent:"center",gap:6,minWidth:0}}>
- <div style={{fontSize:19,fontWeight:700,letterSpacing:-.3,color:"#f0f4ff",lineHeight:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+ <div style={{flex:1,padding:"16px 12px 12px 6px",display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:7,minWidth:0}}>
+ <div style={{fontSize:21,fontWeight:800,letterSpacing:-.3,color:"#f0f4ff",lineHeight:1,paddingRight:104,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
  {capName(form.autoInfo.name||form.player)}
  </div>
- <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+ <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"nowrap",whiteSpace:"nowrap",overflow:"hidden"}}>
  <GameLogo game={form.autoInfo.game} size={16}/>
  {form.autoInfo.team&&(
  <>
@@ -8599,11 +8599,18 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </>
  )}
  </div>
+ {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(bets.filter(b=>(b.player||"").toLowerCase().trim()===k));
+  if(!a.n)return <div style={{fontSize:12,color:"#6b7489",fontWeight:600}}>Aucun pari terminé</div>;
+  const c=a.profit>0?"#00E676":a.profit<0?"#f87171":"#9ca3af";
+  return <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+   <span style={{fontSize:15,fontWeight:800,color:"#e5e7eb"}}>{a.won} - {a.lost}</span>
+   <span style={{fontSize:17,fontWeight:900,color:c}}>{(a.profit>=0?"+":"")+a.profit.toFixed(0)+"$"}</span>
+  </div>;})()}
  {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;return <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:5,background:"rgba(124,58,237,.1)",color:"#a78bfa",fontWeight:600,fontSize:10,border:"1px solid rgba(124,58,237,.2)",alignSelf:"flex-start"}}> {t.name}</span>})()}
  </div>
 
  {/* Bouton Changer */}
- <div style={{padding:"12px 12px 12px 0",display:"flex",alignItems:"flex-start",gap:6,flexShrink:0}}>
+ <div style={{position:"absolute",top:12,right:12,zIndex:3,display:"flex",alignItems:"flex-start",gap:6}}>
  <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
  style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(139,92,246,.3)",color:"#9d7bef",fontWeight:500,fontSize:11,background:"rgba(139,92,246,.05)",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
  Changer
