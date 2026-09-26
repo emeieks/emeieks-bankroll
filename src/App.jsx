@@ -2568,6 +2568,21 @@ const ROLES_BY_GAME={
   Dota2:["Carry","Midlaner","Offlaner","Support","Hard Support","Coach"],
  };
 
+
+// Colle une image du presse-papiers → Supabase Storage → URL publique
+async function clipboardImageToUrl(folder){
+ if(navigator.clipboard&&navigator.clipboard.read){
+  const items=await navigator.clipboard.read();
+  for(const it of items){
+   const t=it.types.find(x=>x.startsWith("image/"));
+   if(t){const blob=await it.getType(t);return await supaUploadPhoto(new File([blob],"image."+(t.split("/")[1]||"png"),{type:t}),folder);}
+  }
+ }
+ const txt=((navigator.clipboard&&navigator.clipboard.readText)?await navigator.clipboard.readText():"").trim();
+ if(/^https?:\/\//.test(txt)){try{return await supaUploadPhotoFromUrl(txt,folder);}catch(e){return txt;}}
+ throw new Error("Aucune image dans le presse-papiers");
+}
+
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
@@ -2587,6 +2602,25 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
   setEditPPhotoUrl(p.photo_url||p.avatar_url||"");
   setTeamSearchQ(p.team||"");
   setTeamSuggestions([]);
+ };
+ const quickTeamLogo=async(team,game)=>{
+  try{
+   showToast("Envoi du logo…","#A78BFA");
+   const url=await clipboardImageToUrl("teams");
+   setTeamLogos(prev=>({...prev,[team+"__"+game]:url}));
+   await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(team)+"&game=eq."+encodeURIComponent(game),{method:"PATCH",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},body:JSON.stringify({team_logo_url:url})});
+   setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{if(n[k].team===team&&n[k].game===game)n[k]={...n[k],team_logo_url:url};});return n;});
+   showToast("Logo de "+team+" remplacé","#00E676");
+  }catch(e){showToast((e&&e.message)||"Collage impossible","#EF4444");}
+ };
+ const quickPlayerPhoto=async(p)=>{
+  try{
+   showToast("Envoi de la photo…","#A78BFA");
+   const url=await clipboardImageToUrl("players");
+   await fetch(SUPA_URL+"/rest/v1/players?id=eq."+encodeURIComponent(p.id),{method:"PATCH",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},body:JSON.stringify({photo_url:url,avatar_url:url})});
+   setPlayers(prev=>{const n={...prev};const k=(p.name||"").toLowerCase().trim();if(n[k])n[k]={...n[k],photo_url:url,avatar_url:url};return n;});
+   showToast("Photo de "+p.name+" remplacée","#00E676");
+  }catch(e){showToast((e&&e.message)||"Collage impossible","#EF4444");}
  };
  const closeEdit=()=>{setEditP(null);setEditPForm({});setEditPPhotoUrl("");setTeamSearchQ("");setTeamSuggestions([]);};
 
@@ -2834,7 +2868,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               <div style={{fontSize:10,color:"#6B7280"}}>{[p.team,p.role,p.game].filter(Boolean).join(" · ")}</div>
              </div>
              <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
-             <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
+             <button onClick={e=>{e.stopPropagation();quickPlayerPhoto(p);}} title="Coller une photo (remplace l'ancienne)" style={{padding:"5px 9px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Photo</button>
             </div>
            ):(
             <div style={{padding:"10px 12px"}}>
@@ -2979,9 +3013,12 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                  <button onClick={e=>{e.stopPropagation();setEditTeam(null);setTeamLogoUrl("");}} style={{padding:"6px 10px",background:"transparent",border:"1px solid #1F2937",borderRadius:6,color:"#6B7280",fontSize:11,cursor:"pointer"}}>✕</button>
                 </div>
                ):(
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <button onClick={e=>{e.stopPropagation();quickTeamLogo(team,rosterGame);}} title="Coller un logo (remplace l'ancien)" style={{padding:"5px 10px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Coller logo</button>
                 <button onClick={e=>{e.stopPropagation();setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                  {logoUrl?"✏️ Modifier logo":"+ Ajouter logo"}
                 </button>
+                </div>
                )}
               </div>
               {/* Players */}
@@ -3000,7 +3037,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
                    {p.team&&<button onClick={async e=>{e.stopPropagation();const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
-                   <button onClick={()=>deletePlayer(p)} style={{padding:"5px 8px",background:"rgba(239,68,68,.06)",border:"1px solid rgba(239,68,68,.15)",borderRadius:6,color:"#EF4444",fontSize:11,cursor:"pointer"}}>🗑️</button>
+                   <button onClick={e=>{e.stopPropagation();quickPlayerPhoto(p);}} title="Coller une photo (remplace l'ancienne)" style={{padding:"5px 9px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Photo</button>
                   </div>
                  ):(
                   <div style={{padding:"10px 12px"}}>
@@ -4865,9 +4902,12 @@ function PlayerSheet({name,player,bets,teamLogos,allPlayers={},activeTourneys={}
      </div>
      {(()=>{
       const isHS=b=>!!b.isHeadshot||/Headshot/i.test(b.description||"");
-      const pairs=game==="CS2"?[["Paris kills",mine.filter(b=>!isHS(b)),"#fbbf24"],["Paris headshots",mine.filter(isHS),"#818cf8"]]
-       :game==="LoL"?[["Live",mine.filter(b=>b.isLive),"#fb7185"],["Non-live",mine.filter(b=>!b.isLive),"#60a5fa"]]:null;
-      if(!pairs)return null;
+      const hasHS=game==="CS2"||mine.some(isHS);
+      const hasLive=game==="LoL"||mine.some(b=>b.isLive);
+      const pairs=[].concat(
+       hasHS?[["Paris kills",mine.filter(b=>!isHS(b)),"#fbbf24"],["Paris headshots",mine.filter(isHS),"#818cf8"]]:[],
+       hasLive?[["Live",mine.filter(b=>b.isLive),"#fb7185"],["Non-live",mine.filter(b=>!b.isLive),"#60a5fa"]]:[]);
+      if(!pairs.length)return null;
       return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
        {pairs.map(([l,list,c])=>{const st=psAgg(list);return(
         <div key={l} style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"12px 14px"}}>
@@ -4946,8 +4986,8 @@ function PlayerBanner({name,photo,role,game,team,league,logo,children}){
  const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
  const col=useLogoColor(logo,acc);
  return(
-  <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(120% 150% at 88% 30%,"+col+"55 0%,rgba(11,18,32,0) 58%),linear-gradient(180deg,#0d1830 0%,#09101f 100%)",borderBottom:"3px solid "+col,transition:"background .4s"}}>
-   {team&&<div style={{position:"absolute",left:"26%",top:"52%",transform:"translateY(-50%)",fontSize:140,fontWeight:900,letterSpacing:-4,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+col+"66",pointerEvents:"none",textTransform:"uppercase",lineHeight:1,transition:"all .4s"}}>{team}</div>}
+  <div style={{position:"relative",overflow:"hidden",containerType:"inline-size",background:"radial-gradient(120% 150% at 88% 30%,"+col+"55 0%,rgba(11,18,32,0) 58%),linear-gradient(180deg,#0d1830 0%,#09101f 100%)",borderBottom:"3px solid "+col,transition:"background .4s"}}>
+   {team&&<div style={{position:"absolute",left:"2%",top:"50%",transform:"translateY(-50%)",fontSize:"min(150px, calc(96cqw / "+(Math.max(4,String(team).length)*0.66).toFixed(2)+"))",fontWeight:900,letterSpacing:-2,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+col+"66",pointerEvents:"none",textTransform:"uppercase",lineHeight:1,transition:"all .4s"}}>{team}</div>}
    {children}
    <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",gap:12,padding:"58px 14px 0",minHeight:190,maxWidth:900,margin:"0 auto"}}>
     <div style={{width:"clamp(92px,26vw,150px)",height:"clamp(120px,32vw,170px)",flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
@@ -4971,7 +5011,7 @@ function PlayerBanner({name,photo,role,game,team,league,logo,children}){
 }
 
 // ── Éditeur de joueur : aperçu en direct en haut, modifications en dessous ──
-function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast,teamLogos={},allPlayers={},onDelete}){
+function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast,teamLogos={},allPlayers={},onDelete,isNew}){
  const [f,setF]=useState({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
  const [busy,setBusy]=useState("");
  const [clubQ,setClubQ]=useState("");
@@ -5045,7 +5085,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
     <PlayerBanner name={f.name} photo={f.photo} role={f.role} game={f.game} team={f.team} league={f.league} logo={f.logo}>
      <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",alignItems:"center",zIndex:3}}>
       <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
-      <span style={{fontSize:12,fontWeight:700,color:"#e9e3ff",background:"rgba(0,0,0,.4)",padding:"6px 12px",borderRadius:20}}>Aperçu en direct</span>
+      <span style={{fontSize:12,fontWeight:700,color:"#e9e3ff",background:"rgba(0,0,0,.4)",padding:"6px 12px",borderRadius:20}}>{isNew?"Nouveau joueur · aperçu en direct":"Aperçu en direct"}</span>
      </div>
     </PlayerBanner>
 
@@ -5126,9 +5166,9 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
     <div style={{position:"sticky",bottom:0,zIndex:5,marginTop:14,background:"rgba(9,14,28,.97)",borderTop:"1px solid rgba(255,255,255,.07)",padding:"12px 14px calc(12px + env(safe-area-inset-bottom))"}}>
      <div style={{maxWidth:732,margin:"0 auto",display:"flex",gap:8}}>
       <button onClick={onClose} style={{flex:1,padding:"14px",borderRadius:14,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
-      <button onClick={save} disabled={!!busy||!f.name.trim()||!dirty}
-       style={{flex:2,padding:"14px",borderRadius:14,border:"none",background:dirty?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.06)",color:dirty?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:dirty?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:busy?.6:1}}>
-       {busy==="save"?"Enregistrement…":dirty?"Enregistrer les modifications":"Aucune modification"}
+      <button onClick={save} disabled={!!busy||!f.name.trim()||(!dirty&&!isNew)}
+       style={{flex:2,padding:"14px",borderRadius:14,border:"none",background:(dirty||isNew)&&f.name.trim()?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.06)",color:(dirty||isNew)&&f.name.trim()?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:(dirty||isNew)?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:busy?.6:1}}>
+       {busy==="save"?"Enregistrement…":isNew?(f.name.trim()?"Ajouter le joueur":"Entre un pseudo"):dirty?"Enregistrer les modifications":"Aucune modification"}
       </button>
      </div>
     </div>
@@ -11947,70 +11987,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  {/* MODAL ADD PLAYER */}
  {modalPlayer&&(
- <div className="moverlay" onClick={()=>setModalPlayer(false)}>
- <div className="modal" onClick={e=>e.stopPropagation()}>
- <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Ajouter un joueur</div>
- <input className="ifield" placeholder="Pseudo (ex: faker)" value={pform.name} onChange={e=>setPform(p=>({...p,name:e.target.value}))} style={{marginBottom:8}}/>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
- <select className="ifield" value={pform.game} onChange={e=>setPform(p=>({...p,game:e.target.value,role:"",league:""}))}>
- {ALL_GAMES.map(g=><option key={g} value={g}>{g}</option>)}
- </select>
- {LEAGUES_BY_GAME[pform.game]?(
- <select className="ifield" value={pform.league} onChange={e=>setPform(p=>({...p,league:e.target.value}))}>
- <option value="">Ligue...</option>
- {LEAGUES_BY_GAME[pform.game].map(l=><option key={l} value={l}>{l}</option>)}
- </select>
- ):(
- <input className="ifield" placeholder="Ligue (opt.)" value={pform.league} onChange={e=>setPform(p=>({...p,league:e.target.value}))}/>
- )}
- </div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
- <select className="ifield" value={pform.role} onChange={e=>setPform(p=>({...p,role:e.target.value}))}>
- <option value="">Rôle...</option>
- {(pform.game==="LoL"
- ?["Top Laner","Jungler","Mid Laner","Bot Laner","Support"]
- :pform.game==="CS2"
- ?["Rifler","AWPer","IGL","Entry Fragger","Support"]
- :pform.game==="Dota2"
- ?["Carry","Mid","Offlane","Soft Support","Hard Support"]
- :["Duelist","Initiator","Controller","Sentinel","IGL"]
- ).map(r=><option key={r} value={r}>{r}</option>)}
- </select>
-  {(()=>{
-       const gameTeams={};
-       Object.values(allPlayers).forEach(p=>{
-        if((p.game||"")!==pform.game)return;
-        const t=p.team||"";if(!t)return;
-        const l=p.league||"";
-        const key=t+"|||"+l;
-        if(!gameTeams[key])gameTeams[key]={team:t,league:l,count:0};
-        gameTeams[key].count++;
-       });
-       // Ajouter les clubs custom
-       (customClubs[pform.game]||[]).forEach(cl=>{
-        const key=(cl.name||"")+"|||"+(cl.league||"");
-        if(!gameTeams[key])gameTeams[key]={team:cl.name,league:cl.league||"",count:0};
-       });
-       const sorted=Object.values(gameTeams).sort((a,b)=>a.team.localeCompare(b.team)||a.league.localeCompare(b.league));
-       return(
-        <select className="ifield" value={pform.team+"|||"+(pform.league||"")}
-         onChange={e=>{const [t,l]=e.target.value.split("|||");setPform(p=>({...p,team:t,league:l}));}}>
-         <option value="|||">Club *...</option>
-         {sorted.map(({team,league,count})=>(
-          <option key={team+"|||"+league} value={team+"|||"+league}>
-           {team}{league?" · "+league:""} ({count}p)
-          </option>
-         ))}
-        </select>
-       );
-      })()}
- </div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
- <button onClick={()=>setModalPlayer(false)} style={{padding:"12px",background:"#1F2937",border:"none",borderRadius:10,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
- <button onClick={savePlayer} disabled={!pform.name||!pform.team} style={{padding:"12px",background:pform.name&&pform.team?"linear-gradient(135deg,#00E676,#0EA5E9)":"#1F2937",border:"none",borderRadius:10,color:pform.name&&pform.team?"#0B1220":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
- </div>
- </div>
- </div>
+ <PlayerEditSheet p={{name:pform.name||"",game:pform.game||"CS2",team:pform.team||"",league:pform.league||"",role:pform.role||""}}
+  name={pform.name||""} game={pform.game||"CS2"} teamLogo={pform.team?(teamLogos[pform.team+"__"+(pform.game||"")]||""):""} photo="" isNew
+  teamLogos={teamLogos} allPlayers={allPlayers} showToast={showToast}
+  onClose={()=>setModalPlayer(false)}
+  onSaved={(np,logo)=>{
+   applyPlayerSaved("",np,logo);
+   setModalPlayer(false);
+   setPform({name:"",game:"LoL",league:"",role:"",team:""});
+   if(view==="add")setForm(f=>({...f,player:np.name,autoInfo:{...np,name:np.name}}));
+  }}/>
  )}
 
  {/* MODAL EDIT PLAYER */}
