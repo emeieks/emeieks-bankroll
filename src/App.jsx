@@ -2937,7 +2937,15 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
        <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
         {clubList.length>0&&<Sep t="Clubs" n={clubList.length}/>}
         {clubList.map(c=>(
-         <button key={c.team+c.game} onClick={()=>{setRosterGame(c.game);setRosterLeague((c.game==="LoL"||c.game==="Valorant")&&c.league?c.league:null);setRosterTeam(c.team+c.league);setSearchQ("");}}
+         <button key={c.team+c.game} onClick={()=>{
+          const gh=rosterHierarchy[c.game]||{};
+          const lg=Object.keys(gh).find(l=>gh[l]&&gh[l][c.team])??c.league;
+          setRosterGame(c.game);setRosterLeague((c.game==="LoL"||c.game==="Valorant")?lg:null);
+          setRosterTeam(c.team+lg);setSearchQ("");
+          let tries=0;const go=()=>{const el=document.getElementById("club-"+c.game+"-"+c.team+lg);
+           if(el){el.scrollIntoView({behavior:"smooth",block:"start"});}else if(tries++<20)setTimeout(go,60);};
+          setTimeout(go,60);
+         }}
           style={{...cardStyle,marginBottom:4,display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif",width:"100%"}}>
           <span style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
            {c.logo?<img src={c.logo} alt="" style={{width:30,height:30,objectFit:"contain"}}/>:<span style={{fontSize:11,fontWeight:800,color:"#9ca3af"}}>{c.team.slice(0,3).toUpperCase()}</span>}</span>
@@ -3026,7 +3034,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
           const isOpen=rosterTeam===key;
           const logoUrl=teamLogos[team+"__"+rosterGame]||tPlayers[0]?.team_logo_url||null;
           return(
-           <div key={key} style={cardStyle}>
+           <div key={key} id={"club-"+rosterGame+"-"+key} style={{...cardStyle,scrollMarginTop:80}}>
             <div style={{display:"flex",width:"100%",alignItems:"center"}}>
             <button onClick={()=>setRosterTeam(isOpen?null:key)}
              style={{flex:1,display:"flex",alignItems:"center",gap:10,padding:"10px 10px 10px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
