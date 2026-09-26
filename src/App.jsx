@@ -5073,6 +5073,28 @@ export default function App(){
  },[]);
 
 
+
+ // Sauvegarde complète téléchargeable (toutes les tables)
+ const [backingUp,setBackingUp]=useState(false);
+ const downloadBackup=async function(){
+ setBackingUp(true);
+ try{
+ const all=async t=>{let out=[];for(let off=0;;off+=1000){const r=await cloudDb(t+"?select=*&limit=1000&offset="+off);out=out.concat(r||[]);if(!r||r.length<1000)break;}return out;};
+ const data={app:"EMEIEKS",version:2,exportedAt:new Date().toISOString()};
+ for(const t of ["bets","players","teams","bookmakers","tournaments","settings","media_store"]){
+ try{data[t]=await all(t);}catch(e){data[t]={erreur:(e&&e.message)||String(e)};}
+ }
+ const nb=Array.isArray(data.bets)?data.bets.filter(b=>!String(b.player||"").startsWith("__")).length:0;
+ const blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="emeieks-sauvegarde-"+new Date().toISOString().slice(0,10)+".json";
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+ showToast("Sauvegarde téléchargée · "+nb+" paris","#00E676");
+ }catch(e){showToast("Sauvegarde impossible : "+((e&&e.message)||e),"#EF4444");}
+ setBackingUp(false);
+ };
  // Test de connexion table par table (fenêtre Cloud)
  const runDiag=async function(){
  setDiag([{t:"Test en cours…",ok:null}]);
@@ -8518,6 +8540,9 @@ export default function App(){
  </button>
  <button onClick={exportCSV} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}> Exporter en CSV</button>
  <button onClick={exportJSON} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}> Exporter en JSON</button>
+ <button onClick={downloadBackup} disabled={backingUp} style={{display:"flex",alignItems:"center",gap:8,background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:12,padding:"12px 14px",color:"#00E676",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600}}>
+ <Ic n="down" s={14} w={2.6}/>{backingUp?"Sauvegarde en cours…":"Télécharger une sauvegarde complète (toutes les données)"}
+ </button>
  <label style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
  Importer un JSON
  <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
@@ -11704,6 +11729,7 @@ export default function App(){
  <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris · temps réel : {liveState==="SUBSCRIBED"?"actif":liveState}</div>
  {syncErr&&<div style={{fontSize:11,color:"#fca5a5",marginTop:6,wordBreak:"break-word"}}>Dernière erreur — {syncErr}</div>}
  </div>
+ <button onClick={downloadBackup} disabled={backingUp} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:10,color:"#00E676",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Ic n="down" s={14} w={2.6}/>{backingUp?"Sauvegarde en cours…":"Télécharger une sauvegarde complète"}</button>
  <button onClick={runDiag} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:10,color:"#93c5fd",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13}}>Tester la connexion</button>
  {diag&&<div style={{background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
  {diag.map((d,i)=><div key={i} style={{display:"flex",gap:8,fontSize:11,padding:"4px 0",borderBottom:i<diag.length-1?"1px solid #1F2937":"none"}}>
@@ -11918,12 +11944,13 @@ export default function App(){
  ↑ Forcer l'envoi vers le cloud
  </button>
 
- {/* Reset total */}
+ {/* Reset total — protégé */}
  <button onClick={()=>{
  if(!confirmDelete){setConfirmDelete(true);return;}
+ const txt=window.prompt("Cette action efface TOUS tes paris sur tous tes appareils.\nTélécharge d'abord une sauvegarde.\n\nTape SUPPRIMER pour confirmer :");
+ if(txt!=="SUPPRIMER"){setConfirmDelete(false);showToast("Suppression annulée","#9CA3AF");return;}
  setSyncing(true);
  setBets([]);
- localStorage.setItem("v7_bets","[]");
  supaDeleteAllBets().catch(function(){}).finally(()=>{setSyncing(false);});
  setConfirmDelete(false);setSupaModal(false);
  showToast("Tous les paris supprimés","#EF4444");
