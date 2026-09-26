@@ -1432,7 +1432,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  <div style={{flex:1,minWidth:0}}>
  {/* L1 : Joueur — Kills — Map */}
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"wrap"}}>
- <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
+ <span onClick={e=>{e.stopPropagation();openPlayerSheet(bet.player);}} style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0,cursor:"pointer"}}>{bet.player}</span>
  {bet.game==="LoL"&&bet.role&&<RoleLogo role={bet.role} size={14}/>}
  {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#00E676",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.2)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
  {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
@@ -4688,6 +4688,263 @@ try{applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));}c
 
 
 
+
+// ════════════════════════════════════════════════════════════
+//  FICHE JOUEUR (style NHL) — s'ouvre en touchant un nom de joueur
+// ════════════════════════════════════════════════════════════
+function openPlayerSheet(name){try{window.dispatchEvent(new CustomEvent("emeieks-open-player",{detail:name}));}catch(e){}}
+
+function PSStat({label,value,color,sub}){
+ return(
+  <div style={{flex:"1 1 0",minWidth:0,textAlign:"center",padding:"4px 2px"}}>
+   <div style={{fontSize:11,fontWeight:700,color:"#8b93a7",letterSpacing:.6,textTransform:"uppercase"}}>{label}</div>
+   <div style={{fontSize:22,fontWeight:800,color:color||"#f4f6fb",letterSpacing:-.6,marginTop:4,fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}>{value}</div>
+   {sub&&<div style={{fontSize:11,color:"#6b7489",marginTop:2}}>{sub}</div>}
+  </div>
+ );
+}
+
+function psAgg(list){
+ const s=list.filter(b=>b.status==="won"||b.status==="lost");
+ const won=s.filter(b=>b.status==="won").length;
+ const profit=s.reduce((a,b)=>a+(b.profit||0),0);
+ const staked=s.reduce((a,b)=>a+(b.stake||0),0);
+ const odds=s.length?s.reduce((a,b)=>a+(parseFloat(b.odds)||0),0)/s.length:0;
+ return{n:s.length,won,lost:s.length-won,profit,staked,wr:s.length?won/s.length*100:0,roi:staked?profit/staked*100:0,odds,avgStake:s.length?staked/s.length:0};
+}
+
+function PlayerSheet({name,player,bets,teamLogos,onClose,onSaved,showToast}){
+ const [edit,setEdit]=useState(false);
+ const key=(name||"").toLowerCase().trim();
+ const p=player||{name};
+ const game=p.game||(bets.find(b=>(b.player||"").toLowerCase().trim()===key)||{}).game||"";
+ const cfg=GAME_CFG[game]||{accent:"#A78BFA"};
+ const acc=cfg.accent||"#A78BFA";
+ const teamLogo=(p.team&&teamLogos[p.team+"__"+game])||p.team_logo_url||null;
+ const photo=p.photo_url||p.avatar_url||(p.avatar_file?AVATARS_BUCKET+encodeURIComponent(p.avatar_file):null);
+ const mine=useMemo(()=>bets.filter(b=>(b.player||"").toLowerCase().trim()===key).sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||""))),[bets,key]);
+ const all=psAgg(mine);
+ const cutoff=(()=>{const d=new Date();d.setDate(d.getDate()-30);return d.toISOString().slice(0,10);})();
+ const last30=psAgg(mine.filter(b=>String(b.datetime||"").slice(0,10)>=cutoff));
+ const pending=mine.filter(b=>b.status==="pending");
+ const over=psAgg(mine.filter(b=>b.overUnder==="Over"));
+ const under=psAgg(mine.filter(b=>b.overUnder==="Under"));
+ const byMap={};mine.forEach(b=>{const k=b.mapTag||"Sans map";(byMap[k]=byMap[k]||[]).push(b);});
+ const byLine={};mine.forEach(b=>{const m=/(\d+(?:\.\d+)?)\s+(Kills|Headshots)/.exec(b.description||"");if(!m)return;const k=(b.overUnder||"")+" "+m[1]+" "+m[2];(byLine[k]=byLine[k]||[]).push(b);});
+ // Courbe du profit cumulé
+ const pts=(()=>{let r=0;return [...mine].filter(b=>b.status!=="pending").reverse().map(b=>(r+=b.profit||0));})();
+ const money=v=>(v>=0?"+":"")+v.toFixed(0)+"$";
+ const pc=v=>v>0?"#00E676":v<0?"#f87171":"#9CA3AF";
+ const displayName=p.name||name;
+
+ useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[onClose]);
+
+ const Spark=()=>{
+  if(pts.length<2)return null;
+  const W=300,H=56,min=Math.min(0,...pts),max=Math.max(0,...pts),rg=max-min||1;
+  const x=i=>i/(pts.length-1)*W,y=v=>H-4-(v-min)/rg*(H-8);
+  const d="M"+pts.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" L");
+  const col=pts[pts.length-1]>=0?"#00E676":"#f87171";
+  return(<svg viewBox={"0 0 "+W+" "+H} width="100%" height={H} preserveAspectRatio="none" style={{display:"block"}}>
+   <line x1="0" x2={W} y1={y(0)} y2={y(0)} stroke="rgba(255,255,255,.12)" strokeDasharray="3,5"/>
+   <path d={d} fill="none" stroke={col} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke"/>
+  </svg>);
+ };
+
+ const Table=({title,groups})=>{
+  const rows=Object.entries(groups).map(([k,l])=>[k,psAgg(l)]).filter(([,s])=>s.n>0).sort((a,b)=>b[1].n-a[1].n);
+  if(!rows.length)return null;
+  return(
+   <div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,overflow:"hidden",marginBottom:10}}>
+    <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 44px 54px 54px 70px",gap:6,padding:"11px 14px 8px",fontSize:11,fontWeight:700,color:"#6b7489",letterSpacing:.4}}>
+     <span>{title}</span><span style={{textAlign:"right"}}>PARIS</span><span style={{textAlign:"right"}}>RÉUS.</span><span style={{textAlign:"right"}}>ROI</span><span style={{textAlign:"right"}}>PROFIT</span>
+    </div>
+    {rows.map(([k,s])=>(
+     <div key={k} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 44px 54px 54px 70px",gap:6,padding:"10px 14px",borderTop:"1px solid rgba(255,255,255,.05)",fontSize:13,alignItems:"center"}}>
+      <span style={{color:"#e5e7eb",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</span>
+      <span style={{textAlign:"right",color:"#9ca3af"}}>{s.n}</span>
+      <span style={{textAlign:"right",color:s.wr>=55?"#00E676":s.wr<45?"#f87171":"#cbd5e1",fontWeight:700}}>{s.wr.toFixed(0)}%</span>
+      <span style={{textAlign:"right",color:pc(s.roi),fontWeight:600}}>{(s.roi>=0?"+":"")+s.roi.toFixed(0)}%</span>
+      <span style={{textAlign:"right",color:pc(s.profit),fontWeight:800}}>{money(s.profit)}</span>
+     </div>
+    ))}
+   </div>
+  );
+ };
+
+ return(
+  <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:450,background:"rgba(0,0,0,.72)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",overflowY:"auto",animation:"overlayIn .2s ease"}}>
+   <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",boxShadow:"0 0 60px rgba(0,0,0,.6)"}}>
+
+    {/* ── BANNIÈRE ── */}
+    <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(120% 140% at 85% 20%,"+acc+"33 0%,rgba(11,18,32,0) 55%),linear-gradient(180deg,#0e1a33 0%,#0a1224 100%)",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+     {/* Nom d'équipe géant en filigrane */}
+     {p.team&&<div style={{position:"absolute",left:"30%",top:"50%",transform:"translateY(-50%)",fontSize:130,fontWeight:900,letterSpacing:-4,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+acc+"40",pointerEvents:"none",textTransform:"uppercase",lineHeight:1}}>{p.team}</div>}
+     {/* Boutons */}
+     <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",zIndex:3}}>
+      <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
+      <button onClick={()=>setEdit(true)} aria-label="Modifier le joueur" title="Modifier club, position, photos" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+     </div>
+     <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",gap:14,padding:"56px 18px 0",minHeight:200}}>
+      {/* Photo */}
+      <div style={{width:150,height:170,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+       {photo
+        ?<img src={photo} alt={displayName} style={{maxWidth:"100%",maxHeight:170,objectFit:"contain",objectPosition:"50% 100%",filter:"drop-shadow(0 6px 18px rgba(0,0,0,.5))"}}/>
+        :<div style={{width:110,height:110,marginBottom:24,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:44,fontWeight:900,color:"#fff"}}>{(displayName||"?").charAt(0).toUpperCase()}</div>}
+      </div>
+      {/* Identité */}
+      <div style={{flex:1,minWidth:0,paddingBottom:20}}>
+       {p.role&&<span style={{display:"inline-block",padding:"3px 9px",borderRadius:6,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.14)",fontSize:12,fontWeight:700,color:"#fff",marginBottom:8}}>{p.role}</span>}
+       <div style={{fontSize:40,fontWeight:900,color:"#fff",letterSpacing:-1.2,lineHeight:1,textTransform:"capitalize",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{displayName}</div>
+       <div style={{display:"flex",alignItems:"center",gap:7,marginTop:10,flexWrap:"wrap",fontSize:14,color:"#cbd5e1",fontWeight:600}}>
+        {game&&<><GameLogo game={game} size={18}/><span style={{color:acc}}>{game}</span></>}
+        {p.team&&<><span style={{color:"#5b6478"}}>•</span><span>{p.team}</span></>}
+        {p.league&&<><span style={{color:"#5b6478"}}>•</span><span>{p.league}</span></>}
+       </div>
+      </div>
+      {/* Logo équipe */}
+      {teamLogo&&<img src={teamLogo} alt={p.team||""} style={{width:92,height:92,objectFit:"contain",flexShrink:0,marginBottom:22,filter:"drop-shadow(0 4px 14px rgba(0,0,0,.5))"}}/>}
+     </div>
+    </div>
+
+    {/* ── STATS ── */}
+    <div style={{padding:"14px 14px 30px"}}>
+     {!player&&<div style={{fontSize:12,color:"#fbbf24",background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.2)",borderRadius:10,padding:"8px 12px",marginBottom:10}}>Joueur absent de ta liste : l'engrenage permet de le créer.</div>}
+     {[["Depuis le début",all],["30 derniers jours",last30]].map(([t,s])=>(
+      <div key={t} style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"14px 12px",marginBottom:10}}>
+       <div style={{fontSize:14,fontWeight:700,color:"#e5e7eb",margin:"0 4px 8px"}}>{t}</div>
+       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(96px,1fr))",rowGap:14}}>
+        <PSStat label="Paris" value={s.n} sub={s.won+"G · "+s.lost+"P"}/>
+        <PSStat label="Réussite" value={s.n?s.wr.toFixed(0)+"%":"–"} color={s.n?(s.wr>=55?"#00E676":s.wr<45?"#f87171":undefined):undefined}/>
+        <PSStat label="ROI" value={s.n?(s.roi>=0?"+":"")+s.roi.toFixed(1)+"%":"–"} color={s.n?pc(s.roi):undefined}/>
+        <PSStat label="Profit" value={s.n?money(s.profit):"–"} color={s.n?pc(s.profit):undefined}/>
+        <PSStat label="Cote moy." value={s.n?s.odds.toFixed(2):"–"}/>
+        <PSStat label="Mise moy." value={s.n?s.avgStake.toFixed(0)+"$":"–"}/>
+       </div>
+      </div>
+     ))}
+     {pts.length>1&&<div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"12px 14px",marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#8b93a7",fontWeight:600,marginBottom:6}}><span>Profit cumulé</span><span style={{color:pc(all.profit),fontWeight:800}}>{money(all.profit)}</span></div>
+      <Spark/>
+     </div>}
+     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+      {[["Over",over,"#00E676"],["Under",under,"#60a5fa"]].map(([l,s,c])=>(
+       <div key={l} style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"12px 14px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontSize:14,fontWeight:800,color:c}}>{l}</span><span style={{fontSize:12,color:"#6b7489"}}>{s.n} paris</span></div>
+        <div style={{fontSize:22,fontWeight:800,color:s.n?pc(s.profit):"#4b5366",marginTop:6}}>{s.n?money(s.profit):"–"}</div>
+        <div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>{s.n?s.wr.toFixed(0)+"% · ROI "+(s.roi>=0?"+":"")+s.roi.toFixed(0)+"%":"Aucun pari"}</div>
+       </div>
+      ))}
+     </div>
+     <Table title="PAR LIGNE" groups={byLine}/>
+     <Table title="PAR MAP" groups={byMap}/>
+     {/* Derniers paris */}
+     <div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,overflow:"hidden"}}>
+      <div style={{padding:"12px 14px 6px",fontSize:14,fontWeight:700,color:"#e5e7eb"}}>Derniers paris {pending.length>0&&<span style={{fontSize:12,color:"#60a5fa",fontWeight:600}}>· {pending.length} en cours</span>}</div>
+      {mine.length===0&&<div style={{padding:"14px",fontSize:13,color:"#6b7489"}}>Aucun pari sur ce joueur.</div>}
+      {mine.slice(0,15).map(b=>{
+       const st=b.status;const col=st==="won"?"#00E676":st==="lost"?"#f87171":"#60a5fa";
+       return(
+        <div key={b.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderTop:"1px solid rgba(255,255,255,.05)",borderLeft:"3px solid "+col}}>
+         <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:600,color:"#e5e7eb"}}>{b.description} {b.mapTag&&<span style={{fontSize:11,color:"#fbbf24",marginLeft:4}}>{b.mapTag}</span>}</div>
+          <div style={{fontSize:12,color:"#6b7489",marginTop:2}}>{String(b.datetime||"").slice(0,10)} · @{b.odds} · {b.stake}$ · {b.bookmaker}</div>
+         </div>
+         <div style={{fontSize:14,fontWeight:800,color:col}}>{st==="pending"?"En cours":money(b.profit||0)}</div>
+        </div>
+       );
+      })}
+     </div>
+    </div>
+   </div>
+
+   {edit&&<PlayerEditSheet p={p} name={displayName} game={game} teamLogo={teamLogo} photo={photo} onClose={()=>setEdit(false)}
+     onSaved={(np,logo)=>{setEdit(false);onSaved&&onSaved(np,logo);}} showToast={showToast}/>}
+  </div>
+ );
+}
+
+function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast}){
+ const [f,setF]=useState({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
+ const [busy,setBusy]=useState("");
+ const set=(k,v)=>setF(x=>({...x,[k]:v}));
+ const roles=ROLES_BY_GAME[f.game]||[];
+ const upload=async(file,folder,k)=>{
+  if(!file)return;setBusy(k);
+  try{const url=await supaUploadPhoto(file,folder);set(k,url);}catch(e){showToast&&showToast("Envoi impossible : "+((e&&e.message)||e),"#EF4444");}
+  setBusy("");
+ };
+ const L={fontSize:12,fontWeight:700,color:"#8b93a7",margin:"14px 2px 6px",letterSpacing:.3};
+ const I={width:"100%",background:"rgba(8,14,28,.95)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:"11px 12px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none"};
+ const imgField=(k,label,folder,round)=>(
+  <div>
+   <div style={L}>{label}</div>
+   <div style={{display:"flex",gap:10,alignItems:"center"}}>
+    <div style={{width:56,height:56,borderRadius:round?28:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",overflow:"hidden",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+     {f[k]?<img src={f[k]} alt="" style={{width:"100%",height:"100%",objectFit:round?"cover":"contain"}}/>:<Ic n="plus" s={16} c="#5b6478"/>}
+    </div>
+    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6}}>
+     <input style={I} placeholder="Coller un lien d'image…" value={f[k]} onChange={e=>set(k,e.target.value.trim())}/>
+     <label style={{fontSize:12,fontWeight:700,color:"#c4b5fd",cursor:"pointer"}}>
+      {busy===k?"Envoi…":"Choisir une image sur l'appareil"}
+      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>upload(e.target.files&&e.target.files[0],folder,k)}/>
+     </label>
+    </div>
+   </div>
+  </div>
+ );
+ const save=async()=>{
+  setBusy("save");
+  try{
+   let ph=f.photo, lg=f.logo;
+   if(ph&&/^https?:/.test(ph)&&!ph.includes("/storage/v1/object/public/")){try{ph=await supaUploadPhotoFromUrl(ph,"players");}catch(e){}}
+   if(lg&&/^https?:/.test(lg)&&!lg.includes("/storage/v1/object/public/")){try{lg=await supaUploadPhotoFromUrl(lg,"teams");}catch(e){}}
+   const row={name:f.name.trim(),game:f.game,team:f.team.trim(),role:f.role,league:f.league,photo_url:ph||null,avatar_url:ph||null,team_logo_url:lg||null};
+   let saved=null;
+   if(p.id){const r=await cloudDb("players?id=eq."+encodeURIComponent(p.id),{method:"PATCH",body:row,prefer:"return=representation"});saved=r&&r[0];}
+   else{const r=await cloudDb("players",{method:"POST",body:row,prefer:"return=representation"});saved=r&&r[0];}
+   // Même logo pour tous les joueurs du club
+   if(lg&&row.team){await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body:{team_logo_url:lg}}).catch(()=>{});}
+   showToast&&showToast(row.name+" mis à jour","#00E676");
+   onSaved({...p,...row,...(saved||{})},lg);
+  }catch(e){showToast&&showToast("Erreur : "+((e&&e.message)||e).slice(0,80),"#EF4444");}
+  setBusy("");
+ };
+ return(
+  <div className="moverlay" style={{zIndex:460}} onClick={e=>{e.stopPropagation();onClose();}}>
+   <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:520}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+     <div style={{fontSize:18,fontWeight:800,color:"#f4f6fb"}}>Modifier {f.name}</div>
+     <button onClick={onClose} style={{width:32,height:32,borderRadius:16,border:"none",background:"rgba(255,255,255,.07)",color:"#9ca3af",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={14}/></button>
+    </div>
+    <div style={L}>Nom</div>
+    <input style={I} value={f.name} onChange={e=>set("name",e.target.value)}/>
+    <div style={L}>Jeu</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+     {["CS2","LoL","Dota2","Valorant"].map(g=>{const on=f.game===g;const a=(GAME_CFG[g]||{}).accent||"#A78BFA";return(
+      <button key={g} onClick={()=>set("game",g)} style={{padding:"8px 4px",borderRadius:11,border:"1.5px solid "+(on?a:"rgba(255,255,255,.08)"),background:on?a+"1f":"transparent",color:on?a:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,fontFamily:"Inter,sans-serif"}}>
+       <GameLogo game={g} size={18}/>{g}</button>);})}
+    </div>
+    <div style={L}>Club</div>
+    <input style={I} placeholder="Ex : Team Vitality (vide = agent libre)" value={f.team} onChange={e=>set("team",e.target.value)}/>
+    <div style={L}>Position</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+     {[...new Set([...roles,...(f.role&&!roles.includes(f.role)?[f.role]:[])])].map(r=>{const on=f.role===r;return(
+      <button key={r} onClick={()=>set("role",on?"":r)} style={{padding:"7px 12px",borderRadius:20,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{r}</button>);})}
+    </div>
+    {imgField("photo","Photo du joueur","players",true)}
+    {imgField("logo","Logo du club","teams",false)}
+    <button onClick={save} disabled={!!busy||!f.name.trim()}
+     style={{width:"100%",marginTop:20,padding:"14px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:busy?.6:1}}>
+     {busy==="save"?"Enregistrement…":"Enregistrer"}
+    </button>
+   </div>
+  </div>
+ );
+}
+
 export default function App(){
  // Register Service Worker for image caching
  useEffect(()=>{
@@ -4707,6 +4964,8 @@ export default function App(){
  const [stickyBK,setStickyBK]=useState(false);
  const [lockedStatus,setLockedStatus]=useState(null);
  const [view,setViewRaw]=useState("home");
+ const [playerSheet,setPlayerSheet]=useState(null);
+ useEffect(()=>{const h=e=>setPlayerSheet(e.detail||null);window.addEventListener("emeieks-open-player",h);return()=>window.removeEventListener("emeieks-open-player",h);},[]);
  const [viewPending,setViewPending]=useState(false);
  const setView=useCallback(v=>{
  try{window.scrollTo({top:0,behavior:"instant"});}catch(e){}
@@ -6605,7 +6864,7 @@ export default function App(){
  </div>
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3,flexWrap:"wrap"}}>
- <span style={{fontWeight:800,fontSize:14,color:"#f0f4ff",textTransform:"capitalize",flexShrink:0}}>{b.player}</span>
+ <span onClick={e=>{e.stopPropagation();openPlayerSheet(b.player);}} style={{fontWeight:800,fontSize:14,color:"#f0f4ff",textTransform:"capitalize",flexShrink:0,cursor:"pointer"}}>{b.player}</span>
  {descLine&&<><span style={{color:"#2e3d50",fontSize:10,margin:"0 1px"}}>-</span><span style={{fontSize:11,color:"#8a9eb8",flexShrink:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
  {b.mapTag&&<><span style={{color:"#2e3d50",fontSize:10,margin:"0 1px"}}>-</span><span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 4px",borderRadius:3,border:"1px solid rgba(251,191,36,.2)",flexShrink:0}}>{b.mapTag}</span></>}
  </div>
@@ -11287,6 +11546,19 @@ export default function App(){
  );
  })()}
 
+ {playerSheet&&(()=>{
+ const fp=findPlayer(playerSheet);
+ return <PlayerSheet name={playerSheet} player={fp} bets={bets} teamLogos={teamLogos} showToast={showToast}
+  onClose={()=>setPlayerSheet(null)}
+  onSaved={(np,logo)=>{
+   const oldKey=fp&&fp.name?fp.name:(playerSheet||"").toLowerCase().trim();
+   const newKey=(np.name||"").toLowerCase().trim();
+   setPlayers(prev=>{const n={...prev};if(oldKey!==newKey)delete n[oldKey];n[newKey]={...(prev[oldKey]||{}),...np};
+    if(logo&&np.team)Object.keys(n).forEach(k=>{if(n[k].team===np.team&&n[k].game===np.game)n[k]={...n[k],team_logo_url:logo};});return n;});
+   if(logo&&np.team)setTeamLogos(prev=>({...prev,[np.team+"__"+np.game]:logo}));
+   if(np.name)setPlayerSheet(np.name);
+  }}/>;
+ })()}
  {/* BOTTOM NAV */}
  {(()=>{
  return(
