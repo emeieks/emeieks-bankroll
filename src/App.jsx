@@ -59,6 +59,19 @@ async function supaFetch(path, opts) { opts=opts||{};
  try { return text ? JSON.parse(text) : null; } catch { return null; }
 }
 
+
+// Accès direct aux tables Supabase (synchro cloud)
+async function cloudDb(path,opts={}){
+ const res=await fetch(SUPA_URL+"/rest/v1/"+path,{
+  method:opts.method||"GET",
+  headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":opts.prefer||""},
+  body:opts.body!==undefined?JSON.stringify(opts.body):undefined,
+ });
+ const t=await res.text();
+ if(!res.ok)throw new Error(t||String(res.status));
+ try{return t?JSON.parse(t):null;}catch(e){return null;}
+}
+
 // Full pull - loads all bets before updating UI to avoid sync issues
 async function supaPullBets() {
  const SELECT="id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge";
@@ -576,17 +589,7 @@ async function supaDeletePlayer(id) {
  ).catch(e => { console.warn("supaDeletePlayer failed:", e.message); });
 }
 
-async function supaUpdateMediaRow(rowId, data) {
- // Store media data as a special row in bets table
- const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
- await fetch(SUPA_URL+"/rest/v1/bets?player=eq."+rowId,{method:"DELETE",headers:h}).catch(()=>{});
- await fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:h,body:JSON.stringify({
-  player:rowId, description:JSON.stringify(data),
-  odds:1,stake:0,bookmaker:"",status:"pending",game:"",league:"",role:"",team:"",datetime:"",
-  isHeadshot:false,isLive:false,mapTag:"",profit:0,tournament:"",ppMapType:null,ppLine:null,ppEdge:null,
-  updatedAt:Date.now(),archived:false,splits:null,
- })}).catch(e=>console.warn("supaUpdateMediaRow:",e));
-}
+async function supaUpdateMediaRow(rowId, data) { /* remplacé par la synchro cloud */ }
 
 async function supaGetMedia(key) {
  const res = await fetch(SUPA_URL+"/rest/v1/media_store?key=eq."+encodeURIComponent(key)+"&select=value", {
@@ -597,13 +600,7 @@ async function supaGetMedia(key) {
  return rows&&rows[0]?rows[0].value:null;
 }
 
-async function supaSetMedia(key, value) {
- const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"};
- await fetch(SUPA_URL+"/rest/v1/media_store", {
-  method:"POST", headers:h,
-  body:JSON.stringify({key, value:JSON.stringify(value), updated_at:Date.now()})
- }).catch(e=>console.warn("supaSetMedia:",e));
-}
+async function supaSetMedia(key, value) { /* remplacé par la synchro cloud */ }
 
 async function supaGetAllMedia() {
  const res = await fetch(SUPA_URL+"/rest/v1/media_store?select=key,value", {
@@ -617,20 +614,7 @@ async function supaGetAllMedia() {
 }
 
 
-async function supaUpdateTeamLogo(allLogos) {
- const row = {
-  id: -2,
-  player: "__TEAM_LOGOS__",
-  description: JSON.stringify(allLogos),
-  odds: 1, stake: 0, bookmaker: "", status: "pending",
-  game: "", league: "", role: "", team: "", datetime: "",
-  isHeadshot: false, isLive: false, mapTag: "", profit: 0,
-  tournament: "", ppMapType: null, ppLine: null, ppEdge: null,
-  updatedAt: Date.now(), archived: false, splits: null,
- };
- const h = {"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"};
- await fetch(SUPA_URL+"/rest/v1/bets",{method:"POST",headers:h,body:JSON.stringify(row)}).catch(e=>console.warn("supaUpdateTeamLogo:",e));
-}
+async function supaUpdateTeamLogo(allLogos) { /* remplacé par la synchro cloud */ }
 
 
 
@@ -2689,7 +2673,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
   setTeamLogoSaving(true);
   try{
    const key=editTeam.team+"__"+editTeam.game;
-   const url=teamLogoUrl||"";
+   let url=teamLogoUrl||"";
    // 1. Save to localStorage immediately
    setTeamLogos(prev=>{
     const updated={...prev,[key]:url};
@@ -4738,7 +4722,7 @@ function applyMediaStore(store){
  if(store.league_LPL)LL.LPL=store.league_LPL;
 }
 // Apply on page load
-applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));
+try{applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));}catch(e){}
 
 
 
@@ -4977,824 +4961,351 @@ export default function App(){
  const [integrityChecking,setIntegrityChecking]=useState(false);
  const [integrityReport,setIntegrityReport]=useState(null);
 
- // Load: localStorage 
- useEffect(()=>{
- try{
- const b=localStorage.getItem("v7_bets");
- if(b){
- const parsed=JSON.parse(b);
- setBets(parsed.map(normalizeBet));
- }
- const bk=localStorage.getItem("v7_bankroll"); if(bk)setBankroll(parseFloat(bk));
- // Charger les joueurs depuis Supabase (table "players")
- supaFetchPlayers().then(rows=>{
- if(rows && rows.length > 0) {
- const obj = {};
- const tLogos = {};
- rows.forEach(p => {
- obj[(p.name||"").toLowerCase()] = {
- id: p.id,
- name: p.name, // original case from DB
- game: p.game,
- league: p.league,
- role: p.role,
- team: p.team,
- photo_url: p.photo_url || null,
- team_logo_url: p.team_logo_url || null,
- avatar_url: p.avatar_url || null,
- avatar_file: p.avatar_file || null,
- };
- // Populate teamLogos from players data
- if(p.team&&p.game&&p.team_logo_url){
-  tLogos[p.team+"__"+p.game]=p.team_logo_url;
- }
- });
- if(Object.keys(tLogos).length>0){
-  setTeamLogos(prev=>{const m={...tLogos,...prev};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
- }
-
- // Migrate roles to short form
- var RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle","Support":"Support","Sup":"Support","Supp":"Support"};
- Object.keys(obj).forEach(function(k){var r=obj[k].role;if(r&&RMIG[r])obj[k]=Object.assign({},obj[k],{role:RMIG[r]});});
- setPlayers(obj);
- }
- }).catch(function(){});
- const bm=localStorage.getItem("v7_bmakers");
- if(bm){
- const saved=JSON.parse(bm);
- // Fusionner avec DEFAULT_BK pour s assurer que les nouveaux bookmakers par défaut sont présents
- const merged=[...saved];
- DEFAULT_BK.forEach(bk=>{if(!merged.includes(bk))merged.push(bk);});
- setBookmakers(merged);
- if(merged.length!==saved.length)localStorage.setItem("v7_bmakers",JSON.stringify(merged));
- }
- const bp=localStorage.getItem("v7_bkphotos"); if(bp)setBkPhotos(JSON.parse(bp));
- const tv=localStorage.getItem("v7_tourneys"); if(tv)setActiveTourneys(JSON.parse(tv));
- const stv=localStorage.getItem("v7_saved_tourneys"); if(stv)setSavedTourneys(JSON.parse(stv));
- // Restaurer le BK sticky de la session précédente
- const sbk=localStorage.getItem("v7_sticky_bk");
- if(sbk){const d=JSON.parse(sbk);setStickyBK(d.active||false);setForm(f=>({...f,bookmaker:d.bk||""}));}
- }catch(e){}
- // Nettoyer le pari Wager injecté précédemment
- setBets(prev=>{
- const cleaned=prev.filter(b=>b.id!=="wager-vol-900-aug2026"&&b.id!=="wager-stolen-900-2026");
- if(cleaned.length!==prev.length){
- try{localStorage.setItem("v7_bets",JSON.stringify(cleaned));}catch(e){}
- // Supprimer de Supabase aussi
- const ids=["wager-vol-900-aug2026","wager-stolen-900-2026"];
- if(SUPA_URL&&SUPA_KEY){ids.forEach(id=>{fetch(SUPA_URL+"/rest/v1/bets?id=eq."+id,{method:"DELETE",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}}).catch(()=>{});});}
- }
- return cleaned;
- });
- setLoaded(true);
- },[]);
-
- // Persister stickyBK + bookmaker actif
- useEffect(()=>{
- if(!loaded)return;
- try{localStorage.setItem("v7_sticky_bk",JSON.stringify({active:stickyBK,bk:stickyBK?form.bookmaker:""}));}catch(e){}
- },[stickyBK,form.bookmaker,loaded]);
- useEffect(()=>{if(!loaded)return;try{localStorage.setItem("v7_locked_status",lockedStatus||"");}catch(e){}},[lockedStatus,loaded]);
- useEffect(()=>{try{localStorage.setItem("v7_depots",JSON.stringify(depots));}catch(e){}},[depots]);
- useEffect(()=>{try{localStorage.setItem("v7_bk_accounts",JSON.stringify(bkAccounts));}catch(e){}},[bkAccounts]);
-
- // Persister tournois actifs + savedTourneys + MIB + testFilter → localStorage + Supabase
- useEffect(()=>{try{localStorage.setItem("v7_tourney_cal",JSON.stringify(tourneyCal));}catch(e){};},[tourneyCal]);
- useEffect(()=>{
- if(!loaded)return;
- try{
- localStorage.setItem("v7_tourneys",JSON.stringify(activeTourneys));
- localStorage.setItem("v7_saved_tourneys_bk",JSON.stringify(savedTourneys));
- // Serialize testFilter (Sets → Arrays for JSON)
- const serFilter={...testFilter,games:[...testFilter.games],hideTourneys:[...testFilter.hideTourneys],hideLeagues:[...testFilter.hideLeagues],hideRoles:[...testFilter.hideRoles]};
- // Ne push vers Supabase qu'après le chargement initial (évite d'écraser avec des données vides)
- if(SUPA_URL&&SUPA_KEY&&mediaLoadedRef.current){
- const settingsData={activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter:serFilter,bookmakers};
- supaSetMedia("settings",settingsData).catch(()=>{});
- }
- }catch(e){}
- },[activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,testFilter,bkPhotos,teamLogos,mediaStore,bookmakers,loaded]);
-
-
- // Persist bookmakers to localStorage + Supabase on change
- useEffect(()=>{
-  if(!loaded)return;
-  try{localStorage.setItem("v7_bmakers",JSON.stringify(bookmakers));}catch(e){}
-  if(SUPA_URL&&SUPA_KEY){supaSetMedia("settings",{activeTourneys,savedTourneys,tourneyCal,mibActive,mibDate,bookmakers}).catch(()=>{});}
- },[bookmakers,loaded]);
-
- // Sync bkPhotos to Supabase media_store (only after initial load)
- useEffect(()=>{
-  if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
-  supaSetMedia("bkPhotos",bkPhotos).catch(()=>{});
- },[bkPhotos]);
-
- // Sync mediaStore to Supabase media_store (only after initial load)
- useEffect(()=>{
-  if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
-  supaSetMedia("mediaStore",mediaStore).catch(()=>{});
- },[mediaStore]);
-
- // Sync customClubs to Supabase
- useEffect(()=>{
-  if(!loaded||!SUPA_URL||!mediaLoadedRef.current)return;
-  supaSetMedia("customClubs",customClubs).catch(()=>{});
- },[customClubs]);
-
- // Save: localStorage (debounced) 
- useEffect(()=>{
- if(!loaded)return;
- // Debounce longer for large datasets to avoid blocking UI
- const delay=bets.length>2000?2000:bets.length>1000?1200:800;
- const t=setTimeout(()=>{
- try{
- const data=JSON.stringify(bets);
- // Warn if approaching localStorage limits (~5MB typical)
- if(data.length>4000000){
- // localStorage near limit
- }
- localStorage.setItem("v7_bets",data);
- }catch(e){
- // QuotaExceededError - localStorage full
- // localStorage full
- }
- },delay);
- return()=>clearTimeout(t);
- },[bets,loaded]);
-
+ // ════════════════════════════════════════════════════════════
+ //  SYNCHRO CLOUD — Supabase est la seule source de vérité.
+ //  Plus de copie des paris dans le navigateur : tout est lu et
+ //  écrit dans Supabase, et le temps réel pousse les changements
+ //  faits sur un autre appareil (ordi ↔ iPhone) instantanément.
+ // ════════════════════════════════════════════════════════════
  const showToast=useCallback(function(msg,color){
  color=color||"#00E676";
  setToast({msg,color});setTimeout(()=>setToast(null),2200);
  },[]);
-
  const showBetConfirm=useCallback(function(){},[]);
-
- // Supabase: auto-push après chaque changement de paris (debounce 5s) 
- // Auto-push : déclenché seulement par un vrai changement local (ajout/modif/suppression)
- // NE PAS push après un pull (sinon boucle infinie ordi↔iOS)
- const lastPulledRef=useRef(null);
  const lastPushRef=useRef(0);
- useEffect(()=>{
- if(!loaded)return;
- // Éviter de re-pusher ce qu on vient de puller
- const key=bets.length+":"+( bets[0]&&bets[0].id||"" );
- if(lastPulledRef.current===key)return;
- // Éviter de re-pusher si on vient de pousser via addBet (race condition iOS)
- const timeSincePush=Date.now()-lastPushRef.current;
- if(timeSincePush<5000)return;
- const t=setTimeout(async()=>{
- try{
- const ovRaw=localStorage.getItem("v7_overrides");
- const overrides=ovRaw?JSON.parse(ovRaw):{};
- const hasOv=Object.keys(overrides).length>0;
- // Only push bets modified since last push (or all if overrides exist)
- const cutoff=lastPushRef.current-5000;
- const dirtyBets=hasOv?bets:bets.filter(b=>(b.updatedAt||0)>=cutoff);
- const betsToSend=dirtyBets.map(b=>{
- const ov=overrides[String(b.id)];
- if(!ov)return b;
- return{...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{})};
- });
- if(betsToSend.length===0){setSupaOk(true);return;}
- await supaPushBets(betsToSend);
- if(hasOv)localStorage.removeItem("v7_overrides");
- setSupaOk(true);
- }
- catch(e){ setSupaOk(false); }
- },bets.length>1000?8000:3000);
- return()=>clearTimeout(t);
- },[bets,loaded]);
+ const hydratedRef=useRef(false);
+ const [hydrated,setHydrated]=useState(false);
+ const cloudSnap=useRef({});      // dernier état connu côté Supabase, par canal
+ const cloudSkip=useRef({});      // canal mis à jour depuis Supabase → ne pas renvoyer
+ const cloudTimers=useRef({});
+ const betSnap=useRef(new Map()); // id → JSON du pari tel qu'il est dans Supabase
+ const betsRef=useRef(bets);betsRef.current=bets;
 
- // Supabase: pull — Supabase est la source de vérité 
- const pullFromSupa=useCallback(async function(silentArg){
- // Block pull for 15s after a push to avoid race condition
- if(Date.now()-lastPushRef.current<15000){
- // Still blocked for bets, but sync settings (tournois actifs)
- try{
-  const sr=await supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1");
-  if(sr&&sr[0]&&sr[0].description){
-   const s=JSON.parse(sr[0].description||"{}");
-   if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
-    setActiveTourneys(prev=>{
-     const changed=JSON.stringify(prev)!==JSON.stringify(s.activeTourneys);
-     if(changed){localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));return s.activeTourneys;}
-     return prev;
-    });
-   }
-   if(s.tourneyCal&&s.tourneyCal.length>0){
-    setTourneyCal(prev=>{
-     const localIds=new Set(prev.map(t=>t.id));
-     const newEntries=s.tourneyCal.filter(t=>!localIds.has(t.id));
-     if(newEntries.length===0)return prev;
-     const merged=[...prev,...newEntries].sort((a,b)=>a.start.localeCompare(b.start));
-     try{localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));}catch(e){}
-     showToast("🔄 "+newEntries.length+" tournoi(s) sync","#A78BFA");
-     return merged;
-    });
-    setSavedTourneys(prev=>{
-     const updated={...prev};
-     s.tourneyCal.forEach(t=>{if(!t.name||!t.game)return;if(!updated[t.game])updated[t.game]=[];if(!updated[t.game].includes(t.name))updated[t.game]=[...updated[t.game],t.name];});
-     try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(updated));}catch(e){}
-     return updated;
-    });
-   }
-  }
- }catch(e){}
- setSyncing(false);return;
-}
+ // Joueurs (table players)
+ const loadPlayers=useCallback(function(){
+ return supaFetchPlayers().then(rows=>{
+ if(!rows)return;
+ const obj={};
+ const RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle"};
+ rows.forEach(p=>{
+ obj[(p.name||"").toLowerCase()]={id:p.id,name:p.name,game:p.game,league:p.league,role:p.role&&RMIG[p.role]?RMIG[p.role]:p.role,team:p.team,
+ photo_url:p.photo_url||null,team_logo_url:p.team_logo_url||null,avatar_url:p.avatar_url||null,avatar_file:p.avatar_file||null};
+ });
+ setPlayers(obj);
+ return obj;
+ }).catch(function(){return null;});
+ },[]);
+
+ // ── Conversion état ↔ tables ──
+ const bkPayload=()=>bookmakers.map((n,i)=>({name:n,logo:bkPhotos[n]||null,hidden:hiddenBKs.has(n),position:i}));
+ const applyBk=rows=>{
+ const sorted=[...rows].sort((a,b)=>(a.position||0)-(b.position||0));
+ setBookmakers(sorted.map(r=>r.name));
+ const ph={};sorted.forEach(r=>{if(r.logo)ph[r.name]=r.logo;});
+ setBkPhotos(ph);
+ setHiddenBKs(new Set(sorted.filter(r=>r.hidden).map(r=>r.name)));
+ };
+ const tourPayload=()=>{
+ const rows={};const pos={};
+ const get=(game,name)=>{
+ const k=game+"||"+name;
+ if(!rows[k]){pos[game]=(pos[game]||0);rows[k]={game,name,position:pos[game]++,saved:false,active:false,active_end:null,cal_id:null,cal_start:null,cal_end:null};}
+ return rows[k];
+ };
+ Object.entries(savedTourneys||{}).forEach(([g,list])=>(list||[]).forEach(n=>{if(n)get(g,n).saved=true;}));
+ Object.entries(activeTourneys||{}).forEach(([g,t])=>{if(t&&t.name){const r=get(g,t.name);r.active=true;r.active_end=t.end||null;}});
+ (tourneyCal||[]).forEach(c=>{if(c&&c.name&&c.game){const r=get(c.game,c.name);r.cal_id=c.id!=null?String(c.id):null;r.cal_start=c.start||null;r.cal_end=c.end||null;}});
+ return Object.values(rows);
+ };
+ const applyTour=rows=>{
+ const sorted=[...rows].sort((a,b)=>a.game.localeCompare(b.game)||(a.position||0)-(b.position||0));
+ const saved={},active={},cal=[];
+ sorted.forEach(r=>{
+ if(r.saved){(saved[r.game]=saved[r.game]||[]).push(r.name);}
+ if(r.active)active[r.game]={name:r.name,end:r.active_end||""};
+ if(r.cal_id!=null&&r.cal_id!=="")cal.push({id:/^\d+$/.test(r.cal_id)?Number(r.cal_id):r.cal_id,name:r.name,game:r.game,start:r.cal_start||"",end:r.cal_end||""});
+ });
+ setSavedTourneys(saved);setActiveTourneys(active);
+ setTourneyCal(cal.sort((a,b)=>String(a.start).localeCompare(String(b.start))));
+ };
+ const setPayload=()=>({
+ bankroll,manual_tier:manualTier,quick_units:quickUnits,
+ sticky_bk:{active:stickyBK,bk:stickyBK?form.bookmaker:""},
+ locked_status:lockedStatus,depots,bk_accounts:bkAccounts,blacklist:[...blacklist],
+ mib:{active:mibActive,date:mibDate},hidden_analyse:[...hiddenAnalyseBets],sim_manual:simManual,pp_data:ppData,
+ });
+ const applySettings=s=>{
+ if(s.bankroll!=null)setBankroll(Number(s.bankroll)||5000);
+ if("manual_tier" in s)setManualTier(s.manual_tier||null);
+ if(Array.isArray(s.quick_units)&&s.quick_units.length===6)setQuickUnits(s.quick_units);
+ if(s.sticky_bk){setStickyBK(!!s.sticky_bk.active);if(s.sticky_bk.active&&s.sticky_bk.bk)setForm(f=>({...f,bookmaker:s.sticky_bk.bk}));}
+ if("locked_status" in s)setLockedStatus(s.locked_status||null);
+ if(Array.isArray(s.depots))setDepots(s.depots);
+ if(s.bk_accounts&&typeof s.bk_accounts==="object")setBkAccounts(s.bk_accounts);
+ if(Array.isArray(s.blacklist))setBlacklist(new Set(s.blacklist));
+ if(s.mib){setMibActive(!!s.mib.active);if(s.mib.date)setMibDate(s.mib.date);}
+ if(Array.isArray(s.hidden_analyse))setHiddenAnalyseBets(new Set(s.hidden_analyse));
+ if(s.sim_manual&&typeof s.sim_manual==="object")setSimManual(s.sim_manual);
+ if(Array.isArray(s.pp_data))setPpData(s.pp_data);
+ };
+ const mediaPayload=()=>({mediaStore,customClubs});
+ const applyMedia=m=>{
+ if(m.mediaStore&&typeof m.mediaStore==="object"){setMediaStore(m.mediaStore);applyMediaStore(m.mediaStore);_GLOBAL_MEDIA_STORE=m.mediaStore;}
+ if(m.customClubs&&typeof m.customClubs==="object")setCustomClubs(m.customClubs);
+ };
+ const teamPayload=()=>teamLogos;
+
+ // ── Écriture vers Supabase ──
+ const writers={
+ bookmakers:async(rows,prev)=>{
+ if(rows.length)await cloudDb("bookmakers",{method:"POST",body:rows,prefer:"resolution=merge-duplicates"});
+ const keep=new Set(rows.map(r=>r.name));
+ const gone=(prev||[]).map(r=>r.name).filter(n=>!keep.has(n));
+ for(const n of gone)await cloudDb("bookmakers?name=eq."+encodeURIComponent(n),{method:"DELETE"});
+ },
+ tournaments:async(rows,prev)=>{
+ if(rows.length)await cloudDb("tournaments?on_conflict=game,name",{method:"POST",body:rows,prefer:"resolution=merge-duplicates"});
+ const keep=new Set(rows.map(r=>r.game+"||"+r.name));
+ const gone=(prev||[]).filter(r=>!keep.has(r.game+"||"+r.name));
+ for(const r of gone)await cloudDb("tournaments?game=eq."+encodeURIComponent(r.game)+"&name=eq."+encodeURIComponent(r.name),{method:"DELETE"});
+ },
+ settings:async(obj,prev)=>{
+ const rows=Object.entries(obj).filter(([k,v])=>!prev||JSON.stringify(prev[k])!==JSON.stringify(v)).map(([key,value])=>({key,value:value===undefined?null:value}));
+ if(rows.length)await cloudDb("settings",{method:"POST",body:rows,prefer:"resolution=merge-duplicates"});
+ },
+ media:async(obj,prev)=>{
+ const rows=Object.entries(obj).filter(([k,v])=>!prev||JSON.stringify(prev[k])!==JSON.stringify(v)).map(([key,value])=>({key,value:JSON.stringify(value||{}),updated_at:Date.now()}));
+ if(rows.length)await cloudDb("media_store",{method:"POST",body:rows,prefer:"resolution=merge-duplicates"});
+ },
+ teams:async(map,prev)=>{
+ const changed=Object.entries(map).filter(([k,v])=>v&&(!prev||prev[k]!==v));
+ for(const [k,url] of changed){
+ const i=k.lastIndexOf("__");if(i<1)continue;
+ const name=k.slice(0,i),game=k.slice(i+2);
+ const upd=await cloudDb("teams?name=eq."+encodeURIComponent(name)+"&game=eq."+encodeURIComponent(game),{method:"PATCH",body:{logo_url:url},prefer:"return=representation"});
+ if(!upd||!upd.length)await cloudDb("teams",{method:"POST",body:{name,game,logo_url:url}});
+ }
+ },
+ };
+ const channelState={
+ bookmakers:[bookmakers,bkPhotos,hiddenBKs],
+ tournaments:[savedTourneys,activeTourneys,tourneyCal],
+ settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,depots,bkAccounts,blacklist,mibActive,mibDate,hiddenAnalyseBets,simManual,ppData],
+ media:[mediaStore,customClubs],
+ teams:[teamLogos],
+ };
+ const builders={bookmakers:bkPayload,tournaments:tourPayload,settings:setPayload,media:mediaPayload,teams:teamPayload};
+ const buildersRef=useRef(builders);buildersRef.current=builders;
+ // Un effet par canal : dès qu'un réglage change ici, il part dans Supabase
+ Object.keys(channelState).forEach(ch=>{
+ useEffect(()=>{
+ if(!hydratedRef.current)return;
+ const payload=buildersRef.current[ch]();
+ const json=JSON.stringify(payload);
+ if(cloudSkip.current[ch]){cloudSkip.current[ch]=false;cloudSnap.current[ch]={json,payload};return;}
+ const prev=cloudSnap.current[ch];
+ if(prev&&prev.json===json)return;
+ clearTimeout(cloudTimers.current[ch]);
+ cloudTimers.current[ch]=setTimeout(()=>{
+ const p=buildersRef.current[ch]();const j=JSON.stringify(p);
+ const before=cloudSnap.current[ch];
+ if(before&&before.json===j)return;
+ cloudSnap.current[ch]={json:j,payload:p};
+ writers[ch](p,before&&before.payload).then(()=>setSupaOk(true)).catch(e=>{setSupaOk(false);showToast("Synchro "+ch+" : "+(e.message||e).slice(0,60),"#EF4444");});
+ },500);
+ },[hydrated,...channelState[ch]]);
+ });
+
+ // ── Paris : on envoie tout pari ajouté / modifié / supprimé ──
+ const betJson=b=>JSON.stringify([b.player,b.description,b.overUnder,b.odds,b.stake,b.bookmaker,b.status,b.game,b.league,b.role,b.team,b.datetime,!!b.isHeadshot,!!b.isLive,b.mapTag||"",b.profit,b.tournament||"",b.splits&&b.splits.length?b.splits:null,b.ppMapType||null,b.ppLine||null,b.ppEdge!=null?b.ppEdge:null]);
+ const betTimer=useRef(null);
+ useEffect(()=>{
+ if(!hydratedRef.current)return;
+ clearTimeout(betTimer.current);
+ betTimer.current=setTimeout(()=>{
+ const snap=betSnap.current;
+ const cur=betsRef.current;
+ const changed=[];const seen=new Set();
+ cur.forEach(b=>{
+ if(b==null||b.id==null)return;
+ seen.add(String(b.id));
+ const j=betJson(b);
+ if(snap.get(String(b.id))!==j){changed.push(b);snap.set(String(b.id),j);}
+ });
+ const removed=[];
+ snap.forEach((j,id)=>{if(!seen.has(id))removed.push(id);});
+ removed.forEach(id=>snap.delete(id));
+ if(changed.length){lastPushRef.current=Date.now();supaPushBets(changed.map(b=>({...b,updatedAt:Date.now()}))).then(()=>setSupaOk(true)).catch(e=>{setSupaOk(false);changed.forEach(b=>snap.delete(String(b.id)));showToast("Pari non enregistré : "+(e.message||e).slice(0,60),"#EF4444");});}
+ if(removed.length)supaDeleteManyBets(removed).catch(()=>{});
+ },400);
+ },[bets,hydrated]);
+
+ // Relecture complète des paris (au retour sur l'app / bouton Sync)
+ const pullFromSupa=useCallback(async function(){
  setSyncing(true);
  try{
- // 1. Pousser les overrides locaux vers Supabase (changements manuels en attente)
- const ovRaw=localStorage.getItem("v7_overrides");
- const overrides=ovRaw?JSON.parse(ovRaw):{};
- const ovIds=Object.keys(overrides);
- if(ovIds.length>0){
- const localRaw=localStorage.getItem("v7_bets");
- const localBets=localRaw?JSON.parse(localRaw):[];
- const withOv=localBets
- .filter(b=>overrides[String(b.id)])
- .map(b=>{
- const ov=overrides[String(b.id)];
- return{...b,...(ov.datetime?{datetime:ov.datetime}:{}),...(ov.settledAt?{settledAt:ov.settledAt}:{}),...(ov.bookmaker?{bookmaker:ov.bookmaker}:{}),updatedAt:Date.now()};
+ const remote=(await supaPullBets()).filter(b=>!["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"].includes(b.player));
+ const snap=betSnap.current;
+ const local=new Map(betsRef.current.map(b=>[String(b.id),b]));
+ const next=remote.map(r=>{
+ const l=local.get(String(r.id));
+ // un pari modifié ici mais pas encore envoyé reste prioritaire
+ if(l&&snap.get(String(r.id))!==betJson(l))return l;
+ return r;
  });
- if(withOv.length>0){
- await supaPushBets(withOv);
- localStorage.removeItem("v7_overrides");
- }
- }
- // 2. Pull Supabase
- const remote=await supaPullBets();
+ betsRef.current.forEach(l=>{if(!remote.some(r=>String(r.id)===String(l.id))&&!snap.has(String(l.id)))next.unshift(l);});
+ const ns=new Map();remote.forEach(r=>ns.set(String(r.id),betJson(r)));
+ betSnap.current=ns;
+ setBets(next);
  setSupaOk(true);
- if(!remote||!remote.length){setSyncing(false);return;}
- // 3. Merge local-first : le plus récent (updatedAt) gagne
- const localRaw=localStorage.getItem("v7_bets");
- const localBets=localRaw?JSON.parse(localRaw):[];
- const localMap={};
- localBets.forEach(b=>{if(b&&b.id)localMap[String(b.id)]=b;});
- const remoteMap={};
- remote.forEach(b=>{if(b&&b.id)remoteMap[String(b.id)]=b;});
- const allIds=new Set([...Object.keys(localMap),...Object.keys(remoteMap)]);
- const merged=[];
- allIds.forEach(sid=>{
- const loc=localMap[sid];
- const rem=remoteMap[sid];
- if(!rem)return;
- if(!loc){merged.push(normalizeBet(rem));return;}
- const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
- const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
- merged.push(normalizeBet(locTs>=remTs?loc:rem));
- });
- // Restore tournament settings if present in Supabase data
- const settingsRow=remote.find(b=>b.player==="__SETTINGS__");
- // Load team logos
- const teamLogosRow=remote.find(b=>b.player==="__TEAM_LOGOS__");
- if(teamLogosRow&&teamLogosRow.description){
-  try{
-   const logos=JSON.parse(teamLogosRow.description||"{}");
-   if(Object.keys(logos).length>0){
-    setTeamLogos(prev=>{
-     const merged={...prev,...logos};
-     localStorage.setItem("v7_team_logos",JSON.stringify(merged));
-     return merged;
-    });
-   }
-  }catch(e){}
- }
- if(settingsRow){
- try{
- const s=JSON.parse(settingsRow.description||"{}");
- if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
- const prevStr=JSON.stringify(activeTourneys||{});
- const newStr=JSON.stringify(s.activeTourneys);
- if(prevStr!==newStr){
-  setActiveTourneys(s.activeTourneys);
-  localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
-  // Notify user that tournament settings were synced from another device
-  const activeNames=Object.values(s.activeTourneys).filter(t=>t&&t.name).map(t=>t.name);
-  if(activeNames.length>0&&!silentArg){showToast("🔄 Tournois sync: "+activeNames.join(", "),"#A78BFA");}
- }
-}
- // Restore tourneyCal (calendrier des tournois)
- if(s.tourneyCal&&s.tourneyCal.length>0){
-  setTourneyCal(prev=>{
-   const localIds=new Set(prev.map(t=>t.id));
-   const newEntries=s.tourneyCal.filter(t=>!localIds.has(t.id));
-   if(newEntries.length===0)return prev;
-   const merged=[...prev,...newEntries].sort((a,b)=>a.start.localeCompare(b.start));
-   try{localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));}catch(e){}
-   if(!silentArg&&newEntries.length>0){showToast("🔄 "+newEntries.length+" tournoi(s) sync depuis cloud","#A78BFA");}
-   return merged;
-  });
-  // Also add to savedTourneys
-  setSavedTourneys(prev=>{
-   const updated={...prev};
-   s.tourneyCal.forEach(t=>{
-    if(!t.name||!t.game)return;
-    if(!updated[t.game])updated[t.game]=[];
-    if(!updated[t.game].includes(t.name))updated[t.game]=[...updated[t.game],t.name];
-   });
-   try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(updated));}catch(e){}
-   return updated;
-  });
- }
- // Restore media data (bkPhotos, teamLogos, mediaStore)
- if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-  setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};return m;});
- }
- if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
-  setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
- }
- if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-  setMediaStore(prev=>{const m={...prev,...s.mediaStore};applyMediaStore(m);return m;});
- }
- // Restore MIB settings
- if(s.mibActive!==undefined){setMibActive(!!s.mibActive);}
- if(s.mibDate){setMibDate(s.mibDate);}
- // Restore testFilter (deserialize Arrays → Sets)
- if(s.testFilter){
- try{
- const tf=s.testFilter;
- setTestFilter({...tf,games:new Set(tf.games||["CS2","LoL","Dota2","Valorant"]),hideTourneys:new Set(tf.hideTourneys||[]),hideLeagues:new Set(tf.hideLeagues||[]),hideRoles:new Set(tf.hideRoles||[])});
- setTestFilterDraft({...tf,games:new Set(tf.games||["CS2","LoL","Dota2","Valorant"]),hideTourneys:new Set(tf.hideTourneys||[]),hideLeagues:new Set(tf.hideLeagues||[]),hideRoles:new Set(tf.hideRoles||[])});
- }catch(e){}
- }
- // Merge savedTourneys instead of overwriting — keep local additions
- if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
- setSavedTourneys(prev=>{
- const merged={};
- const allGames=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
- allGames.forEach(g=>{
- const localList=prev?.[g]||[];
- const remoteList=s.savedTourneys[g]||[];
- // Union: keep all unique entries from both
- merged[g]=[...new Set([...localList,...remoteList])];
- });
- try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));}catch(e){}
- return merged;
- });
- }
- }catch(e){}
- }
- // Restore bookmakers from Supabase (merge with DEFAULT_BK)
- if(s.bookmakers&&Array.isArray(s.bookmakers)&&s.bookmakers.length>0){
- setBookmakers(prev=>{
- const merged=[...new Set([...s.bookmakers,...DEFAULT_BK])];
- try{localStorage.setItem("v7_bmakers",JSON.stringify(merged));}catch(e){}
- return merged;
- });
- }
- // Auto-découverte de tournois depuis les paris reçus
- // Si un pari a b.tournament="Fissure" mais que Fissure n'est pas dans savedTourneys, l'ajouter
- const discoveredTourneys={};
- remote.forEach(b=>{
-  if(b.tournament&&b.game&&b.player!=="__SETTINGS__"&&b.player!=="__BK_PHOTOS__"&&b.player!=="__MEDIA_STORE__"&&b.player!=="__TEAM_LOGOS__"){
-   if(!discoveredTourneys[b.game])discoveredTourneys[b.game]=new Set();
-   discoveredTourneys[b.game].add(b.tournament);
-  }
- });
- if(Object.keys(discoveredTourneys).length>0){
-  setSavedTourneys(prev=>{
-   const updated={...prev};
-   let changed=false;
-   Object.entries(discoveredTourneys).forEach(([game,names])=>{
-    if(!updated[game])updated[game]=[];
-    names.forEach(name=>{
-     if(!updated[game].includes(name)){updated[game]=[...updated[game],name];changed=true;}
-    });
-   });
-   if(changed){
-    try{localStorage.setItem("v7_saved_tourneys",JSON.stringify(updated));}catch(e){}
-    if(!silentArg){
-     const newNames=[...Object.values(discoveredTourneys)].flatMap(s=>[...s]).filter((n,i,a)=>a.indexOf(n)===i);
-     showToast("📋 Tournois détectés: "+newNames.join(", "),"#A78BFA");
-    }
-   }
-   return changed?updated:prev;
-  });
- }
- // Marquer comme pull pour éviter re-push automatique
- lastPulledRef.current=merged.length+":"+(merged[0]&&merged[0].id||"");
- // Re-apply any remaining overrides on top of merged data
- const ovRaw2=localStorage.getItem("v7_overrides");
- const ov2=ovRaw2?JSON.parse(ovRaw2):{};
- const finalMerged=merged.map(b=>{
- const o=ov2[String(b.id)];
- if(!o)return b;
- return{...b,...(o.datetime?{datetime:o.datetime}:{}),...(o.settledAt?{settledAt:o.settledAt}:{}),...(o.bookmaker?{bookmaker:o.bookmaker}:{})};
- });
- const realBets=finalMerged.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__"&&b.player!=="__BK_PHOTOS__"&&b.player!=="__MEDIA_STORE__");
- // Only update state if data actually changed - prevents unnecessary re-renders on periodic sync
- setBets(prev=>{
-  if(prev.length===realBets.length){
-   const prevIds=prev.map(b=>String(b.id)+String(b.updatedAt||0)).join(",");
-   const newIds=realBets.map(b=>String(b.id)+String(b.updatedAt||0)).join(",");
-   if(prevIds===newIds)return prev;
-  }
-  localStorage.setItem("v7_bets",JSON.stringify(realBets));
-  return realBets;
- });
- // Push les bets locaux plus récents vers Supabase pour les autres appareils
- const toSyncBack=merged.filter(b=>{
- const loc=localMap[String(b.id)];
- const rem=remoteMap[String(b.id)];
- if(!loc||!rem)return false;
- const locTs=loc.updatedAt||loc.settledAt||loc.id||0;
- const remTs=rem.updatedAt||rem.settledAt||rem.id||0;
- return locTs>remTs;
- });
- if(toSyncBack.length>0)supaPushBets(toSyncBack).catch(function(){});
- var silent=silentArg===undefined?false:silentArg;if(!silent)showToast(" "+merged.length+" paris","#7C3AED");
- }catch(e){
- // Supabase indisponible → continuer avec localStorage (offline mode)
- setSupaOk(false);
- var silent=silentArg===undefined?false:silentArg;if(!silent)showToast(" Mode hors-ligne","#F59E0B");
- }
+ }catch(e){setSupaOk(false);}
  setSyncing(false);
- },[showToast]);
+ },[]);
 
+ // ── Chargement initial (+ récupération des anciens réglages une seule fois) ──
  useEffect(()=>{
-  applyMediaStore(mediaStore);
-  _GLOBAL_MEDIA_STORE=mediaStore; // Update global ref for LeagueLogo
- },[mediaStore]);
+ let alive=true;
+ (async()=>{
+ setSyncing(true);
+ const ls=k=>{try{const v=localStorage.getItem(k);if(v==null)return undefined;try{return JSON.parse(v);}catch(e){return v;}}catch(e){return undefined;}};
+ const safe=p=>p.catch(()=>null);
+ const [remoteBets,bkRows,tourRows,setRows,mediaRows,teamRows,legacyRows,playersObj]=await Promise.all([
+ safe(supaPullBets()),
+ safe(cloudDb("bookmakers?select=*")),
+ safe(cloudDb("tournaments?select=*")),
+ safe(cloudDb("settings?select=key,value")),
+ safe(cloudDb("media_store?select=key,value")),
+ safe(cloudDb("teams?select=name,game,logo_url")),
+ safe(cloudDb("bets?select=player,description&player=in.(__SETTINGS__,__TEAM_LOGOS__,__BK_PHOTOS__,__MEDIA_STORE__)")),
+ loadPlayers(),
+ ]);
+ if(!alive)return;
+ const legacy={};(legacyRows||[]).forEach(r=>{try{legacy[r.player]=JSON.parse(r.description||"{}");}catch(e){}});
+ const media={};(mediaRows||[]).forEach(r=>{try{media[r.key]=JSON.parse(r.value);}catch(e){}});
+ const oldSet=media.settings||legacy.__SETTINGS__||{};
+ const seeded={};
 
- // Load media from Supabase on startup
- useEffect(()=>{
-  if(!loaded)return;
-  supaGetAllMedia().then(all=>{
-   if(all.bkPhotos&&Object.keys(all.bkPhotos).length>0){
-    setBkPhotos(all.bkPhotos);
-   }
-   if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
-    setMediaStore(all.mediaStore);
-    applyMediaStore(all.mediaStore);
-   }
-   if(all.customClubs&&Object.keys(all.customClubs).length>0){
-    setCustomClubs(all.customClubs);
-   }
-   if(all.settings){
-    const s=all.settings;
-    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0) setActiveTourneys(s.activeTourneys);
-    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0) setSavedTourneys(s.savedTourneys);
-    if(s.tourneyCal&&s.tourneyCal.length>0) setTourneyCal(s.tourneyCal);
-    if(s.mibActive!==undefined) setMibActive(!!s.mibActive);
-    if(s.mibDate) setMibDate(s.mibDate);
-    if(s.bookmakers&&Array.isArray(s.bookmakers)&&s.bookmakers.length>0){
-     setBookmakers(prev=>{const merged=[...new Set([...s.bookmakers,...DEFAULT_BK])];try{localStorage.setItem("v7_bmakers",JSON.stringify(merged));}catch(e){}return merged;});
-    }
-   }
-   mediaLoadedRef.current=true;
-  }).catch(()=>{mediaLoadedRef.current=true;});
- },[loaded]);
-
- // Pull au chargement
- useEffect(()=>{
- if(!loaded)return;
- // Always fetch settings on startup regardless of 15s block
- if(SUPA_URL&&SUPA_KEY){
-  // Pull media rows (bkPhotos, mediaStore, teamLogos) on startup
-  supaFetch("/rest/v1/bets?player=in.(__BK_PHOTOS__,__MEDIA_STORE__,__TEAM_LOGOS__)&select=player,description&order=id.desc").then(rows=>{
-   if(!rows)return;
-   rows.forEach(row=>{
-    try{
-     const d=JSON.parse(row.description||"{}");
-     if(!Object.keys(d).length)return;
-     if(row.player==="__BK_PHOTOS__"){setBkPhotos(prev=>{const m={...prev,...d};return m;});}
-     if(row.player==="__MEDIA_STORE__"){setMediaStore(prev=>{const m={...prev,...d};applyMediaStore(m);return m;});}
-     if(row.player==="__TEAM_LOGOS__"){setTeamLogos(prev=>{const m={...prev,...d};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});}
-    }catch(e){}
-   });
-  }).catch(()=>{});
-  supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
-  .then(sr=>{
-   if(!sr||!sr[0])return;
-   try{
-    const s=JSON.parse(sr[0].description||"{}");
-    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
-     setActiveTourneys(s.activeTourneys);
-     localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
-    }
-    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
-     setSavedTourneys(prev=>{
-      const merged={};
-      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
-      allG.forEach(g=>{
-       merged[g]=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];
-      });
-      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
-      return merged;
-     });
-    }
-    if(s.tourneyCal&&s.tourneyCal.length>0){
-     setTourneyCal(prev=>{
-      const localIds=new Set(prev.map(t=>t.id));
-      const newE=s.tourneyCal.filter(t=>!localIds.has(t.id));
-      if(!newE.length)return prev;
-      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
-      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
-      return merged;
-     });
-    }
-    if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};return m;});
-    }
-    if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
-     setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
-    }
-    if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-     setMediaStore(prev=>{const m={...prev,...s.mediaStore};applyMediaStore(m);return m;});
-    }
-   }catch(e){}
-  }).catch(()=>{});
+ // Paris
+ if(remoteBets){
+ const real=remoteBets.filter(b=>!["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"].includes(b.player));
+ const snap=new Map();real.forEach(b=>snap.set(String(b.id),betJson(b)));
+ betSnap.current=snap;
+ setBets(real);
+ setSupaOk(true);
  }
- pullFromSupa(false);
-},[loaded]);
 
- // Re-pull quand l app revient au premier plan (iOS background → foreground)
- useEffect(()=>{
- const onVisible=()=>{if(document.visibilityState==="visible")pullFromSupa(true);};
- document.addEventListener("visibilitychange",onVisible);
- return()=>document.removeEventListener("visibilitychange",onVisible);
- },[pullFromSupa]);
-
-
- // Sync settings (tournois actifs/sauvegardés) indépendamment des bets — toutes les 10s
- useEffect(()=>{
- if(!loaded)return;
- const syncSettings=()=>{
-  if(document.visibilityState!=="visible"||!SUPA_URL||!SUPA_KEY)return;
-  // Pull media rows (bkPhotos, mediaStore, teamLogos)
-  supaFetch("/rest/v1/bets?player=in.(__BK_PHOTOS__,__MEDIA_STORE__,__TEAM_LOGOS__)&select=player,description&order=id.desc").then(rows=>{
-   if(!rows)return;
-   rows.forEach(row=>{
-    try{
-     const d=JSON.parse(row.description||"{}");
-     if(row.player==="__BK_PHOTOS__"&&Object.keys(d).length>0){
-      setBkPhotos(prev=>{
-       const merged={...d,...prev}; // local takes precedence? No — remote is authoritative
-       const m={...prev,...d};
-       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-       
-       return m;
-      });
-     }
-     if(row.player==="__MEDIA_STORE__"&&Object.keys(d).length>0){
-      setMediaStore(prev=>{
-       const m={...prev,...d};
-       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-   applyMediaStore(m);
-       return m;
-      });
-     }
-     if(row.player==="__TEAM_LOGOS__"&&Object.keys(d).length>0){
-      setTeamLogos(prev=>{
-       const m={...prev,...d};
-       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-       localStorage.setItem("v7_team_logos",JSON.stringify(m));
-       return m;
-      });
-     }
-    }catch(e){}
-   });
-  }).catch(()=>{});
-  // Read settings from media_store
-  supaGetMedia("settings").then(val=>{
-   if(!val)return;
-   try{
-    const s=typeof val==="string"?JSON.parse(val):val;
-    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
-     setActiveTourneys(prev=>{
-      if(JSON.stringify(prev)===JSON.stringify(s.activeTourneys))return prev;
-      return s.activeTourneys;
-     });
-    }
-    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
-     setSavedTourneys(prev=>{
-      if(JSON.stringify(prev)===JSON.stringify(s.savedTourneys))return prev;
-      return s.savedTourneys;
-     });
-    }
-    if(s.bookmakers&&Array.isArray(s.bookmakers)&&s.bookmakers.length>0){
-     setBookmakers(prev=>{
-      const merged=[...s.bookmakers];
-      DEFAULT_BK.forEach(bk=>{if(!merged.includes(bk))merged.push(bk);});
-      if(JSON.stringify(merged)===JSON.stringify(prev))return prev;
-      try{localStorage.setItem("v7_bmakers",JSON.stringify(merged));}catch(e){}
-      return merged;
-     });
-    }
-   }catch(e){}
-  }).catch(()=>{});
- };
- const iv=setInterval(
-  syncSettings,10000);
- syncSettings();
- return()=>clearInterval(iv);
- },[loaded]);
-
-
-
- useEffect(()=>{
-  applyMediaStore(mediaStore);
-  _GLOBAL_MEDIA_STORE=mediaStore; // Update global ref for LeagueLogo
- },[mediaStore]);
-
- // Load media from Supabase on startup
- useEffect(()=>{
-  if(!loaded)return;
-  supaGetAllMedia().then(all=>{
-   if(all.bkPhotos&&Object.keys(all.bkPhotos).length>0){
-    setBkPhotos(all.bkPhotos);
-   }
-   if(all.mediaStore&&Object.keys(all.mediaStore).length>0){
-    setMediaStore(all.mediaStore);
-    applyMediaStore(all.mediaStore);
-   }
-   if(all.customClubs&&Object.keys(all.customClubs).length>0){
-    setCustomClubs(all.customClubs);
-   }
-   if(all.settings){
-    const s=all.settings;
-    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0) setActiveTourneys(s.activeTourneys);
-    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0) setSavedTourneys(s.savedTourneys);
-    if(s.tourneyCal&&s.tourneyCal.length>0) setTourneyCal(s.tourneyCal);
-    if(s.mibActive!==undefined) setMibActive(!!s.mibActive);
-    if(s.mibDate) setMibDate(s.mibDate);
-   }
-   mediaLoadedRef.current=true;
-  }).catch(()=>{mediaLoadedRef.current=true;});
- },[loaded]);
-
- // Pull au chargement
- useEffect(()=>{
- if(!loaded)return;
- // Always fetch settings on startup regardless of 15s block
- if(SUPA_URL&&SUPA_KEY){
-  // Pull media rows (bkPhotos, mediaStore, teamLogos) on startup
-  supaFetch("/rest/v1/bets?player=in.(__BK_PHOTOS__,__MEDIA_STORE__,__TEAM_LOGOS__)&select=player,description&order=id.desc").then(rows=>{
-   if(!rows)return;
-   rows.forEach(row=>{
-    try{
-     const d=JSON.parse(row.description||"{}");
-     if(!Object.keys(d).length)return;
-     if(row.player==="__BK_PHOTOS__"){setBkPhotos(prev=>{const m={...prev,...d};return m;});}
-     if(row.player==="__MEDIA_STORE__"){setMediaStore(prev=>{const m={...prev,...d};applyMediaStore(m);return m;});}
-     if(row.player==="__TEAM_LOGOS__"){setTeamLogos(prev=>{const m={...prev,...d};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});}
-    }catch(e){}
-   });
-  }).catch(()=>{});
-  supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
-  .then(sr=>{
-   if(!sr||!sr[0])return;
-   try{
-    const s=JSON.parse(sr[0].description||"{}");
-    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
-     setActiveTourneys(s.activeTourneys);
-     localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
-    }
-    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
-     setSavedTourneys(prev=>{
-      const merged={};
-      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
-      allG.forEach(g=>{
-       merged[g]=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];
-      });
-      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
-      return merged;
-     });
-    }
-    if(s.tourneyCal&&s.tourneyCal.length>0){
-     setTourneyCal(prev=>{
-      const localIds=new Set(prev.map(t=>t.id));
-      const newE=s.tourneyCal.filter(t=>!localIds.has(t.id));
-      if(!newE.length)return prev;
-      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
-      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
-      return merged;
-     });
-    }
-    if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};return m;});
-    }
-    if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
-     setTeamLogos(prev=>{const m={...prev,...s.teamLogos};localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
-    }
-    if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-     setMediaStore(prev=>{const m={...prev,...s.mediaStore};applyMediaStore(m);return m;});
-    }
-   }catch(e){}
-  }).catch(()=>{});
+ // Bookmakers
+ if(bkRows&&bkRows.length){applyBk(bkRows);cloudSkip.current.bookmakers=true;}
+ else{
+ const list=[...new Set([...(ls("v7_bmakers")||oldSet.bookmakers||[]),...DEFAULT_BK])];
+ setBookmakers(list);
+ setBkPhotos({...(legacy.__BK_PHOTOS__||{}),...(media.bkPhotos||{}),...(ls("v7_bkphotos")||{})});
+ setHiddenBKs(new Set(ls("v7_hidden_bks")||[]));
+ seeded.bookmakers=true;
  }
- pullFromSupa(false);
-},[loaded]);
 
- // Re-pull quand l app revient au premier plan (iOS background → foreground)
- useEffect(()=>{
- const onVisible=()=>{if(document.visibilityState==="visible")pullFromSupa(true);};
- document.addEventListener("visibilitychange",onVisible);
- return()=>document.removeEventListener("visibilitychange",onVisible);
- },[pullFromSupa]);
+ // Tournois
+ if(tourRows&&tourRows.length){applyTour(tourRows);cloudSkip.current.tournaments=true;}
+ else{
+ const at=(oldSet.activeTourneys&&Object.keys(oldSet.activeTourneys).length?oldSet.activeTourneys:ls("v7_tourneys"))||{};
+ const st=(oldSet.savedTourneys&&Object.keys(oldSet.savedTourneys).length?oldSet.savedTourneys:ls("v7_saved_tourneys"))||null;
+ const tc=(Array.isArray(oldSet.tourneyCal)&&oldSet.tourneyCal.length?oldSet.tourneyCal:ls("v7_tourney_cal"))||[];
+ setActiveTourneys(at);if(st)setSavedTourneys(st);setTourneyCal(Array.isArray(tc)?tc:[]);
+ seeded.tournaments=true;
+ }
 
- // Re-pull toutes les 30s si l app est visible
- useEffect(()=>{
- if(!loaded)return;
- const t=setInterval(()=>{if(document.visibilityState==="visible")pullFromSupa(true);},30000);
- return()=>clearInterval(t);
- },[loaded,pullFromSupa]);
-
- // Sync settings (tournois actifs/sauvegardés) indépendamment des bets — toutes les 10s
- useEffect(()=>{
- if(!loaded)return;
- const syncSettings=()=>{
-  if(document.visibilityState!=="visible"||!SUPA_URL||!SUPA_KEY)return;
-  // Pull media rows (bkPhotos, mediaStore, teamLogos)
-  supaFetch("/rest/v1/bets?player=in.(__BK_PHOTOS__,__MEDIA_STORE__,__TEAM_LOGOS__)&select=player,description&order=id.desc").then(rows=>{
-   if(!rows)return;
-   rows.forEach(row=>{
-    try{
-     const d=JSON.parse(row.description||"{}");
-     if(row.player==="__BK_PHOTOS__"&&Object.keys(d).length>0){
-      setBkPhotos(prev=>{
-       const merged={...d,...prev}; // local takes precedence? No — remote is authoritative
-       const m={...prev,...d};
-       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-       
-       return m;
-      });
-     }
-     if(row.player==="__MEDIA_STORE__"&&Object.keys(d).length>0){
-      setMediaStore(prev=>{
-       const m={...prev,...d};
-       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-   applyMediaStore(m);
-       return m;
-      });
-     }
-     if(row.player==="__TEAM_LOGOS__"&&Object.keys(d).length>0){
-      setTeamLogos(prev=>{
-       const m={...prev,...d};
-       if(JSON.stringify(m)===JSON.stringify(prev))return prev;
-       localStorage.setItem("v7_team_logos",JSON.stringify(m));
-       return m;
-      });
-     }
-    }catch(e){}
-   });
-  }).catch(()=>{});
-  supaFetch("/rest/v1/bets?player=eq.__SETTINGS__&select=description&order=id.desc&limit=1")
-  .then(sr=>{
-   if(!sr||!sr[0]||!sr[0].description)return;
-   try{
-    const s=JSON.parse(sr[0].description||"{}");
-    if(s.activeTourneys&&Object.keys(s.activeTourneys).length>0){
-     setActiveTourneys(prev=>{
-      if(JSON.stringify(prev)===JSON.stringify(s.activeTourneys))return prev;
-      localStorage.setItem("v7_tourneys",JSON.stringify(s.activeTourneys));
-      const names=Object.values(s.activeTourneys).filter(t=>t&&t.name).map(t=>t.name);
-      if(names.length)showToast("🔄 Tournoi: "+names.join(", "),"#A78BFA");
-      return s.activeTourneys;
-     });
-    }
-    if(s.savedTourneys&&Object.keys(s.savedTourneys).length>0){
-     setSavedTourneys(prev=>{
-      const merged={};
-      const allG=new Set([...Object.keys(prev||{}),...Object.keys(s.savedTourneys)]);
-      let changed=false;
-      allG.forEach(g=>{
-       const u=[...new Set([...(prev?.[g]||[]),...(s.savedTourneys[g]||[])])];
-       if(u.length!==(prev?.[g]||[]).length)changed=true;
-       merged[g]=u;
-      });
-      if(!changed)return prev;
-      localStorage.setItem("v7_saved_tourneys",JSON.stringify(merged));
-      return merged;
-     });
-    }
-    if(s.tourneyCal&&s.tourneyCal.length>0){
-     setTourneyCal(prev=>{
-      const ids=new Set(prev.map(t=>t.id));
-      const newE=s.tourneyCal.filter(t=>!ids.has(t.id));
-      if(!newE.length)return prev;
-      const merged=[...prev,...newE].sort((a,b)=>a.start.localeCompare(b.start));
-      localStorage.setItem("v7_tourney_cal",JSON.stringify(merged));
-      return merged;
-     });
-    }
-    if(s.bkPhotos&&Object.keys(s.bkPhotos).length>0){
-     setBkPhotos(prev=>{const m={...prev,...s.bkPhotos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;return m;});
-    }
-    if(s.teamLogos&&Object.keys(s.teamLogos).length>0){
-     setTeamLogos(prev=>{const m={...prev,...s.teamLogos};if(JSON.stringify(m)===JSON.stringify(prev))return prev;localStorage.setItem("v7_team_logos",JSON.stringify(m));return m;});
-    }
-    if(s.mediaStore&&Object.keys(s.mediaStore).length>0){
-     setMediaStore(prev=>{const m={...prev,...s.mediaStore};if(JSON.stringify(m)===JSON.stringify(prev))return prev;applyMediaStore(m);return m;});
-    }
-   }catch(e){}
-  }).catch(()=>{});
+ // Réglages
+ const sObj={};(setRows||[]).forEach(r=>{sObj[r.key]=r.value;});
+ const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","depots","bk_accounts","blacklist","mib","hidden_analyse","sim_manual","pp_data"].filter(k=>!(k in sObj));
+ if(need.length){
+ const old={
+ bankroll:ls("v7_bankroll")!=null?parseFloat(ls("v7_bankroll")):undefined,
+ manual_tier:ls("v7_manual_tier")!=null?parseInt(ls("v7_manual_tier")):undefined,
+ quick_units:ls("v7_quick_units"),sticky_bk:ls("v7_sticky_bk"),
+ locked_status:ls("v7_locked_status")||undefined,depots:ls("v7_depots"),bk_accounts:ls("v7_bk_accounts"),
+ blacklist:ls("v7_blacklist"),mib:ls("v7_mib_active")!=null?{active:String(ls("v7_mib_active"))==="1",date:ls("v7_mib_date")}:(oldSet.mibActive!=null?{active:!!oldSet.mibActive,date:oldSet.mibDate}:undefined),
+ hidden_analyse:ls("v7_hidden_analyse"),sim_manual:ls("v7_sim_manual"),pp_data:ls("v7_pp_data"),
  };
- syncSettings();
- const t2=setInterval(syncSettings,30000);
- return()=>clearInterval(t2);
- },[loaded]);
+ need.forEach(k=>{if(old[k]!==undefined&&old[k]!==null&&!(typeof old[k]==="number"&&isNaN(old[k])))sObj[k]=old[k];});
+ applySettings(sObj);
+ seeded.settings=true;
+ }else{applySettings(sObj);cloudSkip.current.settings=true;}
+
+ // Médias (logos) + clubs perso
+ if(media.mediaStore||media.customClubs){applyMedia(media);cloudSkip.current.media=!(legacy.__MEDIA_STORE__&&!media.mediaStore);}
+ const ms={...(legacy.__MEDIA_STORE__||{}),...(ls("v7_media_store")||{}),...(media.mediaStore||{})};
+ if(Object.keys(ms).length&&!media.mediaStore){applyMedia({mediaStore:ms});seeded.media=true;}
+
+ // Logos d'équipes : table teams + anciens logos
+ const tl={};
+ Object.values(playersObj||{}).forEach(p=>{if(p.team&&p.game&&p.team_logo_url)tl[p.team+"__"+p.game]=p.team_logo_url;});
+ Object.assign(tl,legacy.__TEAM_LOGOS__||{},ls("v7_team_logos")||{});
+ (teamRows||[]).forEach(t=>{if(t.logo_url&&t.name&&t.game)tl[t.name+"__"+t.game]=t.logo_url;});
+ setTeamLogos(tl);cloudSkip.current.teams=true;
+
+ // Les canaux récupérés de l'ancien site partent dans Supabase au 1er rendu
+ Object.keys(seeded).forEach(ch=>{cloudSkip.current[ch]=false;});
+ mediaLoadedRef.current=true;
+ hydratedRef.current=true;
+ setHydrated(true);
+ setLoaded(true);
+ setSyncing(false);
+ })();
+ return()=>{alive=false;};
+ },[]);
+
+ // ── Temps réel : les changements des autres appareils arrivent ici ──
+ const applyRemote=useRef({});
+ applyRemote.current={applyBk,applyTour,applySettings,applyMedia,loadPlayers};
+ useEffect(()=>{
+ if(!hydrated)return;
+ let stop=null;const timers={};
+ const later=(k,fn)=>{clearTimeout(timers[k]);timers[k]=setTimeout(fn,300);};
+ const refetch={
+ bookmakers:()=>cloudDb("bookmakers?select=*").then(r=>{if(r){cloudSkip.current.bookmakers=true;applyRemote.current.applyBk(r);}}),
+ tournaments:()=>cloudDb("tournaments?select=*").then(r=>{if(r){cloudSkip.current.tournaments=true;applyRemote.current.applyTour(r);}}),
+ settings:()=>cloudDb("settings?select=key,value").then(r=>{if(r){const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}),
+ media_store:()=>cloudDb("media_store?select=key,value").then(r=>{if(r){const o={};r.forEach(x=>{try{o[x.key]=JSON.parse(x.value);}catch(e){}});cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
+ teams:()=>cloudDb("teams?select=name,game,logo_url").then(r=>{if(r){cloudSkip.current.teams=true;setTeamLogos(prev=>{const m={...prev};r.forEach(t=>{if(t.logo_url)m[t.name+"__"+t.game]=t.logo_url;});return m;});}}),
+ players:()=>applyRemote.current.loadPlayers(),
+ };
+ const onBet=(evt,row,old)=>{
+ if(evt==="DELETE"){const id=String(old&&old.id);betSnap.current.delete(id);setBets(prev=>prev.filter(b=>String(b.id)!==id));return;}
+ if(!row||["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"].includes(row.player))return;
+ let splits;try{splits=row.splits?(typeof row.splits==="string"?JSON.parse(row.splits):row.splits):undefined;}catch(e){}
+ const b=normalizeBet({...row,id:Number(row.id),odds:Number(row.odds),stake:Number(row.stake),profit:Number(row.profit)||0,splits,ppMapType:row.pp_map_type||null,ppLine:row.pp_line||null,ppEdge:row.pp_edge!=null?Number(row.pp_edge):null});
+ betSnap.current.set(String(b.id),betJson(b));
+ setBets(prev=>{
+ const i=prev.findIndex(x=>String(x.id)===String(b.id));
+ if(i===-1)return [b,...prev];
+ const n=prev.slice();n[i]={...prev[i],...b};return n;
+ });
+ };
+ (async()=>{
+ try{
+ const mod=await import(/* @vite-ignore */ "https://esm.sh/@supabase/supabase-js@2");
+ const client=mod.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false}});
+ const ch=client.channel("emeieks-live");
+ ch.on("postgres_changes",{event:"*",schema:"public",table:"bets"},p=>onBet(p.eventType,p.new,p.old));
+ ["bookmakers","tournaments","settings","media_store","teams","players"].forEach(t=>{
+ ch.on("postgres_changes",{event:"*",schema:"public",table:t},()=>later(t,refetch[t]));
+ });
+ ch.subscribe(s=>{if(s==="SUBSCRIBED")setSupaOk(true);});
+ stop=()=>client.removeChannel(ch);
+ }catch(e){
+ // Pas de temps réel (réseau) → relecture toutes les 20 s
+ const iv=setInterval(()=>{if(document.visibilityState==="visible"){pullFromSupa();Object.values(refetch).forEach(f=>f());}},20000);
+ stop=()=>clearInterval(iv);
+ }
+ })();
+ // Au retour sur l'app (iPhone en arrière-plan) : on relit tout
+ const onVisible=()=>{if(document.visibilityState==="visible"){pullFromSupa();Object.values(refetch).forEach(f=>f());}};
+ document.addEventListener("visibilitychange",onVisible);
+ return()=>{stop&&stop();document.removeEventListener("visibilitychange",onVisible);Object.values(timers).forEach(clearTimeout);};
+ },[hydrated,pullFromSupa]);
+
+ // Ref pour LeagueLogo
+ useEffect(()=>{_GLOBAL_MEDIA_STORE=mediaStore;},[mediaStore]);
 
  // Reouvrir clavier iPhone au retour sur l'app 
  const lastFocusedRef = useRef(null);
