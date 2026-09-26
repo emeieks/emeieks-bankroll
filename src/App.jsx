@@ -2569,18 +2569,34 @@ const ROLES_BY_GAME={
  };
 
 
-// Colle une image du presse-papiers → Supabase Storage → URL publique
-async function clipboardImageToUrl(folder){
+// Lecture robuste du presse-papiers : image directe, image dans du HTML (copie depuis un site), lien ou data:image
+async function readClipboardImage(){
+ let htmlSrc="",txt="";
  if(navigator.clipboard&&navigator.clipboard.read){
-  const items=await navigator.clipboard.read();
+  let items=[];
+  try{items=await navigator.clipboard.read();}catch(e){items=[];}
   for(const it of items){
-   const t=it.types.find(x=>x.startsWith("image/"));
-   if(t){const blob=await it.getType(t);return await supaUploadPhoto(new File([blob],"image."+(t.split("/")[1]||"png"),{type:t}),folder);}
+   const t=it.types.find(x=>/image/i.test(x));
+   if(t){const blob=await it.getType(t);const type=(blob.type&&blob.type.startsWith("image/"))?blob.type:"image/png";
+    return{blob:new Blob([blob],{type}),type};}
+   if(!htmlSrc&&it.types.includes("text/html")){
+    try{const h=await (await it.getType("text/html")).text();const m=h.match(/<img[^>]+src=["']([^"']+)["']/i);if(m)htmlSrc=m[1].replace(/&amp;/g,"&");}catch(e){}
+   }
+   if(!txt&&it.types.includes("text/plain")){try{txt=(await (await it.getType("text/plain")).text()).trim();}catch(e){}}
   }
  }
- const txt=((navigator.clipboard&&navigator.clipboard.readText)?await navigator.clipboard.readText():"").trim();
- if(/^https?:\/\//.test(txt)){try{return await supaUploadPhotoFromUrl(txt,folder);}catch(e){return txt;}}
+ if(!txt&&navigator.clipboard&&navigator.clipboard.readText){try{txt=(await navigator.clipboard.readText()).trim();}catch(e){}}
+ const src=htmlSrc||(/^(https?:\/\/|data:image)/i.test(txt)?txt:"");
+ if(src.startsWith("data:image")){const b=await (await fetch(src)).blob();return{blob:b,type:b.type||"image/png"};}
+ if(src)return{url:src};
  throw new Error("Aucune image dans le presse-papiers");
+}
+
+// Colle une image du presse-papiers → Supabase Storage → URL publique
+async function clipboardImageToUrl(folder){
+ const r=await readClipboardImage();
+ if(r.blob)return await supaUploadPhoto(new File([r.blob],"image."+(r.type.split("/")[1]||"png"),{type:r.type}),folder);
+ try{return await supaUploadPhotoFromUrl(r.url,folder);}catch(e){return r.url;}
 }
 
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets}){
@@ -3702,27 +3718,11 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
  };
 
  const handlePaste = async() => {
-  if(!navigator.clipboard?.read){
-   if(showToast) showToast("Presse-papier non supporté sur ce navigateur","#EF4444");
-   return;
-  }
   setUploading(true);
   try{
-   const items = await navigator.clipboard.read();
-   for(const item of items){
-    const imageType = item.types.find(t=>t.startsWith('image/'));
-    if(imageType){
-     const blob = await item.getType(imageType);
-     const ext = imageType.split('/')[1]||'png';
-     const file = new File([blob],'paste.'+ext,{type:imageType});
-     const url = await supaUploadFile(file,folder);
-     onChange(url);
-     if(showToast) showToast("✓ Image collée et uploadée","#22C55E");
-     setUploading(false);
-     return;
-    }
-   }
-   if(showToast) showToast("Aucune image dans le presse-papier","#F59E0B");
+   const url = await clipboardImageToUrl(folder);
+   onChange(url);
+   if(showToast) showToast("✓ Image collée et uploadée","#22C55E");
   }catch(e){
    if(showToast) showToast("Erreur: "+e.message,"#EF4444");
   }
@@ -5034,13 +5034,10 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
  };
  const pasteImg=async(folder,k)=>{
   try{
-   if(navigator.clipboard&&navigator.clipboard.read){
-    const items=await navigator.clipboard.read();
-    for(const it of items){const t=it.types.find(x=>x.startsWith("image/"));if(t){const blob=await it.getType(t);await upload(new File([blob],"image.png",{type:t}),folder,k);return;}}
-   }
-   const txt=await navigator.clipboard.readText();if(txt&&/^https?:|^data:image/.test(txt.trim())){set(k,txt.trim());return;}
-   showToast&&showToast("Aucune image dans le presse-papiers","#F59E0B");
-  }catch(e){showToast&&showToast("Collage impossible ici : utilise « Fichier »","#F59E0B");}
+   const r=await readClipboardImage();
+   if(r.blob){await upload(new File([r.blob],"image."+(r.type.split("/")[1]||"png"),{type:r.type}),folder,k);return;}
+   set(k,r.url);
+  }catch(e){showToast&&showToast((e&&e.message)||"Collage impossible ici : utilise « Fichier »","#F59E0B");}
  };
  const C={background:"#0f1524",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"14px",marginBottom:10};
  const T={fontSize:14,fontWeight:700,color:"#eef1f7",marginBottom:10,display:"flex",alignItems:"center",gap:8};
