@@ -143,6 +143,59 @@ async function supaDeleteManyBets(ids) {
  await supaFetch("/rest/v1/bets?id=in.("+ids.join(",")+")",{method:"DELETE"});
 }
 
+
+// Icônes (remplacent les emojis perdus)
+const IC_PATHS={
+ check:["M5 12.5l4.5 4.5L19 7.5"],x:["M6 6l12 12","M18 6L6 18"],down:["M6 9l6 6 6-6"],up:["M6 15l6-6 6 6"],
+ plus:["M12 5v14","M5 12h14"],clock:["M12 7v5l3 2","C12 12 9"],trash:["M3 6h18","M8 6V4h8v2","M19 6l-1 14H6L5 6","M10 11v6","M14 11v6"],
+ trophy:["M8 21h8","M12 17v4","M7 4h10v5a5 5 0 0 1-10 0z","M17 6h3v1.5A3.5 3.5 0 0 1 16.5 11","M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11"],
+ ban:["C12 12 9","M5.6 5.6l12.8 12.8"],lock:["R5 11 14 10 2","M8 11V7a4 4 0 0 1 8 0v4"],unlock:["R5 11 14 10 2","M8 11V7a4 4 0 0 1 7.6-1.8"],
+ warn:["M12 3.5l9.5 16.5h-19z","M12 10v4.5","M12 17.3v.2"],flask:["M9 3h6","M10 3v6.5L4.8 18.2A1.9 1.9 0 0 0 6.4 21h11.2a1.9 1.9 0 0 0 1.6-2.8L14 9.5V3","M7.5 15h9"],
+ cloud:["M7 18.5h10.5a4 4 0 0 0 .4-8A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z"],calendar:["R3.5 5 17 15.5 2.5","M3.5 10h17","M8 3v4","M16 3v4"],
+ target:["C12 12 8.5","C12 12 4","C12 12 .6"],trendUp:["M3 17l6-6 4 4 8-8","M16 7h5v5"],trendDown:["M3 7l6 6 4-4 8 8","M16 17h5v-5"],
+ users:["C9 8 3.5","M2.5 20a6.5 6.5 0 0 1 13 0","M16 4.5a3.5 3.5 0 0 1 0 7","M18 14.5a6.5 6.5 0 0 1 3.5 5.5"],
+ wallet:["R3 6 18 14 3","M3 10h18","M16 15h2"],
+ swords:["M14.5 17.5L3 6V3h3l11.5 11.5","M13 19l6-6","M16 16l4 4","M19 21l2-2","M9.5 6.5L13 3h3v3l-3.5 3.5","M5 16l3 3","M7 21l-2-2"],
+};
+const Ic=memo(function Ic({n,s=12,c="currentColor",w=2.2}){
+ const ps=IC_PATHS[n]||[];
+ return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"middle",flexShrink:0}}>
+  {ps.map((d,i)=>{
+   if(d[0]==="C"){const [x,y,r]=d.slice(1).trim().split(/\s+/).map(Number);return <circle key={i} cx={x} cy={y} r={r}/>;}
+   if(d[0]==="R"){const [x,y,w2,h,rx]=d.slice(1).trim().split(/\s+/).map(Number);return <rect key={i} x={x} y={y} width={w2} height={h} rx={rx}/>;}
+   return <path key={i} d={d}/>;
+  })}
+ </svg>);
+});
+
+
+// ── Suivi : composants de mise en page ──
+const SV={card:"#0f1524",line:"rgba(255,255,255,.06)",sub:"#8b93a7",text:"#eef1f7"};
+function SuiviIcon({n,img,emoji,color="#a78bfa"}){
+ return(<span style={{width:34,height:34,borderRadius:10,background:color+"1f",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+  {img?<img src={img} alt="" style={{width:20,height:20,objectFit:"contain",borderRadius:4}}/>:<Ic n={n} s={17} c={color} w={2}/>}
+ </span>);
+}
+function SuiviHead({n,img,color,title,sub,badge,open,onClick,right,flat}){
+ const Tag=onClick?"button":"div";
+ return(
+  <Tag onClick={onClick} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:SV.card,border:"1px solid "+SV.line,borderRadius:open||flat?"16px 16px 0 0":16,cursor:onClick?"pointer":"default",textAlign:"left",fontFamily:"Inter,sans-serif",transition:"border-radius .15s"}}>
+   <SuiviIcon n={n} img={img} color={color}/>
+   <div style={{flex:1,minWidth:0}}>
+    <div style={{display:"flex",alignItems:"center",gap:7}}>
+     <span style={{fontSize:15,fontWeight:650,color:SV.text,letterSpacing:-.2}}>{title}</span>
+     {badge}
+    </div>
+    {sub&&<div style={{fontSize:12,color:SV.sub,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sub}</div>}
+   </div>
+   {right}
+   {onClick&&<span style={{color:"#5b6478",display:"flex",transition:"transform .2s",transform:open?"rotate(180deg)":"none"}}><Ic n="down" s={16} w={2.4}/></span>}
+  </Tag>
+ );
+}
+const SV_BODY={background:SV.card,border:"1px solid "+SV.line,borderTop:"none",borderRadius:"0 0 16px 16px",padding:"12px 14px 14px"};
+function SuiviLabel({children}){return <div style={{fontSize:12,fontWeight:700,color:"#6b7489",letterSpacing:.4,margin:"22px 4px 8px"}}>{children}</div>;}
+
 // Game Logos & GameLogo component 
 const _B64_LOL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADsAAABACAYAAACkwA+xAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAARoUlEQVR4nO2baawkV3XHf+fequru6u63zIxnt8cDeLzMGBPjhcUkQAwYgp0EJSgiSghIiEBERBJBRBIiAcmXEEJkkiAnQpYJIUYghShhC8RCBoyxGazxijcmHmzP4hm/td/r7rr3nny4Vf265y0zb+xABFy9UlV3LX3/dbb/Oec+OfvCC5WfkmF+3BP4UY6fgf1JHT9VYJP13iACIgJn4NYURX+M7nBdYAXo9j0hRNCrX7XSUKwRssScyXt6Vsa6wLqgnL9znEZq8CGseI2uIDpVsEaY7jgOTy1ijfxYAJ82WGOETtexd9ck1//hi5jt9DEihOAHqqkaSrACKCEoqooPgfFmymdueZz33LCfiVaKDz96uKftoEJQ2nnKp295lJu++AiTrTqFU0QsIKiCqqBqBscipjwnwHL1NUaw5WaMrGoAz9ZYlzdWVdrNlL/85F0ceOQE7TxKyBiDiMTNjE7ZGMMAxtCpoNBZKJie7zM116ez6PCluhvzfwN7XTarCqk1zC0U/PHH7+CzH7qaNDEDwCEEUEWMQVUH9muswUhUbWNgse954XmTvOO6PRx8co7HDnf4/qFZHnpyluOzfYwxNBsWI/Ksqvu6Q48Pylgz4zsPHOevPnUPH3jbzzE930ckSlFVCSHE8MSSw5JK+uUzJlopr7x0CwsXbcSI0Ot7njze4Y4HT/CVO49w5/enWCwc7TxFJJrRMx1nRCqcD0yM1finL36fb9x9hHaeDpyUiGCMGRzLUIwavACiRqeJRSRqRgC2bMz59V/YxQ1/cAU3vvdKXn/FNnpdx2LXY+0zV+11S7YaRiLop55eILHR+ZghYJVaV+CrM0GVZppw/2NzvPeGA+zY0OC8s9vsObvN5smM4AMLfcfFzxnnb37vUr51z1N89LMPcuDgNOOt7BkRkzMGC5FYpKldVYLW2mjHRDuGyu6FI1NdbvzyI4hCmhq2jDe4dM8GXnvlNq7at5E0Mcx0+rx43yZecN4GPva5B7npqwep1xOsEcIZID4DuigDO4w7M5Dc8Lnq2BiDBB2ch6jGqRUm6oAxIIanF3r8x+0/5Au3P87Fuyd4yzXP4Zort9IvPD4E/vTNe9lzTpsP/vN9FKqk1qwb8Lpttt93GFliQNHlCMYuSbgCVe2NMchwHFUFk5BuOQdpTqLBYIs+7ZrQbiXc/8MZ3v0P+3nnR/dz5Ok+482Up6a7vPEV5/DRd16KFaHwYcRsnlWwIsJit+Cdv7KXTRMNCrfkcSsUVbwdBjoALNW5KHGb1dj+6uvY+fo3suU1b2Di8peTbtqO63nqJjA+lnHLgSO86S9u42vfPcpZE3WOTXe5+rItfPjtLwCvBNU1OPoZgk2sMD3b4x3X7uHdv3EJC13HIO6vIMVhbzzYS3mtACgIpPUatfE2re1bmbzkUrZefR2bX3Et2Vk7KRa6jDdTOn3Hu67fz7989THOmqjz1HSXa67YyvvetJfOghvxFafEcaoLrBFmFwqu2reJP/udSzky3YvzLUmCiEa7GwJXgV5KChRBRlNDEWrtFhiLW1xE+n0kWJrnnEN923bmH7qP6bu+TSKeJE/58xvvRkR409W7ODbV5TdffS73PTbLzV//HyZa2WmRjzUlK8RMp5VZPvTWy7BiKfpuhSxOlqnwIORUNjwsAQWMIWvn1MaaZGMtau02tfYYaWaxiTC29wVsvvo6JGuhvqDVrvHBm+7hlu8dZbKdMTPf44/eeAHnbR9jse9Py37XBGuMMNvp89Zrnsclz51kbq5HPTOj81alEteqzqlkTieHp1qzSa2Vx60d91mrTa3ZxKijvnU7W37xWmy9ifgCmxnef+PdPHGih7WGiVbCu96wB+d09TT6dMCKQK8InHtWzm+/ZjfTcz0aNcOBR6c4MdMjsdEjqyqEMBJyVgJc2XFlsyJCNpaTjbWot1rUWjlpKydr5WTNFrXxMRIDtY0b2fTz14Bk1BPh8NNdPnLz/eT1lNmFgldftpWXXLSJ+cXilAnEqmCNERYWHW+4agdbN9Rx3jHf8/z1zXfj/JLaaAho0LhfAzBmlHggkDVz6q0maTsnKwFnrQZpq07WyMnabRIr5Nt3MvnCl1L0CibaGV+640m+ftdRxpoZIvBbr9qN6DNQY+eVyXbK667YxlynT7th+fy3fsj3Hj5OK0+XiHlQcJ5QZjnDgEe98tJkVEs1brXJWi2yZgWyGVW7mZO2GmR5g7TVwooyfsFe8p27Cf0eag03fukHhCB0+54X793EvnMnyiixOugVwRojLHY9lz53gt3bWvT6jrmu41//+yBZaka4qVazd57gA0FDSRGrZ1Xqe5I3BtIspd5sUqsANxukzZw0zyPQZj3u85ykXmPikstRSWjVLXc+dII7HzxOo5bQyhOuvmwr/SKsGXdXBBu9cOAlF23EGKilwp0PTXHPwSnymh1JtzSU4BRwHnVhkOYN8lljRrxxdeQKB0CtUY9SbuZkzTpZq06aN8qtTpbn2CShtXMX+Y5z0aJP3ytfueMwWWrpFZ6rLt5Mu752uWdFsEEhr1n27W7R7TkSK9x64Bg9NxrEBQga8H5Imj6gPgxUWpdyv8iXS0KhqoSiT1H08d6TJCm1vLkEsNkgbcRjm9dIG3VsXmdsz0WoQj2z3P7AcabnC4IKu7c12bWtSa9YPQwtAysChQtsHsvYsaFBUUQVvuvhqVgGrYprlWRV0VJ1RwA7Hx3XMOChoYBzjlAUuKLAuwJrLbW8RZbnpI0aaV4nbTTIGnWSvEZiE1pnn4vN26RGeeL4Ao8+OUeaGMbylPN3jFOsocrLwSIUXtkyWaPVMIDy1FSPQ8c7JVgduTpWFH2sInqP974MR4o6v/QSNIyEQlHQwuF9QXAFruhTFAViDFmjGaVar5HUa6S1UrJZQm3DBuobz0KCZ7EXePTxubIIIDxv5xhrEalldFEklk02jaVYEyV35OkecwuONJFlibMq+BAI6jBYyvQVY8uE3XlUTASvOpT5CL7vCH1XMU8AvECSpGR5PvAH6gM+eHy/QJKU+qbNdA49QhDLoWMdEmspnGPbxsaasXZFbqyqjDWSkgPDidkufRfIUrtMJUMIS5MykRYGDajXJTLhPXhf5p9VTqt47/B9FycoEl+0CIJgk4S03iB4T3CepHD4Wg8SyCYmYmFPhOMzvTL7MUyOZWsW4FdNBLKsrBaKsNhzK9pd5Wh8iOrqvWCMYsQCZmDDqoDXMsAOvSjnCd4RvJCU/NmKRMDGkGQ1vCvwRUEoMnyvBkFJ82b8eYGFXjQbRWnU0gh2laR+9axnyLGsdnN54SDUBAEw1R+KQIgFc0YclQCBUDi08GCF4AxU+UIJOMlqpLU6vijwhcPWMvCKJLaM71WjzYD6Nea4BlhBWOxFZyPGUMvMqu58OKYOkwlM7BZEm67UfZSNeOdwhceGCA4RjAmoeIIxeOdIEktSq+H6fWyWIh4oiqomRKMWa1Jg6RUBH2I6qSso8zKwCoiB6U6B9wGCMpFb0sSMTrYclbcNIWCNHQJsEPVgFMXEWHyShqhzBOcQNRgrBBG8k8ijjUGNBxKSLCPJUlyWYJxQzM7G31Zl82S9zJ09M50igh1yeMNjOanQ2Fp8atqx2AsURWDTWEK7Ycu3tjQEIYRRwJWEvV8KOxo8GvV55LUG59EqXLnS0VWkJARCiOeMTTBphs1SEFg4egQxFgF2bWkjYrDWcvj4QmR3pxtnY+XPcHSmx1SnT/DKZDNhx4Y6fbdCzUcVDaMAKyJRgY0OzEXAQz+k3hO8R53HO1+CLPd+ycsLYJOEpF7Hzc/QOfw4JAl5ajj/7HEKH+thPzg8t6pUVwarseb09HzBoWMLkRtb4eJdrcFDR6/Xsm05CnD4c/Uyhs1AKe/zfkmaQwBVQ5k+xmcbMaTNnNmHH6I7dYJCDTs35Tzv7HG8Vzq9wAOHZqK5nS5YiNX+voMDB+cxxtF3jisvGKOe2uV2p9EVrKbGw6Ep3hqLbqISs6TgS0ClCle5sa9y5AhabGyVPPHNWzFG6PY8L7poMxvH61gDBw/P84MnZqlny+e4JlhVJU2EOx+eZ6HrWez12Xd2g/N3NOn2A8MkpQJ6smRH7Jjy+5NtNgwlDb7k0UMvTIkm4r0ja7WYvvdeju7fj81zUlGufdkuXIB6LeXWA8eY6fTW7AmtmvXUM8PDhxd44PEFEgup9Vx7+cayAT2UiFdAh0j/MpX2yxMCRcHrkrpWEgwMnlV2tSMXUeX+T96EhoJO13P5+Ru56vnb6BWBbj/wxW8firn2yqsfVgcLsUnVc8p/fW+K1FhmO45XXDzGvl0tOl0/kG4YksLJqjzqpE72xkQq6APqPepc6Zld6aQ8Wnh8v09tcpwHP/0pHr/tW6TtNv1un7f/8oUYa8hrCbfefYy7Hj5Gs5Gu2RJZFawPSl633Hr/HI8cWSQxltTAW165JXbtFCj7OaHyqsNOaXiv0TZDWPLmIgbbaJDUY2UiabZImy3SVousLNekrRb51i0c+cat7P/Y9dTGWszOdnnL687nutdeSJZY0jTh4/92/+riHBprFskTI8wuOD7zzWO879fOYXEx8JwtdSaaCXNdF5eJhMjzQ+lxB2WYSnohEJSBh40E3uK7XQ59/nPYNCkb2RaxFmzZKDMg1mCTlCduuw0fPFYS6qlhet7zng/fRvCe4zM99j94lGYjOWXDek2wPiitRsIt98zw8ovneNkFYzx9oj+iKlpxY68EEwadu6ojEPcMwo4xgrEG7wuO33V7aZfVkxhR9ViSVpJmTlqvoUHJapYv3H4Q72KSYq3QytMYt0/RoT9l+0NKtn3Dl4+w75wGqR3NKmLYiMuDggcxCiV5qBrSWjaz+oVnbsHHzEYVkSxmTqMV1mWcoNsNI0TfGCFJ7eCFzM73B938ZiM9c7BBoZEZDh5b5O++cJjf/aVtyzoCPjiCCkYthArqEmBVpe88W8YTXnnxBpp1S9Dlnb4KbdXcHC7BDncMhapBNtQGjYkVtz9wLL7IMwEL5aKR3PK1u6dp1i311DLf9QPQIUBQR1DFYMFXnfGo1tZaFrqOy/eM8dK9z0co1z1J7NsaY2JL00h5rrJbwRqLYEauFYnJAtZgjcF7JZ3I+ceb7+Wr+5+g3UxXVOfT7rxXsfc/vztFlkT+vNhzFC4aS/AQxJepXYIEg6IYq+CjhJ0LFE5juihLPVsxghEz0girwMbvK8BLLwIBjBDE0G6mfHf/YT7wie/QqC+vplRj3Z33LAUECq+0a8LOs9JINBBCkDKuuijVoASng2Qg1qBiI6wqzkTPUi0FLAtYMPDcsTjgQTyIDq4TQAIkqvT6gT+54XZ6hSO16+TGa46S3xZ9z++/fjvP3dFkfqhoVgH2oUAJA8elfpgjn8y2RgmIalXOGaWfqh6GvnPeM9ZK+dub7+M79x1hrLl2kXz9C0iMMNcpeNvVm3n5JZPMdhyJBUcgwZRSEiKnKjCSxKqjj/UDzKjjGu4JASPVjpPXaMQbwWApnGe8mfH1A0f5+3+/l4l2hvPPIM6ePIwRZjqO6y6b5Fev2sxMx5UrU0FFCeKxYrClShsFbxxIace+KqpTxmBbkv24GKQCVrVCxSytxIkJQyltURJrmV50vP8Td+FDQEyyYiVlZP7rAdpZ9Fx1fou3XbONxb5HTFxhYGRpQxSMkgiY6FYQ8RjxGNH4Wcv4TfzOisZzQ5uIYgiIhniNUYyEeJ962k3LRz57P/c8epzWabAnOE3JikC/COzeXOPNr9rKzGIgBLClVxW0TAwEMYpIwEq1qk3KyRcYsRhjY2Gt8sJGl1auVt+LDjxxPA7RI0vsQLTylM/fdoSbvvII4+30lOo7wHG6/8QUVGnXE7LE4k5ag7RU+h76NBzVy6RhWaA/mRgsO7/8nBIXtUzN9Sm8w9rlXYrVxumvJBdhbtERNHre0Y7PCmWfU16w2jj1hVXpaD1A4Qwc1LOwOPQU4zR/QJelx6cc6w496/2B/0/jp+qfmH4G9id1/C+HpV8ry2fMSgAAAABJRU5ErkJggg==";
 const _B64_DOTA2="data:image/png;base64,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";
@@ -271,7 +324,7 @@ function BankrollChart({points,h=150}){
  {distFromATH>1&&(
  <g>
  <line x1={currentX} y1={currentY-7} x2={currentX} y2={athY+4} stroke="rgba(255,255,255,.12)" strokeWidth="1" strokeDasharray="2,3"/>
- <text x={currentX+6} y={(currentY+athY)/2+4} fontSize="9" fill="rgba(255,255,255,.4)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"$"}</text>
+ <text x={currentX-6} y={Math.max(athY+14,(currentY+athY)/2+4)} textAnchor="end" fontSize="9" fill="rgba(255,255,255,.4)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"$"}</text>
  </g>
  )}
  </svg>
@@ -898,7 +951,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  style={{paddingRight:isConfirmed?42:14,height:48,background:"transparent",border:"none",outline:"none",borderRadius:0,boxShadow:"none"}}/>
  {isConfirmed&&(
  <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",justifyContent:"center",width:24,height:24,background:"rgba(34,197,94,0.15)",borderRadius:"50%",border:"1.5px solid #00E676",pointerEvents:"none"}}>
- <span style={{color:"#00E676",fontSize:14,lineHeight:1}}></span>
+ <span style={{color:"#00E676",fontSize:14,lineHeight:1}}><Ic n="check" s={13}/></span>
  </div>
  )}
  </div>
@@ -913,7 +966,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  style={{display:"flex",alignItems:"center",gap:9,padding:"9px 13px",cursor:"pointer",borderBottom:"1px solid #1F2937",background:isSelected?"rgba(124,58,237,0.08)":"transparent"}}
  onMouseEnter={e=>e.currentTarget.style.background="rgba(124,58,237,0.1)"}
  onMouseLeave={e=>e.currentTarget.style.background=isSelected?"rgba(124,58,237,0.08)":"transparent"}>
- {tag==="recent"&&<span style={{fontSize:10,color:"#6B7280"}}></span>}
+ {tag==="recent"&&<span style={{fontSize:10,color:"#6B7280"}}><Ic n="clock" s={11}/></span>}
  {freq>0&&<span style={{fontSize:9,color:"#A78BFA",background:"rgba(124,58,237,0.1)",padding:"1px 5px",borderRadius:4,fontWeight:700,flexShrink:0}}>{freq}p</span>}
  <GameLogo game={p.game} size={16}/>
  <div style={{flex:1}}>
@@ -928,7 +981,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  {p.league&&!hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
  {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:3}}>{(()=>{const tl=_GLOBAL_MEDIA_STORE&&_GLOBAL_MEDIA_STORE["tourney_"+(p.game||"")+"_"+t.name];return tl?<img src={tl.replace('__FAILED__','')} alt={t.name} style={{width:12,height:12,objectFit:"contain",borderRadius:1}} onError={e=>e.target.style.display="none"}/>:null;})()}{t.name}</span>}
  <span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>
- {isSelected&&<span style={{color:"#00E676",fontSize:14,fontWeight:700,marginLeft:2}}></span>}
+ {isSelected&&<span style={{color:"#00E676",fontSize:14,fontWeight:700,marginLeft:2}}><Ic n="check" s={13}/></span>}
  </div>
  );
  })()}
@@ -1347,6 +1400,7 @@ const VirtualizedDayBets = memo(function VirtualizedDayBets({bets=[], onStatus, 
 });
 
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
+ const [editDate,setEditDate]=useState(null);
  const [open,setOpen]=useState(false);
  const [confirmDel,setConfirmDel]=useState(false);
  const sc=STATUS_CFG[bet.status]||{color:"#3B82F6",label:bet.status};
@@ -1454,10 +1508,10 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  {currentVal
  ?<>{tLogo
  ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>
- :<span style={{fontSize:11}}></span>}
+ :<span style={{fontSize:11}}><Ic n="trophy" s={11} c="#7a9cbd"/></span>}
  <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>{displayLabel}</span>
  </>
- :<span style={{fontSize:11,color:"#3a4a5e",opacity:.6}}></span>}
+ :<span style={{fontSize:11,color:"#3a4a5e",opacity:.6}}><Ic n="plus" s={11}/></span>}
  </span>
  {/* Select invisible par-dessus */}
  <select
@@ -1505,28 +1559,32 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
 
  {/* Date + Tournament */}
  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px 0",flexWrap:"wrap"}}>
- {/* Date cliquable */}
- <label style={{cursor:"pointer",position:"relative",display:"inline-flex",alignItems:"center"}}>
- <span style={{fontSize:11,color:"#4a5a6e",fontWeight:600,textDecoration:"underline dotted",textDecorationColor:"#3a4a5e"}}>
+ {/* Date cliquable → édition */}
+ {editDate===null?(
+ <button type="button" onClick={e=>{e.stopPropagation();setEditDate((bet.datetime&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(bet.datetime)))?String(bet.datetime).slice(0,16):nowDT());}}
+ style={{background:"none",border:"none",padding:"2px 0",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,fontFamily:"Inter,sans-serif"}}>
+ <span style={{fontSize:11,color:"#6a7a8e",fontWeight:600,textDecoration:"underline dotted",textDecorationColor:"#3a4a5e"}}>
  {(()=>{const dt=bet.datetime?String(bet.datetime):"";if(!dt||dt.includes("NaN")||!/^\d{4}-\d{2}-\d{2}/.test(dt))return " Date";const mo=parseInt(dt.slice(5,7))-1;const mn=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"][mo]||"";return dt.slice(8,10)+" "+mn+" "+dt.slice(0,4)+" · "+dt.slice(11,16);})()}
  </span>
- <input
- type="datetime-local"
- defaultValue={(bet.datetime&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(bet.datetime)))?String(bet.datetime).slice(0,16):""}
- onChange={function(e){
- const newDt=e.target.value;
- if(!newDt)return;
- const saved=Object.assign({},bet,{datetime:newDt,updatedAt:Date.now()});
- if(onSave)onSave(saved);
- // Override pour survivre au pull Supabase
- try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[String(bet.id)]={datetime:newDt,updatedAt:Date.now()};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch(e2){}
+ <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6a7a8e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+ </button>
+ ):(
+ <div onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",width:"100%"}}>
+ <input type="datetime-local" autoFocus value={editDate} onChange={e=>setEditDate(e.target.value)}
+ style={{flex:"1 1 170px",minWidth:0,background:"rgba(8,14,28,.95)",border:"1px solid rgba(167,139,250,.45)",borderRadius:9,padding:"7px 10px",color:"#E5E7EB",fontSize:13,fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark"}}/>
+ <button type="button" disabled={!editDate} onClick={()=>{
+ if(!editDate)return;
+ if(editDate!==String(bet.datetime||"").slice(0,16)&&onSave)onSave(Object.assign({},bet,{datetime:editDate,updatedAt:Date.now()}));
+ setEditDate(null);
  }}
- style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%",border:"none",background:"transparent"}}
- />
- </label>
+ style={{padding:"7px 12px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Enregistrer</button>
+ <button type="button" onClick={()=>setEditDate(null)}
+ style={{padding:"7px 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#6B7280",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
+ </div>
+ )}
  {/* Tournament inline edit */}
  <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:"auto"}}>
- <span style={{fontSize:11,color:"#fbbf24"}}></span>
+ <span style={{fontSize:11,color:"#fbbf24"}}><Ic n="trophy" s={12}/></span>
  <select
  value={bet.tournament||bet.league||""}
  onChange={function(e){
@@ -1620,7 +1678,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  </button>
  {!confirmDel
  ?(<button onClick={()=>setConfirmDel(true)}
- style={{width:44,padding:"11px 0",borderRadius:10,border:"1px solid rgba(239,68,68,.2)",background:"transparent",color:"#5a3030",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:16}}></button>)
+ style={{width:44,padding:"11px 0",borderRadius:10,border:"1px solid rgba(239,68,68,.2)",background:"transparent",color:"#5a3030",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="trash" s={15} c="#f87171"/></button>)
  :(<button onClick={()=>{onDelete(bet.id);}}
  style={{flex:1,padding:"11px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#dc2626,#ef4444)",color:"#fff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:700,fontSize:13}}>Confirmer</button>)
  }
@@ -1707,17 +1765,9 @@ function QuickUnitsEditor({quickUnits,setQuickUnits}){
  const reset=()=>setQuickUnits([0.75,1,1.25,1.5,1.75,2]);
  return(
   <div style={{marginBottom:8}}>
-   <button onClick={()=>setOpen(o=>!o)}
-    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s",fontFamily:"'Inter',sans-serif"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-     <span style={{fontSize:14}}>⚡</span>
-     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Boutons de mise rapide</span>
-     <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:8}}>{quickUnits.join(" · ")}u</span>
-    </div>
-    <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:open?"rotate(180deg)":"none"}}>▾</span>
-   </button>
+   <SuiviHead n="trendUp" color="#f59e0b" title="Mises rapides" sub={quickUnits.join(" · ")+" unités"} open={open} onClick={()=>setOpen(o=>!o)}/>
    {open&&(
-    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"14px 14px 10px"}}>
+    <div style={SV_BODY}>
      <div style={{fontSize:10,color:"#6B7280",marginBottom:10,lineHeight:1.5}}>
       Les 6 multiplicateurs utilisés dans les boutons de mise rapide du formulaire.<br/>
       <span style={{color:"#A78BFA"}}>Le montant en $ s'adapte automatiquement à ton palier de bankroll.</span>
@@ -2681,13 +2731,9 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
 
  return(
   <div style={{marginBottom:8}}>
-   <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",background:"#111827",border:"1px solid #1F2937",borderRadius:"13px 13px 0 0"}}>
-    <span style={{fontSize:14}}>✏️</span>
-    <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Edit</span>
-    <span style={{background:"rgba(255,255,255,0.08)",color:"#9CA3AF",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:20}}>{Object.keys(allPlayers).length} joueurs</span>
-   </div>
+   <SuiviHead n="users" color="#a78bfa" title="Joueurs" sub={Object.keys(allPlayers).length+" joueurs · photos, équipes, rôles"} flat/>
 
-   <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+   <div style={SV_BODY}>
 
      {/* Dédoublonnage */}
      {(()=>{
@@ -3246,17 +3292,9 @@ const CreateSection=memo(function CreateSection({teamLogos,setTeamLogos,bkPhotos
 
  return(
   <div style={{marginBottom:8}}>
-   <button onClick={()=>setOpen(o=>!o)}
-    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",transition:"border-radius .2s"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-     <span style={{fontSize:14}}>➕</span>
-     <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Créer</span>
-     <span style={{fontSize:10,color:"#6B7280"}}>Club ou Bookmaker</span>
-    </div>
-    <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
-   </button>
+   <SuiviHead n="plus" color="#34d399" title="Créer" sub="Un club ou un bookmaker" open={open} onClick={()=>setOpen(o=>!o)}/>
    {open&&(
-    <div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+    <div style={SV_BODY}>
      <div style={{display:"flex",gap:6,marginBottom:12}}>
       {[["club","🏟️ Club"],["bk","📚 Bookmaker"]].map(([id,label])=>(
        <button key={id} onClick={()=>setTab(id)}
@@ -3414,19 +3452,9 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
 
  return(
   <div style={{marginBottom:8}}>
-   <button onClick={()=>setOpen(o=>!o)}
-    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"linear-gradient(135deg,rgba(30,35,60,.9),rgba(20,25,45,.9))",border:"1px solid rgba(255,255,255,.08)",borderRadius:open?"14px 14px 0 0":"14px",padding:"13px 16px",cursor:"pointer",transition:"all .2s"}}>
-    <div style={{display:"flex",alignItems:"center",gap:10}}>
-     <span style={{fontSize:16}}>🏆</span>
-     <div>
-      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Logos Tournois</div>
-      <div style={{fontSize:10,color:"#6B7280"}}>{gamesWithTourneys.length} jeu(x) · {gamesWithTourneys.reduce((a,g)=>a+getTourneys(g).length,0)} tournois</div>
-     </div>
-    </div>
-    <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
-   </button>
+   <SuiviHead n="trophy" color="#fbbf24" title="Logos des tournois" sub={gamesWithTourneys.length+" jeu(x) · "+gamesWithTourneys.reduce((a,g)=>a+getTourneys(g).length,0)+" tournois"} open={open} onClick={()=>setOpen(o=>!o)}/>
    {open&&(
-    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"12px"}}>
+    <div style={SV_BODY}>
      {/* Game tabs */}
      <div style={{display:"flex",gap:6,marginBottom:12}}>
       {GAMES.map(g=>{
@@ -3542,19 +3570,9 @@ const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmak
 
  return(
   <div style={{marginBottom:8}}>
-   <button onClick={()=>setOpen(o=>!o)}
-    style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"linear-gradient(135deg,rgba(30,35,60,.9),rgba(20,25,45,.9))",border:"1px solid rgba(255,255,255,.08)",borderRadius:open?"14px 14px 0 0":"14px",padding:"13px 16px",cursor:"pointer",transition:"all .2s"}}>
-    <div style={{display:"flex",alignItems:"center",gap:10}}>
-     <span style={{fontSize:16}}>📚</span>
-     <div>
-      <div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Bookmakers</div>
-      <div style={{fontSize:10,color:"#6B7280"}}>{bookmakers.length} bookmakers</div>
-     </div>
-    </div>
-    <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
-   </button>
+   <SuiviHead n="wallet" color="#60a5fa" title="Bookmakers" sub={bookmakers.length+" bookmakers · logos et visibilité"} open={open} onClick={()=>setOpen(o=>!o)}/>
    {open&&(
-    <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"12px"}}>
+    <div style={SV_BODY}>
      {/* BK list */}
      <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:12}}>
       {bookmakers.map(bk=>{
@@ -4172,9 +4190,9 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  {/* Trigger button */}
  <button onClick={function(){setTourneyOpen(function(v){return !v;});}}
  style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderRadius:10,border:"1px solid "+(newTournament?"rgba(167,139,250,.5)":"#1F2937"),background:"#0B1220",color:newTournament?"#c4b5fd":"#6B7280",fontSize:13,fontWeight:newTournament?700:400,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
- {selected_opt&&selected_opt.game?<GameLogo game={selected_opt.game} size={16}/>:selected_opt&&selected_opt.val==="__AUCUN__"?<span></span>:null}
+ {selected_opt&&selected_opt.game?<GameLogo game={selected_opt.game} size={16}/>:selected_opt&&selected_opt.val==="__AUCUN__"?<Ic n="ban" s={14}/>:null}
  <span style={{flex:1}}>{selected_opt?selected_opt.label:"— Choisir un tournoi —"}</span>
- <span style={{fontSize:10,color:"#4a5a6e"}}>{tourneyOpen?"":""}</span>
+ <span style={{fontSize:10,color:"#4a5a6e"}}><Ic n={tourneyOpen?"up":"down"} s={11}/></span>
  </button>
  {/* Dropdown list */}
  {tourneyOpen&&(
@@ -4188,9 +4206,9 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  return(
  <button key={i} onClick={function(){setNewTournament(o.val);setTourneyOpen(false);}}
  style={{width:"100%",padding:"9px 12px",display:"flex",alignItems:"center",gap:8,border:"none",borderBottom:i<allOpts.length-1?"1px solid rgba(255,255,255,.04)":"none",background:isOn?"rgba(124,58,237,.15)":"transparent",color:isOn?"#c4b5fd":"#E5E7EB",fontSize:12,fontWeight:isOn?700:400,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
- {o.game?<GameLogo game={o.game} size={15}/>:<span style={{fontSize:13}}>{o.val==="__AUCUN__"?"":""}</span>}
+ {o.game?<GameLogo game={o.game} size={15}/>:<span style={{fontSize:13}}>{o.val==="__AUCUN__"?<Ic n="ban" s={13}/>:<Ic n="trophy" s={13}/>}</span>}
  <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.label}</span>
- {isOn&&<span style={{color:"#a78bfa",fontSize:11}}></span>}
+ {isOn&&<span style={{color:"#a78bfa",fontSize:11}}><Ic n="check" s={12}/></span>}
  </button>
  );
  })}
@@ -4320,7 +4338,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  return(
  <div key={b.id} onClick={()=>toggle(b.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:isSel?"rgba(124,58,237,0.08)":"transparent",borderTop:"1px solid #1F2937",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
  <div style={{width:20,height:20,borderRadius:5,border:"2px solid "+(isSel?"#7C3AED":"#374151"),background:isSel?"rgba(124,58,237,0.25)":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
- {isSel&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:900}}></span>}
+ {isSel&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:900}}><Ic n="check" s={12}/></span>}
  </div>
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:6,overflow:"hidden"}}>
@@ -4468,7 +4486,7 @@ const MesParisView=memo(function MesParisView({
  <input autoFocus value={globalSearch} onChange={e=>{setGlobalSearch(e.target.value);setFPlayer(e.target.value);}}
  placeholder="Joueur, tournoi..."
  style={{flex:1,background:"none",border:"none",outline:"none",color:"#e0e8f0",fontSize:13,fontFamily:"Inter,sans-serif",fontWeight:500}}/>
- {globalSearch&&<button onClick={()=>{setGlobalSearch("");setFPlayer("");}} style={{background:"none",border:"none",color:"#6a7a8a",cursor:"pointer",fontSize:14,padding:0}}></button>}
+ {globalSearch&&<button onClick={()=>{setGlobalSearch("");setFPlayer("");}} style={{background:"none",border:"none",color:"#6a7a8a",cursor:"pointer",fontSize:14,padding:0,display:"flex"}}><Ic n="x" s={13}/></button>}
  <button onClick={()=>{setSearchOpen(false);setGlobalSearch("");setFPlayer("");}} style={{background:"none",border:"none",color:"#6a7a8a",cursor:"pointer",fontSize:11,padding:0,fontFamily:"Inter,sans-serif"}}>Annuler</button>
  </div>
  ):(
@@ -4499,7 +4517,7 @@ const MesParisView=memo(function MesParisView({
  <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])} title={bk}
  style={{width:36,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.4)":"rgba(255,255,255,.06)"),background:on?"rgba(34,197,94,.08)":"rgba(255,255,255,.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
  {logo?(<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>):(<span style={{fontSize:8,color:on?"#00E676":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>)}
- {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#00E676",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}></span></div>}
+ {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#00E676",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}><Ic n="check" s={7} c="#000" w={4}/></span></div>}
  </button>
  );
  })}
@@ -4518,7 +4536,7 @@ const MesParisView=memo(function MesParisView({
  </button>
  );
  })}
- {fStatus!=="All"&&<button onClick={()=>setFStatus("All")} style={{padding:"5px 8px",borderRadius:8,border:"1px solid rgba(255,255,255,.07)",background:"transparent",color:"#4a5a6e",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}></button>}
+ {fStatus!=="All"&&<button onClick={()=>setFStatus("All")} style={{padding:"5px 8px",borderRadius:8,border:"1px solid rgba(255,255,255,.07)",background:"transparent",color:"#4a5a6e",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}><Ic n="x" s={11}/></button>}
  </div>
  )}
 
@@ -4575,7 +4593,7 @@ const MesParisView=memo(function MesParisView({
  <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#00E676":"#f87171",letterSpacing:-.3}}>{profit>=0?"+":""}{profit.toFixed(0)}$</div>
  <div style={{fontSize:11,color:roi>=0?"#22a55a":"#c04040",fontWeight:600}}>{roi>=0?"+":""}{roi.toFixed(1)}% ROI</div>
  </div>
- <span style={{fontSize:11,color:"#4B6080",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}></span>
+ <span style={{fontSize:11,color:"#4B6080",transition:"transform .2s",display:"inline-block",transform:collapsedMonths.has(mk)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span>
  </div>
  </div>
  {!collapsedMonths.has(mk)&&(
@@ -6427,7 +6445,7 @@ export default function App(){
  {isTestActive&&(
  <div style={{position:"fixed",top:0,left:0,right:0,zIndex:600,background:"linear-gradient(90deg,rgba(234,179,8,.95),rgba(202,138,4,.95))",padding:"5px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 12px rgba(234,179,8,.4)"}}>
  <div style={{display:"flex",alignItems:"center",gap:6}}>
- <span style={{fontSize:13}}></span>
+ <span style={{fontSize:13}}><Ic n="flask" s={13}/></span>
  <span style={{fontSize:11,fontWeight:800,color:"#1a1000",letterSpacing:.3}}>MODE TEST ACTIF — simulation en cours</span>
  <span style={{fontSize:10,color:"rgba(0,0,0,.5)",marginLeft:2}}>
  {[testFilter.games.size<4&&`${testFilter.games.size} jeux`,testFilter.headshot!=="all"&&(testFilter.headshot==="yes"?"HS only":"sans HS"),testFilter.live!=="all"&&(testFilter.live==="yes"?"Live only":"sans Live"),testFilter.overUnder!=="all"&&testFilter.overUnder,testFilter.hideRoles.size>0&&`${testFilter.hideRoles.size} pos. masquées`,testFilter.hideTourneys.size>0&&`${testFilter.hideTourneys.size} tournois masqués`].filter(Boolean).join(" · ")}
@@ -6461,7 +6479,7 @@ export default function App(){
  {/* Sync */}
  <button onClick={()=>setSupaModal(true)}
  style={{display:"flex",alignItems:"center",gap:5,background:supaOk?"rgba(0,230,118,.1)":"rgba(124,58,237,.1)",border:"1px solid "+(supaOk?"rgba(0,230,118,.25)":"rgba(124,58,237,.25)"),borderRadius:10,padding:"7px 13px",cursor:"pointer",fontFamily:"Inter,sans-serif",color:supaOk?"#00E676":"#a78bfa",fontSize:11,fontWeight:700}}>
- <span></span><span>{syncing?"Sync…":supaOk?"Sync":"Cloud"}</span>
+ <span style={{display:"flex"}}><Ic n="cloud" s={13}/></span><span>{syncing?"Sync…":supaOk?"Sync":"Cloud"}</span>
  {supaOk&&!syncing&&<span style={{width:5,height:5,borderRadius:"50%",background:"#00E676",boxShadow:"0 0 6px rgba(0,230,118,.9)"}}/>}
  </button>
  </div>
@@ -6474,10 +6492,7 @@ export default function App(){
  <div style={{fontSize:34,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1.2px",lineHeight:1,textShadow:totalProfit>=0?"0 0 24px rgba(0,230,118,.35)":"0 0 24px rgba(239,68,68,.35)"}}>{totalProfit>=0?"+":""}{totalProfit.toFixed(0)}$</div>
  <div style={{fontSize:12,color:"#4a5a6e",fontWeight:600}}>Bankroll {bankroll.toFixed(0)}$</div>
  </div>
- <div style={{display:"flex",alignItems:"center",gap:6,marginTop:5}}>
- <span style={{fontSize:10,padding:"2px 8px",borderRadius:6,background:"rgba(124,58,237,.15)",border:"1px solid rgba(167,139,250,.25)",color:"#c4b5fd",fontWeight:700}}>Palier {bkTier.toFixed(0)}$</span>
- <span style={{fontSize:10,color:"#5a6a7e"}}>1u = {unitValue.toFixed(0)}$</span>
- </div>
+
  </div>
  <BankrollChart points={chartPointsFiltered} h={190}/>
  <div style={{display:"flex",gap:5,marginTop:8,alignItems:"center"}}>
@@ -6601,7 +6616,7 @@ export default function App(){
  <div style={{padding:"16px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
  <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:"-0.5px"}}>Filtres</div>
  <button onClick={()=>setHomeChartModal(false)}
- style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#9CA3AF",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}></button>
+ style={{background:"rgba(255,255,255,0.07)",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",color:"#9CA3AF",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={13}/></button>
  </div>
 
  <div style={{padding:"0 16px 18px",display:"flex",flexDirection:"column",gap:14}}>
@@ -6719,7 +6734,7 @@ export default function App(){
  title={bk}
  style={{width:42,height:42,borderRadius:11,border:"1.5px solid "+(on?"#00E676":"#1F2937"),background:on?"rgba(34,197,94,0.1)":"rgba(255,255,255,0.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",transition:"all .15s"}}>
  {logo?(<img src={logo} alt={bk} style={{width:26,height:26,borderRadius:6,objectFit:"cover"}}/>):(<span style={{fontSize:9,color:on?"#00E676":"#6B7280",fontWeight:700}}>{bk.slice(0,3)}</span>)}
- {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#00E676",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}></span></div>}
+ {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#00E676",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}><Ic n="check" s={7} c="#000" w={4}/></span></div>}
  </button>
  );
  })}
@@ -7291,7 +7306,7 @@ export default function App(){
  color:isOn?(isHors?"#9CA3AF":"#A78BFA"):"#6B7280",
  fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",
  transition:"all .15s ease"}}>
- {isHors?"":""} {t}
+ {isHors?<Ic n="ban" s={11}/>:<Ic n="trophy" s={11}/>} {t}
  </button>
  );
  })}
@@ -7372,7 +7387,7 @@ export default function App(){
  </button>
  <button onClick={()=>{setDuelMode(v=>!v);setSessionMode(false);}}
  style={{padding:"7px 13px",borderRadius:12,border:"1.5px solid "+(duelMode?"#F59E0B":"rgba(255,255,255,0.1)"),background:duelMode?"rgba(245,158,11,0.12)":"rgba(255,255,255,0.04)",color:duelMode?"#F59E0B":"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- 
+ <span style={{display:"inline-flex",alignItems:"center",gap:5}}><Ic n="swords" s={13}/>Duel</span>
  </button>
  <button onClick={()=>{setSessionMode(v=>!v);setDuelMode(false);setCasinoMode(false);}}
  style={{padding:"7px 13px",borderRadius:12,border:"1.5px solid "+(sessionMode?"#7C3AED":"rgba(255,255,255,0.1)"),background:sessionMode?"rgba(124,58,237,0.12)":"rgba(255,255,255,0.04)",color:sessionMode?"#A78BFA":"#9CA3AF",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
@@ -7592,7 +7607,7 @@ export default function App(){
  <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
  title={bk}
  style={{minWidth:52,height:52,borderRadius:13,border:"1.5px solid "+(isOn?"#8b5cf6":"rgba(255,255,255,0.07)"),background:isOn?"rgba(139,92,246,0.1)":"rgba(10,18,34,0.9)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,position:"relative",transition:"all .15s",boxShadow:isOn?"0 0 0 1px rgba(139,92,246,.3),0 0 16px rgba(139,92,246,.25),inset 0 0 12px rgba(139,92,246,.06)":"inset 0 1px 0 rgba(255,255,255,.03)"}}>
- {isOn&&<span style={{position:"absolute",top:-7,right:-5,width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,#a78bfa,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 2px 8px rgba(139,92,246,.5)"}}></span>}
+ {isOn&&<span style={{position:"absolute",top:-7,right:-5,width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,#a78bfa,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 2px 8px rgba(139,92,246,.5)"}}><Ic n="check" s={10} c="#fff" w={3.5}/></span>}
  {bkLogo
  ?(<img src={bkLogo} alt={bk} style={{width:30,height:30,borderRadius:7,objectFit:"contain"}}/>)
  :(<span style={{fontSize:10,fontWeight:600,color:isOn?"#c4b5fd":"#5a6478",letterSpacing:.3}}>{bk.slice(0,4)}</span>)}
@@ -7831,7 +7846,7 @@ export default function App(){
  <button onClick={()=>setSessionMaps(ms=>ms.map((x,j)=>j===i?{...x,locked:!x.locked}:x))}
  title={m.locked?"Déverrouiller":"Verrouiller cote"}
  style={{background:m.locked?"rgba(245,158,11,0.15)":"transparent",border:"1px solid "+(m.locked?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.08)"),borderRadius:7,padding:"3px 8px",color:m.locked?"#F59E0B":"#4B5563",cursor:"pointer",fontSize:12,fontFamily:"'Inter',sans-serif"}}>
- {m.locked?"":""}
+ <Ic n={m.locked?"lock":"unlock"} s={11}/>
  </button>
  )}
  <button onClick={()=>setSessionMaps(ms=>ms.map((x,j)=>j===i?{...x,enabled:!x.enabled,locked:false}:x))}
@@ -8227,7 +8242,7 @@ export default function App(){
  if(ppEdge==null||ppEdge>=0||form.ppMapType==="HIDE")return null;
  return(
  <div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}}>
- <span></span>
+ <span><Ic n="warn" s={14} c="#f87171"/></span>
  <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Edge PP négatif ({ppEdge>0?"+":""}{ppEdge.toFixed(2)}) — EV-</span>
  </div>
  );
@@ -8237,7 +8252,7 @@ export default function App(){
  var ppEdge=form.ppEdge;
  if(ppEdge==null||ppEdge>=0||form.ppMapType==="HIDE")return null;
  return(<div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}}>
- <span></span>
+ <span><Ic n="warn" s={14} c="#f87171"/></span>
  <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Edge PP négatif ({ppEdge>0?"+":""}{ppEdge.toFixed(2)}) — EV-</span>
  </div>);
  })()}
@@ -8249,7 +8264,7 @@ export default function App(){
  var wr=playerBets.filter(function(b){return b.status==="won";}).length/playerBets.length;
  var ev=wr*odds-1;
  if(ev<0)return(<div style={{marginBottom:8,padding:"8px 12px",borderRadius:10,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.3)",display:"flex",alignItems:"center",gap:8}}>
- <span></span><span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>EV négatif {(ev*100).toFixed(1)}% sur {k}</span>
+ <span><Ic n="warn" s={14} c="#f87171"/></span><span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>EV négatif {(ev*100).toFixed(1)}% sur {k}</span>
  </div>);
  }
  return null;
@@ -8358,7 +8373,7 @@ export default function App(){
  {/* Header */}
  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,paddingBottom:10,borderBottom:"1px solid rgba(251,191,36,.1)"}}>
  <div style={{display:"flex",alignItems:"center",gap:8}}>
- <span style={{fontSize:18}}></span>
+ <span style={{fontSize:18}}><Ic n="flask" s={18} c="#fbbf24"/></span>
  <div>
  <div style={{fontSize:13,color:"#fbbf24",fontWeight:800}}>MODE TEST</div>
  <div style={{fontSize:10,color:"#6a5a3e"}}>Configure puis applique</div>
@@ -8498,7 +8513,7 @@ export default function App(){
  <button onClick={()=>setTestingOpen(v=>!v)}
  style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:testingOpen?"rgba(251,191,36,.1)":"#111827",border:"1px solid "+(testingOpen?"rgba(251,191,36,.4)":"#1F2937"),borderRadius:12,padding:"12px 14px",color:testingOpen?"#fbbf24":"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700}}>
  Mode Test
- <span style={{fontSize:11,opacity:.6}}>{testingOpen?"":""}</span>
+ <span style={{fontSize:11,opacity:.6}}><Ic n={testingOpen?"up":"down"} s={12}/></span>
  </button>
  <button onClick={exportCSV} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}> Exporter en CSV</button>
  <button onClick={exportJSON} style={{display:"flex",alignItems:"center",gap:8,background:"#111827",border:"1px solid #1F2937",borderRadius:12,padding:"12px 14px",color:"#dce8ff",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:700,textAlign:"left"}}> Exporter en JSON</button>
@@ -8857,7 +8872,7 @@ export default function App(){
  <span style={{fontSize:11,fontWeight:800,color:s.ev>=0?"#00E676":"#f87171",textAlign:"center"}}>{fmt(s.ev,"%")}</span>
  <span style={{fontSize:11,color:"#7a9cbd",textAlign:"center"}}>{s.avgStake}$</span>
  <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit} fontSize={12}/></div>
- <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{(ppBetsDrill&&ppBetsDrill.key)===l.ou+l.bkLine+l.ppLine?"":""}</span>
+ <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{(ppBetsDrill&&ppBetsDrill.key)===l.ou+l.bkLine+l.ppLine?<Ic n="up" s={10}/>:<Ic n="down" s={10}/>}</span>
  </div>
  {/* Inline bets view */}
  {(ppBetsDrill&&ppBetsDrill.key)===l.ou+l.bkLine+l.ppLine&&matchBets.length>0&&(
@@ -8977,7 +8992,7 @@ export default function App(){
  <span style={{fontSize:11,fontWeight:700,color:roiColor(ls.roi),marginLeft:"auto"}}>{fmt(ls.roi,"%")}</span>
  <span style={{fontSize:11,fontWeight:700,color:ls.wr>=55?"#00E676":ls.wr<45?"#f87171":"#9CA3AF"}}>{ls.wr}%</span>
  <FmtProfit v={ls.profit} fontSize={12}/>
- <span style={{fontSize:10,color:"#4a5a6e"}}>{isLineDrill?"":""}</span>
+ <span style={{fontSize:10,color:"#4a5a6e"}}><Ic n={isLineDrill?"up":"down"} s={10}/></span>
  </div>
  {isLineDrill&&lg.bets.length>0&&(
  <div style={{background:"rgba(0,0,0,.5)",borderTop:"1px solid #0d1628"}}>
@@ -9072,7 +9087,7 @@ export default function App(){
  style={{appearance:"none",WebkitAppearance:"none",background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.4)",borderRadius:8,color:"#c4b5fd",fontSize:11,fontWeight:700,padding:"5px 28px 5px 10px",cursor:"pointer",fontFamily:"Inter,sans-serif",outline:"none"}}>
  {HEAT_METRICS.map(m=>(<option key={m.k} value={m.k}>{m.l}</option>))}
  </select>
- <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:"#c4b5fd",fontSize:10}}></span>
+ <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",color:"#c4b5fd",fontSize:10}}><Ic n="down" s={10}/></span>
  </div>
  </div>
  {/* One table per game */}
@@ -9172,7 +9187,7 @@ export default function App(){
  {ppMapFilterApplied&&<span style={{fontSize:9,background:"rgba(96,165,250,.3)",color:"#93c5fd",padding:"1px 6px",borderRadius:4,fontWeight:700}}>{ppMapFilterApplied}</span>}
  {ppSortByCount&&<span style={{fontSize:9,background:"rgba(251,191,36,.2)",color:"#fbbf24",padding:"1px 6px",borderRadius:4,fontWeight:700}}>N↓</span>}
  </span>
- <span style={{fontSize:10,opacity:.5}}>{ppFilterOpen?"":""}</span>
+ <span style={{fontSize:10,opacity:.5}}><Ic n={ppFilterOpen?"up":"down"} s={11}/></span>
  </button>
  {ppFilterOpen&&(
  <div style={{marginTop:6,padding:"12px",background:"rgba(124,58,237,.06)",border:"1px solid rgba(124,58,237,.2)",borderRadius:10}}>
@@ -9432,7 +9447,7 @@ export default function App(){
  <div style={{background:"rgba(8,12,22,.98)",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,overflow:"hidden"}}>
  <div style={{padding:"12px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.06)",background:"rgba(239,68,68,.04)"}}>
  <div style={{display:"flex",alignItems:"center",gap:9}}>
- <span style={{fontSize:18}}></span>
+ <span style={{fontSize:18}}><Ic n="warn" s={18} c="#f87171"/></span>
  <div>
  <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Où tu perds ton argent</div>
  <div style={{fontSize:9,color:"#4a5a6e"}}>Facteurs individuels + combinaisons · min 4-5 paris</div>
@@ -9496,7 +9511,7 @@ export default function App(){
  <div style={{padding:"12px 14px 10px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
  <div style={{display:"flex",alignItems:"center",gap:9}}>
- <span style={{fontSize:18}}></span>
+ <span style={{fontSize:18}}><Ic n="calendar" s={18} c="#93c5fd"/></span>
  <div>
  <div style={{fontSize:13,fontWeight:800,color:"#f0f4ff"}}>Performance temporelle</div>
  <div style={{fontSize:9,color:"#4a5a6e",marginTop:1}}>Par jour · par semaine</div>
@@ -9604,7 +9619,7 @@ export default function App(){
  <div style={{height:"100%",width:barW+"%",background:isOk?"rgba(34,197,94,.7)":"rgba(239,68,68,.7)",borderRadius:4}}/>
  <div style={{position:"absolute",left:threshW+"%",top:-3,bottom:-3,width:2,background:"rgba(255,255,255,.6)",borderRadius:1}}/>
  </div>
- <div style={{fontSize:9,fontWeight:700,color:isOk?"#22C55E":"#EF4444",marginTop:2}}>{isOk?"":""}{r.wr}% {isOk?`(+${gap}% au-dessus)`:`(${Math.abs(gap)}% sous le seuil)`}</div>
+ <div style={{fontSize:9,fontWeight:700,color:isOk?"#22C55E":"#EF4444",marginTop:2}}>{isOk?<Ic n="check" s={9}/>:<Ic n="x" s={9}/>} {r.wr}% {isOk?`(+${gap}% au-dessus)`:`(${Math.abs(gap)}% sous le seuil)`}</div>
  </div>
  <span style={{fontSize:10,color:"#4a5a6e",textAlign:"center"}}>{r.cnt}</span>
  <span style={{fontSize:11,fontWeight:700,color:r.roi>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.roi>=0?"+":""}{r.roi.toFixed(1)}%</span>
@@ -9663,7 +9678,7 @@ export default function App(){
  </div>
  <span style={{fontSize:11,fontWeight:700,color:isGood?"#22C55E":"#EF4444",textAlign:"right"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</span>
  <div style={{display:"flex",justifyContent:"flex-end"}}><FmtProfit v={s.profit} fontSize={11}/></div>
- <span style={{fontSize:11,color:isOpen?"#a5b4fc":"#3a4a5e",textAlign:"right"}}>{isOpen?"":""}</span>
+ <span style={{fontSize:11,color:isOpen?"#a5b4fc":"#3a4a5e",textAlign:"right"}}><Ic n={isOpen?"up":"down"} s={11}/></span>
  </div>
  {isOpen&&Object.keys(byGame).length>0&&(
  <div style={{margin:"0 10px 8px",background:"rgba(99,102,241,.05)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(99,102,241,.18)"}}>
@@ -9831,7 +9846,7 @@ export default function App(){
  </div>
  <div style={{display:"flex",alignItems:"center",gap:8}}>
  <span style={{padding:"2px 8px",borderRadius:6,background:gs.profit>=0?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444"}}>{gs.profit>=0?"+":""}{gs.profit.toFixed(0)}$</span>
- <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}></span>
+ <span style={{fontSize:11,color:"#6B7280",transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}><Ic n="down" s={12}/></span>
  </div>
  </div>
  {/* Stats row */}
@@ -9882,7 +9897,7 @@ export default function App(){
  <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{s.count}</span>
  <span style={{fontSize:11,fontWeight:700,color:s.wr>55?"#22C55E":s.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{s.wr.toFixed(0)}%</span>
  <span style={{fontSize:11,fontWeight:700,color:s.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{s.profit>=0?"+":""}{(s.profit||0).toFixed(0)}$</span>
- <span style={{fontSize:10}}>{s.wr>55?"":s.wr<45?"":""}</span>
+ <span style={{fontSize:10}}>{s.wr>55?<Ic n="trendUp" s={11} c="#22C55E"/>:s.wr<45?<Ic n="trendDown" s={11} c="#EF4444"/>:null}</span>
  </div>
  ))}
  </>
@@ -9905,7 +9920,7 @@ export default function App(){
  <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
  <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
  <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
- <span style={{fontSize:10}}>{r.wr>55?"":r.wr<45?"":""}</span>
+ <span style={{fontSize:10}}>{r.wr>55?<Ic n="trendUp" s={11} c="#22C55E"/>:r.wr<45?<Ic n="trendDown" s={11} c="#EF4444"/>:null}</span>
  </div>
  ))}
  </>
@@ -10052,7 +10067,7 @@ export default function App(){
  <div key={t.name} className="stat-row" onClick={()=>setStatsDrill({game,league:null,filterType:"tourney",filterValue:t.name})} style={{cursor:"pointer"}}>
  <div style={{display:"flex",alignItems:"center",gap:7}}>
  {t.name==="Hors tournoi"
- ?<span style={{fontSize:12}}></span>
+ ?<span style={{fontSize:12}}><Ic n="ban" s={12} c="#6B7280"/></span>
  :<LeagueLogo league={t.name} size={18}/>}
  <div>
  <div style={{display:"flex",alignItems:"center",gap:5}}>
@@ -10082,7 +10097,7 @@ export default function App(){
  <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
  <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
  <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
- <span style={{fontSize:10}}>{r.wr>55?"":r.wr<45?"":""}</span>
+ <span style={{fontSize:10}}>{r.wr>55?<Ic n="trendUp" s={11} c="#22C55E"/>:r.wr<45?<Ic n="trendDown" s={11} c="#EF4444"/>:null}</span>
  </div>
  ))}
  </>
@@ -10156,7 +10171,7 @@ export default function App(){
  {gs.hsS&&(
  <div className="stat-row">
  <div style={{display:"flex",alignItems:"center",gap:9}}>
- <span style={{fontSize:14}}></span>
+ <span style={{fontSize:14}}><Ic n="target" s={14} c="#818CF8"/></span>
  <div>
  <div style={{fontWeight:700,fontSize:13,color:"#818CF8"}}>Paris HS</div>
  <div style={{fontSize:10,color:"#6B7280"}}>{gs.hsS.count} paris · {gs.hsS.wr.toFixed(0)}% WR</div>
@@ -10249,7 +10264,7 @@ export default function App(){
  <span style={{fontSize:11,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
  <span style={{fontSize:11,fontWeight:700,color:r.wr>55?"#22C55E":r.wr<45?"#EF4444":"#9CA3AF",textAlign:"center"}}>{r.wr.toFixed(0)}%</span>
  <span style={{fontSize:11,fontWeight:700,color:r.profit>=0?"#22C55E":"#EF4444",textAlign:"right"}}>{r.profit>=0?"+":""}{(r.profit||0).toFixed(0)}$</span>
- <span style={{fontSize:10}}>{r.wr>55?"":r.wr<45?"":""}</span>
+ <span style={{fontSize:10}}>{r.wr>55?<Ic n="trendUp" s={11} c="#22C55E"/>:r.wr<45?<Ic n="trendDown" s={11} c="#EF4444"/>:null}</span>
  </div>
  ))}
  </>
@@ -10474,7 +10489,7 @@ export default function App(){
  return(
  <div key={t.name} className="stat-row">
  <div style={{display:"flex",alignItems:"center",gap:9}}>
- {t.name==="Hors tournoi"?<span style={{fontSize:14}}></span>:<LeagueLogo league={t.name} size={20}/>}
+ {t.name==="Hors tournoi"?<span style={{fontSize:14}}><Ic n="ban" s={14} c="#6B7280"/></span>:<LeagueLogo league={t.name} size={20}/>}
  <div>
  <div style={{fontWeight:700,fontSize:13,color:t.name==="Hors tournoi"?"#9CA3AF":"#E5E7EB"}}>{t.name}</div>
  <div style={{fontSize:10,color:"#6B7280"}}>{t.count} paris · {wr.toFixed(0)}% WR</div>
@@ -10996,94 +11011,57 @@ export default function App(){
  {/* JOUEURS */}
 
  {view==="players"&&(
- <div className="view-enter">
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+ <div className="view-enter" style={{paddingBottom:20}}>
+ <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",margin:"4px 2px 4px"}}>
  <div>
- <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:-0.3}}>Suivi</div>
- <div style={{display:"flex",gap:10,marginTop:3}}>
- <span style={{fontSize:11,color:"#6B7280"}}>{Object.keys(allPlayers).length} joueurs</span>
- {customCount>0&&<span style={{fontSize:11,color:"#A78BFA",fontWeight:600}}> {customCount} modifiés</span>}
- </div>
+ <div style={{fontSize:28,fontWeight:800,color:"#f4f6fb",letterSpacing:-.8,lineHeight:1.05}}>Suivi</div>
+ <div style={{fontSize:13,color:"#8b93a7",marginTop:5}}>{Object.keys(allPlayers).length} joueurs · {Object.values(activeTourneys).filter(t=>t&&t.name&&!(t.end&&new Date(t.end)<new Date())).length} tournoi(s) actif(s)</div>
  </div>
  <button onClick={()=>{setPform({name:"",game:"LoL",league:"",role:"",team:""});setModalPlayer(true);}}
- style={{background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:12,padding:"10px 18px",color:"#fff",fontWeight:700,fontSize:13,fontFamily:"'Inter',sans-serif",cursor:"pointer",boxShadow:"0 4px 14px rgba(124,58,237,0.35)"}}>
- + Ajouter
+ style={{display:"flex",alignItems:"center",gap:6,background:"#7c3aed",border:"none",borderRadius:12,padding:"10px 14px",color:"#fff",fontWeight:700,fontSize:13,fontFamily:"Inter,sans-serif",cursor:"pointer"}}>
+ <Ic n="plus" s={14} w={2.6}/>Joueur
  </button>
  </div>
 
+ <SuiviLabel>COMPÉTITIONS</SuiviLabel>
  {/* TOURNOIS ACTIFS */}
  <div style={{marginBottom:8}}>
- <button onClick={()=>setSuiviOpen(s=>({...s,tournois:!s.tournois}))}
- style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:suiviOpen.tournois?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer",marginBottom:0,transition:"border-radius .2s"}}>
- <div style={{display:"flex",alignItems:"center",gap:8}}>
- <span style={{fontSize:14}}></span>
-
-  {/* ── Tournois actifs ── */}
-<span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Tournois actifs</span>
- {Object.values(activeTourneys).filter(t=>t&&!(t.end&&new Date(t.end)<new Date())).length>0&&(
- <span style={{background:"#00E676",color:"#000",fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:8}}>
- {Object.values(activeTourneys).filter(t=>t&&!(t.end&&new Date(t.end)<new Date())).length} ACTIF
- </span>
- )}
- </div>
- <span style={{color:"#6B7280",fontSize:12,transition:"transform .2s",display:"inline-block",transform:suiviOpen.tournois?"rotate(180deg)":"none"}}></span>
- </button>
- {suiviOpen.tournois&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"10px 12px",display:"flex",flexDirection:"column",gap:6}}>
- <div style={{display:"flex",flexDirection:"column",gap:6}}>
- {["CS2","Dota2","LoL","Valorant"].map(game=>{
+ <SuiviHead n="trophy" color="#fbbf24" title="Tournois actifs" open={suiviOpen.tournois} onClick={()=>setSuiviOpen(s=>({...s,tournois:!s.tournois}))}
+  sub={(()=>{const act=["CS2","Dota2","LoL","Valorant"].map(g=>activeTourneys[g]).filter(t=>t&&t.name&&!(t.end&&new Date(t.end)<new Date()));return act.length?act.map(t=>t.name).join(" · "):"Aucun tournoi actif";})()}/>
+ {suiviOpen.tournois&&<div style={{...SV_BODY,padding:"4px 0"}}>
+ {["CS2","Dota2","LoL","Valorant"].map((game,gi)=>{
  const t=activeTourneys[game];
  const cfg=GAME_CFG[game]||{};
  const isExpired=t&&t.end&&new Date(t.end)<new Date();
  const saved=savedTourneys[game]||[];
- const hasActive=t&&!isExpired;
+ const hasActive=t&&t.name&&!isExpired;
  return(
- <div key={game} style={{background:"#111827",border:"1px solid "+(hasActive?"rgba(124,58,237,0.3)":"#1F2937"),borderRadius:13,overflow:"hidden",transition:"border-color .2s"}}>
- {/* Game row */}
- <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px"}}>
- <GameLogo game={game} size={18}/>
- <span style={{fontSize:13,fontWeight:700,color:cfg.accent||"#A78BFA",width:64,flexShrink:0}}>{game}</span>
- <select
- value={hasActive?t.name:""}
- onChange={e=>{
- const val=e.target.value;
- if(!val){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}
- else{setActiveTourneys(prev=>({...prev,[game]:{name:val,end:""}}));}
- }}
- style={{flex:1,background:"#0B1220",border:"1px solid "+(hasActive?"rgba(124,58,237,0.4)":"#1F2937"),borderRadius:8,padding:"7px 10px",color:hasActive?"#E5E7EB":"#4B5563",fontWeight:hasActive?600:400,fontSize:12,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",colorScheme:"dark"}}>
+ <div key={game} style={{padding:"10px 14px",borderTop:gi?"1px solid "+SV.line:"none"}}>
+ <div style={{display:"flex",alignItems:"center",gap:10}}>
+ <span style={{width:28,height:28,borderRadius:8,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.04)"}}><GameLogo game={game} size={28}/></span>
+ <div style={{flex:1,minWidth:0,position:"relative"}}>
+ <div style={{fontSize:11,fontWeight:700,color:cfg.accent||"#A78BFA",marginBottom:2}}>{game}</div>
+ <select value={hasActive?t.name:""}
+ onChange={e=>{const val=e.target.value;if(!val){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}else{setActiveTourneys(prev=>({...prev,[game]:{name:val,end:""}}));}}}
+ style={{width:"100%",background:"transparent",border:"none",padding:0,color:hasActive?"#eef1f7":"#5b6478",fontWeight:hasActive?600:500,fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer",textOverflow:"ellipsis"}}>
  <option value="">Aucun tournoi actif</option>
- {[...new Set([...(t&&t.name?[t.name]:[]),...saved])].map(s=><option key={s} value={s}>{s}</option>)}
+ {[...new Set([...(t&&t.name?[t.name]:[]),...saved])].map(x=><option key={x} value={x}>{x}</option>)}
  </select>
- <button onClick={()=>setModalTourney(game)}
- style={{background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.25)",borderRadius:8,padding:"6px 10px",color:"#A78BFA",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:700,flexShrink:0}}>
- +
- </button>
  </div>
- {/* Active indicator */}
- {hasActive&&(
- <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px 8px",borderTop:"1px solid rgba(124,58,237,0.12)",background:"rgba(124,58,237,0.04)"}}>
- <span style={{width:5,height:5,borderRadius:"50%",background:"#00E676",boxShadow:"0 0 5px rgba(34,197,94,0.7)",flexShrink:0}}/>
- <span style={{fontSize:10,fontWeight:700,color:"#00E676"}}>ACTIF</span>
- {t.end&&<span style={{fontSize:10,color:"#6B7280",flex:1}}>fin {new Date(t.end).toLocaleDateString("fr-CA",{day:"numeric",month:"short"})}</span>}
- <button onClick={()=>setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;})}
- style={{background:"transparent",border:"none",color:"#EF4444",cursor:"pointer",fontSize:11,fontFamily:"'Inter',sans-serif",fontWeight:600,padding:"0 4px"}}>
- Retirer
- </button>
+ {hasActive&&<span style={{display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:700,color:"#34d399",background:"rgba(52,211,153,.1)",padding:"3px 8px",borderRadius:20,flexShrink:0}}><span style={{width:6,height:6,borderRadius:3,background:"#34d399"}}/>Actif{t.end?" · "+new Date(t.end).toLocaleDateString("fr-CA",{day:"numeric",month:"short"}):""}</span>}
+ {isExpired&&<span style={{fontSize:11,fontWeight:700,color:"#f87171",background:"rgba(248,113,113,.1)",padding:"3px 8px",borderRadius:20,flexShrink:0}}>Expiré</span>}
+ {hasActive&&<button title="Retirer" onClick={()=>setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;})}
+ style={{width:30,height:30,borderRadius:9,border:"1px solid "+SV.line,background:"transparent",color:"#8b93a7",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Ic n="x" s={13}/></button>}
+ <button title="Ajouter un tournoi" onClick={()=>setModalTourney(game)}
+ style={{width:30,height:30,borderRadius:9,border:"none",background:"rgba(124,58,237,.15)",color:"#c4b5fd",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Ic n="plus" s={14} w={2.6}/></button>
  </div>
- )}
- {isExpired&&(
- <div style={{padding:"5px 14px 7px",borderTop:"1px solid #1F2937",fontSize:10,color:"#EF4444",fontWeight:600}}> EXPIRÉ</div>
- )}
  </div>
  );
  })}
- </div>
  </div>}
  </div>
 
- <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(167,139,250,.15),transparent)",margin:"8px 0"}}/>
-
- <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(167,139,250,.15),transparent)",margin:"8px 0"}}/>
-
+ <SuiviLabel>JOUEURS & LOGOS</SuiviLabel>
  {/* ── Edit roster ── */}
  <RosterEditor
   players={players} setPlayers={setPlayers} allPlayers={allPlayers}
@@ -11111,8 +11089,8 @@ export default function App(){
   savedTourneys={savedTourneys}
  />
 
- <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(96,165,250,.15),transparent)",margin:"8px 0"}}/>
 
+ <SuiviLabel>BOOKMAKERS & MISES</SuiviLabel>
  {/* ── Bookmakers ── */}
  <BookmarkersSection
   bookmakers={bookmakers} setBookmakers={setBookmakers}
@@ -11121,7 +11099,6 @@ export default function App(){
   hiddenBKs={hiddenBKs} toggleHideBK={toggleHideBK}
  />
 
- <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(34,197,94,.15),transparent)",margin:"8px 0"}}/>
 
  {/* ── Palier bankroll ── */}
  {(()=>{ const PALIERS=[2500,5000,7500,10000,12500,15000,20000,25000,30000];
@@ -11129,28 +11106,31 @@ export default function App(){
   const isAuto=!manualTier;
   const activeTier=manualTier||autoTier;
   return(
-   <div style={{background:"rgba(10,12,28,.98)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"14px 16px",marginBottom:8}}>
-    <div style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>Palier actif</div>
-    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:isAuto?0:10}}>
-     {PALIERS.map(p=>(
-      <button key={p} onClick={()=>{setManualTier(p===activeTier&&!isAuto?null:p);localStorage.setItem("v7_manual_tier",String(p));}}
-       style={{padding:"5px 10px",borderRadius:20,border:"1.5px solid "+(p===activeTier?"#22C55E":"#1F2937"),background:p===activeTier?"rgba(34,197,94,.12)":"transparent",color:p===activeTier?"#22C55E":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-       {(p/1000).toFixed(p%1000===0?0:1)}k
-      </button>
-     ))}
-    </div>
-    {!isAuto&&(
-     <button onClick={()=>{setManualTier(null);localStorage.removeItem("v7_manual_tier");}}
-      style={{width:"100%",padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif",marginTop:8}}>
-      ↺ Repasser en automatique (palier actuel : {autoTier.toFixed(0)}$)
+   <div style={{marginBottom:8}}>
+    <SuiviHead n="target" color="#34d399" title="Palier bankroll" flat
+     sub={(isAuto?"Automatique":"Manuel")+" · 1u = "+(activeTier*0.01).toFixed(0)+"$"}
+     right={<span style={{fontSize:17,fontWeight:800,color:"#eef1f7",letterSpacing:-.3}}>{activeTier.toLocaleString("fr-FR")}$</span>}/>
+    <div style={SV_BODY}>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6}}>
+      {PALIERS.map(p=>{const on=p===activeTier;return(
+       <button key={p} onClick={()=>{setManualTier(on&&!isAuto?null:p);}}
+        style={{height:40,borderRadius:11,border:"1px solid "+(on?"rgba(52,211,153,.55)":SV.line),background:on?"rgba(52,211,153,.12)":"rgba(255,255,255,.02)",color:on?"#34d399":"#aab1c2",fontSize:14,fontWeight:on?800:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+        {(p/1000).toFixed(p%1000===0?0:1)}k
+       </button>);})}
+     </div>
+     <button onClick={()=>{setManualTier(null);}} disabled={isAuto}
+      style={{width:"100%",marginTop:10,padding:"10px",background:"transparent",border:"1px solid "+SV.line,borderRadius:11,color:isAuto?"#4b5366":"#aab1c2",fontSize:12,fontWeight:600,cursor:isAuto?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
+      {isAuto?"Mode automatique activé ("+autoTier.toLocaleString("fr-FR")+"$)":"↺ Repasser en automatique ("+autoTier.toLocaleString("fr-FR")+"$)"}
      </button>
-    )}
+    </div>
    </div>
   );
  })()}
 
 
- <div style={{height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)",margin:"8px 0"}}/>
+ <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>setQuickUnits(su)}/>
+
+ <SuiviLabel>OUTILS</SuiviLabel>
  <CreateSection
   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
   bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
@@ -11158,35 +11138,13 @@ export default function App(){
   customClubs={customClubs} setCustomClubs={setCustomClubs}
   showToast={showToast}
  />
- {/* ── Multiplicateurs d unités ── */}
 
-<QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>{setQuickUnits(su);localStorage.setItem("v7_quick_units",JSON.stringify(su));}}/>
 
- <div style={{marginTop:20}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
- <div style={{display:"flex",alignItems:"center",gap:8}}>
- <span style={{fontSize:15}}></span>
- <div>
-
-<div style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Corbeille</div>
- <div style={{fontSize:10,color:"#6B7280"}}>{deletedBets.length} paris supprimés récemment</div>
- </div>
- </div>
- <div style={{display:"flex",gap:6}}>
- {deletedBets.length>0&&(
- <button onClick={()=>setDeletedBets([])}
- style={{fontSize:11,color:"#EF4444",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
- Vider
- </button>
- )}
- <button onClick={()=>setShowCorbeille(v=>!v)}
- style={{fontSize:11,color:showCorbeille?"#A78BFA":"#9CA3AF",background:showCorbeille?"rgba(124,58,237,0.1)":"transparent",border:"1px solid "+(showCorbeille?"#7C3AED":"#1F2937"),borderRadius:7,padding:"5px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
- {showCorbeille?" Masquer":" Voir"}
- </button>
- </div>
- </div>
+ <div style={{marginBottom:8}}>
+ <SuiviHead n="trash" color="#f87171" title="Corbeille" sub={deletedBets.length+" pari(s) supprimé(s) récemment"} open={showCorbeille} onClick={()=>setShowCorbeille(v=>!v)}
+  right={deletedBets.length>0?<span role="button" onClick={e=>{e.stopPropagation();setDeletedBets([]);}} style={{fontSize:12,color:"#f87171",fontWeight:600,padding:"4px 8px"}}>Vider</span>:null}/>
  {showCorbeille&&(
- <div style={{display:"flex",flexDirection:"column",gap:6}}>
+ <div style={{...SV_BODY,display:"flex",flexDirection:"column",gap:6}}>
  {deletedBets.length===0&&(
  <div style={{textAlign:"center",color:"#4B5563",fontSize:12,padding:"16px 0"}}>Aucun pari supprimé récemment</div>
  )}
@@ -11306,7 +11264,8 @@ export default function App(){
  {/* BOTTOM NAV */}
  {(()=>{
  return(
- <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.06)",display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 4px 14px",zIndex:50,backdropFilter:"blur(20px)",boxShadow:"0 -4px 24px rgba(0,0,0,.4)"}}>
+ <div style={{position:"fixed",bottom:0,left:0,right:0,background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.06)",zIndex:50,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",boxShadow:"0 -4px 24px rgba(0,0,0,.4)",padding:"8px 4px calc(14px + env(safe-area-inset-bottom))"}}>
+ <div style={{maxWidth:500,margin:"0 auto",display:"flex",justifyContent:"space-around",alignItems:"center"}}>
  {(()=>{
  const navItems=NAV.filter(n=>n.id!=="add");
  const mid=Math.floor(navItems.length/2);
@@ -11329,6 +11288,7 @@ export default function App(){
  });
  return items;
  })()}
+ </div>
  </div>
  );
  })()}
@@ -11639,7 +11599,7 @@ export default function App(){
  style={{width:48,height:48,borderRadius:12,border:"2px solid "+(isOn?"#A78BFA":alreadySplit?"rgba(251,191,36,0.4)":"#1F2937"),background:isOn?"rgba(124,58,237,0.15)":alreadySplit?"rgba(251,191,36,0.06)":"rgba(255,255,255,0.03)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",boxShadow:isOn?"0 0 12px rgba(124,58,237,0.3)":"none"}}>
  {logo?(<img src={logo} alt={bk} style={{width:30,height:30,borderRadius:7,objectFit:"cover"}}/>):(<span style={{fontSize:11,fontWeight:700,color:isOn?"#A78BFA":alreadySplit?"#F59E0B":"#6B7280"}}>{bk.slice(0,3)}</span>)}
  </button>
- {alreadySplit&&<div style={{position:"absolute",top:-3,right:-3,background:"#F59E0B",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}></span></div>}
+ {alreadySplit&&<div style={{position:"absolute",top:-3,right:-3,background:"#F59E0B",borderRadius:"50%",width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #0B1220"}}><Ic n="check" s={7} c="#000" w={4}/></div>}
  {isOn&&<div style={{position:"absolute",top:-3,right:-3,background:"#A78BFA",borderRadius:"50%",width:12,height:12,border:"2px solid #0B1220"}}/>}
  </div>
  );
@@ -11727,7 +11687,7 @@ export default function App(){
  <div className="moverlay" onClick={()=>{setSupaModal(false);setSupaError("");}}>
  <div className="modal" onClick={e=>e.stopPropagation()}>
  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
- <span style={{fontSize:22}}></span>
+ <span style={{fontSize:22}}><Ic n="cloud" s={22} c="#A78BFA"/></span>
  <div>
  <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>Cloud Sync</div>
  <div style={{fontSize:11,color:"#6B7280"}}>Sync automatique entre tous tes appareils</div>
@@ -12046,18 +12006,10 @@ function PPReferenceTable(){
  var col=gameColors[game]||"#c4b5fd";
 
  return(
- <div style={{margin:"0 0 16px",padding:"0 16px"}}>
- <button onClick={function(){setOpen(function(v){return !v;});}}
- style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer"}}>
- <div style={{display:"flex",alignItems:"center",gap:8}}>
- <img src={_B64_PP_LOGO_B64} style={{width:18,height:18,objectFit:"contain",borderRadius:4}}/>
- <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>Table de Référence PP</span>
- <span style={{background:"rgba(124,58,237,.12)",color:"#a78bfa",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:6}}>Map 1+2 → Map 3</span>
- </div>
- <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}></span>
- </button>
+ <div style={{margin:"0 0 16px"}}>
+ <SuiviHead img={_B64_PP_LOGO_B64} color="#a78bfa" title="Table de référence PP" sub="Map 1+2 → Map 3" open={open} onClick={function(){setOpen(function(v){return !v;});}}/>
 
- {open&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"12px"}}>
+ {open&&<div style={SV_BODY}>
  {/* Game selector */}
  <div style={{display:"flex",gap:5,marginBottom:12}}>
  {games.map(function(g){
