@@ -3073,6 +3073,9 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                 </div>
                ):(
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                <button onClick={e=>{e.stopPropagation();const lg=(Object.values(allPlayers||players||{}).find(x=>x&&x.team===team&&x.game===rosterGame&&x.league)||{}).league||rosterLeague||"";
+                  try{window.dispatchEvent(new CustomEvent("emeieks-new-player",{detail:{name:"",game:rosterGame,team,league:lg,role:""}}));}catch(err){}}}
+                  title={"Créer un joueur dans "+team} style={{padding:"5px 10px",background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#4ade80",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>+ Créer un joueur</button>
                 <button onClick={e=>{e.stopPropagation();quickTeamLogo(team,rosterGame);}} title="Coller un logo (remplace l'ancien)" style={{padding:"5px 10px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Coller logo</button>
                 <button onClick={e=>{e.stopPropagation();setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
                  {logoUrl?"✏️ Modifier logo":"+ Ajouter logo"}
@@ -5111,7 +5114,17 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
    if(lg&&/^https?:/.test(lg)&&!lg.includes("/storage/v1/object/public/")){try{lg=await supaUploadPhotoFromUrl(lg,"teams");}catch(e){}}
    const row={name:f.name.trim(),game:f.game,team:f.team.trim(),role:f.role,league:f.league.trim(),photo_url:ph||null,avatar_url:ph||null,team_logo_url:f.team.trim()?(lg||null):null};
    let saved=null;
-   if(p.id){const r=await cloudDb("players?id=eq."+encodeURIComponent(p.id),{method:"PATCH",body:row,prefer:"return=representation"});saved=r&&r[0];}
+   // Pas d'id connu (joueur venu d'un pari / ancienne liste) : on cherche la ligne existante avant d'en créer une
+   let pid=p.id;
+   if(!pid){
+    const names=[...new Set([p.name,name,row.name].filter(Boolean))];
+    for(const nm of names){
+     const ex=await cloudDb("players?select=id,game&name=ilike."+encodeURIComponent(nm.replace(/[%_*]/g,"")));
+     const hit=(ex||[]).find(x=>x.game===row.game)||(ex||[])[0];
+     if(hit){pid=hit.id;break;}
+    }
+   }
+   if(pid){const r=await cloudDb("players?id=eq."+encodeURIComponent(pid),{method:"PATCH",body:row,prefer:"return=representation"});saved=r&&r[0];}
    else{const r=await cloudDb("players",{method:"POST",body:row,prefer:"return=representation"});saved=r&&r[0];}
    if(lg&&row.team){await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body:{team_logo_url:lg}}).catch(()=>{});}
    showToast&&showToast(capName(row.name)+" enregistré","#00E676");
@@ -5250,6 +5263,7 @@ export default function App(){
   if(logo&&np.team)setTeamLogos(prev=>({...prev,[np.team+"__"+np.game]:logo}));
   return newKey;
  };
+ useEffect(()=>{const h=e=>{setPform({name:"",game:"LoL",league:"",role:"",team:"",...(e.detail||{})});setModalPlayer(true);};window.addEventListener("emeieks-new-player",h);return()=>window.removeEventListener("emeieks-new-player",h);},[]);
  useEffect(()=>{const h=e=>setPlayerSheet(e.detail||null);window.addEventListener("emeieks-open-player",h);return()=>window.removeEventListener("emeieks-open-player",h);},[]);
  const [viewPending,setViewPending]=useState(false);
  const setView=useCallback(v=>{
