@@ -5082,7 +5082,7 @@ function PlayerSheet({name,player,bets,teamLogos,allPlayers={},activeTourneys={}
    <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",boxShadow:"0 0 60px rgba(0,0,0,.6)"}}>
 
     {/* ── BANNIÈRE ── */}
-    <PlayerBanner name={displayName} photo={photo} role={p.role} game={game} team={p.team} league={p.league} logo={teamLogo}>
+    <PlayerBanner name={displayName} photo={photo} role={p.role} game={game} team={p.team} league={p.league} logo={teamLogo} profit={all.n?all.profit:null}>
      <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",zIndex:3}}>
       <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
       <button onClick={()=>setEdit(true)} aria-label="Modifier le joueur" title="Modifier club, position, photos" style={{height:36,padding:"0 14px",borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:700,fontFamily:"Inter,sans-serif"}}>
@@ -5248,7 +5248,7 @@ function useLogoColor(src,fallback){
 }
 
 // ── Bannière joueur (fiche + éditeur) ──
-function PlayerBanner({name,photo,role,game,team,league,logo,children}){
+function PlayerBanner({name,photo,role,game,team,league,logo,children,profit,profitSub}){
  const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
  const col=useLogoColor(logo,acc);
  return(
@@ -5270,7 +5270,13 @@ function PlayerBanner({name,photo,role,game,team,league,logo,children}){
       {league&&<><span style={{color:"#5b6478"}}>•</span><span>{league}</span></>}
      </div>
     </div>
-    {logo&&<img key={logo} src={logo} alt={team||""} style={{width:"clamp(48px,14vw,92px)",height:"clamp(48px,14vw,92px)",objectFit:"contain",flexShrink:0,marginBottom:22,filter:"drop-shadow(0 4px 14px rgba(0,0,0,.5))"}}/>}
+    {(logo||profit!=null)&&<div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",justifyContent:"space-between",alignSelf:"stretch",flexShrink:0,paddingBottom:20,gap:18}}>
+     {logo?<img key={logo} src={logo} alt={team||""} style={{width:"clamp(48px,14vw,92px)",height:"clamp(48px,14vw,92px)",objectFit:"contain",marginTop:0,filter:"drop-shadow(0 4px 14px rgba(0,0,0,.5))"}}/>:<span/>}
+     {profit!=null&&<div style={{textAlign:"right",lineHeight:1}}>
+      <div style={{fontSize:"clamp(26px,7vw,42px)",fontWeight:900,letterSpacing:-1,color:profit>0?"#00E676":profit<0?"#f87171":"#cbd5e1",textShadow:"0 2px 14px rgba(0,0,0,.6)"}}>{(profit>=0?"+":"")+profit.toFixed(0)+"$"}</div>
+      {profitSub&&<div style={{fontSize:11.5,fontWeight:700,color:"#9ca3af",marginTop:5,letterSpacing:.3}}>{profitSub}</div>}
+     </div>}
+    </div>}
    </div>
   </div>
  );
