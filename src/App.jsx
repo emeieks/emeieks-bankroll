@@ -76,20 +76,19 @@ async function cloudDb(path,opts={}){
 async function supaPullBets() {
  const SELECT="id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge";
  const limit=1000;
- let all=[];
- let offset=0;
- while(true){
-  const batch=await supaFetch(`/rest/v1/bets?select=${SELECT}&order=datetime.desc&limit=${limit}&offset=${offset}`);
-  if(!batch||batch.length===0)break;
-  const splits_parsed=batch.map(b=>{
-   const splits=b.splits?JSON.parse(b.splits):undefined;
-   return normalizeBet({...b,splits,ppMapType:b.pp_map_type||null,ppLine:b.pp_line||null,ppEdge:b.pp_edge!=null?b.pp_edge:null});
-  });
-  all=[...all,...splits_parsed];
-  if(batch.length<limit)break;
-  offset+=limit;
+ const page=off=>supaFetch(`/rest/v1/bets?select=${SELECT}&order=id.desc&limit=${limit}&offset=${off}`);
+ const conv=batch=>(batch||[]).map(b=>{
+  let splits;try{splits=b.splits?JSON.parse(b.splits):undefined;}catch(e){splits=undefined;}
+  return normalizeBet({...b,splits,ppMapType:b.pp_map_type||null,ppLine:b.pp_line||null,ppEdge:b.pp_edge!=null?b.pp_edge:null});
+ });
+ // 5 pages en parallèle (jusqu'à 5000 paris d'un coup), puis la suite si besoin
+ const first=await Promise.all([0,1,2,3,4].map(i=>page(i*limit)));
+ let all=[];first.forEach(p=>{all=all.concat(conv(p));});
+ let off=5*limit;
+ if(first[4]&&first[4].length===limit){
+  while(true){const p=await page(off);all=all.concat(conv(p));if(!p||p.length<limit)break;off+=limit;}
  }
- return all;
+ return all.sort((x,y)=>String(y.datetime||"").localeCompare(String(x.datetime||"")));
 }
 
 async function supaPushBets(bets) {
@@ -970,7 +969,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  {freq>0&&<span style={{fontSize:9,color:"#A78BFA",background:"rgba(124,58,237,0.1)",padding:"1px 5px",borderRadius:4,fontWeight:700,flexShrink:0}}>{freq}p</span>}
  <GameLogo game={p.game} size={16}/>
  <div style={{flex:1}}>
- <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB"}}>{key}</span>
+ <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB"}}>{capName(p.name||key)}</span>
  <span style={{fontSize:11,color:"#9CA3AF",marginLeft:7}}>{p.team}</span>
  </div>
  {(()=>{
@@ -1424,7 +1423,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  <div style={{display:"flex",alignItems:"center",gap:11}}>
 
  {/* Logo sport — légèrement plus grand */}
- <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}>
+ <div title="Voir le profil du joueur" onClick={e=>{e.stopPropagation();openPlayerSheet(bet.player);}} style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",cursor:"pointer"}}>
  <GameLogo game={bet.game} size={37}/>
  </div>
 
@@ -1432,7 +1431,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  <div style={{flex:1,minWidth:0}}>
  {/* L1 : Joueur — Kills — Map */}
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"wrap"}}>
- <span onClick={e=>{e.stopPropagation();openPlayerSheet(bet.player);}} style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0,cursor:"pointer"}}>{bet.player}</span>
+ <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
  {bet.game==="LoL"&&bet.role&&<RoleLogo role={bet.role} size={14}/>}
  {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#00E676",background:"rgba(74,222,128,.1)",border:"1px solid rgba(74,222,128,.2)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
  {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
@@ -2317,7 +2316,7 @@ const SpotsTab=memo(function SpotsTab({settledFiltered}){
 };
 
  // ── SECTION ──
- const SpotSection=({title,rows,showTop=3})=>{
+ const SpotSection=({title,rows,showTop=3,isPlayer})=>{
   if(!rows||rows.length===0)return null;
   const best=rows.slice(0,showTop);
   const worst=[...rows].reverse().slice(0,showTop).filter(r=>r.profit<0||rows.length<=showTop);
@@ -2327,15 +2326,15 @@ const SpotsTab=memo(function SpotsTab({settledFiltered}){
    <div style={{marginBottom:18}}>
     <div style={{fontSize:13,fontWeight:800,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8,paddingLeft:2}}>{title}</div>
     <div style={{display:"flex",flexDirection:"column",gap:5}}>
-     {best.map(r=><SpotRow key={r.key} r={r} type="best"/>)}
+     {best.map(r=><SpotRow key={r.key} r={r} type="best" isPlayer={isPlayer}/>)}
      {filtered.length>0&&<div style={{height:1,background:"rgba(239,68,68,.15)",margin:"3px 0"}}/>}
-     {filtered.map(r=><SpotRow key={r.key+"_w"} r={r} type="worst"/>)}
+     {filtered.map(r=><SpotRow key={r.key+"_w"} r={r} type="worst" isPlayer={isPlayer}/>)}
     </div>
    </div>
   );
  };
 
- const SpotRow=({r,type})=>{
+ const SpotRow=({r,type,isPlayer})=>{
   const isBest=type==="best";
   const isLoss=r.profit<0;
   const bg=isLoss?"rgba(239,68,68,.07)":"rgba(34,197,94,.06)";
@@ -2347,7 +2346,7 @@ const SpotsTab=memo(function SpotsTab({settledFiltered}){
     style={{width:"100%",background:bg,border:"1px solid "+border,borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-      <span style={{fontSize:13,fontWeight:800,color:"#E5E7EB"}}>{r.key}</span>
+      <span onClick={isPlayer?(e=>{e.stopPropagation();openPlayerSheet(r.key);}):undefined} style={{fontSize:13,fontWeight:800,color:"#E5E7EB",cursor:isPlayer?"pointer":"inherit",textDecoration:isPlayer?"underline dotted rgba(167,139,250,.6)":"none",textUnderlineOffset:3}}>{isPlayer?capName(r.key):r.key}</span>
       <span style={{fontSize:10,color:"#4a5a6e"}}>{r.count} paris</span>
      </div>
      <div style={{display:"flex",gap:10}}>
@@ -2398,7 +2397,7 @@ const SpotsTab=memo(function SpotsTab({settledFiltered}){
     ))}
    </div>
    <div style={{fontSize:9,color:"#4a5a6e",marginBottom:12,textAlign:"center"}}>Min {MIN_BETS} paris · Vert = profitable · Rouge = à éviter · Clique pour voir les paris</div>
-   <SpotSection title="Par joueur" rows={spots.player} showTop={3}/>
+   <SpotSection title="Par joueur" rows={spots.player} showTop={3} isPlayer/>
    <SpotSection title="Par stat" rows={spots.line} showTop={3}/>
    <SpotSection title="Over vs Under" rows={spots.overUnder} showTop={2}/>
    {(game==="CS2"||game==="Valorant")&&<SpotSection title="Headshot vs Kills" rows={spots.hs} showTop={2}/>}
@@ -2582,6 +2581,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
  const [teamSuggestions,setTeamSuggestions]=useState([]);
 
  const openEdit=p=>{
+  openPlayerEditor(p.name);return;
   setEditP(p);
   setEditPForm({name:p.name,game:p.game||"CS2",league:p.league||"",role:p.role||"",team:p.team||""});
   setEditPPhotoUrl(p.photo_url||p.avatar_url||"");
@@ -4692,6 +4692,7 @@ try{applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));}c
 // ════════════════════════════════════════════════════════════
 //  FICHE JOUEUR (style NHL) — s'ouvre en touchant un nom de joueur
 // ════════════════════════════════════════════════════════════
+const capName=v=>{const x=String(v||"");return x?x.charAt(0).toUpperCase()+x.slice(1):x;};
 function openPlayerSheet(name){try{window.dispatchEvent(new CustomEvent("emeieks-open-player",{detail:name}));}catch(e){}}
 
 function PSStat({label,value,color,sub}){
@@ -4713,8 +4714,9 @@ function psAgg(list){
  return{n:s.length,won,lost:s.length-won,profit,staked,wr:s.length?won/s.length*100:0,roi:staked?profit/staked*100:0,odds,avgStake:s.length?staked/s.length:0};
 }
 
-function PlayerSheet({name,player,bets,teamLogos,onClose,onSaved,showToast}){
+function PlayerSheet({name,player,bets,teamLogos,allPlayers={},activeTourneys={},onClose,onSaved,showToast}){
  const [edit,setEdit]=useState(false);
+ const [period,setPeriod]=useState("all");
  const key=(name||"").toLowerCase().trim();
  const p=player||{name};
  const game=p.game||(bets.find(b=>(b.player||"").toLowerCase().trim()===key)||{}).game||"";
@@ -4777,56 +4779,79 @@ function PlayerSheet({name,player,bets,teamLogos,onClose,onSaved,showToast}){
    <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",boxShadow:"0 0 60px rgba(0,0,0,.6)"}}>
 
     {/* ── BANNIÈRE ── */}
-    <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(120% 140% at 85% 20%,"+acc+"33 0%,rgba(11,18,32,0) 55%),linear-gradient(180deg,#0e1a33 0%,#0a1224 100%)",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
-     {/* Nom d'équipe géant en filigrane */}
-     {p.team&&<div style={{position:"absolute",left:"30%",top:"50%",transform:"translateY(-50%)",fontSize:130,fontWeight:900,letterSpacing:-4,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+acc+"40",pointerEvents:"none",textTransform:"uppercase",lineHeight:1}}>{p.team}</div>}
-     {/* Boutons */}
+    <PlayerBanner name={displayName} photo={photo} role={p.role} game={game} team={p.team} league={p.league} logo={teamLogo}>
      <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",zIndex:3}}>
       <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
-      <button onClick={()=>setEdit(true)} aria-label="Modifier le joueur" title="Modifier club, position, photos" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <button onClick={()=>setEdit(true)} aria-label="Modifier le joueur" title="Modifier club, position, photos" style={{height:36,padding:"0 14px",borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:700,fontFamily:"Inter,sans-serif"}}>
+       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+       Modifier
       </button>
      </div>
-     <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",gap:14,padding:"56px 18px 0",minHeight:200}}>
-      {/* Photo */}
-      <div style={{width:150,height:170,flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-       {photo
-        ?<img src={photo} alt={displayName} style={{maxWidth:"100%",maxHeight:170,objectFit:"contain",objectPosition:"50% 100%",filter:"drop-shadow(0 6px 18px rgba(0,0,0,.5))"}}/>
-        :<div style={{width:110,height:110,marginBottom:24,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:44,fontWeight:900,color:"#fff"}}>{(displayName||"?").charAt(0).toUpperCase()}</div>}
-      </div>
-      {/* Identité */}
-      <div style={{flex:1,minWidth:0,paddingBottom:20}}>
-       {p.role&&<span style={{display:"inline-block",padding:"3px 9px",borderRadius:6,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.14)",fontSize:12,fontWeight:700,color:"#fff",marginBottom:8}}>{p.role}</span>}
-       <div style={{fontSize:40,fontWeight:900,color:"#fff",letterSpacing:-1.2,lineHeight:1,textTransform:"capitalize",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{displayName}</div>
-       <div style={{display:"flex",alignItems:"center",gap:7,marginTop:10,flexWrap:"wrap",fontSize:14,color:"#cbd5e1",fontWeight:600}}>
-        {game&&<><GameLogo game={game} size={18}/><span style={{color:acc}}>{game}</span></>}
-        {p.team&&<><span style={{color:"#5b6478"}}>•</span><span>{p.team}</span></>}
-        {p.league&&<><span style={{color:"#5b6478"}}>•</span><span>{p.league}</span></>}
-       </div>
-      </div>
-      {/* Logo équipe */}
-      {teamLogo&&<img src={teamLogo} alt={p.team||""} style={{width:92,height:92,objectFit:"contain",flexShrink:0,marginBottom:22,filter:"drop-shadow(0 4px 14px rgba(0,0,0,.5))"}}/>}
-     </div>
-    </div>
+    </PlayerBanner>
 
     {/* ── STATS ── */}
     <div style={{padding:"14px 14px 30px"}}>
      {!player&&<div style={{fontSize:12,color:"#fbbf24",background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.2)",borderRadius:10,padding:"8px 12px",marginBottom:10}}>Joueur absent de ta liste : l'engrenage permet de le créer.</div>}
-     {[["Depuis le début",all],["30 derniers jours",last30]].map(([t,s])=>(
-      <div key={t} style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"14px 12px",marginBottom:10}}>
-       <div style={{fontSize:14,fontWeight:700,color:"#e5e7eb",margin:"0 4px 8px"}}>{t}</div>
-       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(96px,1fr))",rowGap:14}}>
-        <PSStat label="Paris" value={s.n} sub={s.won+"G · "+s.lost+"P"}/>
-        <PSStat label="Réussite" value={s.n?s.wr.toFixed(0)+"%":"–"} color={s.n?(s.wr>=55?"#00E676":s.wr<45?"#f87171":undefined):undefined}/>
-        <PSStat label="ROI" value={s.n?(s.roi>=0?"+":"")+s.roi.toFixed(1)+"%":"–"} color={s.n?pc(s.roi):undefined}/>
-        <PSStat label="Profit" value={s.n?money(s.profit):"–"} color={s.n?pc(s.profit):undefined}/>
-        <PSStat label="Cote moy." value={s.n?s.odds.toFixed(2):"–"}/>
-        <PSStat label="Mise moy." value={s.n?s.avgStake.toFixed(0)+"$":"–"}/>
+     {(()=>{
+      const tourOf=b=>b.tournament||b.league||"";
+      const actT=activeTourneys[game]&&activeTourneys[game].name&&!(activeTourneys[game].end&&new Date(activeTourneys[game].end)<new Date())?activeTourneys[game].name:"";
+      const lastT=(mine.find(b=>tourOf(b))||{});
+      const curT=actT||tourOf(lastT);
+      const selT=period.startsWith("t:")?period.slice(2):"";
+      const opts=[["all","Tout"],["30","30 jours"]].concat(curT?[["t:"+curT,curT]]:[]).concat(selT&&selT!==curT?[["t:"+selT,selT]]:[]);
+      const pick=period==="30"?mine.filter(b=>String(b.datetime||"").slice(0,10)>=cutoff):selT?mine.filter(b=>(tourOf(b)||"Hors tournoi")===selT):mine;
+      const s=psAgg(pick);
+      const verdict=!s.n?"Aucun pari réglé sur cette période.":s.profit>=0?"Tu es gagnant sur "+capName(displayName)+" : "+money(s.profit)+" en "+s.n+" paris.":"Tu perds de l'argent sur "+capName(displayName)+" : "+money(s.profit)+" en "+s.n+" paris.";
+      return(<>
+       <div style={{display:"flex",gap:6,marginBottom:10,overflowX:"auto"}}>
+        {opts.map(([k,l])=>{const on=period===k;return(
+         <button key={k} onClick={()=>setPeriod(k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:20,border:"1px solid "+(on?"rgba(167,139,250,.5)":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#e9e3ff":"#8b93a7",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+          {k.startsWith("t:")&&<Ic n="trophy" s={13} c={on?"#fbbf24":"#8b93a7"}/>}{l}
+         </button>);})}
        </div>
-      </div>
-     ))}
+       <div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"14px 12px",marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,margin:"0 4px 12px",fontSize:13,color:s.n?pc(s.profit):"#8b93a7",fontWeight:600}}>
+         <span style={{width:8,height:8,borderRadius:4,background:s.n?pc(s.profit):"#4b5366",flexShrink:0}}/>{verdict}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(96px,1fr))",rowGap:14}}>
+         <PSStat label="Paris" value={s.n} sub={s.won+" gagnés · "+s.lost+" perdus"}/>
+         <PSStat label="Réussite" value={s.n?s.wr.toFixed(0)+"%":"–"} color={s.n?(s.wr>=55?"#00E676":s.wr<45?"#f87171":undefined):undefined}/>
+         <PSStat label="Profit" value={s.n?money(s.profit):"–"} color={s.n?pc(s.profit):undefined}/>
+         <PSStat label="ROI" value={s.n?(s.roi>=0?"+":"")+s.roi.toFixed(1)+"%":"–"} color={s.n?pc(s.roi):undefined} sub="gain / mise"/>
+         <PSStat label="Cote moy." value={s.n?s.odds.toFixed(2):"–"}/>
+         <PSStat label="Mise moy." value={s.n?s.avgStake.toFixed(0)+"$":"–"}/>
+        </div>
+       </div>
+       {/* Tournois */}
+       {(()=>{
+        const g={};mine.forEach(b=>{const k=tourOf(b)||"Hors tournoi";(g[k]=g[k]||[]).push(b);});
+        const rows=Object.entries(g).map(([k,l])=>[k,psAgg(l),l]).filter(([,st])=>st.n>0).sort((x,y)=>(y[0]===curT)-(x[0]===curT)||String((y[2][0]||{}).datetime||"").localeCompare(String((x[2][0]||{}).datetime||"")));
+        if(!rows.length)return null;
+        return(
+         <div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,overflow:"hidden",marginBottom:10}}>
+          <div style={{padding:"12px 14px 4px",display:"flex",alignItems:"center",gap:8}}>
+           <Ic n="trophy" s={15} c="#fbbf24"/><span style={{fontSize:14,fontWeight:700,color:"#e5e7eb"}}>Par tournoi</span>
+          </div>
+          {rows.map(([k,st])=>{const cur=k===curT;const sel=selT===k;return(
+           <div key={k} onClick={()=>setPeriod(sel?"all":"t:"+k)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderTop:"1px solid rgba(255,255,255,.05)",background:sel?"rgba(124,58,237,.12)":cur?"rgba(251,191,36,.05)":"transparent",cursor:"pointer"}}>
+            <div style={{flex:1,minWidth:0}}>
+             <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:14,fontWeight:700,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{k}</span>
+              {cur&&actT&&<span style={{fontSize:10,fontWeight:800,color:"#34d399",background:"rgba(52,211,153,.12)",padding:"2px 6px",borderRadius:5,flexShrink:0}}>EN COURS</span>}
+             </div>
+             <div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>{st.n} paris · {st.won}G-{st.lost}P · {st.wr.toFixed(0)}% réussite</div>
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+             <div style={{fontSize:15,fontWeight:800,color:pc(st.profit)}}>{money(st.profit)}</div>
+             <div style={{fontSize:11,color:pc(st.roi),fontWeight:600}}>ROI {(st.roi>=0?"+":"")+st.roi.toFixed(0)}%</div>
+            </div>
+           </div>);})}
+         </div>);
+       })()}
+      </>);
+     })()}
      {pts.length>1&&<div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,padding:"12px 14px",marginBottom:10}}>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#8b93a7",fontWeight:600,marginBottom:6}}><span>Profit cumulé</span><span style={{color:pc(all.profit),fontWeight:800}}>{money(all.profit)}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:"#8b93a7",fontWeight:600,marginBottom:6}}><span>Évolution du profit (tous les paris)</span><span style={{color:pc(all.profit),fontWeight:800}}>{money(all.profit)}</span></div>
       <Spark/>
      </div>}
      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -4838,7 +4863,7 @@ function PlayerSheet({name,player,bets,teamLogos,onClose,onSaved,showToast}){
        </div>
       ))}
      </div>
-     <Table title="PAR LIGNE" groups={byLine}/>
+     <Table title="PAR LIGNE DE KILLS" groups={byLine}/>
      <Table title="PAR MAP" groups={byMap}/>
      {/* Derniers paris */}
      <div style={{background:"#0f1524",border:"1px solid rgba(255,255,255,.06)",borderRadius:16,overflow:"hidden"}}>
@@ -4860,37 +4885,120 @@ function PlayerSheet({name,player,bets,teamLogos,onClose,onSaved,showToast}){
     </div>
    </div>
 
-   {edit&&<PlayerEditSheet p={p} name={displayName} game={game} teamLogo={teamLogo} photo={photo} onClose={()=>setEdit(false)}
+   {edit&&<PlayerEditSheet p={p} name={displayName} game={game} teamLogo={teamLogo} photo={photo} teamLogos={teamLogos} allPlayers={allPlayers} onClose={()=>setEdit(false)}
      onSaved={(np,logo)=>{setEdit(false);onSaved&&onSaved(np,logo);}} showToast={showToast}/>}
   </div>
  );
 }
 
-function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast}){
+
+// ── Couleur dominante d'un logo (pour teinter la bannière) ──
+function useLogoColor(src,fallback){
+ const [c,setC]=useState(fallback);
+ useEffect(()=>{
+  let dead=false;
+  if(!src){setC(fallback);return;}
+  const img=new Image();img.crossOrigin="anonymous";
+  img.onload=()=>{
+   try{
+    const N=32,cv=document.createElement("canvas");cv.width=cv.height=N;
+    const x=cv.getContext("2d");x.drawImage(img,0,0,N,N);
+    const d=x.getImageData(0,0,N,N).data;const buckets={};
+    for(let i=0;i<d.length;i+=4){
+     const r=d[i],g=d[i+1],b=d[i+2],a=d[i+3];if(a<200)continue;
+     const mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx<50||mn>225)continue;
+     const sat=(mx-mn)/mx;if(sat<.3)continue;
+     const k=(r>>5)+","+(g>>5)+","+(b>>5);
+     const e=buckets[k]||(buckets[k]={n:0,r:0,g:0,b:0,s:0});e.n++;e.r+=r;e.g+=g;e.b+=b;e.s+=sat;
+    }
+    const best=Object.values(buckets).sort((p,q)=>(q.n*q.s/q.n*Math.sqrt(q.n))-(p.n*p.s/p.n*Math.sqrt(p.n)))[0];
+    if(!dead)setC(best?"#"+[best.r,best.g,best.b].map(v=>Math.round(v/best.n).toString(16).padStart(2,"0")).join(""):fallback);
+   }catch(e){if(!dead)setC(fallback);}
+  };
+  img.onerror=()=>{if(!dead)setC(fallback);};
+  img.src=src;
+  return()=>{dead=true;};
+ },[src,fallback]);
+ return c;
+}
+
+// ── Bannière joueur (fiche + éditeur) ──
+function PlayerBanner({name,photo,role,game,team,league,logo,children}){
+ const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
+ const col=useLogoColor(logo,acc);
+ return(
+  <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(120% 150% at 88% 30%,"+col+"55 0%,rgba(11,18,32,0) 58%),linear-gradient(180deg,#0d1830 0%,#09101f 100%)",borderBottom:"3px solid "+col,transition:"background .4s"}}>
+   {team&&<div style={{position:"absolute",left:"26%",top:"52%",transform:"translateY(-50%)",fontSize:140,fontWeight:900,letterSpacing:-4,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+col+"66",pointerEvents:"none",textTransform:"uppercase",lineHeight:1,transition:"all .4s"}}>{team}</div>}
+   {children}
+   <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",gap:12,padding:"58px 14px 0",minHeight:190,maxWidth:900,margin:"0 auto"}}>
+    <div style={{width:"clamp(92px,26vw,150px)",height:"clamp(120px,32vw,170px)",flexShrink:0,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+     {photo
+      ?<img key={photo} src={photo} alt={name} style={{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",objectPosition:"50% 100%",filter:"drop-shadow(0 6px 18px rgba(0,0,0,.5))"}}/>
+      :<div style={{width:"clamp(72px,20vw,110px)",height:"clamp(72px,20vw,110px)",marginBottom:24,borderRadius:"50%",background:"linear-gradient(135deg,"+col+",#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:44,fontWeight:900,color:"#fff"}}>{(name||"?").charAt(0).toUpperCase()}</div>}
+    </div>
+    <div style={{flex:1,minWidth:0,paddingBottom:20}}>
+     {role&&<span style={{display:"inline-block",padding:"3px 9px",borderRadius:6,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.16)",fontSize:12,fontWeight:700,color:"#fff",marginBottom:8}}>{role}</span>}
+     <div style={{fontSize:"clamp(26px,7.5vw,40px)",fontWeight:900,color:"#fff",letterSpacing:-1,lineHeight:1.05,overflowWrap:"anywhere"}}>{capName(name)||"Nouveau joueur"}</div>
+     <div style={{display:"flex",alignItems:"center",gap:7,marginTop:10,flexWrap:"wrap",fontSize:14,color:"#cbd5e1",fontWeight:600}}>
+      {game&&<><GameLogo game={game} size={18}/><span style={{color:acc}}>{game}</span></>}
+      <span style={{color:"#5b6478"}}>•</span><span>{team||"Agent libre"}</span>
+      {league&&<><span style={{color:"#5b6478"}}>•</span><span>{league}</span></>}
+     </div>
+    </div>
+    {logo&&<img key={logo} src={logo} alt={team||""} style={{width:"clamp(48px,14vw,92px)",height:"clamp(48px,14vw,92px)",objectFit:"contain",flexShrink:0,marginBottom:22,filter:"drop-shadow(0 4px 14px rgba(0,0,0,.5))"}}/>}
+   </div>
+  </div>
+ );
+}
+
+// ── Éditeur de joueur : aperçu en direct en haut, modifications en dessous ──
+function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast,teamLogos={},allPlayers={},onDelete}){
  const [f,setF]=useState({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
  const [busy,setBusy]=useState("");
+ const [clubQ,setClubQ]=useState("");
+ const [clubOpen,setClubOpen]=useState(false);
  const set=(k,v)=>setF(x=>({...x,[k]:v}));
  const roles=ROLES_BY_GAME[f.game]||[];
+ // Clubs connus pour ce jeu (avec leur logo)
+ const clubs=useMemo(()=>{
+  const m={};
+  Object.values(allPlayers).forEach(x=>{if(x&&x.team&&x.game===f.game){const k=x.team;if(!m[k])m[k]={name:k,logo:null,league:x.league||"",n:0};m[k].n++;if(!m[k].logo&&x.team_logo_url)m[k].logo=x.team_logo_url;}});
+  Object.entries(teamLogos).forEach(([k,v])=>{const i=k.lastIndexOf("__");if(i<1)return;const t=k.slice(0,i),g=k.slice(i+2);if(g!==f.game)return;if(!m[t])m[t]={name:t,logo:null,league:"",n:0};if(v)m[t].logo=v;});
+  return Object.values(m).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name));
+ },[allPlayers,teamLogos,f.game]);
+ const shownClubs=clubs.filter(c=>!clubQ||c.name.toLowerCase().includes(clubQ.toLowerCase())).slice(0,40);
+ const pickClub=c=>{setF(x=>({...x,team:c.name,logo:c.logo||"",league:x.league||c.league||""}));setClubOpen(false);setClubQ("");};
  const upload=async(file,folder,k)=>{
   if(!file)return;setBusy(k);
   try{const url=await supaUploadPhoto(file,folder);set(k,url);}catch(e){showToast&&showToast("Envoi impossible : "+((e&&e.message)||e),"#EF4444");}
   setBusy("");
  };
- const L={fontSize:12,fontWeight:700,color:"#8b93a7",margin:"14px 2px 6px",letterSpacing:.3};
+ const pasteImg=async(folder,k)=>{
+  try{
+   if(navigator.clipboard&&navigator.clipboard.read){
+    const items=await navigator.clipboard.read();
+    for(const it of items){const t=it.types.find(x=>x.startsWith("image/"));if(t){const blob=await it.getType(t);await upload(new File([blob],"image.png",{type:t}),folder,k);return;}}
+   }
+   const txt=await navigator.clipboard.readText();if(txt&&/^https?:|^data:image/.test(txt.trim())){set(k,txt.trim());return;}
+   showToast&&showToast("Aucune image dans le presse-papiers","#F59E0B");
+  }catch(e){showToast&&showToast("Collage impossible ici : utilise « Fichier »","#F59E0B");}
+ };
+ const C={background:"#0f1524",border:"1px solid rgba(255,255,255,.07)",borderRadius:16,padding:"14px",marginBottom:10};
+ const T={fontSize:14,fontWeight:700,color:"#eef1f7",marginBottom:10,display:"flex",alignItems:"center",gap:8};
+ const L={fontSize:12,fontWeight:700,color:"#8b93a7",margin:"12px 2px 6px"};
  const I={width:"100%",background:"rgba(8,14,28,.95)",border:"1px solid rgba(255,255,255,.1)",borderRadius:11,padding:"11px 12px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none"};
- const imgField=(k,label,folder,round)=>(
-  <div>
-   <div style={L}>{label}</div>
-   <div style={{display:"flex",gap:10,alignItems:"center"}}>
-    <div style={{width:56,height:56,borderRadius:round?28:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",overflow:"hidden",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-     {f[k]?<img src={f[k]} alt="" style={{width:"100%",height:"100%",objectFit:round?"cover":"contain"}}/>:<Ic n="plus" s={16} c="#5b6478"/>}
-    </div>
-    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6}}>
-     <input style={I} placeholder="Coller un lien d'image…" value={f[k]} onChange={e=>set(k,e.target.value.trim())}/>
-     <label style={{fontSize:12,fontWeight:700,color:"#c4b5fd",cursor:"pointer"}}>
-      {busy===k?"Envoi…":"Choisir une image sur l'appareil"}
-      <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>upload(e.target.files&&e.target.files[0],folder,k)}/>
-     </label>
+ const smallBtn={padding:"9px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.03)",color:"#cbd5e1",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap"};
+ const imgField=(k,folder,round)=>(
+  <div style={{display:"flex",gap:12,alignItems:"center"}}>
+   <div style={{width:64,height:64,borderRadius:round?32:14,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",overflow:"hidden",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+    {f[k]?<img src={f[k]} alt="" style={{width:"100%",height:"100%",objectFit:round?"cover":"contain",objectPosition:"50% 15%"}}/>:<Ic n="plus" s={18} c="#5b6478"/>}
+   </div>
+   <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:7}}>
+    <input style={I} placeholder="Lien de l'image (https://…)" value={f[k]} onChange={e=>set(k,e.target.value.trim())}/>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+     <label style={smallBtn}>{busy===k?"Envoi…":"Fichier"}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>upload(e.target.files&&e.target.files[0],folder,k)}/></label>
+     <button type="button" style={smallBtn} onClick={()=>pasteImg(folder,k)}>Coller</button>
+     {f[k]&&<button type="button" style={{...smallBtn,color:"#f87171"}} onClick={()=>set(k,"")}>Retirer</button>}
     </div>
    </div>
   </div>
@@ -4901,49 +5009,115 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
    let ph=f.photo, lg=f.logo;
    if(ph&&/^https?:/.test(ph)&&!ph.includes("/storage/v1/object/public/")){try{ph=await supaUploadPhotoFromUrl(ph,"players");}catch(e){}}
    if(lg&&/^https?:/.test(lg)&&!lg.includes("/storage/v1/object/public/")){try{lg=await supaUploadPhotoFromUrl(lg,"teams");}catch(e){}}
-   const row={name:f.name.trim(),game:f.game,team:f.team.trim(),role:f.role,league:f.league,photo_url:ph||null,avatar_url:ph||null,team_logo_url:lg||null};
+   const row={name:f.name.trim(),game:f.game,team:f.team.trim(),role:f.role,league:f.league.trim(),photo_url:ph||null,avatar_url:ph||null,team_logo_url:f.team.trim()?(lg||null):null};
    let saved=null;
    if(p.id){const r=await cloudDb("players?id=eq."+encodeURIComponent(p.id),{method:"PATCH",body:row,prefer:"return=representation"});saved=r&&r[0];}
    else{const r=await cloudDb("players",{method:"POST",body:row,prefer:"return=representation"});saved=r&&r[0];}
-   // Même logo pour tous les joueurs du club
    if(lg&&row.team){await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body:{team_logo_url:lg}}).catch(()=>{});}
-   showToast&&showToast(row.name+" mis à jour","#00E676");
-   onSaved({...p,...row,...(saved||{})},lg);
+   showToast&&showToast(capName(row.name)+" enregistré","#00E676");
+   onSaved({...p,...row,...(saved||{})},row.team?lg:null);
   }catch(e){showToast&&showToast("Erreur : "+((e&&e.message)||e).slice(0,80),"#EF4444");}
   setBusy("");
  };
+ const dirty=JSON.stringify(f)!==JSON.stringify({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
  return(
-  <div className="moverlay" style={{zIndex:460}} onClick={e=>{e.stopPropagation();onClose();}}>
-   <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:520}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-     <div style={{fontSize:18,fontWeight:800,color:"#f4f6fb"}}>Modifier {f.name}</div>
-     <button onClick={onClose} style={{width:32,height:32,borderRadius:16,border:"none",background:"rgba(255,255,255,.07)",color:"#9ca3af",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={14}/></button>
+  <div onClick={e=>{e.stopPropagation();onClose();}} style={{position:"fixed",inset:0,zIndex:470,background:"rgba(0,0,0,.75)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",overflowY:"auto",animation:"overlayIn .2s ease"}}>
+   <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",paddingBottom:96}}>
+    <PlayerBanner name={f.name} photo={f.photo} role={f.role} game={f.game} team={f.team} league={f.league} logo={f.logo}>
+     <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",alignItems:"center",zIndex:3}}>
+      <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
+      <span style={{fontSize:12,fontWeight:700,color:"#e9e3ff",background:"rgba(0,0,0,.4)",padding:"6px 12px",borderRadius:20}}>Aperçu en direct</span>
+     </div>
+    </PlayerBanner>
+
+    <div style={{padding:"14px 14px 0"}}>
+     {/* Identité */}
+     <div style={C}>
+      <div style={T}><Ic n="users" s={16} c="#a78bfa"/>Joueur</div>
+      <div style={{...L,marginTop:0}}>Pseudo</div>
+      <input style={I} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ex : ZywOo"/>
+      <div style={L}>Jeu</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+       {["CS2","LoL","Dota2","Valorant"].map(g=>{const on=f.game===g;const a=(GAME_CFG[g]||{}).accent||"#A78BFA";return(
+        <button key={g} onClick={()=>set("game",g)} style={{padding:"9px 4px",borderRadius:11,border:"1.5px solid "+(on?a:"rgba(255,255,255,.08)"),background:on?a+"1f":"transparent",color:on?a:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,fontFamily:"Inter,sans-serif"}}>
+         <GameLogo game={g} size={20}/>{g}</button>);})}
+      </div>
+      <div style={L}>Position</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+       {[...new Set([...roles,...(f.role&&!roles.includes(f.role)?[f.role]:[])])].map(r=>{const on=f.role===r;return(
+        <button key={r} onClick={()=>set("role",on?"":r)} style={{padding:"8px 13px",borderRadius:20,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#e9e3ff":"#9ca3af",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{r}</button>);})}
+      </div>
+      <div style={L}>Photo du joueur</div>
+      {imgField("photo","players",true)}
+     </div>
+
+     {/* Club */}
+     <div style={C}>
+      <div style={T}><Ic n="trophy" s={16} c="#fbbf24"/>Club</div>
+      <div style={{position:"relative"}}>
+       <button type="button" onClick={()=>setClubOpen(o=>!o)} style={{...I,display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left"}}>
+        {f.logo?<img src={f.logo} alt="" style={{width:26,height:26,objectFit:"contain"}}/>:<span style={{width:26,height:26,borderRadius:7,background:"rgba(255,255,255,.05)"}}/>}
+        <span style={{flex:1,fontWeight:700,color:f.team?"#eef1f7":"#8b93a7"}}>{f.team||"Agent libre"}</span>
+        <Ic n={clubOpen?"up":"down"} s={14} c="#8b93a7"/>
+       </button>
+       {clubOpen&&(
+        <div style={{marginTop:6,background:"#0b1120",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,overflow:"hidden"}}>
+         <div style={{padding:8,borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+          <input autoFocus style={{...I,padding:"9px 11px"}} placeholder={"Chercher un club "+f.game+"… ou taper un nouveau nom"} value={clubQ} onChange={e=>setClubQ(e.target.value)}/>
+         </div>
+         <div style={{maxHeight:260,overflowY:"auto"}}>
+          <button type="button" onClick={()=>{setF(x=>({...x,team:"",logo:""}));setClubOpen(false);}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",borderBottom:"1px solid rgba(255,255,255,.05)",background:"transparent",color:"#fbbf24",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+           <Ic n="ban" s={18} c="#fbbf24"/>Agent libre (sans club)
+          </button>
+          {clubQ.trim()&&!clubs.some(c=>c.name.toLowerCase()===clubQ.trim().toLowerCase())&&(
+           <button type="button" onClick={()=>pickClub({name:clubQ.trim(),logo:"",league:""})} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",borderBottom:"1px solid rgba(255,255,255,.05)",background:"rgba(124,58,237,.08)",color:"#c4b5fd",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+            <Ic n="plus" s={18} c="#c4b5fd"/>Nouveau club « {clubQ.trim()} »
+           </button>
+          )}
+          {shownClubs.map(c=>{const on=c.name===f.team;return(
+           <button type="button" key={c.name} onClick={()=>pickClub(c)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:"none",borderBottom:"1px solid rgba(255,255,255,.05)",background:on?"rgba(124,58,237,.12)":"transparent",color:"#e5e7eb",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+            {c.logo?<img src={c.logo} alt="" style={{width:24,height:24,objectFit:"contain"}}/>:<span style={{width:24,height:24,borderRadius:6,background:"rgba(255,255,255,.05)"}}/>}
+            <span style={{flex:1}}>{c.name}</span>
+            <span style={{fontSize:11,color:"#6b7489"}}>{c.league?c.league+" · ":""}{c.n} joueur(s)</span>
+            {on&&<Ic n="check" s={14} c="#a78bfa"/>}
+           </button>);})}
+          {shownClubs.length===0&&!clubQ&&<div style={{padding:12,fontSize:12,color:"#6b7489"}}>Aucun club enregistré pour {f.game}.</div>}
+         </div>
+        </div>
+       )}
+      </div>
+      <div style={L}>Ligue</div>
+      <input style={I} list="pe-leagues" placeholder="Ex : LCK, EMEA, Pacific, Europe…" value={f.league} onChange={e=>set("league",e.target.value)}/>
+      <datalist id="pe-leagues">{(LEAGUES_BY_GAME[f.game]||[]).map(l=><option key={l} value={l}/>)}</datalist>
+      {f.team&&<>
+       <div style={L}>Logo du club <span style={{fontWeight:500,color:"#6b7489"}}>· appliqué à tous les joueurs de {f.team}</span></div>
+       {imgField("logo","teams",false)}
+      </>}
+     </div>
+
+     {onDelete&&p.id&&(
+      <button onClick={()=>{if(window.confirm("Supprimer "+capName(f.name)+" de ta liste de joueurs ?"))onDelete(p);}}
+       style={{width:"100%",padding:"12px",borderRadius:12,border:"1px solid rgba(239,68,68,.25)",background:"rgba(239,68,68,.06)",color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+       <Ic n="trash" s={14}/>Supprimer ce joueur
+      </button>
+     )}
     </div>
-    <div style={L}>Nom</div>
-    <input style={I} value={f.name} onChange={e=>set("name",e.target.value)}/>
-    <div style={L}>Jeu</div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
-     {["CS2","LoL","Dota2","Valorant"].map(g=>{const on=f.game===g;const a=(GAME_CFG[g]||{}).accent||"#A78BFA";return(
-      <button key={g} onClick={()=>set("game",g)} style={{padding:"8px 4px",borderRadius:11,border:"1.5px solid "+(on?a:"rgba(255,255,255,.08)"),background:on?a+"1f":"transparent",color:on?a:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,fontFamily:"Inter,sans-serif"}}>
-       <GameLogo game={g} size={18}/>{g}</button>);})}
+
+    {/* Barre d'enregistrement */}
+    <div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:471,background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.07)",backdropFilter:"blur(14px)",WebkitBackdropFilter:"blur(14px)",padding:"12px 14px calc(12px + env(safe-area-inset-bottom))"}}>
+     <div style={{maxWidth:732,margin:"0 auto",display:"flex",gap:8}}>
+      <button onClick={onClose} style={{flex:1,padding:"14px",borderRadius:14,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button>
+      <button onClick={save} disabled={!!busy||!f.name.trim()||!dirty}
+       style={{flex:2,padding:"14px",borderRadius:14,border:"none",background:dirty?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.06)",color:dirty?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:dirty?"pointer":"default",fontFamily:"Inter,sans-serif",opacity:busy?.6:1}}>
+       {busy==="save"?"Enregistrement…":dirty?"Enregistrer les modifications":"Aucune modification"}
+      </button>
+     </div>
     </div>
-    <div style={L}>Club</div>
-    <input style={I} placeholder="Ex : Team Vitality (vide = agent libre)" value={f.team} onChange={e=>set("team",e.target.value)}/>
-    <div style={L}>Position</div>
-    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-     {[...new Set([...roles,...(f.role&&!roles.includes(f.role)?[f.role]:[])])].map(r=>{const on=f.role===r;return(
-      <button key={r} onClick={()=>set("role",on?"":r)} style={{padding:"7px 12px",borderRadius:20,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{r}</button>);})}
-    </div>
-    {imgField("photo","Photo du joueur","players",true)}
-    {imgField("logo","Logo du club","teams",false)}
-    <button onClick={save} disabled={!!busy||!f.name.trim()}
-     style={{width:"100%",marginTop:20,padding:"14px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:busy?.6:1}}>
-     {busy==="save"?"Enregistrement…":"Enregistrer"}
-    </button>
    </div>
   </div>
  );
 }
+function openPlayerEditor(name){try{window.dispatchEvent(new CustomEvent("emeieks-edit-player",{detail:name}));}catch(e){}}
 
 export default function App(){
  // Register Service Worker for image caching
@@ -4965,6 +5139,17 @@ export default function App(){
  const [lockedStatus,setLockedStatus]=useState(null);
  const [view,setViewRaw]=useState("home");
  const [playerSheet,setPlayerSheet]=useState(null);
+ const [addEditOpen,setAddEditOpen]=useState(false);
+ const [playerEditor,setPlayerEditor]=useState(null);
+ useEffect(()=>{const h=e=>setPlayerEditor(e.detail||null);window.addEventListener("emeieks-edit-player",h);return()=>window.removeEventListener("emeieks-edit-player",h);},[]);
+ // Applique une fiche joueur modifiée partout (liste des joueurs + logos d'équipe)
+ const applyPlayerSaved=(oldKey,np,logo)=>{
+  const newKey=(np.name||"").toLowerCase().trim();
+  setPlayers(prev=>{const n={...prev};if(oldKey&&oldKey!==newKey)delete n[oldKey];n[newKey]={...(prev[oldKey]||{}),...np};
+   if(logo&&np.team)Object.keys(n).forEach(k=>{if(n[k].team===np.team&&n[k].game===np.game)n[k]={...n[k],team_logo_url:logo};});return n;});
+  if(logo&&np.team)setTeamLogos(prev=>({...prev,[np.team+"__"+np.game]:logo}));
+  return newKey;
+ };
  useEffect(()=>{const h=e=>setPlayerSheet(e.detail||null);window.addEventListener("emeieks-open-player",h);return()=>window.removeEventListener("emeieks-open-player",h);},[]);
  const [viewPending,setViewPending]=useState(false);
  const setView=useCallback(v=>{
@@ -5309,6 +5494,13 @@ export default function App(){
  },400);
  },[bets,hydrated]);
 
+ // Cache d'affichage pour une ouverture instantanée (Supabase reste la référence)
+ useEffect(()=>{
+ if(!hydratedRef.current)return;
+ const t=setTimeout(()=>{try{localStorage.setItem("emeieks_cache_bets",JSON.stringify(betsRef.current));}catch(e){try{localStorage.removeItem("emeieks_cache_bets");}catch(e2){}}},2500);
+ return()=>clearTimeout(t);
+ },[bets,hydrated]);
+
  // Relecture complète des paris (au retour sur l'app / bouton Sync)
  const pullFromSupa=useCallback(async function(){
  setSyncing(true);
@@ -5374,30 +5566,41 @@ export default function App(){
  const ls=k=>{try{const v=localStorage.getItem(k);if(v==null)return undefined;try{return JSON.parse(v);}catch(e){return v;}}catch(e){return undefined;}};
  let loadFailed=false;
  const safe=(p,w)=>p.catch(e=>{loadFailed=true;fail(w||"Chargement",e);return null;});
- const [remoteBets,bkRows,tourRows,setRows,mediaRows,teamRows,legacyRows,playersObj]=await Promise.all([
- safe(supaPullBets(),"Lecture des paris"),
+try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}catch(e){}
+ // Affichage immédiat : dernière copie connue (simple cache d'affichage, remplacé par Supabase en quelques secondes)
+ try{const c=JSON.parse(localStorage.getItem("emeieks_cache_bets")||"null");if(Array.isArray(c)&&c.length&&betsRef.current.length===0)setBets(c);}catch(e){}
+ const SPECIAL=["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"];
+ // Les paris s'affichent dès qu'ils arrivent, sans attendre le reste
+ const betsP=safe(supaPullBets(),"Lecture des paris").then(rb=>{
+  if(rb&&alive){
+   const real=rb.filter(b=>!SPECIAL.includes(b.player));
+   const snap=new Map();real.forEach(b=>snap.set(String(b.id),betJson(b)));
+   betSnap.current=snap;
+   setBets(real);
+   good("bets");
+  }
+  return rb;
+ });
+ const [bkRows,tourRows,setRows,mediaRows,teamRows,playersObj]=await Promise.all([
  safe(cloudDb("bookmakers?select=*"),"Table bookmakers"),
  safe(cloudDb("tournaments?select=*"),"Table tournaments"),
  safe(cloudDb("settings?select=key,value"),"Table settings"),
  safe(cloudDb("media_store?select=key,value"),"Table media_store"),
  safe(cloudDb("teams?select=name,game,logo_url"),"Table teams"),
- safe(cloudDb("bets?select=player,description&player=in.(__SETTINGS__,__TEAM_LOGOS__,__BK_PHOTOS__,__MEDIA_STORE__)")),
  loadPlayers(),
  ]);
+ const remoteBets=await betsP;
+ if(!alive)return;
+ const media={};(mediaRows||[]).forEach(r=>{try{media[r.key]=JSON.parse(r.value);}catch(e){}});
+ const setKeys=new Set((setRows||[]).map(r=>r.key));
+ // Anciennes lignes techniques : lues seulement si une migration est encore nécessaire
+ const needLegacy=!(bkRows&&bkRows.length)||!(tourRows&&tourRows.length)||!setKeys.has("bankroll")||!media.mediaStore;
+ const legacyRows=needLegacy?await safe(cloudDb("bets?select=player,description&player=in.(__SETTINGS__,__TEAM_LOGOS__,__BK_PHOTOS__,__MEDIA_STORE__)")):[];
  if(!alive)return;
  const legacy={};(legacyRows||[]).forEach(r=>{try{legacy[r.player]=JSON.parse(r.description||"{}");}catch(e){}});
- const media={};(mediaRows||[]).forEach(r=>{try{media[r.key]=JSON.parse(r.value);}catch(e){}});
  const oldSet=media.settings||legacy.__SETTINGS__||{};
  const seeded={};
 
- // Paris
- if(remoteBets){
- const real=remoteBets.filter(b=>!["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"].includes(b.player));
- const snap=new Map();real.forEach(b=>snap.set(String(b.id),betJson(b)));
- betSnap.current=snap;
- setBets(real);
- good("bets");
- }
 
  // Bookmakers
  if(bkRows&&bkRows.length){applyBk(bkRows);cloudSkip.current.bookmakers=true;}
@@ -6859,12 +7062,12 @@ export default function App(){
  return(
  <div key={b.id} onClick={()=>setView("mesparis")} style={{marginTop:i>0?4:0,borderRadius:i>0?10:0,cursor:"pointer",borderLeft:"2.5px solid "+(isWon?"#00E676":"#f43f5e"),borderBottom:i<5?"none":"none"}}>
  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px"}}>
- <div style={{width:34,height:34,borderRadius:8,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.04)"}}>
+ <div title="Voir le profil du joueur" onClick={e=>{e.stopPropagation();openPlayerSheet(b.player);}} style={{width:34,height:34,borderRadius:8,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.04)",cursor:"pointer"}}>
  <GameLogo game={b.game} size={34}/>
  </div>
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3,flexWrap:"wrap"}}>
- <span onClick={e=>{e.stopPropagation();openPlayerSheet(b.player);}} style={{fontWeight:800,fontSize:14,color:"#f0f4ff",textTransform:"capitalize",flexShrink:0,cursor:"pointer"}}>{b.player}</span>
+ <span style={{fontWeight:800,fontSize:14,color:"#f0f4ff",textTransform:"capitalize",flexShrink:0}}>{b.player}</span>
  {descLine&&<><span style={{color:"#2e3d50",fontSize:10,margin:"0 1px"}}>-</span><span style={{fontSize:11,color:"#8a9eb8",flexShrink:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
  {b.mapTag&&<><span style={{color:"#2e3d50",fontSize:10,margin:"0 1px"}}>-</span><span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 4px",borderRadius:3,border:"1px solid rgba(251,191,36,.2)",flexShrink:0}}>{b.mapTag}</span></>}
  </div>
@@ -7932,7 +8135,7 @@ export default function App(){
  {/* Zone photo (38% de la carte) */}
  <div style={{width:"38%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden"}}>
  {/* Logo équipe en filigrane */}
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")];return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"120%",height:"120%",objectFit:"contain",opacity:.12,zIndex:0,pointerEvents:"none"}}/>:null;})()}
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"120%",height:"120%",objectFit:"contain",opacity:.42,zIndex:0,pointerEvents:"none"}}/>:null;})()}
  {/* Glow violet derrière la photo */}
  <div style={{position:"absolute",bottom:"-10%",left:"50%",transform:"translateX(-50%)",width:"80%",height:"90%",background:"radial-gradient(ellipse at 50% 80%,rgba(124,58,237,.35),transparent 70%)",pointerEvents:"none",zIndex:0}}/>
  {(()=>{
@@ -7965,14 +8168,14 @@ export default function App(){
  {/* Infos joueur (droite) */}
  <div style={{flex:1,padding:"14px 12px 12px 6px",display:"flex",flexDirection:"column",justifyContent:"center",gap:6,minWidth:0}}>
  <div style={{fontSize:19,fontWeight:700,letterSpacing:-.3,color:"#f0f4ff",lineHeight:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
- {form.autoInfo.name||form.player}
+ {capName(form.autoInfo.name||form.player)}
  </div>
  <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
  <GameLogo game={form.autoInfo.game} size={16}/>
  {form.autoInfo.team&&(
  <>
  <span style={{color:"#4a5a6e",fontSize:12,fontWeight:300}}>·</span>
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")];return tl?<img src={tl} alt={form.autoInfo.team} style={{width:16,height:16,objectFit:"contain",verticalAlign:"middle",marginRight:3,borderRadius:3}} onError={e=>e.target.style.display='none'}/>:null;})()}
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt={form.autoInfo.team} style={{width:16,height:16,objectFit:"contain",verticalAlign:"middle",marginRight:3,borderRadius:3}} onError={e=>e.target.style.display='none'}/>:null;})()}
  <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{form.autoInfo.team}</span>
  </>
  )}
@@ -7987,10 +8190,14 @@ export default function App(){
  </div>
 
  {/* Bouton Changer */}
- <div style={{padding:"12px 12px 12px 0",display:"flex",alignItems:"flex-start",flexShrink:0}}>
+ <div style={{padding:"12px 12px 12px 0",display:"flex",alignItems:"flex-start",gap:6,flexShrink:0}}>
  <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
  style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(139,92,246,.3)",color:"#9d7bef",fontWeight:500,fontSize:11,background:"rgba(139,92,246,.05)",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
  Changer
+ </button>
+ <button onClick={()=>setAddEditOpen(true)} title="Modifier le joueur" aria-label="Modifier le joueur"
+ style={{width:30,height:30,borderRadius:9,border:"1px solid rgba(139,92,246,.3)",background:"rgba(139,92,246,.08)",color:"#c4b5fd",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
  </button>
  </div>
  </div>
@@ -10249,10 +10456,10 @@ export default function App(){
  return(
  <div key={p.player} className="stat-row" onClick={function(){setStatsDrill({game,league:null,filterType:"player",filterValue:p.player});}} style={{cursor:"pointer"}}>
  <div style={{display:"flex",alignItems:"center",gap:9}}>
- <span style={{fontSize:11,color:i<3?"#fbbf24":"#6B7280",fontWeight:700,width:20,textAlign:"center"}}>{i===0?"":i===1?"":i===2?"":i+1}</span>
+ <span style={{fontSize:11,color:i<3?"#fbbf24":"#6B7280",fontWeight:700,width:20,textAlign:"center"}}>{i+1}</span>
  <div>
  <div style={{display:"flex",alignItems:"center",gap:5}}>
- <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize"}}>{p.player}</div>
+ <div onClick={function(e){e.stopPropagation();openPlayerSheet(p.player);}} style={{fontWeight:700,fontSize:13,color:"#E5E7EB",textTransform:"capitalize",cursor:"pointer",textDecoration:"underline dotted rgba(167,139,250,.6)",textUnderlineOffset:3}}>{p.player}</div>
  <span style={{fontSize:10,color:"#4B5563"}}>›</span>
  </div>
  <div style={{fontSize:10,color:"#6B7280"}}>{p.count} paris · {wr}% WR</div>
@@ -11546,16 +11753,31 @@ export default function App(){
  );
  })()}
 
+ {playerEditor&&(()=>{
+ const fp=findPlayer(playerEditor)||{name:playerEditor};
+ const tl=teamLogos[(fp.team||"")+"__"+(fp.game||"")]||fp.team_logo_url||"";
+ return <PlayerEditSheet p={fp} name={fp.name||playerEditor} game={fp.game} teamLogo={tl} photo={getAvatarSrc(fp)||""} teamLogos={teamLogos} allPlayers={allPlayers} showToast={showToast}
+  onClose={()=>setPlayerEditor(null)}
+  onDelete={async pl=>{try{await supaDeletePlayer(pl.id);setPlayers(prev=>{const n={...prev};delete n[(pl.name||"").toLowerCase().trim()];return n;});showToast(capName(pl.name)+" supprimé","#EF4444");}catch(e){showToast("Erreur : "+e.message,"#EF4444");}setPlayerEditor(null);}}
+  onSaved={(np,logo)=>{applyPlayerSaved((playerEditor||"").toLowerCase().trim(),np,logo);setPlayerEditor(null);}}/>;
+ })()}
+ {addEditOpen&&form.autoInfo&&(()=>{
+ const ai=form.autoInfo;
+ const tl=teamLogos[(ai.team||"")+"__"+(ai.game||"")]||ai.team_logo_url||"";
+ return <PlayerEditSheet p={ai} name={ai.name||form.player} game={ai.game} teamLogo={tl} photo={getAvatarSrc(ai)||""} teamLogos={teamLogos} allPlayers={allPlayers} showToast={showToast}
+  onClose={()=>setAddEditOpen(false)}
+  onSaved={(np,logo)=>{
+   applyPlayerSaved((form.player||"").toLowerCase().trim(),np,logo);
+   setAddEditOpen(false);
+   setForm(f=>({...f,player:np.name||f.player,autoInfo:{...f.autoInfo,...np,team_logo_url:logo||np.team_logo_url||f.autoInfo.team_logo_url}}));
+  }}/>;
+ })()}
  {playerSheet&&(()=>{
  const fp=findPlayer(playerSheet);
- return <PlayerSheet name={playerSheet} player={fp} bets={bets} teamLogos={teamLogos} showToast={showToast}
+ return <PlayerSheet name={playerSheet} player={fp} bets={bets} teamLogos={teamLogos} allPlayers={allPlayers} activeTourneys={activeTourneys} showToast={showToast}
   onClose={()=>setPlayerSheet(null)}
   onSaved={(np,logo)=>{
-   const oldKey=fp&&fp.name?fp.name:(playerSheet||"").toLowerCase().trim();
-   const newKey=(np.name||"").toLowerCase().trim();
-   setPlayers(prev=>{const n={...prev};if(oldKey!==newKey)delete n[oldKey];n[newKey]={...(prev[oldKey]||{}),...np};
-    if(logo&&np.team)Object.keys(n).forEach(k=>{if(n[k].team===np.team&&n[k].game===np.game)n[k]={...n[k],team_logo_url:logo};});return n;});
-   if(logo&&np.team)setTeamLogos(prev=>({...prev,[np.team+"__"+np.game]:logo}));
+   applyPlayerSaved((playerSheet||"").toLowerCase().trim(),np,logo);
    if(np.name)setPlayerSheet(np.name);
   }}/>;
  })()}
