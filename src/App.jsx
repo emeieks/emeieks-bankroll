@@ -945,64 +945,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 
 
 // PlayerSearchPanel 
-function PlayerSearchPanel({allPlayers,custom,setPlayers,setEditingPlayer,blacklist,toggleBlacklist,onSaveBulk}){
- const [pSearch,setPSearch]=useState("");
- const filtered=useMemo(function(){
- const q=pSearch.toLowerCase().trim();
- if(!q)return[];
- return Object.entries(allPlayers).filter(([k])=>k.includes(q)).slice(0,20);
- },[allPlayers,pSearch]);
- return(
- <div style={{marginBottom:12}}>
- <div style={{position:"relative",marginBottom:8}}>
- <input style={{width:"100%",background:"#111827",border:"1.5px solid #1F2937",borderRadius:12,padding:"12px 44px 12px 16px",color:"#E5E7EB",fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"}}
- placeholder=" ex: Faker, ZywOo..." value={pSearch} onChange={e=>setPSearch(e.target.value)}/>
- {pSearch&&<button onClick={()=>setPSearch("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:16}}>×</button>}
- </div>
- {filtered.length>0&&(
- <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden",marginBottom:8}}>
- {filtered.map(([key,p])=>{
- const isCustom=!!custom[key];
- return(
- <div key={key} style={{display:"flex",alignItems:"center",gap:9,padding:"11px 14px",borderBottom:"1px solid #1F2937"}}>
- <GameLogo game={p.game} size={18}/>
- <div style={{flex:1,minWidth:0}}>
- <div style={{display:"flex",alignItems:"center",gap:6}}>
- <span style={{fontWeight:700,fontSize:14,color:"#E5E7EB",textTransform:"capitalize"}}>{key}</span>
- {isCustom&&<span style={{fontSize:9,color:"#00E676",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.2)",padding:"1px 5px",borderRadius:4,fontWeight:700}}>MODIFIÉ</span>}
- </div>
- <div style={{fontSize:10,color:"#9CA3AF"}}>{p.team} · {p.role}{p.league?" · "+p.league:""}</div>
- </div>
- <div style={{display:"flex",gap:5,flexShrink:0}}>
- <button onClick={()=>setEditingPlayer({key,data:{...p,name:key}})}
- style={{background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:8,padding:"5px 10px",color:"#3B82F6",cursor:"pointer",fontSize:11,fontFamily:"Inter,sans-serif",fontWeight:600}}>
- Éd.
- </button>
- {isCustom&&<button onClick={()=>{if(players[key]&&players[key].id){supaDeletePlayer(players[key].id).catch(function(){});}setPlayers(p=>{const n={...p};delete n[key];return n;});}}
- style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11}}>
- ×
- </button>}
- {!isCustom&&<button onClick={()=>toggleBlacklist(key)}
- style={{background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:8,padding:"5px 10px",color:"#EF4444",cursor:"pointer",fontSize:11}}
- title="Masquer ce joueur de la liste">
- 
- </button>}
- <button onClick={()=>{if(window.confirm("Supprimer "+key+" ?"))toggleBlacklist(key);}}
- style={{background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.15)",borderRadius:8,padding:"5px 8px",color:"#EF4444",cursor:"pointer",fontSize:10}}>
- 
- </button>
- </div>
- </div>
- );
- })}
- </div>
- )}
- {pSearch&&filtered.length===0&&<div style={{fontSize:12,color:"#6B7280",padding:"10px 0",textAlign:"center"}}>Aucun résultat pour "{pSearch}"</div>}
 
-
- </div>
- );
-}
 
 // EditBetModal component 
 const EditBetModal=memo(function EditBetModal({bet,bookmakers,onSave,onClose,calcProfit,allPlayers,activeTourneys={},savedTourneys={}}){
@@ -4738,25 +4681,8 @@ export default function App(){
  const [bankroll,setBankroll]=useState(5000);
  const [manualTier,setManualTier]=useState(()=>{try{const s=localStorage.getItem("v7_manual_tier");return s?parseInt(s):null;}catch(e){return null;}});
  const [quickUnits,setQuickUnits]=useState(()=>{try{const s=localStorage.getItem("v7_quick_units");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}return[0.75,1,1.25,1.5,1.75,2];});
- const [depots,setDepots]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_depots")||"[]");}catch(e){return [];}});
- const [modalDepot,setModalDepot]=useState(false);
- const [bkAccounts,setBkAccounts]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_bk_accounts")||"{}");}catch(e){return {};}});
- const [newAccountInput,setNewAccountInput]=useState("");
- const [showNewAccount,setShowNewAccount]=useState(false);
- const [editDepotId,setEditDepotId]=useState(null); // id du depot en cours d'edition
- const [viewDepots,setViewDepots]=useState(false);
- const [depotForm,setDepotForm]=useState({site:"",username:"",type:"depot",sol:"",solPrice:"",date:new Date().toISOString().slice(0,10)});
  const [players,setPlayers]=useState({}); // { name_lowercase: {id,name,game,league,role,team,avatar_url,avatar_file} }
 
- const [blacklist,setBlacklist]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_blacklist")||"[]"));}catch(e){return new Set();}});
- function toggleBlacklist(key){
- setBlacklist(prev=>{
- const n=new Set(prev);
- if(n.has(key))n.delete(key);else n.add(key);
- try{localStorage.setItem("v7_blacklist",JSON.stringify([...n]));}catch(e){}
- return n;
- });
- }
  const [bookmakers,setBookmakers]=useState(DEFAULT_BK);
  const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
  const [stickyBK,setStickyBK]=useState(false);
@@ -4886,10 +4812,6 @@ export default function App(){
  const [calibSort,setCalibSort]=useState({key:"edge",dir:1});
  const [breakevenSort,setBreakevenSort]=useState({key:"label",dir:1});
  // MODE NOUVEAU DÉPART (Men in Black) 
- const [mibActive,setMibActive]=useState(()=>{try{return localStorage.getItem("v7_mib_active")==="1";}catch(e){return false;}});
- const [mibDate,setMibDate]=useState(()=>{try{return localStorage.getItem("v7_mib_date")||new Date().toISOString().slice(0,10);}catch(e){return new Date().toISOString().slice(0,10);}});
- // Persister MIB dans localStorage
- useEffect(()=>{try{localStorage.setItem("v7_mib_active",mibActive?"1":"0");localStorage.setItem("v7_mib_date",mibDate);}catch(e){}},[mibActive,mibDate]);
  const [statsPeriod,setStatsPeriod]=useState(null);
  const [statsChartMode,setStatsChartMode]=useState("line");
  const [playersExpanded,setPlayersExpanded]=useState(null);
@@ -4917,42 +4839,10 @@ export default function App(){
  const [ppMapFilterApplied,setPpMapFilterApplied]=useState("");
  const [ppKillMetric,setPpKillMetric]=useState("roi");
  const [drillPeriod,setDrillPeriod]=useState(null); // 3/7/14/30 days
- const [analyseBets,setAnalyseBets]=useState([]);
- const [analyseLoading,setAnalyseLoading]=useState(false);
- const [analyseLastFetch,setAnalyseLastFetch]=useState(null);
- const [analyseFSport,setAnalyseFSport]=useState("all");
- const [analyseFSource,setAnalyseFSource]=useState("all");
- const [analyseFDir,setAnalyseFDir]=useState("All");
- const [analyseSort,setAnalyseSort]=useState("diff"); // "diff" ou "time"
- const [analyseFStat,setAnalyseFStat]=useState("all"); // "all", "kills", "headshots"
- const [showAllRecents,setShowAllRecents]=useState(false);
- const [expandedAnalyseBet,setExpandedAnalyseBet]=useState(null);
- const [analyseFHeure,setAnalyseFHeure]=useState(""); // filtre heure ex: "12:00"
- const [hiddenAnalyseBets,setHiddenAnalyseBets]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem("v7_hidden_analyse")||"[]"));}catch(e){return new Set();}});
- const [showHiddenAnalyse,setShowHiddenAnalyse]=useState(false);
- const [showSimulation,setShowSimulation]=useState(false);
- const [simRules,setSimRules]=useState([]);
- const [simManual,setSimManual]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_sim_manual")||"{}");}catch(e){return {};}});
- function setSimResult(uid,result){
- setSimManual(prev=>{
- const n={...prev};
- if(result===null)delete n[uid];
- else n[uid]=result;
- localStorage.setItem("v7_sim_manual",JSON.stringify(n));
- return n;
- });
-}
  const [collapsedMonths,setCollapsedMonths]=useState(new Set());
  function toggleMonth(mk){setCollapsedMonths(prev=>{const n=new Set(prev);if(n.has(mk))n.delete(mk);else n.add(mk);return n;});}
 
- function toggleHideAnalyseBet(key){
- setHiddenAnalyseBets(prev=>{
- const n=new Set(prev);
- if(n.has(key))n.delete(key);else n.add(key);
- try{localStorage.setItem("v7_hidden_analyse",JSON.stringify([...n]));}catch(e){}
- return n;
- });
-}
+
  // Supabase sync (sans login) 
  const [syncing,setSyncing]=useState(false);
  const [supaOk,setSupaOk]=useState(false);
@@ -4974,6 +4864,14 @@ export default function App(){
  const showBetConfirm=useCallback(function(){},[]);
  const lastPushRef=useRef(0);
  const hydratedRef=useRef(false);
+ const [syncErr,setSyncErr]=useState("");
+ const [liveState,setLiveState]=useState("…");
+ const [diag,setDiag]=useState(null);
+ const errsRef=useRef({});
+ const refreshErr=()=>{const v=Object.values(errsRef.current);setSyncErr(v[0]||"");setSupaOk(v.length===0);};
+ const keyOf=w=>{const m=/(bets|paris|bookmakers|tournaments|settings|media_store|media|teams|players)/i.exec(w);return m?m[1].toLowerCase().replace("paris","bets").replace(/^media$/,"media_store"):w;};
+ const fail=(where,e)=>{const m=where+" : "+((e&&e.message)||String(e)).slice(0,220);errsRef.current[keyOf(where)]=m;refreshErr();console.error("[SYNC]",m);};
+ const good=where=>{if(errsRef.current[keyOf(where)]){delete errsRef.current[keyOf(where)];}refreshErr();};
  const [hydrated,setHydrated]=useState(false);
  const cloudSnap=useRef({});      // dernier état connu côté Supabase, par canal
  const cloudSkip=useRef({});      // canal mis à jour depuis Supabase → ne pas renvoyer
@@ -5031,8 +4929,7 @@ export default function App(){
  const setPayload=()=>({
  bankroll,manual_tier:manualTier,quick_units:quickUnits,
  sticky_bk:{active:stickyBK,bk:stickyBK?form.bookmaker:""},
- locked_status:lockedStatus,depots,bk_accounts:bkAccounts,blacklist:[...blacklist],
- mib:{active:mibActive,date:mibDate},hidden_analyse:[...hiddenAnalyseBets],sim_manual:simManual,pp_data:ppData,
+ locked_status:lockedStatus,pp_data:ppData,
  });
  const applySettings=s=>{
  if(s.bankroll!=null)setBankroll(Number(s.bankroll)||5000);
@@ -5040,12 +4937,6 @@ export default function App(){
  if(Array.isArray(s.quick_units)&&s.quick_units.length===6)setQuickUnits(s.quick_units);
  if(s.sticky_bk){setStickyBK(!!s.sticky_bk.active);if(s.sticky_bk.active&&s.sticky_bk.bk)setForm(f=>({...f,bookmaker:s.sticky_bk.bk}));}
  if("locked_status" in s)setLockedStatus(s.locked_status||null);
- if(Array.isArray(s.depots))setDepots(s.depots);
- if(s.bk_accounts&&typeof s.bk_accounts==="object")setBkAccounts(s.bk_accounts);
- if(Array.isArray(s.blacklist))setBlacklist(new Set(s.blacklist));
- if(s.mib){setMibActive(!!s.mib.active);if(s.mib.date)setMibDate(s.mib.date);}
- if(Array.isArray(s.hidden_analyse))setHiddenAnalyseBets(new Set(s.hidden_analyse));
- if(s.sim_manual&&typeof s.sim_manual==="object")setSimManual(s.sim_manual);
  if(Array.isArray(s.pp_data))setPpData(s.pp_data);
  };
  const mediaPayload=()=>({mediaStore,customClubs});
@@ -5090,7 +4981,7 @@ export default function App(){
  const channelState={
  bookmakers:[bookmakers,bkPhotos,hiddenBKs],
  tournaments:[savedTourneys,activeTourneys,tourneyCal],
- settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,depots,bkAccounts,blacklist,mibActive,mibDate,hiddenAnalyseBets,simManual,ppData],
+ settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,ppData],
  media:[mediaStore,customClubs],
  teams:[teamLogos],
  };
@@ -5111,7 +5002,7 @@ export default function App(){
  const before=cloudSnap.current[ch];
  if(before&&before.json===j)return;
  cloudSnap.current[ch]={json:j,payload:p};
- writers[ch](p,before&&before.payload).then(()=>setSupaOk(true)).catch(e=>{setSupaOk(false);showToast("Synchro "+ch+" : "+(e.message||e).slice(0,60),"#EF4444");});
+ writers[ch](p,before&&before.payload).then(()=>good(ch)).catch(e=>{fail("Écriture "+ch,e);showToast("Synchro "+ch+" : "+(e.message||e).slice(0,60),"#EF4444");});
  },500);
  },[hydrated,...channelState[ch]]);
  });
@@ -5135,7 +5026,7 @@ export default function App(){
  const removed=[];
  snap.forEach((j,id)=>{if(!seen.has(id))removed.push(id);});
  removed.forEach(id=>snap.delete(id));
- if(changed.length){lastPushRef.current=Date.now();supaPushBets(changed.map(b=>({...b,updatedAt:Date.now()}))).then(()=>setSupaOk(true)).catch(e=>{setSupaOk(false);changed.forEach(b=>snap.delete(String(b.id)));showToast("Pari non enregistré : "+(e.message||e).slice(0,60),"#EF4444");});}
+ if(changed.length){lastPushRef.current=Date.now();supaPushBets(changed.map(b=>({...b,updatedAt:Date.now()}))).then(()=>good("bets")).catch(e=>{fail("Envoi des paris",e);changed.forEach(b=>snap.delete(String(b.id)));showToast("Pari non enregistré : "+(e.message||e).slice(0,60),"#EF4444");});}
  if(removed.length)supaDeleteManyBets(removed).catch(()=>{});
  },400);
  },[bets,hydrated]);
@@ -5157,10 +5048,23 @@ export default function App(){
  const ns=new Map();remote.forEach(r=>ns.set(String(r.id),betJson(r)));
  betSnap.current=ns;
  setBets(next);
- setSupaOk(true);
- }catch(e){setSupaOk(false);}
+ good("bets");
+ }catch(e){fail("Lecture des paris",e);}
  setSyncing(false);
  },[]);
+
+
+ // Test de connexion table par table (fenêtre Cloud)
+ const runDiag=async function(){
+ setDiag([{t:"Test en cours…",ok:null}]);
+ const out=[];
+ const test=async(label,fn)=>{try{const r=await fn();out.push({t:label,ok:true,m:r});}catch(e){out.push({t:label,ok:false,m:((e&&e.message)||String(e)).slice(0,200)});}setDiag([...out]);};
+ await test("Lecture bets",async()=>{const r=await cloudDb("bets?select=id&limit=1");return (r||[]).length+" ligne(s)";});
+ await test("Lecture players",async()=>{const r=await cloudDb("players?select=id&limit=1");return "ok";});
+ for(const t of ["bookmakers","tournaments","settings","media_store","teams"])await test("Lecture "+t,async()=>{const r=await cloudDb(t+"?select=*&limit=500");return (r||[]).length+" ligne(s)";});
+ await test("Écriture settings",async()=>{await cloudDb("settings",{method:"POST",body:[{key:"_test",value:Date.now()}],prefer:"resolution=merge-duplicates"});await cloudDb("settings?key=eq._test",{method:"DELETE"});return "ok";});
+ await test("Temps réel",async()=>liveState);
+ };
 
  // ── Chargement initial (+ récupération des anciens réglages une seule fois) ──
  useEffect(()=>{
@@ -5168,14 +5072,15 @@ export default function App(){
  (async()=>{
  setSyncing(true);
  const ls=k=>{try{const v=localStorage.getItem(k);if(v==null)return undefined;try{return JSON.parse(v);}catch(e){return v;}}catch(e){return undefined;}};
- const safe=p=>p.catch(()=>null);
+ let loadFailed=false;
+ const safe=(p,w)=>p.catch(e=>{loadFailed=true;fail(w||"Chargement",e);return null;});
  const [remoteBets,bkRows,tourRows,setRows,mediaRows,teamRows,legacyRows,playersObj]=await Promise.all([
- safe(supaPullBets()),
- safe(cloudDb("bookmakers?select=*")),
- safe(cloudDb("tournaments?select=*")),
- safe(cloudDb("settings?select=key,value")),
- safe(cloudDb("media_store?select=key,value")),
- safe(cloudDb("teams?select=name,game,logo_url")),
+ safe(supaPullBets(),"Lecture des paris"),
+ safe(cloudDb("bookmakers?select=*"),"Table bookmakers"),
+ safe(cloudDb("tournaments?select=*"),"Table tournaments"),
+ safe(cloudDb("settings?select=key,value"),"Table settings"),
+ safe(cloudDb("media_store?select=key,value"),"Table media_store"),
+ safe(cloudDb("teams?select=name,game,logo_url"),"Table teams"),
  safe(cloudDb("bets?select=player,description&player=in.(__SETTINGS__,__TEAM_LOGOS__,__BK_PHOTOS__,__MEDIA_STORE__)")),
  loadPlayers(),
  ]);
@@ -5191,7 +5096,7 @@ export default function App(){
  const snap=new Map();real.forEach(b=>snap.set(String(b.id),betJson(b)));
  betSnap.current=snap;
  setBets(real);
- setSupaOk(true);
+ good("bets");
  }
 
  // Bookmakers
@@ -5216,15 +5121,13 @@ export default function App(){
 
  // Réglages
  const sObj={};(setRows||[]).forEach(r=>{sObj[r.key]=r.value;});
- const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","depots","bk_accounts","blacklist","mib","hidden_analyse","sim_manual","pp_data"].filter(k=>!(k in sObj));
+ const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","pp_data"].filter(k=>!(k in sObj));
  if(need.length){
  const old={
  bankroll:ls("v7_bankroll")!=null?parseFloat(ls("v7_bankroll")):undefined,
  manual_tier:ls("v7_manual_tier")!=null?parseInt(ls("v7_manual_tier")):undefined,
  quick_units:ls("v7_quick_units"),sticky_bk:ls("v7_sticky_bk"),
- locked_status:ls("v7_locked_status")||undefined,depots:ls("v7_depots"),bk_accounts:ls("v7_bk_accounts"),
- blacklist:ls("v7_blacklist"),mib:ls("v7_mib_active")!=null?{active:String(ls("v7_mib_active"))==="1",date:ls("v7_mib_date")}:(oldSet.mibActive!=null?{active:!!oldSet.mibActive,date:oldSet.mibDate}:undefined),
- hidden_analyse:ls("v7_hidden_analyse"),sim_manual:ls("v7_sim_manual"),pp_data:ls("v7_pp_data"),
+ locked_status:ls("v7_locked_status")||undefined,pp_data:ls("v7_pp_data"),
  };
  need.forEach(k=>{if(old[k]!==undefined&&old[k]!==null&&!(typeof old[k]==="number"&&isNaN(old[k])))sObj[k]=old[k];});
  applySettings(sObj);
@@ -5262,11 +5165,11 @@ export default function App(){
  let stop=null;const timers={};
  const later=(k,fn)=>{clearTimeout(timers[k]);timers[k]=setTimeout(fn,300);};
  const refetch={
- bookmakers:()=>cloudDb("bookmakers?select=*").then(r=>{if(r){cloudSkip.current.bookmakers=true;applyRemote.current.applyBk(r);}}),
- tournaments:()=>cloudDb("tournaments?select=*").then(r=>{if(r){cloudSkip.current.tournaments=true;applyRemote.current.applyTour(r);}}),
- settings:()=>cloudDb("settings?select=key,value").then(r=>{if(r){const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}),
- media_store:()=>cloudDb("media_store?select=key,value").then(r=>{if(r){const o={};r.forEach(x=>{try{o[x.key]=JSON.parse(x.value);}catch(e){}});cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
- teams:()=>cloudDb("teams?select=name,game,logo_url").then(r=>{if(r){cloudSkip.current.teams=true;setTeamLogos(prev=>{const m={...prev};r.forEach(t=>{if(t.logo_url)m[t.name+"__"+t.game]=t.logo_url;});return m;});}}),
+ bookmakers:()=>cloudDb("bookmakers?select=*").then(r=>{if(r){good("bookmakers");cloudSkip.current.bookmakers=true;applyRemote.current.applyBk(r);}}).catch(e=>fail("Relecture bookmakers",e)),
+ tournaments:()=>cloudDb("tournaments?select=*").then(r=>{if(r){good("tournaments");cloudSkip.current.tournaments=true;applyRemote.current.applyTour(r);}}),
+ settings:()=>cloudDb("settings?select=key,value").then(r=>{if(r){good("settings");const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}).catch(e=>fail("Relecture settings",e)),
+ media_store:()=>cloudDb("media_store?select=key,value").then(r=>{if(r){good("media_store");const o={};r.forEach(x=>{try{o[x.key]=JSON.parse(x.value);}catch(e){}});cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
+ teams:()=>cloudDb("teams?select=name,game,logo_url").then(r=>{if(r){good("teams");cloudSkip.current.teams=true;setTeamLogos(prev=>{const m={...prev};r.forEach(t=>{if(t.logo_url)m[t.name+"__"+t.game]=t.logo_url;});return m;});}}).catch(e=>fail("Relecture teams",e)),
  players:()=>applyRemote.current.loadPlayers(),
  };
  const onBet=(evt,row,old)=>{
@@ -5290,9 +5193,10 @@ export default function App(){
  ["bookmakers","tournaments","settings","media_store","teams","players"].forEach(t=>{
  ch.on("postgres_changes",{event:"*",schema:"public",table:t},()=>later(t,refetch[t]));
  });
- ch.subscribe(s=>{if(s==="SUBSCRIBED")setSupaOk(true);});
+ ch.subscribe(s=>{setLiveState(s);});
  stop=()=>client.removeChannel(ch);
  }catch(e){
+ setLiveState("indisponible ("+((e&&e.message)||e).toString().slice(0,60)+")");
  // Pas de temps réel (réseau) → relecture toutes les 20 s
  const iv=setInterval(()=>{if(document.visibilityState==="visible"){pullFromSupa();Object.values(refetch).forEach(f=>f());}},20000);
  stop=()=>clearInterval(iv);
@@ -5335,10 +5239,10 @@ export default function App(){
  const allPlayers=useMemo(function(){
  const merged={};
  Object.entries(players).forEach(([k,v])=>{
- if(!blacklist.has(k))merged[k]=v;
+ merged[k]=v;
  });
  return merged;
- },[players,blacklist]);
+ },[players]);
 
  // Fréquence de bets par joueur — pour trier les suggestions PlayerAC
  const allBetsByPlayer=useMemo(function(){
@@ -5380,14 +5284,13 @@ export default function App(){
  // Filtre Test + MIB 
  const isTestActive=useMemo(()=>{
  const f=testFilter;
- return mibActive||f.games.size<4||f.headshot!=="all"||f.live!=="all"||f.overUnder!=="all"||!!f.oddsMin||!!f.oddsMax||f.hideTourneys.size>0||f.hideLeagues.size>0||f.hideRoles.size>0||!!f.ppEdgeMin||!!f.ppEdgeMax;
- },[testFilter,mibActive]);
+ return f.games.size<4||f.headshot!=="all"||f.live!=="all"||f.overUnder!=="all"||!!f.oddsMin||!!f.oddsMax||f.hideTourneys.size>0||f.hideLeagues.size>0||f.hideRoles.size>0||!!f.ppEdgeMin||!!f.ppEdgeMax;
+ },[testFilter]);
 
  // Filtre pur hors composant — pas de capture de closure React
  const filteredByTest=useCallback((base)=>{
  let r=base;
  // MIB filter
- if(mibActive&&mibDate)r=r.filter(b=>b.datetime&&String(b.datetime).slice(0,10)>=mibDate);
  // Test filters
  if(testFilter.games.size<4)r=r.filter(b=>testFilter.games.has(b.game));
  if(testFilter.headshot==="yes")r=r.filter(b=>b.isHeadshot);
@@ -5405,7 +5308,7 @@ export default function App(){
  if(testFilter.ppEdgeMax)r=r.filter(b=>!b.ppEdge||Math.abs(b.ppEdge)<=parseFloat(testFilter.ppEdgeMax));
  return r;
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[isTestActive,testFilter,mibActive,mibDate]);
+ },[isTestActive,testFilter]);
 
  const betsForDisplay=useMemo(()=>isTestActive?filteredByTest(bets):bets,[bets,isTestActive,filteredByTest]);
 
@@ -6368,82 +6271,11 @@ export default function App(){
  setSplitModal(bet);
  },[]);
 
- function applyBulkStatus(status){
- const now=Date.now();
- const changed=[];
- setBets(b=>{
- const updated=b.map((bet,i)=>{
- if(!selectedIds.has(bet.id))return bet;
- const u={...bet,status,profit:calcProfit(status,bet.stake,bet.odds),settledAt:status!=="pending"?now+i:null,updatedAt:now};
- changed.push(u);return u;
- });
- setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
- return updated;
- });
- setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
- showToast(store.count+" paris mis à jour ");
- }
- function applyBulkBK(){
- if(!bulkBK)return;
- const changed=[];
- setBets(b=>{
- const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,bookmaker:bulkBK};changed.push(u);return u;});
- setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
- return updated;
- });
- setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
- showToast("Bookmaker mis à jour");
- }
- function applyBulkDatetime(){
- if(!bulkDatetime)return;
- const changed=[];
- setBets(b=>{
- const updated=b.map(bet=>{
- if(!selectedIds.has(bet.id))return bet;
- // Conserver l heure originale, changer seulement la date
- const time=bet.datetime?String(bet.datetime).slice(11,16):"12:00";
- const newDT=bulkDatetime.slice(0,10)+"T"+time;
- // Mettre à jour settledAt pour que le tri dans Mes Paris soit cohérent
- const newSettledAt=bet.status!=="pending"?new Date(newDT).getTime():(bet.settledAt||null);
- const updated={...bet,datetime:newDT,settledAt:newSettledAt};
- changed.push(updated);
- return updated;
- });
- // Stocker overrides pour survivre au pull Supabase
- try{
- const ovRaw=localStorage.getItem("v7_overrides");
- const ov=ovRaw?JSON.parse(ovRaw):{};
- changed.forEach(b=>{ov[b.id]={datetime:b.datetime,settledAt:b.settledAt};});
- localStorage.setItem("v7_overrides",JSON.stringify(ov));
- }catch(e){}
- // Push immédiat uniquement les paris modifiés
- setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
- return updated;
- });
- setBulkModal(false);setSelectMode(false);store.clear();setBulkDatetime("");
- showToast("Date mise à jour ");
- }
- function applyBulkMap(){
- if(!bulkMap)return;
- const changed=[];
- setBets(b=>{
- const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,mapTag:bulkMap};changed.push(u);return u;});
- setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
- return updated;
- });
- setBulkModal(false);setSelectMode(false);store.clear();setBulkMap("");
- showToast("Map mise à jour ");
- }
- function applyBulkTourney(name){
- const changed=[];
- setBets(b=>{
- const updated=b.map(bet=>{if(!selectedIds.has(bet.id))return bet;const u={...bet,tournament:name};changed.push(u);return u;});
- setTimeout(()=>supaPushBets(changed).catch(function(){}),0);
- return updated;
- });
- setBulkModal(false);setSelectMode(false);store.clear();setBulkTourney("");
- showToast(" Tournoi mis à jour ");
- }
+
+
+
+
+
 
  async function savePlayer(){
  if(!pform.name.trim())return;
@@ -6497,18 +6329,7 @@ export default function App(){
  {id:"players",label:"Suivi"},
  ];
 
- const fetchAnalyse=useCallback(async function(){
- setAnalyseLoading(true);
- try{
- const r=await fetch(SUPA_URL+"/rest/v1/bets_comparaison?select=*&order=diff.desc",{
- headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}
- });
- const data=await r.json();
- setAnalyseBets(Array.isArray(data)?data:[]);
- setAnalyseLastFetch(new Date());
- }catch(e){setAnalyseBets([]);}
- setAnalyseLoading(false);
- },[]); 
+ 
  const customEntries=useMemo(()=>Object.entries(players),[players]);
  const customCount=useMemo(()=>Object.keys(players).length,[players]);
  const todayKey=useMemo(()=>toDateKey(nowDT()),[]);
@@ -6602,23 +6423,6 @@ export default function App(){
  {/* Syncing indicator */}
  {syncing&&<div style={{position:"fixed",top:18,right:14,background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:8,padding:"4px 10px",fontSize:10,fontWeight:700,color:"#A78BFA",zIndex:499,fontFamily:"'Inter',sans-serif"}}> Sync…</div>}
 
- {/* BANNIÈRE MODE NOUVEAU DÉPART (Men in Black) */}
- {mibActive&&(
- <div style={{position:"fixed",top:0,left:0,right:0,zIndex:601,background:"linear-gradient(90deg,#0a0a0a,#111827)",padding:"6px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,.08)",boxShadow:"0 2px 16px rgba(0,0,0,.8)"}}>
- <div style={{display:"flex",alignItems:"center",gap:8}}>
- <span style={{fontSize:16}}></span>
- <div>
- <div style={{fontSize:11,fontWeight:800,color:"#E5E7EB",letterSpacing:.3}}>NOUVEAU DÉPART</div>
- <div style={{fontSize:9,color:"#4a5a6e"}}>Depuis le {new Date(mibDate).toLocaleDateString("fr-CA",{day:"numeric",month:"long",year:"numeric"})} · anciens paris masqués</div>
- </div>
- </div>
- <button onClick={()=>setMibActive(false)}
- style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.12)",borderRadius:6,padding:"3px 10px",color:"#9CA3AF",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- Révéler
- </button>
- </div>
- )}
-
  {/* BANNIÈRE MODE TEST GLOBAL */}
  {isTestActive&&(
  <div style={{position:"fixed",top:0,left:0,right:0,zIndex:600,background:"linear-gradient(90deg,rgba(234,179,8,.95),rgba(202,138,4,.95))",padding:"5px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 12px rgba(234,179,8,.4)"}}>
@@ -6640,7 +6444,7 @@ export default function App(){
 
  {/* HOME */}
  {view==="home"&&(
- <div className="view-enter" style={{paddingBottom:8,paddingTop:(isTestActive||mibActive)?34:0}}>
+ <div className="view-enter" style={{paddingBottom:8,paddingTop:isTestActive?34:0}}>
 
  {/* TOP BAR */}
  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,paddingTop:2}}>
@@ -11019,7 +10823,7 @@ export default function App(){
  {ps?(
  <div>
  <div style={{display:"flex",justifyContent:"space-around",padding:"14px 12px",borderBottom:"1px solid #1A2235"}}>
- {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#00E676":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#00E676":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+p(s.profit||0).toFixed(0)+"$",c:ps.profit>=0?"#00E676":"#EF4444"}].map(x=>(
+ {[{l:"Paris",v:ps.n,c:"#E5E7EB"},{l:"WR",v:ps.wr.toFixed(0)+"%",c:ps.wr>=55?"#00E676":ps.wr<45?"#EF4444":"#9CA3AF"},{l:"ROI",v:(ps.roi>=0?"+":"")+ps.roi.toFixed(1)+"%",c:ps.roi>=0?"#00E676":"#EF4444"},{l:"Profit",v:(ps.profit>=0?"+":"")+(ps.profit||0).toFixed(0)+"$",c:ps.profit>=0?"#00E676":"#EF4444"}].map(x=>(
  <div key={x.l} style={{textAlign:"center"}}>
  <div style={{fontSize:9,color:"#6B7280",fontWeight:600,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{x.l}</div>
  <div style={{fontSize:16,fontWeight:800,color:x.c}}>{x.v}</div>
@@ -11190,283 +10994,7 @@ export default function App(){
  })()}
 
  {/* JOUEURS */}
- {view==="analyse"&&(()=>{
- const sports=[...new Set(analyseBets.map(b=>b.sport||"?"))].filter(Boolean);
- const sources=[...new Set(analyseBets.map(b=>b.source||"?"))].filter(Boolean);
- const filtered=analyseBets.filter(b=>{
- if(analyseFSport!=="all"&&b.sport!==analyseFSport)return false;
- if(analyseFSource!=="all"&&b.source!==analyseFSource)return false;
- if(analyseFDir!=="All"&&b.direction!==analyseFDir)return false;
- if(analyseFStat!=="all"&&(b.stat||"kills")!==analyseFStat)return false;
- if(analyseFHeure){
- const t=b.match_time||b.start_time||null;
- if(!t)return false;
- return t>=analyseFHeure;
- }
- return true;
- }).sort((a,b)=>{
- if(analyseSort==="time"){
- const ta=a.match_time||a.start_time||"99:99";
- const tb=b.match_time||b.start_time||"99:99";
- return ta.localeCompare(tb);
- }
- if(analyseSort==="team"){
- const ta=(findPlayer(a.player)&&findPlayer(a.player).team)||"zzz";
- const tb=(findPlayer(b.player)&&findPlayer(b.player).team)||"zzz";
- return ta.localeCompare(tb)||a.player.localeCompare(b.player);
- }
- return (b.diff||0)-(a.diff||0);
- });
- const topDiff=filtered.length>0?Math.max(...filtered.map(b=>b.diff||0)):0;
- const avgOdds=filtered.length>0?(filtered.reduce((s,b)=>s+(b.odds||0),0)/filtered.length).toFixed(2):0;
- const sportColor=(sport)=>{
- if(sport&&sport.includes("CS")||sport==="CS2")return"#F0A500";
- if(sport&&sport.includes("Legend")||sport==="LoL")return"#C89B3C";
- if(sport&&sport.includes("Dota"))return"#C23C2A";
- if(sport&&sport.includes("Valor"))return"#FF4655";
- return"#9CA3AF";
- };
- const sportEmoji=(sport)=>{
- if(sport&&sport.includes("CS")||sport==="CS2")return"";
- if(sport&&sport.includes("Legend")||sport==="LoL")return"";
- if(sport&&sport.includes("Dota"))return"";
- if(sport&&sport.includes("Valor"))return"";
- return"";
- };
- const bkShortName=(source)=>{
- if(source==="Betby")return"Roobet";
- if(source==="Thunderpick")return"Stake";
- return source||"?";
- };
- const diffColor=(diff)=>{
- const d=parseFloat(diff)||0;
- if(d>=2.0)return"#00E676";
- if(d>=1.75)return"#00E676";
- if(d>=1.5)return"#16A34A";
- return"#15803D";
- };
- const diffBg=(diff)=>{
- const d=parseFloat(diff)||0;
- if(d>=2.0)return"rgba(74,222,128,0.15)";
- if(d>=1.75)return"rgba(34,197,94,0.12)";
- if(d>=1.5)return"rgba(22,163,74,0.10)";
- return"rgba(21,128,61,0.08)";
- };
- const mapLabel=(map)=>(!map||map==="?")?"?":"Map "+map;
- return(
- <div className="view-enter">
- {/* Header */}
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
- <div>
- <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB",letterSpacing:.3}}>Positive EV Bets</div>
- <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>
- {analyseLastFetch?"Mis à jour: "+analyseLastFetch.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):"Pas encore chargé"}
- </div>
- </div>
- <div style={{display:"flex",gap:6,alignItems:"center"}}>
- {hiddenAnalyseBets.size>0&&(
- <button onClick={()=>setShowHiddenAnalyse(v=>!v)}
- style={{padding:"6px 10px",background:showHiddenAnalyse?"rgba(239,68,68,0.12)":"rgba(255,255,255,0.04)",border:"1px solid "+(showHiddenAnalyse?"rgba(239,68,68,0.3)":"#1F2937"),borderRadius:7,color:showHiddenAnalyse?"#EF4444":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {showHiddenAnalyse?"Masquer pris":"Pris ("+hiddenAnalyseBets.size+")"}
- </button>
- )}
- <button onClick={fetchAnalyse}
- style={{display:"flex",alignItems:"center",gap:5,padding:"7px 12px",background:"#1F2937",border:"1px solid #374151",borderRadius:7,color:"#E5E7EB",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {analyseLoading?"⏳":"↻"} Actualiser
- </button>
- </div>
- </div>
 
- {/* Filtres */}
- <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10,alignItems:"center"}}>
- <select value={analyseFSport} onChange={e=>setAnalyseFSport(e.target.value)}
- style={{background:"#111827",border:"1px solid #1F2937",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}>
- <option value="all">Tous sports</option>
- {sports.map(s=><option key={s} value={s}>{s}</option>)}
- </select>
- <select value={analyseFSource} onChange={e=>setAnalyseFSource(e.target.value)}
- style={{background:"#111827",border:"1px solid #1F2937",borderRadius:6,padding:"5px 8px",color:"#E5E7EB",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer"}}>
- <option value="all">Toutes sources</option>
- {sources.map(s=><option key={s} value={s}>{s}</option>)}
- </select>
- {["All","OVER","UNDER"].map(d=>(
- <button key={d} onClick={()=>setAnalyseFDir(d)}
- style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(analyseFDir===d?"#7C3AED":"#1F2937"),background:analyseFDir===d?"rgba(124,58,237,0.15)":"transparent",color:analyseFDir===d?"#A78BFA":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {d==="All"?"Tous":d}
- </button>
- ))}
- <button onClick={()=>setAnalyseFStat(analyseFStat==="headshots"?"all":"headshots")}
- style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(analyseFStat==="headshots"?"#EF4444":"#1F2937"),background:analyseFStat==="headshots"?"rgba(239,68,68,0.12)":"transparent",color:analyseFStat==="headshots"?"#EF4444":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {analyseFStat==="headshots"?" HS":"- HS"}
- </button>
- <div style={{display:"flex",gap:3,marginLeft:"auto",alignItems:"center"}}>
- <input type="time" value={analyseFHeure} onChange={e=>setAnalyseFHeure(e.target.value)}
- title="Filtrer par heure de début"
- style={{background:"#111827",border:"1px solid "+(analyseFHeure?"#F59E0B":"#1F2937"),borderRadius:6,padding:"4px 7px",color:analyseFHeure?"#F59E0B":"#6B7280",fontSize:11,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",width:82}}/>
- {analyseFHeure&&<button onClick={()=>setAnalyseFHeure("")} style={{background:"transparent",border:"none",color:"#6B7280",fontSize:12,cursor:"pointer",padding:"0 2px"}}></button>}
- {[{v:"diff",l:"↓ Diff"},{v:"time",l:" Heure"},{v:"team",l:"Équipe"}].map(({v,l})=>(
- <button key={v} onClick={()=>setAnalyseSort(v)}
- style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(analyseSort===v?"#F59E0B":"#1F2937"),background:analyseSort===v?"rgba(245,158,11,0.1)":"transparent",color:analyseSort===v?"#F59E0B":"#6B7280",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {l}
- </button>
- ))}
- </div>
- </div>
-
- {/* Stats bar */}
- {filtered.length>0&&(
- <div style={{display:"flex",gap:8,marginBottom:10,padding:"8px 12px",background:"#0B1220",borderRadius:8,border:"1px solid #1F2937"}}>
- {[{l:"Bets",v:filtered.length,c:"#A78BFA"},{l:"Max Diff",v:"+"+topDiff.toFixed(2),c:"#00E676"},{l:"Cote moy",v:"@"+avgOdds,c:"#F59E0B"}].map(k=>(
- <div key={k.l} style={{display:"flex",gap:5,alignItems:"center"}}>
- <span style={{fontSize:10,color:"#6B7280"}}>{k.l}:</span>
- <span style={{fontSize:12,fontWeight:700,color:k.c}}>{k.v}</span>
- </div>
- ))}
- </div>
- )}
-
- {!analyseLoading&&analyseBets.length===0&&(
- <div style={{textAlign:"center",padding:"40px 20px",color:"#4B5563"}}>
- <div style={{fontSize:32,marginBottom:12,display:"flex",justifyContent:"center"}}>
- <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7"/><line x1="15.5" y1="15.5" x2="21" y2="21"/><line x1="7" y1="10" x2="13" y2="10"/><line x1="10" y1="7" x2="10" y2="13"/></svg>
- </div>
- <div style={{fontSize:14,fontWeight:600,color:"#6B7280",marginBottom:6}}>Aucun bet comparé</div>
- <div style={{fontSize:12,color:"#4B5563",marginBottom:16}}>Lance le pipeline pour analyser les props</div>
- <button onClick={fetchAnalyse} style={{padding:"10px 20px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- Charger les données
- </button>
- </div>
- )}
-
-
-
-
- {/* Tableau OddsJam style */}
- {filtered.length>0&&(
- <div style={{background:"#0B1220",borderRadius:10,border:"1px solid #1F2937",overflow:"hidden"}}>
- {/* Header colonnes */}
- <div style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px",gap:0,padding:"7px 12px",borderBottom:"1px solid #1F2937",background:"#060D18"}}>
- {["","ÉVÉNEMENT","JOUEUR","DIR","BOOK","PP","DIFF","COTE"].map((h,i)=>(
- <div key={i} style={{fontSize:9,color:"#4B5563",fontWeight:700,letterSpacing:.8,textAlign:i>=4?"center":"left"}}>{h}</div>
- ))}
- </div>
-
- {/* Rows */}
- {filtered.filter(b=>{
- const key=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
- return showHiddenAnalyse||!hiddenAnalyseBets.has(key);
- }).map((b,i)=>{
- const isOver=b.direction==="OVER";
- const sc=sportColor(b.sport);
- const gameKey=b.sport&&sport.includes("CS")?"CS2":b.sport&&sport.includes("Legend")?"LoL":b.sport&&sport.includes("Dota")?"Dota2":b.sport&&sport.includes("Valor")?"Valorant":null;
- const bkName=bkShortName(b.source);
- const matchTime=b.match_time||b.start_time||null;
- const betKey=`${b.player||""}|${b.map||""}|${b.direction||""}|${b.source||""}`;
- const isHidden=hiddenAnalyseBets.has(betKey);
- const isExpanded=expandedAnalyseBet===betKey;
- const d=parseFloat(b.diff||0);
- return(
- <div key={i}>
- {/* Row principale cliquable */}
- <div onClick={()=>setExpandedAnalyseBet(isExpanded?null:betKey)}
- style={{display:"grid",gridTemplateColumns:"20px 1fr 110px 70px 60px 60px 60px 55px",gap:0,padding:"9px 12px",borderBottom:isExpanded?"none":"1px solid #0F172A",background:isHidden?"rgba(239,68,68,0.05)":isExpanded?"#131E30":i%2===0?"#0B1220":"#0D1526",alignItems:"center",opacity:isHidden?0.5:1,cursor:"pointer"}}>
- {/* Logo jeu */}
- <div>
- {gameKey&&L[gameKey]
- ? <img src={L[gameKey]} style={{width:16,height:16,borderRadius:3}} alt={gameKey}/>
- : <span style={{fontSize:12}}>{sportEmoji(b.sport)}</span>
- }
- </div>
- {/* Événement */}
- <div style={{minWidth:0,paddingRight:8}}>
- <div style={{fontSize:11,fontWeight:600,color:"#E5E7EB",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.match||"?"}</div>
- </div>
- {/* Nom joueur + équipe + kills/map + logo bookmaker */}
- <div style={{minWidth:0}}>
- <div style={{display:"flex",alignItems:"center",gap:4,flexWrap:"nowrap",minWidth:0}}>
- <span style={{fontSize:12,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize",flexShrink:0}}>{b.player||"?"}</span>
- {(()=>{const pi=findPlayer(b.player);const tm=(pi&&pi.team)||(pi&&pi.team_name);if(!tm)return null;return(<><span style={{color:"#3a4e62",fontSize:10,margin:"0 3px",flexShrink:0}}>-</span><span style={{fontSize:11,fontWeight:700,color:"#ffffff",whiteSpace:"nowrap",flexShrink:0}}>{tm}</span></>);})()}
- </div>
- <div style={{display:"flex",gap:3,alignItems:"center",marginTop:1}}>
- <span style={{fontSize:10,color:"#A78BFA",fontWeight:600}}>{b.stat==="kills"?"Kills":b.stat==="headshots"?"HS":b.stat||"kills"}</span>
- <span style={{fontSize:9,color:"#6B7280"}}>·</span>
- <span style={{fontSize:10,color:"#F59E0B",fontWeight:600}}>Map {b.map||"?"}</span>
- <span style={{fontSize:9,color:"#6B7280"}}>·</span>
- {BK_LOGOS[bkName]
- ? <img src={BK_LOGOS[bkName]} style={{width:12,height:12,borderRadius:2,flexShrink:0}} alt={bkName}/>
- : <span style={{fontSize:9,color:"#60A5FA",fontWeight:700}}>{bkName}</span>
- }
- </div>
- </div>
- {/* Marché - direction */}
- <div style={{textAlign:"center"}}>
- <span style={{fontSize:11,fontWeight:700,color:isOver?"#00E676":"#EF4444"}}>{isOver?" OVER":" UNDER"}</span>
- </div>
- {/* Book line */}
- <div style={{textAlign:"center"}}>
- <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.book_line||"?"}</div>
- <div style={{fontSize:9,color:"#6B7280"}}>book</div>
- </div>
- {/* PP line */}
- <div style={{textAlign:"center"}}>
- <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{b.pp_line_original||b.pp_line_per_map||"?"}</div>
- <div style={{fontSize:9,color:"#6B7280"}}>PP</div>
- </div>
- {/* Diff */}
- <div style={{textAlign:"center"}}>
- <div style={{fontSize:13,fontWeight:800,color:diffColor(b.diff),background:diffBg(b.diff),borderRadius:5,padding:"2px 4px"}}>+{d.toFixed(2)}</div>
- </div>
- {/* Cote */}
- <div style={{textAlign:"center"}}>
- <div style={{fontSize:12,fontWeight:700,color:"#A78BFA"}}>@{b.odds||"?"}</div>
- </div>
- </div>
- {/* Panel expanded - heure + boutons */}
- {isExpanded&&(
- <div style={{background:"#131E30",borderBottom:"1px solid #0F172A",padding:"8px 12px 10px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
- <span style={{fontSize:10,color:"#60A5FA",fontWeight:600,flexShrink:0}}>
- {matchTime?" "+matchTime:"Heure non disponible"}
- </span>
- <div style={{display:"flex",gap:6,alignItems:"center"}}>
- <button onClick={e=>{
- e.stopPropagation();
- const bkMap={"Betby":"Betby","Thunderpick":"Thunderpick","betby":"Betby","thunderpick":"Thunderpick"};
- const bk=bkMap[b.source]||b.source||"";
- const statLabel=b.stat==="headshots"?"HS":"Kills";
- const desc=b.book_line!=null?String(b.book_line)+" "+statLabel:"";
- const mapTag=b.map!=null?"Map "+b.map:"Map 1";
- const ou=b.direction==="OVER"?"Over":"Under";
- const gk=b.sport&&sport.includes("CS")?"CS2":b.sport&&sport.includes("Legend")?"LoL":b.sport&&sport.includes("Dota")?"Dota2":b.sport&&sport.includes("Valor")?"Valorant":null;
- const autoInfo=gk?findPlayer(b.player)||{game:gk,league:"?",role:"?",team:b.team||"?"}:null;
- setForm({...EMPTY_FORM,datetime:nowDT(),player:b.player||"",overUnder:ou,description:desc,odds:String(b.odds||""),stake:"",bookmaker:bk,mapTag:mapTag,isLive:false,mapLocked:false,autoInfo:autoInfo});
- setEditingBet(null);
- setExpandedAnalyseBet(null);
- setView("add");
- }}
- style={{padding:"5px 14px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:7,color:"#A78BFA",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
- + Ajouter
- </button>
- <button onClick={e=>{e.stopPropagation();toggleHideAnalyseBet(betKey);setExpandedAnalyseBet(null);}}
- style={{padding:"5px 14px",background:isHidden?"rgba(34,197,94,0.1)":"rgba(239,68,68,0.1)",border:"1px solid "+(isHidden?"rgba(34,197,94,0.3)":"rgba(239,68,68,0.3)"),borderRadius:7,color:isHidden?"#00E676":"#EF4444",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>
- {isHidden?" Réafficher":" Pris"}
- </button>
- </div>
- </div>
- )}
- </div>
- );
- })}
- </div>
- )}
-
- {filtered.length>0&&(
- <div style={{textAlign:"center",padding:"12px 0",fontSize:10,color:"#4B5563"}}>
- {filtered.length} bet{filtered.length>1?"s":""} · {analyseLastFetch?analyseLastFetch.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):"?"}
- </div>
- )}
- </div>
- );
- })()}
  {view==="players"&&(
  <div className="view-enter">
  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -11891,93 +11419,7 @@ export default function App(){
  )}
 
  {/* BULK MODAL */}
- {bulkModal&&(
- <div className="moverlay" onClick={()=>{setBulkModal(false);setBulkDatetime("");}}>
- <div className="modal" onClick={e=>e.stopPropagation()}>
- <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Modifier {store.count} paris</div>
- <div style={{marginBottom:14}}>
- <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Statut</div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7}}>
- {["won","lost","pending"].map(s=>(
- <button key={s} onClick={()=>applyBulkStatus(s)}
- style={{padding:"11px 8px",borderRadius:9,border:"1.5px solid "+(STATUS_CFG[s]?STATUS_CFG[s].color+"44":"#1F2937"),background:STATUS_CFG[s]?STATUS_CFG[s].bg:"#111827",color:STATUS_CFG[s]?STATUS_CFG[s].color:"#E5E7EB",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- {STATUS_CFG[s]?STATUS_CFG[s].label:s}
- </button>
- ))}
- </div>
- </div>
- <div style={{marginBottom:14}}>
- <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Bookmaker</div>
- <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:8}}>
- {bookmakers.map(bk=>(
- <button key={bk} className={"bkchip"+(bulkBK===bk?" on":"")} onClick={()=>setBulkBK(bk===bulkBK?"":bk)}
- style={{border:"2px solid "+(bulkBK===bk?"#00E676":"#1F2937")}}>
- {bk}
- </button>
- ))}
- </div>
- <button onClick={applyBulkBK} disabled={!bulkBK}
- style={{width:"100%",padding:"11px",background:bulkBK?"linear-gradient(135deg,#00E676,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkBK?"#0B1220":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- {bulkBK?"Appliquer "+bulkBK+" à "+store.count+" paris":"Sélectionner un bookmaker"}
- </button>
- </div>
- <div style={{marginBottom:14}}>
- <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Date & heure</div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:8}}>
- <input type="date" className="ifield" value={bulkDatetime?bulkDatetime.split("T")[0]:""} onChange={e=>{const d=e.target.value;const t=bulkDatetime?bulkDatetime.split("T")[1]||"12:00":"12:00";setBulkDatetime(d+"T"+t);}} style={{height:40}}/>
- <input type="time" className="ifield" value={bulkDatetime?bulkDatetime.split("T")[1]||"":"12:00"} onChange={e=>{const t=e.target.value;const d=bulkDatetime?bulkDatetime.split("T")[0]:nowDT().split("T")[0];setBulkDatetime(d+"T"+t);}} style={{height:40}}/>
- </div>
- <button onClick={applyBulkDatetime} disabled={!bulkDatetime}
- style={{width:"100%",padding:"11px",background:bulkDatetime?"linear-gradient(135deg,#7C3AED,#0EA5E9)":"#1F2937",border:"none",borderRadius:9,color:bulkDatetime?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- {bulkDatetime?"Appliquer la date à "+store.count+" paris":"Choisir une date"}
- </button>
- </div>
- {/* Tournoi — menu déroulant */}
- {(()=>{
- const allT=[...new Set(Object.values(savedTourneys).flat())].filter(Boolean);
- if(allT.length===0)return null;
- return(
- <div style={{marginBottom:14}}>
- <div style={{fontSize:12,color:"#9CA3AF",marginBottom:8}}>Tournoi</div>
- <div style={{display:"flex",alignItems:"center",gap:8,background:"#0B1220",border:"1px solid #374151",borderRadius:10,padding:"4px 4px 4px 12px",marginBottom:8}}>
- <span style={{fontSize:14,flexShrink:0}}>{bulkTourney&&bulkTourney!=="Hors tournoi"?"":bulkTourney==="Hors tournoi"?"":""}</span>
- <select value={bulkTourney} onChange={e=>setBulkTourney(e.target.value)}
- style={{flex:1,background:"transparent",border:"none",color:bulkTourney?"#E5E7EB":"#6B7280",fontSize:14,fontFamily:"'Inter',sans-serif",fontWeight:bulkTourney?600:400,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer",padding:"8px 0"}}>
- <option value="" style={{background:"#111827",color:"#6B7280"}}>Choisir un tournoi…</option>
- {allT.map(t=><option key={t} value={t} style={{background:"#111827",color:"#E5E7EB"}}> {t}</option>)}
- <option value="Hors tournoi" style={{background:"#111827",color:"#9CA3AF"}}> Hors tournoi</option>
- </select>
- <span style={{color:"#6B7280",fontSize:16,paddingRight:10,flexShrink:0}}>⌄</span>
- </div>
- <button onClick={()=>bulkTourney&&applyBulkTourney(bulkTourney)} disabled={!bulkTourney}
- style={{width:"100%",padding:"11px",background:bulkTourney?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkTourney?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {bulkTourney?"Appliquer "+bulkTourney+" à "+store.count+" paris":"Sélectionner un tournoi"}
- </button>
- </div>
- );
- })()}
 
- {/* Map bulk */}
- <div style={{marginBottom:14}}>
- <div style={{fontSize:12,color:"#9CA3AF",marginBottom:6}}>Map</div>
- <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
- {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=>(
- <button key={m} onClick={()=>setBulkMap(v=>v===m?"":m)}
- style={{padding:"7px 14px",borderRadius:20,border:"1.5px solid "+(bulkMap===m?"#7C3AED":"#1F2937"),background:bulkMap===m?"rgba(124,58,237,0.1)":"transparent",color:bulkMap===m?"#A78BFA":"#6B7280",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {m}
- </button>
- ))}
- </div>
- <button onClick={applyBulkMap} disabled={!bulkMap}
- style={{width:"100%",padding:"11px",background:bulkMap?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:9,color:bulkMap?"#fff":"#9CA3AF",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>
- {bulkMap?"Appliquer "+bulkMap+" à "+store.count+" paris":"Sélectionner une map"}
- </button>
- </div>
-
- <button onClick={()=>{setBulkModal(false);setBulkDatetime("");}} style={{width:"100%",padding:"11px",background:"#1F2937",border:"none",borderRadius:9,color:"#94A3B8",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:14}}>Annuler</button>
- </div>
- </div>
- )}
 
 
 
@@ -12298,8 +11740,17 @@ export default function App(){
  <span style={{width:7,height:7,borderRadius:"50%",background:supaOk?"#00E676":"#EF4444",boxShadow:"0 0 6px "+(supaOk?"rgba(34,197,94,0.8)":"rgba(239,68,68,0.6)")}}/>
  <span style={{fontSize:12,fontWeight:700,color:supaOk?"#00E676":"#EF4444"}}>{syncing?"Synchronisation…":supaOk?"Connecté à Supabase":"Hors ligne — vérifie ta connexion"}</span>
  </div>
- <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris en local · sync auto toutes les 5s</div>
+ <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris · temps réel : {liveState==="SUBSCRIBED"?"actif":liveState}</div>
+ {syncErr&&<div style={{fontSize:11,color:"#fca5a5",marginTop:6,wordBreak:"break-word"}}>Dernière erreur — {syncErr}</div>}
  </div>
+ <button onClick={runDiag} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:10,color:"#93c5fd",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13}}>Tester la connexion</button>
+ {diag&&<div style={{background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
+ {diag.map((d,i)=><div key={i} style={{display:"flex",gap:8,fontSize:11,padding:"4px 0",borderBottom:i<diag.length-1?"1px solid #1F2937":"none"}}>
+ <span style={{color:d.ok===null?"#9CA3AF":d.ok?"#00E676":"#EF4444",fontWeight:700,flexShrink:0}}>{d.ok===null?"…":d.ok?"OK":"ERREUR"}</span>
+ <span style={{color:"#E5E7EB",flexShrink:0}}>{d.t}</span>
+ <span style={{color:"#9CA3AF",marginLeft:"auto",textAlign:"right",wordBreak:"break-word"}}>{d.m}</span>
+ </div>)}
+ </div>}
 
  {/* Integrity check */}
  <div style={{marginBottom:14}}>
@@ -12557,158 +12008,6 @@ class ErrorBoundary extends React.Component{
 
 
 // PP Board Analyzer 
-function PPBoardAnalyzer(){
- const [gameFilter,setGameFilter]=useState("CS2");
- const [img12,setImg12]=useState(null);
- const [img3,setImg3]=useState(null);
- const [rows,setRows]=useState([]);
- const [loading,setLoading]=useState(false);
- const [error,setError]=useState("");
- const [open,setOpen]=useState(false);
-
- function handleFile(e,which){
- var file=e.target.files&&e.target.files[0];
- if(!file)return;
- var reader=new FileReader();
- reader.onload=function(ev){
- var b64=ev.target.result.split(",")[1];
- var data={b64:b64,mime:file.type,url:ev.target.result};
- if(which==="12")setImg12(data);else setImg3(data);
- };
- reader.readAsDataURL(file);
- }
-
- async function analyze(){
- if(!img12&&!img3)return;
- setLoading(true);setError("");setRows([]);
- var content12=img12?[{type:"image",source:{type:"base64",media_type:img12.mime,data:img12.b64}}]:[];
- var content3=img3?[{type:"image",source:{type:"base64",media_type:img3.mime,data:img3.b64}}]:[];
- var prompt="Analyse ces boards PrizePicks pour "+gameFilter+"."+(img12?" IMAGE 1=Map 1+2.":"")+(img3?" IMAGE 2=Map 3.":"")+' Retourne UNIQUEMENT ce JSON sans markdown: {"map12":[{"player":"Nom","line":30.5}],"map3":[{"player":"Nom","line":15.5}]}';
- try{
- var resp=await fetch("https://api.anthropic.com/v1/messages",{
- method:"POST",
- headers:{"Content-Type":"application/json"},
- body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:[...content12,...content3,{type:"text",text:prompt}]}]})
- });
- var data=await resp.json();
- var raw=(data.content&&data.content[0]&&data.content[0].text)||"";
- var clean=raw.replace(/```json|```/g,"").trim();
- var parsed=JSON.parse(clean);
- var map12=parsed.map12||[];
- var map3=parsed.map3||[];
- var lookup={};
- map3.forEach(function(p){lookup[p.player.toLowerCase()]=p.line;});
- var result=[];
- map12.forEach(function(p){
- var th=Math.round(p.line/2*10)/10;
- var actual=lookup[p.player.toLowerCase()]||null;
- var diff=actual!==null?Math.round((actual-th)*100)/100:null;
- result.push({player:p.player,line12:p.line,theoretical:th,map3:actual,diff:diff});
- });
- map3.forEach(function(p){
- var found=result.find(function(r){return r.player.toLowerCase()===p.player.toLowerCase();});
- if(!found)result.push({player:p.player,line12:null,theoretical:null,map3:p.line,diff:null});
- });
- result.sort(function(a,b){return (b.line12||0)-(a.line12||0);});
- setRows(result);
- }catch(e){setError("Erreur: "+e.message);}
- setLoading(false);
- }
-
- var inputStyle={width:"100%",background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:9,padding:"9px 12px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer"};
- var diffCol=function(d){return d===null?"#6B7280":d>=1?"#00E676":d<=-1?"#f87171":"#9CA3AF";};
-
- return(
- <div style={{margin:"0 0 24px",padding:"0 16px"}}>
- <button onClick={function(){setOpen(function(v){return !v;});}}
- style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer"}}>
- <div style={{display:"flex",alignItems:"center",gap:8}}>
- <img src={_B64_PP_LOGO_B64} style={{width:18,height:18,objectFit:"contain",borderRadius:4}}/>
- <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>PP Board Analyzer</span>
- <span style={{background:"rgba(124,58,237,.15)",color:"#a78bfa",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:6}}>Comparer Map1+2 vs Map3</span>
- </div>
- <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}></span>
- </button>
-
- {open&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"16px"}}>
- {/* Game filter */}
- <div style={{display:"flex",gap:6,marginBottom:14}}>
- {["CS2","Dota2","LoL","Valorant"].map(function(g){
- var on=gameFilter===g;
- return <button key={g} onClick={function(){setGameFilter(g);}}
- style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:8,border:"1px solid "+(on?"rgba(124,58,237,.5)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:11,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- <GameLogo game={g} size={13}/>{g}
- </button>;
- })}
- </div>
-
- {/* Upload row */}
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
- {[{id:"up12",label:"Board Map 1+2",which:"12",img:img12,clear:function(){setImg12(null);}},
- {id:"up3",label:"Board Map 3",which:"3",img:img3,clear:function(){setImg3(null);}}].map(function(u){
- return <div key={u.id}>
- <div style={{fontSize:10,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:5}}>{u.label}</div>
- {u.img?(
- <div style={{position:"relative"}}>
- <img src={u.img.url} style={{width:"100%",maxHeight:120,objectFit:"contain",borderRadius:8,border:"1px solid rgba(124,58,237,.2)"}}/>
- <button onClick={u.clear} style={{position:"absolute",top:4,right:4,background:"rgba(239,68,68,.8)",border:"none",borderRadius:"50%",width:20,height:20,color:"#fff",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
- </div>
- ):(
- <label style={{display:"block",border:"2px dashed rgba(124,58,237,.3)",borderRadius:9,padding:"20px 10px",textAlign:"center",cursor:"pointer",background:"rgba(124,58,237,.04)"}}>
- <input type="file" accept="image/*" style={{display:"none"}} onChange={function(e){handleFile(e,u.which);}}/>
- <div style={{fontSize:18,marginBottom:4}}></div>
- <div style={{fontSize:10,color:"#6B7280"}}>Upload photo</div>
- </label>
- )}
- </div>;
- })}
- </div>
-
- <button onClick={analyze} disabled={loading||(!img12&&!img3)}
- style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:(!img12&&!img3)||loading?"rgba(255,255,255,.05)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:(!img12&&!img3)||loading?"#4a5a6e":"#fff",fontWeight:700,fontSize:13,cursor:(!img12&&!img3)||loading?"default":"pointer",fontFamily:"Inter,sans-serif",marginBottom:12}}>
- {loading?"⏳ Analyse en cours...":"Analyser →"}
- </button>
-
- {error&&<div style={{padding:"8px 12px",background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,color:"#f87171",fontSize:11,marginBottom:10}}>{error}</div>}
-
- {rows.length>0&&<div>
- <div style={{fontSize:11,fontWeight:700,color:"#c4b5fd",marginBottom:8}}>{rows.length} joueurs analysés</div>
- <div style={{overflowX:"auto",borderRadius:10,border:"1px solid rgba(139,92,246,.2)"}}>
- <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
- <thead>
- <tr style={{background:"rgba(124,58,237,.15)"}}>
- {["Joueur","Line 1+2","Théo /map","Map 3 PP","Diff","Signal"].map(function(h){
- return <th key={h} style={{padding:"8px 10px",textAlign:"left",fontSize:9,fontWeight:700,color:"#7a6a9e",textTransform:"uppercase",letterSpacing:.6,whiteSpace:"nowrap"}}>{h}</th>;
- })}
- </tr>
- </thead>
- <tbody>
- {rows.map(function(r,i){
- var dc=diffCol(r.diff);
- var signal=r.diff===null?"—":r.diff>=1?<span style={{background:"rgba(0,230,118,.12)",color:"#00E676",padding:"2px 7px",borderRadius:5,fontSize:10,fontWeight:700}}>Over Map3</span>:r.diff<=-1?<span style={{background:"rgba(248,113,113,.12)",color:"#f87171",padding:"2px 7px",borderRadius:5,fontSize:10,fontWeight:700}}>Under Map3</span>:<span style={{color:"#9CA3AF",fontSize:10}}>Cohérent</span>;
- return(
- <tr key={i} style={{borderTop:"1px solid rgba(255,255,255,.04)"}}>
- <td style={{padding:"9px 10px",fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{r.player}</td>
- <td style={{padding:"9px 10px",fontWeight:700,color:"#c4b5fd"}}>{r.line12!==null?r.line12:"—"}</td>
- <td style={{padding:"9px 10px",color:"#6B7280"}}>{r.theoretical!==null?r.theoretical:"—"}</td>
- <td style={{padding:"9px 10px",fontWeight:700,color:"#c4b5fd"}}>{r.map3!==null?r.map3:"—"}</td>
- <td style={{padding:"9px 10px",fontWeight:700,color:dc}}>{r.diff!==null?(r.diff>0?"+":"")+r.diff:"—"}</td>
- <td style={{padding:"9px 10px"}}>{signal}</td>
- </tr>
- );
- })}
- </tbody>
- </table>
- </div>
- </div>}
- </div>}
- </div>
- );
-}
-
-
-
-// PPReferenceTable 
 function PPReferenceTable(){
  const [open,setOpen]=useState(false);
  const [game,setGame]=useState("LoL");
@@ -12798,337 +12097,7 @@ function PPReferenceTable(){
  );
 }
 
-// PPRatioCompiler 
-function PPRatioCompiler(){
- const STORAGE_KEY="v7_pp_ratios";
- function loadData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");}catch(e){return{};}}
- function saveDataToStorage(d){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}catch(e){}}
 
- const [game,setGame]=useState("CS2");
- const [mt,setMt]=useState("12");
- const [rows,setRows]=useState([{player:"",anchor:"",comp:""}]);
- const [allData,setAllData]=useState(loadData);
- const [open,setOpen]=useState(false);
- const [uploadImgs,setUploadImgs]=useState({img12:null,img3:null});
- const [analyzing,setAnalyzing]=useState(false);
-
- async function analyzePhotos(){
- if(!uploadImgs.img12&&!uploadImgs.img3)return;
- setAnalyzing(true);
- var imgs=[];
- if(uploadImgs.img12)imgs.push({type:"image",source:{type:"base64",media_type:uploadImgs.img12.mime,data:uploadImgs.img12.b64}});
- if(uploadImgs.img3)imgs.push({type:"image",source:{type:"base64",media_type:uploadImgs.img3.mime,data:uploadImgs.img3.b64}});
- var prompt="Analyse ces boards PrizePicks pour "+game+"."+(uploadImgs.img12?" IMAGE 1=Map 1+2 kills.":"")+(uploadImgs.img3?" IMAGE 2=Map 3 kills.":"")+" Retourne UNIQUEMENT ce JSON valide sans markdown ni texte: {\"map12\":[{\"player\":\"Nom\",\"line\":30.5}],\"map3\":[{\"player\":\"Nom\",\"line\":15.5}]}. Inclus TOUS les joueurs visibles avec leurs lignes exactes.";
- imgs.push({type:"text",text:prompt});
- try{
- var resp=await fetch("https://api.anthropic.com/v1/messages",{
- method:"POST",
- headers:{"Content-Type":"application/json"},
- body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,messages:[{role:"user",content:imgs}]})
- });
- if(!resp.ok){
- var errText=await resp.text();
- throw new Error("API "+resp.status+": "+errText.slice(0,100));
- }
- var data=await resp.json();
- var raw=(data.content&&data.content[0]&&data.content[0].text)||"";
- // Extract JSON from response
- var jsonMatch=raw.match(/\{[\s\S]*\}/);
- if(!jsonMatch)throw new Error("Pas de JSON dans la réponse: "+raw.slice(0,100));
- var parsed=JSON.parse(jsonMatch[0]);
- var map12=parsed.map12||[];
- var map3=parsed.map3||[];
- var lookup={};
- map3.forEach(function(p){lookup[p.player.toLowerCase()]=p.line;});
- var newRows=map12.map(function(p){
- var comp=lookup[p.player.toLowerCase()];
- return{player:p.player,anchor:String(p.line),comp:comp!==undefined?String(comp):""};
- });
- map3.forEach(function(p){
- if(!map12.find(function(m){return m.player.toLowerCase()===p.player.toLowerCase();})){
- newRows.push({player:p.player,anchor:"",comp:String(p.line)});
- }
- });
- if(newRows.length>0)setRows(newRows);
- else throw new Error("Aucun joueur extrait. Réessaie avec une photo plus nette.");
- }catch(e){
- alert("Erreur analyse: "+e.message);
- }
- setAnalyzing(false);
- }
-
- var MT_LABELS={"12":"Map 1+2","3":"Map 3","123":"Map 1+2+3"};
- var MT_DIVISOR={"12":2,"3":0.5,"123":3};
- var MT_COMP_LABEL={"12":"Map 3","3":"Map 1+2","123":"Map 3"};
-
- function getKey(){return game+"_"+mt;}
-
- function getBuckets(){return(allData[getKey()])||[];}
-
- function addRow(){setRows(function(r){return r.concat({player:"",anchor:"",comp:""});});}
-
- function updateRow(i,field,val){
- setRows(function(prev){
- var n=prev.map(function(r,idx){return idx===i?Object.assign({},r,{[field]:val}):r;});
- return n;
- });
- }
-
- function save(){
- var newEntries=rows.filter(function(r){return r.anchor!=="";}).map(function(r){
- return{player:r.player||"?",anchor:parseFloat(r.anchor),comp:r.comp!==""?parseFloat(r.comp):null,date:new Date().toLocaleDateString("fr-CA"),ts:Date.now()};
- });
- if(!newEntries.length)return;
- var updated=Object.assign({},allData);
- var key=getKey();
- updated[key]=(updated[key]||[]).concat(newEntries);
- setAllData(updated);
- saveDataToStorage(updated);
- setRows([{player:"",anchor:"",comp:""}]);
- }
-
- function removeEntry(ts){
- var updated=Object.assign({},allData);
- var key=getKey();
- updated[key]=(updated[key]||[]).filter(function(e){return e.ts!==ts;});
- setAllData(updated);
- saveDataToStorage(updated);
- }
-
- function clearAll(){
- if(!window.confirm("Vider toutes les données "+game+" "+MT_LABELS[mt]+" ?"))return;
- var updated=Object.assign({},allData);
- delete updated[getKey()];
- setAllData(updated);
- saveDataToStorage(updated);
- }
-
- var buckets=getBuckets();
- var divisor=MT_DIVISOR[mt];
- var compLabel=MT_COMP_LABEL[mt];
-
- // Build frequency table
- var freq={};
- var allComps=new Set();
- buckets.forEach(function(d){
- var ak=d.anchor.toFixed(1);
- if(!freq[ak])freq[ak]={total:0,values:{}};
- freq[ak].total++;
- if(d.comp!==null){
- var ck=d.comp.toFixed(1);
- freq[ak].values[ck]=(freq[ak].values[ck]||0)+1;
- allComps.add(d.comp);
- }
- });
- var anchorLines=Object.keys(freq).map(Number).sort(function(a,b){return b-a;});
- var compCols=[...allComps].sort(function(a,b){return a-b;});
-
- var inputStyle={background:"rgba(0,0,0,.3)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 9px",color:"#E5E7EB",fontSize:12,fontFamily:"Inter,sans-serif",outline:"none"};
- var pillStyle=function(on){return{padding:"5px 11px",borderRadius:7,border:"1px solid "+(on?"rgba(124,58,237,.5)":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"};};
-
- return(
- <div style={{margin:"0 0 24px",padding:"0 16px"}}>
- {/* Toggle */}
- <button onClick={function(){setOpen(function(v){return !v;});}}
- style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",border:"1px solid #1F2937",borderRadius:open?"13px 13px 0 0":"13px",padding:"12px 16px",cursor:"pointer"}}>
- <div style={{display:"flex",alignItems:"center",gap:8}}>
- <img src={_B64_PP_LOGO_B64} style={{width:18,height:18,objectFit:"contain",borderRadius:4}}/>
- <span style={{fontSize:13,fontWeight:700,color:"#E5E7EB"}}>PP Ratio Compiler</span>
- <span style={{background:"rgba(124,58,237,.12)",color:"#a78bfa",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:6}}>{Object.values(allData).reduce(function(s,a){return s+(a&&a.length||0);},0)} entrées</span>
- </div>
- <span style={{color:"#6B7280",fontSize:12,transform:open?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}></span>
- </button>
-
- {open&&<div style={{background:"#0D1117",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 13px 13px",padding:"16px"}}>
-
- {/* Game + MapType */}
- <div style={{display:"flex",gap:5,marginBottom:8,flexWrap:"wrap"}}>
- {["CS2","Dota2","LoL","Valorant"].map(function(g){
- return <button key={g} onClick={function(){setGame(g);}} style={pillStyle(game===g)}>
- <GameLogo game={g} size={12}/> {g}
- </button>;
- })}
- </div>
- <div style={{display:"flex",gap:5,marginBottom:14}}>
- {["12","3","123"].map(function(k){
- return <button key={k} onClick={function(){setMt(k);}} style={Object.assign({},pillStyle(mt===k),{fontSize:10})}>
- {MT_LABELS[k]}
- </button>;
- })}
- </div>
-
- {/* Input rows */}
- <div style={{background:"rgba(0,0,0,.2)",borderRadius:10,padding:"12px",marginBottom:12}}>
-
- {/* Photo upload mode */}
- <div style={{marginBottom:12}}>
- <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:8}}> Upload photos du board PP</div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
- {[{key:"img12",label:"Map 1+2"},{key:"img3",label:"Map 3"}].map(function(u){
- var imgData=uploadImgs[u.key];
- return <div key={u.key}>
- <div style={{fontSize:9,color:"#4a5a6e",marginBottom:4}}>{u.label}</div>
- {imgData?(
- <div style={{position:"relative"}}>
- <img src={imgData.url} style={{width:"100%",maxHeight:100,objectFit:"contain",borderRadius:7,border:"1px solid rgba(124,58,237,.2)"}}/>
- <button onClick={function(){setUploadImgs(function(p){var n=Object.assign({},p);n[u.key]=null;return n;});}} style={{position:"absolute",top:3,right:3,background:"rgba(239,68,68,.8)",border:"none",borderRadius:"50%",width:18,height:18,color:"#fff",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
- </div>
- ):(
- <label style={{display:"block",border:"2px dashed rgba(124,58,237,.25)",borderRadius:8,padding:"14px 8px",textAlign:"center",cursor:"pointer",background:"rgba(124,58,237,.03)"}}>
- <input type="file" accept="image/*" style={{display:"none"}} onChange={function(e){
- var file=e.target.files&&e.target.files[0];
- if(!file)return;
- var reader=new FileReader();
- var key=u.key;
- reader.onload=function(ev){
- var b64=ev.target.result.split(",")[1];
- setUploadImgs(function(p){var n=Object.assign({},p);n[key]={b64:b64,mime:file.type,url:ev.target.result};return n;});
- };
- reader.readAsDataURL(file);
- }}/>
- <div style={{fontSize:16,marginBottom:2}}></div>
- <div style={{fontSize:10,color:"#6B7280"}}>{u.label}</div>
- </label>
- )}
- </div>;
- })}
- </div>
- <button onClick={analyzePhotos} disabled={analyzing||(!uploadImgs.img12&&!uploadImgs.img3)}
- style={{width:"100%",padding:"9px",borderRadius:8,border:"none",background:(!uploadImgs.img12&&!uploadImgs.img3)||analyzing?"rgba(255,255,255,.05)":"linear-gradient(135deg,#7C3AED,#3B82F6)",color:(!uploadImgs.img12&&!uploadImgs.img3)||analyzing?"#4a5a6e":"#fff",fontWeight:700,fontSize:12,cursor:(!uploadImgs.img12&&!uploadImgs.img3)||analyzing?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
- {analyzing?"⏳ Analyse Claude...":"Analyser photos → remplir tableau"}
- </button>
- </div>
-
- <div style={{borderTop:"1px solid rgba(255,255,255,.06)",marginBottom:10,paddingTop:10}}>
- <div style={{fontSize:9,color:"#6a5a8e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6,marginBottom:8}}> Ou entre manuellement</div>
- </div>
-
- <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 24px",gap:6,marginBottom:6}}>
- <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>Joueur</div>
- <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>{MT_LABELS[mt]}</div>
- <div style={{fontSize:9,color:"#c4b5fd",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>{compLabel}</div>
- <div/>
- </div>
- {rows.map(function(r,i){
- return <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 24px",gap:6,marginBottom:6,alignItems:"center"}}>
- <input value={r.player} onChange={function(e){updateRow(i,"player",e.target.value);}} placeholder="Nom" style={Object.assign({},inputStyle,{width:"100%"})}/>
- <input type="number" step="0.5" value={r.anchor} onChange={function(e){updateRow(i,"anchor",e.target.value);}} placeholder="ex: 30.5" style={Object.assign({},inputStyle,{width:"100%",color:"#c4b5fd"})}/>
- <input type="number" step="0.5" value={r.comp} onChange={function(e){updateRow(i,"comp",e.target.value);}} placeholder="ex: 15" style={Object.assign({},inputStyle,{width:"100%",color:"#00E676"})}/>
- <button onClick={function(){setRows(function(p){return p.filter(function(_,j){return j!==i;});});}} style={{background:"none",border:"none",color:"#4a5a6e",cursor:"pointer",fontSize:14}}>×</button>
- </div>;
- })}
- <div style={{display:"flex",gap:8,marginTop:8}}>
- <button onClick={addRow} style={{flex:1,padding:"7px",borderRadius:7,border:"1px dashed rgba(124,58,237,.25)",background:"transparent",color:"#7C3AED",fontSize:11,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+ Joueur</button>
- <button onClick={save} disabled={!rows.some(function(r){return r.anchor!=="";} )}
- style={{flex:2,padding:"7px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- Enregistrer ({rows.filter(function(r){return r.anchor!=="";}).length})
- </button>
- </div>
- </div>
-
- {/* Frequency table */}
- {buckets.length===0?(
- <div style={{textAlign:"center",padding:"24px",color:"#3a4a5e",fontSize:12}}>
- Aucune donnée pour {game} {MT_LABELS[mt]}<br/>
- <span style={{fontSize:10}}>Ajoute des entrées ci-dessus pour compiler les ratios</span>
- </div>
- ):(
- <>
- {/* Stats bar */}
- {(function(){
- var withComp=buckets.filter(function(d){return d.comp!==null;});
- if(!withComp.length)return null;
- var diffs=withComp.map(function(d){return d.comp-d.anchor/divisor;});
- var avg=diffs.reduce(function(s,v){return s+v;},0)/diffs.length;
- var exact=diffs.filter(function(d){return Math.abs(d)<0.01;}).length;
- var higher=diffs.filter(function(d){return d>0.01;}).length;
- var lower=diffs.filter(function(d){return d<-0.01;}).length;
- return <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
- {[
- {v:withComp.length,l:"Paires",c:"#c4b5fd"},
- {v:(avg>0?"+":"")+avg.toFixed(2),l:"Diff moy.",c:avg>0.05?"#00E676":avg<-0.05?"#f87171":"#9CA3AF"},
- {v:exact,l:"Exact",c:"#9CA3AF"},
- {v:higher,l:compLabel+" haut",c:"#00E676"},
- {v:lower,l:compLabel+" bas",c:"#f87171"},
- ].map(function(s){return <div key={s.l} style={{background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.12)",borderRadius:7,padding:"5px 10px"}}>
- <div style={{fontSize:14,fontWeight:800,color:s.c}}>{s.v}</div>
- <div style={{fontSize:9,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
- </div>;})}
- </div>;
- })()}
-
- {/* Frequency grid */}
- <div style={{overflowX:"auto",borderRadius:10,border:"1px solid rgba(139,92,246,.2)",marginBottom:12}}>
- <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
- <thead>
- <tr style={{background:"rgba(0,0,0,.3)"}}>
- <th style={{padding:"8px 10px",textAlign:"left",fontSize:9,fontWeight:700,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.6,whiteSpace:"nowrap"}}>{MT_LABELS[mt]}</th>
- <th style={{padding:"8px 10px",textAlign:"center",fontSize:9,fontWeight:700,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.6}}>Théo</th>
- <th style={{padding:"8px 10px",textAlign:"center",fontSize:9,fontWeight:700,color:"#6a5a8e",textTransform:"uppercase",letterSpacing:.6}}>N</th>
- {compCols.map(function(c){
- return <th key={c} style={{padding:"8px 8px",textAlign:"center",fontSize:10,fontWeight:700,color:"#c4b5fd",whiteSpace:"nowrap"}}>{c.toFixed(1)}</th>;
- })}
- </tr>
- </thead>
- <tbody>
- {anchorLines.map(function(al){
- var ak=al.toFixed(1);
- var bucket=freq[ak];
- var theo=(al/divisor).toFixed(2);
- var maxCnt=Math.max.apply(null,Object.values(bucket.values).concat([1]));
- return <tr key={al} style={{borderTop:"1px solid rgba(255,255,255,.03)"}}>
- <td style={{padding:"9px 10px"}}><span style={{fontSize:14,fontWeight:800,color:"#c4b5fd"}}>{al.toFixed(1)}</span></td>
- <td style={{padding:"9px 10px",textAlign:"center",color:"#4a5a6e",fontSize:11}}>{theo}</td>
- <td style={{padding:"9px 10px",textAlign:"center",color:"#7a9cbd",fontWeight:600}}>{bucket.total}</td>
- {compCols.map(function(c){
- var ck=c.toFixed(1);
- var cnt=bucket.values[ck]||0;
- var pct=bucket.total>0?Math.round(cnt/bucket.total*100):0;
- var delta=c-al/divisor;
- var dc=delta>0.01?"#00E676":delta<-0.01?"#f87171":"#9CA3AF";
- var deltaStr=delta>0.01?"+"+delta.toFixed(2):delta<-0.01?delta.toFixed(2):"≈0";
- if(cnt===0)return <td key={c} style={{padding:"9px 8px",textAlign:"center",color:"#1a2a3a"}}>—</td>;
- var bg=cnt===maxCnt?"rgba(124,58,237,.25)":pct>=20?"rgba(124,58,237,.1)":"rgba(124,58,237,.04)";
- return <td key={c} style={{padding:"6px 8px",textAlign:"center"}}>
- <div style={{background:bg,borderRadius:7,padding:"4px 6px",display:"inline-flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:36}}>
- <span style={{fontSize:12,fontWeight:700,color:"#c4b5fd"}}>{cnt}×</span>
- <span style={{fontSize:9,color:"#6B7280"}}>{pct}%</span>
- <span style={{fontSize:9,fontWeight:700,color:dc}}>{deltaStr}</span>
- </div>
- </td>;
- })}
- </tr>;
- })}
- </tbody>
- </table>
- </div>
-
- {/* History */}
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
- <span style={{fontSize:10,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>Historique ({buckets.length})</span>
- <button onClick={clearAll} style={{fontSize:10,color:"#f87171",background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}> Vider</button>
- </div>
- <div style={{maxHeight:160,overflowY:"auto"}}>
- {[...buckets].reverse().slice(0,30).map(function(d){
- var theo=(d.anchor/divisor).toFixed(2);
- var diff=d.comp!==null?d.comp-d.anchor/divisor:null;
- var dc=diff===null?"#6B7280":diff>0.01?"#00E676":diff<-0.01?"#f87171":"#9CA3AF";
- return <div key={d.ts} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.03)",fontSize:11}}>
- <span style={{color:"#E5E7EB",fontWeight:600,minWidth:70,textTransform:"capitalize"}}>{d.player}</span>
- <span style={{color:"#c4b5fd",fontWeight:700}}>{d.anchor.toFixed(1)}</span>
- <span style={{color:"#4a5a6e"}}>→ théo {theo}</span>
- {d.comp!==null&&<><span style={{color:"#00E676",fontWeight:700}}>{d.comp.toFixed(1)}</span><span style={{color:dc,fontWeight:700}}>{diff>0?"+":""}{diff!==null?diff.toFixed(2):""}</span></>}
- <span style={{color:"#2a3a4e",fontSize:9,marginLeft:"auto"}}>{d.date}</span>
- <button onClick={function(){removeEntry(d.ts);}} style={{background:"none",border:"none",color:"#3a4a5e",cursor:"pointer",fontSize:12}}>×</button>
- </div>;
- })}
- </div>
- </>
- )}
- </div>}
- </div>
- );
-}
 
 
 
