@@ -4823,7 +4823,8 @@ const capName=v=>{const x=String(v||"");return x?x.charAt(0).toUpperCase()+x.sli
 
 // ── CLUBS : top / flop par jeu + fiche équipe ─────────────────────────────
 function openClubSheet(team,game){try{window.dispatchEvent(new CustomEvent("emeieks-open-club",{detail:{team,game}}));}catch(e){}}
-function clubOfBet(b,allPlayers){const p=allPlayers[(b.player||"").toLowerCase().trim()];return p&&p.team?p.team:null;}
+// Club au moment du pari (b.team) sinon club actuel du joueur
+function clubOfBet(b,allPlayers){if(b.team&&b.team!=="?")return b.team;const p=allPlayers[(b.player||"").toLowerCase().trim()];return p&&p.team?p.team:null;}
 function clubLogo(team,game,teamLogos,allPlayers){
  if(teamLogos[team+"__"+game])return teamLogos[team+"__"+game];
  const p=Object.values(allPlayers).find(x=>x&&x.team===team&&x.game===game&&x.team_logo_url);return p?p.team_logo_url:null;
@@ -4877,6 +4878,11 @@ function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
  const tot=psAgg(mineAll);
  const rows=roster.map(p=>{const k=(p.name||"").toLowerCase().trim();const l=mineAll.filter(b=>(b.player||"").toLowerCase().trim()===k);return{p,...psAgg(l),pending:l.filter(b=>b.status==="pending").length};})
   .sort((a,b)=>(b.n?1:0)-(a.n?1:0)||b.profit-a.profit);
+ const rosterKeys=new Set(roster.map(p=>(p.name||"").toLowerCase().trim()));
+ const formerMap={};mineAll.forEach(b=>{const k=(b.player||"").toLowerCase().trim();if(!k||rosterKeys.has(k))return;(formerMap[k]=formerMap[k]||[]).push(b);});
+ const former=Object.entries(formerMap).map(([k,l])=>{const p=allPlayers[k]||{name:l[0].player};return{p,...psAgg(l),pending:l.filter(b=>b.status==="pending").length,now:p.team||"Agent libre"};}).sort((a,b)=>b.profit-a.profit);
+ const tMap={};mineAll.forEach(b=>{const k=b.tournament||b.league||"Sans tournoi";(tMap[k]=tMap[k]||[]).push(b);});
+ const tours=Object.entries(tMap).map(([t,l])=>{const last=l.reduce((m,b)=>String(b.datetime||"")>m?String(b.datetime||""):m,"");return{t,last,...psAgg(l),pending:l.filter(b=>b.status==="pending").length};}).sort((a,b)=>b.last.localeCompare(a.last));
  const Stat=({l,v,c})=>(<div style={{flex:1,minWidth:0,background:"#0f1524",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"12px 10px",textAlign:"center"}}>
   <div style={{fontSize:11,color:"#7c8599",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>{l}</div>
   <div style={{fontSize:20,fontWeight:900,color:c||"#eef1f7",marginTop:4}}>{v}</div></div>);
@@ -4919,6 +4925,33 @@ function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
         <span style={{fontSize:15,fontWeight:800,color:r.n?pcol(r.profit):"#4b5563"}}>{r.n?money$(r.profit):"—"}</span>
        </button>);})}
      </div>
+     {former.length>0&&<>
+      <div style={{fontSize:12,fontWeight:800,letterSpacing:1,textTransform:"uppercase",color:"#9ca3af",margin:"18px 2px 8px"}}>Anciens joueurs</div>
+      <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden"}}>
+       {former.map((r,i)=>{const ph=r.p.photo_url||r.p.avatar_url;return(
+        <button key={r.p.name} onClick={()=>{onClose();openPlayerSheet(r.p.name);}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"transparent",border:"none",borderTop:i?"1px solid rgba(255,255,255,.05)":"none",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif",opacity:.9}}>
+         <span style={{width:40,height:40,borderRadius:20,overflow:"hidden",background:"rgba(255,255,255,.05)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",filter:"grayscale(.6)"}}>
+          {ph?<img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:<span style={{fontSize:15,fontWeight:800,color:"#9ca3af"}}>{(r.p.name||"?")[0].toUpperCase()}</span>}</span>
+         <span style={{flex:1,minWidth:0}}>
+          <span style={{display:"block",fontSize:14,fontWeight:800,color:"#d1d5db"}}>{capName(r.p.name)}<span style={{fontSize:11,fontWeight:600,color:"#7c8599",marginLeft:7}}>→ {r.now}</span></span>
+          <span style={{fontSize:11.5,color:"#7c8599"}}>{r.n?r.n+" paris · "+r.won+"V "+r.lost+"D · "+r.wr.toFixed(0)+"% · ROI "+r.roi.toFixed(1)+"%":"Aucun pari terminé"}{r.pending?" · "+r.pending+" en cours":""}</span>
+         </span>
+         <span style={{fontSize:15,fontWeight:800,color:r.n?pcol(r.profit):"#4b5563"}}>{r.n?money$(r.profit):"—"}</span>
+        </button>);})}
+      </div></>}
+     {tours.length>0&&<>
+      <div style={{fontSize:12,fontWeight:800,letterSpacing:1,textTransform:"uppercase",color:"#9ca3af",margin:"18px 2px 8px"}}>Par tournoi</div>
+      <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,overflow:"hidden"}}>
+       {tours.map((r,i)=>(
+        <div key={r.t} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 12px",borderTop:i?"1px solid rgba(255,255,255,.05)":"none"}}>
+         <span style={{width:34,height:34,borderRadius:9,background:"rgba(251,191,36,.08)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fbbf24"}}><Ic n="trophy" s={16}/></span>
+         <span style={{flex:1,minWidth:0}}>
+          <span style={{display:"block",fontSize:14,fontWeight:800,color:"#eef1f7",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.t}</span>
+          <span style={{fontSize:11.5,color:"#7c8599"}}>{r.n?r.n+" paris · "+r.won+"V "+r.lost+"D · "+r.wr.toFixed(0)+"% · ROI "+r.roi.toFixed(1)+"%":"Aucun pari terminé"}{r.pending?" · "+r.pending+" en cours":""}</span>
+         </span>
+         <span style={{fontSize:15,fontWeight:800,color:r.n?pcol(r.profit):"#4b5563"}}>{r.n?money$(r.profit):"—"}</span>
+        </div>))}
+      </div></>}
     </div>
    </div>
   </div>
@@ -5209,6 +5242,18 @@ function PlayerBanner({name,photo,role,game,team,league,logo,children}){
 function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast,teamLogos={},allPlayers={},onDelete,isNew}){
  const [f,setF]=useState({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
  const [busy,setBusy]=useState("");
+ const [rolePick,setRolePick]=useState(null);
+ const applyRolePick=async()=>{
+  const rp=rolePick;setBusy("role");
+  try{
+   const ids=[...rp.sel];
+   for(let i=0;i<ids.length;i+=150){const chunk=ids.slice(i,i+150);
+    await cloudDb("bets?id=in.("+chunk.join(",")+")",{method:"PATCH",body:{role:rp.newRole}});}
+   window.dispatchEvent(new CustomEvent("emeieks-bets-role",{detail:{ids:ids.map(String),role:rp.newRole}}));
+   showToast&&showToast(ids.length+" pari(s) passés en "+rp.newRole,"#A78BFA");
+  }catch(e){showToast&&showToast("Erreur : "+((e&&e.message)||e).slice(0,80),"#EF4444");}
+  setBusy("");setRolePick(null);onSaved(rp.finalP,rp.finalLogo);
+ };
  const [clubQ,setClubQ]=useState("");
  const [clubOpen,setClubOpen]=useState(false);
  const set=(k,v)=>setF(x=>({...x,[k]:v}));
@@ -5276,22 +5321,25 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
    if(pid){const r=await cloudDb("players?id=eq."+encodeURIComponent(pid),{method:"PATCH",body:row,prefer:"return=representation"});saved=r&&r[0];}
    else{const r=await cloudDb("players",{method:"POST",body:row,prefer:"return=representation"});saved=r&&r[0];}
    if(lg&&row.team){await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body:{team_logo_url:lg}}).catch(()=>{});}
-   // Position changée → tous les paris de ce joueur passent sur la nouvelle position (stats Positions)
+   const finalP={...p,...row,...(saved||{})},finalLogo=row.team?lg:null;
+   // Position changée → menu pour choisir quels paris passent sur la nouvelle position
    if(row.role&&row.role!==(p.role||"")){
     try{
-     const nm=row.name.replace(/[%_*]/g,"");
-     const oldNames=[...new Set([nm,(p.name||"").replace(/[%_*]/g,"")].filter(Boolean))];
-     let moved=0;
-     for(const n of oldNames){
-      const r=await cloudDb("bets?player=ilike."+encodeURIComponent(n)+"&game=eq."+encodeURIComponent(row.game)+"&or=(role.is.null,role.neq."+encodeURIComponent(row.role)+")",{method:"PATCH",body:{role:row.role},prefer:"return=representation"});
-      moved+=(r||[]).length;
+     const names=[...new Set([row.name,p.name].filter(Boolean).map(x=>x.replace(/[%_*]/g,"")))];
+     let list=[];
+     for(const n of names){
+      const r=await cloudDb("bets?select=id,datetime,description,overUnder,odds,stake,status,profit,role,tournament,league,mapTag&player=ilike."+encodeURIComponent(n)+"&game=eq."+encodeURIComponent(row.game)+"&order=datetime.desc");
+      (r||[]).forEach(x=>{if(!list.some(y=>y.id===x.id))list.push(x);});
      }
-     window.dispatchEvent(new CustomEvent("emeieks-bets-role",{detail:{names:oldNames.map(x=>x.toLowerCase()),game:row.game,role:row.role}}));
-     if(moved)showToast&&showToast(moved+" pari(s) passés en "+row.role,"#A78BFA");
+     if(list.length){
+      showToast&&showToast(capName(row.name)+" enregistré","#00E676");
+      setRolePick({list,newRole:row.role,oldRole:p.role||"",sel:new Set(list.filter(x=>x.role!==row.role).map(x=>x.id)),finalP,finalLogo});
+      setBusy("");return;
+     }
     }catch(e){}
    }
    showToast&&showToast(capName(row.name)+" enregistré","#00E676");
-   onSaved({...p,...row,...(saved||{})},row.team?lg:null);
+   onSaved(finalP,finalLogo);
   }catch(e){showToast&&showToast("Erreur : "+((e&&e.message)||e).slice(0,80),"#EF4444");}
   setBusy("");
  };
@@ -5299,6 +5347,45 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
  return(
   <div onClick={e=>{e.stopPropagation();onClose();}} style={{position:"fixed",inset:0,zIndex:470,background:"rgba(0,0,0,.75)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",overflowY:"auto",animation:"overlayIn .2s ease"}}>
    <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220",display:"flex",flexDirection:"column"}}>
+    {rolePick&&(()=>{
+     const rp=rolePick;const toggle=id=>setRolePick(x=>{const n=new Set(x.sel);n.has(id)?n.delete(id):n.add(id);return{...x,sel:n};});
+     const setAll=on=>setRolePick(x=>({...x,sel:new Set(on?x.list.map(b=>b.id):[])}));
+     const mn=["jan","fév","mar","avr","mai","juin","juil","août","sep","oct","nov","déc"];
+     const fd=d=>{const t=String(d||"");return t?parseInt(t.slice(8,10))+" "+mn[parseInt(t.slice(5,7))-1]+" "+t.slice(2,4):"";};
+     let lastT=null;
+     return(
+      <div style={{position:"fixed",inset:0,zIndex:480,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+       <div style={{width:"100%",maxWidth:620,maxHeight:"88vh",background:"#0f1524",borderRadius:"20px 20px 0 0",border:"1px solid rgba(255,255,255,.08)",display:"flex",flexDirection:"column",fontFamily:"Inter,sans-serif"}}>
+        <div style={{padding:"16px 16px 10px"}}>
+         <div style={{fontSize:17,fontWeight:800,color:"#fff"}}>Quels paris passent en <span style={{color:"#a78bfa"}}>{rp.newRole}</span> ?</div>
+         <div style={{fontSize:12.5,color:"#8b93a7",marginTop:4,lineHeight:1.45}}>Coché = {rp.newRole}. Décoché = garde sa position actuelle{rp.oldRole?" ("+rp.oldRole+")":""}.</div>
+         <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button onClick={()=>setAll(true)} style={{padding:"6px 12px",borderRadius:9,border:"1px solid rgba(167,139,250,.35)",background:"rgba(124,58,237,.12)",color:"#c4b5fd",fontSize:12,fontWeight:700,cursor:"pointer"}}>Tout cocher</button>
+          <button onClick={()=>setAll(false)} style={{padding:"6px 12px",borderRadius:9,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer"}}>Tout décocher</button>
+          <span style={{marginLeft:"auto",alignSelf:"center",fontSize:12,color:"#8b93a7"}}>{rp.sel.size}/{rp.list.length}</span>
+         </div>
+        </div>
+        <div style={{overflowY:"auto",flex:1,borderTop:"1px solid rgba(255,255,255,.06)"}}>
+         {rp.list.map(b=>{const on=rp.sel.has(b.id);const t=b.tournament||b.league||"Sans tournoi";const head=t!==lastT;lastT=t;
+          const pr=Number(b.profit)||0;
+          return(<React.Fragment key={b.id}>
+           {head&&<div style={{padding:"9px 16px 5px",fontSize:11,fontWeight:800,letterSpacing:1,textTransform:"uppercase",color:"#fbbf24",background:"rgba(251,191,36,.04)"}}>{t}</div>}
+           <button onClick={()=>toggle(b.id)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"10px 16px",background:on?"rgba(124,58,237,.08)":"transparent",border:"none",borderTop:"1px solid rgba(255,255,255,.04)",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
+            <span style={{width:22,height:22,borderRadius:7,border:"2px solid "+(on?"#7C3AED":"#374151"),background:on?"#7C3AED":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff"}}>{on&&<Ic n="check" s={13} w={3}/>}</span>
+            <span style={{flex:1,minWidth:0}}>
+             <span style={{display:"block",fontSize:13.5,fontWeight:700,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{(b.overUnder&&!String(b.description||"").startsWith(b.overUnder)?b.overUnder+" ":"")+(b.description||"")}{b.mapTag?" · "+b.mapTag:""}</span>
+             <span style={{fontSize:11.5,color:"#7c8599"}}>{fd(b.datetime)} · @{b.odds} · actuellement <b style={{color:"#cbd5e1"}}>{b.role||"—"}</b></span>
+            </span>
+            <span style={{fontSize:13,fontWeight:800,color:b.status==="pending"?"#9ca3af":pr>0?"#00E676":pr<0?"#f87171":"#9ca3af"}}>{b.status==="pending"?"en cours":(pr>=0?"+":"")+pr.toFixed(0)+"$"}</span>
+           </button></React.Fragment>);})}
+        </div>
+        <div style={{display:"flex",gap:10,padding:12,borderTop:"1px solid rgba(255,255,255,.06)"}}>
+         <button onClick={()=>{const r=rolePick;setRolePick(null);onSaved(r.finalP,r.finalLogo);}} style={{flex:1,padding:13,borderRadius:13,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",fontWeight:700,fontSize:14,cursor:"pointer"}}>Ne rien changer</button>
+         <button onClick={applyRolePick} disabled={busy==="role"} style={{flex:2,padding:13,borderRadius:13,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",opacity:busy==="role"?.6:1}}>{busy==="role"?"Enregistrement…":"Passer "+rp.sel.size+" pari(s) en "+rp.newRole}</button>
+        </div>
+       </div>
+      </div>);
+    })()}
     <PlayerBanner name={f.name} photo={f.photo} role={f.role} game={f.game} team={f.team} league={f.league} logo={f.logo}>
      <div style={{position:"absolute",top:12,left:12,right:12,display:"flex",justifyContent:"space-between",alignItems:"center",zIndex:3}}>
       <button onClick={onClose} aria-label="Fermer" style={{width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
@@ -5428,7 +5515,7 @@ export default function App(){
  };
  useEffect(()=>{const h=e=>{setPform({name:"",game:"LoL",league:"",role:"",team:"",...(e.detail||{})});setModalPlayer(true);};window.addEventListener("emeieks-new-player",h);return()=>window.removeEventListener("emeieks-new-player",h);},[]);
  const [clubSheet,setClubSheet]=useState(null);
- useEffect(()=>{const h=e=>{const d=e.detail||{};setBets(prev=>prev.map(b=>(b.game===d.game&&d.names.includes((b.player||"").toLowerCase().trim())&&b.role!==d.role)?{...b,role:d.role}:b));};
+ useEffect(()=>{const h=e=>{const d=e.detail||{};const ids=d.ids?new Set(d.ids):null;setBets(prev=>prev.map(b=>((ids?ids.has(String(b.id)):(b.game===d.game&&d.names.includes((b.player||"").toLowerCase().trim())))&&b.role!==d.role)?{...b,role:d.role}:b));};
   window.addEventListener("emeieks-bets-role",h);return()=>window.removeEventListener("emeieks-bets-role",h);},[]);
  useEffect(()=>{const h=e=>setClubSheet(e.detail||null);window.addEventListener("emeieks-open-club",h);return()=>window.removeEventListener("emeieks-open-club",h);},[]);
  useEffect(()=>{const h=e=>setPlayerSheet(e.detail||null);window.addEventListener("emeieks-open-player",h);return()=>window.removeEventListener("emeieks-open-player",h);},[]);
