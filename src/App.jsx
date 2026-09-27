@@ -4219,9 +4219,10 @@ function ClubWatermark({team,logo,game}){
  const len=Math.max(4,String(team).length);
  return(<>
   <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(120% 140% at 85% 20%,"+col+"40 0%,transparent 62%)"}}/>
-  <div aria-hidden="true" style={{position:"absolute",left:"2%",right:0,top:"50%",transform:"translateY(-50%)",zIndex:0,pointerEvents:"none",
-   fontSize:"calc(96cqw / "+(len*0.64).toFixed(2)+")",fontWeight:900,letterSpacing:-2,lineHeight:1,whiteSpace:"nowrap",textTransform:"uppercase",
-   color:"transparent",WebkitTextStroke:"1.5px "+col+"70"}}>{team}</div>
+  <div aria-hidden="true" style={{position:"absolute",left:"2%",bottom:"-0.12em",zIndex:0,pointerEvents:"none",
+   fontSize:"min(70px, calc(96cqw / "+(len*0.64).toFixed(2)+"))",fontWeight:900,letterSpacing:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
+   color:col+"14",WebkitTextStroke:"1.2px "+col+"55"}}>{team}</div>
+  <div aria-hidden="true" style={{position:"absolute",left:0,right:0,top:0,height:"58%",zIndex:0,pointerEvents:"none",background:"linear-gradient(180deg,rgba(12,18,38,.85),rgba(12,18,38,0))"}}/>
  </>);
 }
 
@@ -7796,13 +7797,14 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {form.autoInfo&&(
  <div style={{position:"relative",isolation:"isolate",containerType:"inline-size",borderRadius:16,border:"1px solid rgba(139,92,246,.18)",background:"linear-gradient(105deg,rgba(12,18,38,.99) 55%,rgba(20,14,42,.97))",display:"flex",alignItems:"stretch",overflow:"hidden",minHeight:118}}>
  <ClubWatermark team={form.autoInfo.team} logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}/>
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",right:14,bottom:12,width:62,height:62,objectFit:"contain",zIndex:1,pointerEvents:"none",filter:"drop-shadow(0 4px 12px rgba(0,0,0,.5))"}}/>:null;})()}
 
  {/* Zone photo (38% de la carte) */}
  <div style={{width:"38%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden"}}>
  {/* Logo équipe en filigrane */}
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"120%",height:"120%",objectFit:"contain",opacity:.42,zIndex:0,pointerEvents:"none"}}/>:null;})()}
+
  {/* Glow violet derrière la photo */}
- <div style={{position:"absolute",bottom:"-10%",left:"50%",transform:"translateX(-50%)",width:"80%",height:"90%",background:"radial-gradient(ellipse at 50% 80%,rgba(124,58,237,.35),transparent 70%)",pointerEvents:"none",zIndex:0}}/>
+
  {(()=>{
  const src=getAvatarSrc(form.autoInfo);
  if(src)return(
@@ -7815,7 +7817,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  objectFit:"contain",
  objectPosition:"bottom center",
  display:"block",
- filter:"drop-shadow(0 0 12px rgba(124,58,237,.4))",
+ filter:"drop-shadow(0 6px 14px rgba(0,0,0,.55))",
  }}
  />
  );
