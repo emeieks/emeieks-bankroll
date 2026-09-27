@@ -4212,7 +4212,16 @@ function CleanupPanel({bets,setBets,allPlayers,tourneyCal=[],showToast,onShowBet
 }
 
 // Nom du club en grosses lettres contour, aux couleurs du logo, sur tout le fond de la case
-function ClubWatermark({team,logo,game}){
+// Nom court pour les grosses lettres : sans « Team », « Gaming »… et abréviations connues
+const CLUB_SHORT={"100 thieves":"100T","team liquid":"LIQUID","natus vincere":"NAVI","ninjas in pyjamas":"NIP","g2 esports":"G2","fnatic":"FNATIC","team vitality":"VITALITY","faze clan":"FAZE","cloud9":"C9","edward gaming":"EDG","top esports":"TES","bilibili gaming":"BLG","invictus gaming":"IG","gen.g":"GEN.G","hanwha life esports":"HLE","dplus kia":"DPLUS","kt rolling ster":"KT","karmine corp":"KC","team heretics":"HERETICS","paper rex":"PAPER REX","sentinels":"SENTINELS","evil geniuses":"EG","team secret":"SECRET","team falcons":"FALCONS","virtus.pro":"VP","betboom team":"BETBOOM","gamerlegion":"GAMERLEGION"};
+function clubShort(team){
+ const t=String(team||"").trim();if(!t)return "";
+ const k=t.toLowerCase();if(CLUB_SHORT[k])return CLUB_SHORT[k];
+ const words=t.split(/\s+/).filter(w=>!/^(team|gaming|esports?|e-sports|club|clan|gg|academy)$/i.test(w));
+ return (words.length?words:t.split(/\s+/)).join(" ");
+}
+function ClubWatermark({team:rawTeam,logo,game}){
+ const team=clubShort(rawTeam);
  const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
  const col=useLogoColor(logo,acc);
  if(!team)return null;
@@ -4220,7 +4229,7 @@ function ClubWatermark({team,logo,game}){
  return(<>
   <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(120% 140% at 85% 20%,"+col+"40 0%,transparent 62%)"}}/>
   <div aria-hidden="true" style={{position:"absolute",left:6,bottom:"-0.12em",zIndex:0,pointerEvents:"none",
-   fontSize:"calc((100cqw - 96px) / "+(len*0.66).toFixed(2)+")",fontWeight:900,letterSpacing:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
+   fontSize:"min(88px, calc((100cqw - 96px) / "+(len*0.66).toFixed(2)+"))",fontWeight:900,letterSpacing:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
    color:col+"14",WebkitTextStroke:"1.2px "+col+"55"}}>{team}</div>
   <div aria-hidden="true" style={{position:"absolute",left:0,right:0,top:0,height:"58%",zIndex:0,pointerEvents:"none",background:"linear-gradient(180deg,rgba(12,18,38,.85),rgba(12,18,38,0))"}}/>
  </>);
@@ -4871,7 +4880,8 @@ function AppMain(){
  // Couleur du club du joueur choisi dans « Ajouter un pari » (contours des cases)
  const addClubLogo=form.autoInfo?(teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url||null):null;
  const addClubCol=useLogoColor(addClubLogo,null);
- const addBorder=addClubCol?addClubCol+"8c":"rgba(139,92,246,.2)";
+ const addBorder="rgba(139,92,246,.2)";
+ const AC=addClubCol||"#8b5cf6"; // couleur de sélection = couleur du club
  const DEFAULT_HIDDEN_BKS=[];
  const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
  const toggleHideBK=useCallback(bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;}),[]);
@@ -7750,7 +7760,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  Bookmaker
  </div>
  <div style={{display:"flex",gap:5}}>
- <button onClick={()=>setStickyBK(v=>!v)} style={{padding:"3px 9px",borderRadius:7,border:"1px solid "+(stickyBK?"#7C3AED":"rgba(255,255,255,0.07)"),background:stickyBK?"rgba(124,58,237,0.1)":"transparent",color:stickyBK?"#A78BFA":"#555e72",fontSize:10,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
+ <button onClick={()=>setStickyBK(v=>!v)} style={{padding:"3px 9px",borderRadius:7,border:"1px solid "+(stickyBK?AC:"rgba(255,255,255,0.07)"),background:stickyBK?AC+"22":"transparent",color:stickyBK?"#fff":"#555e72",fontSize:10,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>
  {stickyBK?" Fixé":" Garder"}
  </button>
  <button onClick={()=>setModalBK(true)} style={{padding:"3px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#555e72",fontSize:10,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>+</button>
@@ -7763,8 +7773,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  return(
  <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
  title={bk}
- style={{minWidth:52,height:52,borderRadius:13,border:"1.5px solid "+(isOn?"#8b5cf6":"rgba(255,255,255,0.07)"),background:isOn?"rgba(139,92,246,0.1)":"rgba(10,18,34,0.9)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,position:"relative",transition:"all .15s",boxShadow:isOn?"0 0 0 1px rgba(139,92,246,.3),0 0 16px rgba(139,92,246,.25),inset 0 0 12px rgba(139,92,246,.06)":"inset 0 1px 0 rgba(255,255,255,.03)"}}>
- {isOn&&<span style={{position:"absolute",top:-7,right:-5,width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,#a78bfa,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 2px 8px rgba(139,92,246,.5)"}}><Ic n="check" s={10} c="#fff" w={3.5}/></span>}
+ style={{minWidth:52,height:52,borderRadius:13,border:"1.5px solid "+(isOn?AC:"rgba(255,255,255,0.07)"),background:isOn?AC+"1f":"rgba(10,18,34,0.9)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,position:"relative",transition:"all .15s",boxShadow:isOn?"0 0 0 1px rgba(139,92,246,.3),0 0 16px rgba(139,92,246,.25),inset 0 0 12px rgba(139,92,246,.06)":"inset 0 1px 0 rgba(255,255,255,.03)"}}>
+ {isOn&&<span style={{position:"absolute",top:-7,right:-5,width:18,height:18,borderRadius:"50%",background:AC,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 2px 8px rgba(139,92,246,.5)"}}><Ic n="check" s={10} c="#fff" w={3.5}/></span>}
  {bkLogo
  ?(<img src={bkLogo} alt={bk} style={{width:30,height:30,borderRadius:7,objectFit:"contain"}}/>)
  :(<span style={{fontSize:10,fontWeight:600,color:isOn?"#c4b5fd":"#5a6478",letterSpacing:.3}}>{bk.slice(0,4)}</span>)}
@@ -7923,11 +7933,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
  <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
- style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?"#00E676":"rgba(34,197,94,.2)"),background:form.overUnder==="Over"?"rgba(34,197,94,.14)":"rgba(34,197,94,.03)",color:form.overUnder==="Over"?"#22e875":"#4e7060",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 28px rgba(34,197,94,.2),inset 0 1px 0 rgba(34,197,94,.15)":"none",transition:"all .15s"}}>
+ style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Over"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Over"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  OVER
  </button>
  <button onClick={()=>setForm(f=>({...f,overUnder:"Under"}))}
- style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Under"?"#3b82f6":"rgba(59,130,246,.2)"),background:form.overUnder==="Under"?"rgba(59,130,246,.14)":"rgba(59,130,246,.03)",color:form.overUnder==="Under"?"#60a5fa":"#3d5270",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Under"?"0 0 28px rgba(59,130,246,.2),inset 0 1px 0 rgba(59,130,246,.15)":"none",transition:"all .15s"}}>
+ style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Under"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Under"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Under"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Under"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  UNDER
  </button>
  </div>
