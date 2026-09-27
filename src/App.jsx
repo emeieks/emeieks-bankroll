@@ -431,15 +431,20 @@ async function _playerFetch(path, opts={}) {
 async function supaFetchPlayers() {
  const fields = "id,name,game,league,role,team,photo_url,avatar_url,avatar_file,team_logo_url";
  const limit = 1000;
- let all = []; let offset = 0;
- while (true) {
-  const batch = await _playerFetch(
-   `players?select=${fields}&order=name.asc&limit=${limit}&offset=${offset}`
-  ).catch(() => null);
-  if (!batch || batch.length === 0) break;
-  all = [...all, ...batch];
-  if (batch.length < limit) break;
-  offset += limit;
+ // 3 pages en parallèle (au lieu d'une après l'autre), puis la suite si besoin
+ const page = off => _playerFetch(`players?select=${fields}&order=name.asc&limit=${limit}&offset=${off}`).catch(() => null);
+ const first = await Promise.all([0, 1, 2].map(i => page(i * limit)));
+ if (!first[0]) return first[0];
+ let all = first.flatMap(b => b || []);
+ let offset = 3 * limit;
+ if ((first[2] || []).length === limit) {
+  while (true) {
+   const batch = await page(offset);
+   if (!batch || batch.length === 0) break;
+   all = all.concat(batch);
+   if (batch.length < limit) break;
+   offset += limit;
+  }
  }
  return all;
 }
@@ -4782,9 +4787,9 @@ function AppMain(){
  const [bankroll,setBankroll]=useState(5000);
  const [manualTier,setManualTier]=useState(()=>{try{const s=localStorage.getItem("v7_manual_tier");return s?parseInt(s):null;}catch(e){return null;}});
  const [quickUnits,setQuickUnits]=useState(()=>{try{const s=localStorage.getItem("v7_quick_units");if(s){const a=JSON.parse(s);if(Array.isArray(a)&&a.length===6)return a;}}catch(e){}return[0.75,1,1.25,1.5,1.75,2];});
- const [players,setPlayers]=useState({}); // { name_lowercase: {id,name,game,league,role,team,avatar_url,avatar_file} }
+ const [players,setPlayers]=useState(()=>(()=>{try{const v=JSON.parse(localStorage.getItem("emeieks_cache_players")||"null");return v||{};}catch(e){return {};}})()); // { name_lowercase: {id,name,game,league,role,team,avatar_url,avatar_file} }
 
- const [bookmakers,setBookmakers]=useState(DEFAULT_BK);
+ const [bookmakers,setBookmakers]=useState(()=>(()=>{try{const v=JSON.parse(localStorage.getItem("emeieks_cache_bk")||"null");return v||DEFAULT_BK;}catch(e){return DEFAULT_BK;}})());
  const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
  const [stickyBK,setStickyBK]=useState(false);
  const [lockedStatus,setLockedStatus]=useState(null);
@@ -4872,7 +4877,13 @@ function AppMain(){
  const [splitForm,setSplitForm]=useState({bookmaker:"",stake:"",odds:""});
  const [newBK,setNewBK]=useState("");
  const [newBKPhoto,setNewBKPhoto]=useState("");
- const [bkPhotos,setBkPhotos]=useState({});
+ const [bkPhotos,setBkPhotos]=useState(()=>(()=>{try{const v=JSON.parse(localStorage.getItem("emeieks_cache_bkphotos")||"null");return v||{};}catch(e){return {};}})());
+ // Cache d'affichage : joueurs + bookmakers visibles instantanément à l'ouverture (Supabase reste la référence)
+ useEffect(()=>{const t=setTimeout(()=>{
+  try{if(Object.keys(players).length)localStorage.setItem("emeieks_cache_players",JSON.stringify(players));}catch(e){}
+  try{if(bookmakers&&bookmakers.length)localStorage.setItem("emeieks_cache_bk",JSON.stringify(bookmakers));}catch(e){}
+  try{if(Object.keys(bkPhotos).length)localStorage.setItem("emeieks_cache_bkphotos",JSON.stringify(bkPhotos));}catch(e){}
+ },1500);return()=>clearTimeout(t);},[players,bookmakers,bkPhotos]);
  const [customClubs,setCustomClubs]=useState({}); // {game: [{name, league, logoUrl}]}
  const [mediaStore,setMediaStore]=useState({});
  const mediaLoadedRef=useRef(false); // true after initial Supabase load
@@ -5273,7 +5284,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  safe(cloudDb("teams?select=name,game,logo_url"),"Table teams"),
  loadPlayers(),
  ]);
- const remoteBets=await betsP;
  if(!alive)return;
  const media={};(mediaRows||[]).forEach(r=>{try{media[r.key]=JSON.parse(r.value);}catch(e){}});
  const setKeys=new Set((setRows||[]).map(r=>r.key));
