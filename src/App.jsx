@@ -7824,7 +7824,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {form.autoInfo&&(
  <div style={{position:"relative",isolation:"isolate",containerType:"inline-size",borderRadius:16,border:"1px solid rgba(139,92,246,.18)",background:"linear-gradient(105deg,rgba(12,18,38,.99) 55%,rgba(20,14,42,.97))",display:"flex",alignItems:"stretch",overflow:"hidden",minHeight:118}}>
  <ClubWatermark team={form.autoInfo.team} logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}/>
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",right:16,top:"calc(50% + 14px)",transform:"translateY(-50%)",width:52,height:52,objectFit:"contain",zIndex:1,pointerEvents:"none",
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<ClubColor logo={tl} game={form.autoInfo.game}>{cc=>(
+  <div aria-hidden="true" style={{position:"absolute",right:-2,top:"calc(50% + 14px)",transform:"translateY(-50%)",width:88,height:88,zIndex:1,pointerEvents:"none"}}>
+   <div style={{position:"absolute",inset:-14,borderRadius:"50%",background:"radial-gradient(circle,"+cc+"55 0%,"+cc+"22 38%,transparent 68%)",filter:"blur(2px)"}}/>
+   <div style={{position:"absolute",inset:6,borderRadius:"50%",background:"radial-gradient(circle at 50% 35%,rgba(255,255,255,.10),rgba(255,255,255,.02) 60%,rgba(0,0,0,.25) 100%)",border:"1px solid rgba(255,255,255,.09)",boxShadow:"inset 0 2px 6px rgba(255,255,255,.06),inset 0 -8px 16px rgba(0,0,0,.45),0 10px 22px rgba(0,0,0,.55)"}}/>
+   <div style={{position:"absolute",left:"18%",right:"18%",bottom:-6,height:10,borderRadius:"50%",background:"radial-gradient(ellipse,rgba(0,0,0,.55),transparent 70%)"}}/>
+  </div>)}</ClubColor>:null;})()}
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",right:16,top:"calc(50% + 14px)",transform:"translateY(-50%)",width:52,height:52,objectFit:"contain",zIndex:2,pointerEvents:"none",
   filter:"drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 0 6px rgba(255,255,255,.35)) drop-shadow(0 4px 10px rgba(0,0,0,.5))"}}/>:null;})()}
 
  {/* Zone photo (38% de la carte) */}
