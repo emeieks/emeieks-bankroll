@@ -4230,11 +4230,11 @@ function ClubWatermark({team:rawTeam,logo,game}){
  const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
  const col=useLogoColor(logo,acc);
  if(!team)return null;
- const len=Math.max(4,String(team).length);
+ const n=String(team).length,len=Math.max(2,n);
  return(<>
   <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(120% 140% at 85% 20%,"+col+"40 0%,transparent 62%)"}}/>
   <div aria-hidden="true" style={{position:"absolute",left:6,bottom:"-0.12em",zIndex:0,pointerEvents:"none",
-   fontSize:"min(88px, calc((100cqw - 96px) / "+(len*0.66).toFixed(2)+"))",fontWeight:900,letterSpacing:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
+   fontSize:"min("+(n<=3?128:n<=5?112:100)+"px, calc((100cqw - 96px) / "+(len*0.7).toFixed(2)+"))",fontWeight:900,letterSpacing:n<=3?4:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
    color:col+"14",WebkitTextStroke:"1.2px "+col+"55"}}>{team}</div>
   <div aria-hidden="true" style={{position:"absolute",left:0,right:0,top:0,height:"58%",zIndex:0,pointerEvents:"none",background:"linear-gradient(180deg,rgba(12,18,38,.85),rgba(12,18,38,0))"}}/>
  </>);
@@ -7919,7 +7919,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <GameLogo game={form.autoInfo.game} size={22}/>
  </div>
  <select id="kills-select" value={form.description} onChange={e=>{const val=e.target.value;const isHS=val.includes("Headshot");setForm(f=>({...f,description:val,isHeadshot:isHS}));if(e.target.value){setTimeout(()=>{const el=document.getElementById("odds-input-field");if(el)el.focus();},80);}}}
- style={{flex:1,height:"100%",background:"transparent",border:"none",padding:"0 12px 0 4px",color:form.description?"#a8c4ff":"#5a6880",fontSize:14,fontFamily:"Inter,sans-serif",fontWeight:500,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
+ style={{flex:1,height:"100%",background:"transparent",border:"none",padding:"0 12px 0 4px",color:form.description?"#fff":"#5a6880",fontSize:14,fontFamily:"Inter,sans-serif",fontWeight:500,outline:"none",appearance:"none",WebkitAppearance:"none",cursor:"pointer"}}>
  <option value="" style={{color:"#6B7280",background:"#0d1428"}}>Choisir une ligne...</option>
  {opts.map(o=><option key={o} value={o} style={{color:"#E5E7EB",background:"#0d1428"}}>{o}</option>)}
  </select>
@@ -7978,7 +7978,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
  <span style={{fontSize:9,color:"#4a5468",fontWeight:700,letterSpacing:.8,textTransform:"uppercase"}}>Mise rapide</span>
- <span style={{fontSize:10,color:"#7a6aae",fontWeight:600}}>1u = {unitValue.toFixed(0)}$ · Palier {bkTier.toFixed(0)}$</span>
+ <span style={{fontSize:10,color:AC,fontWeight:600}}>1u = {unitValue.toFixed(0)}$ · Palier {bkTier.toFixed(0)}$</span>
  </div>
  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:form.odds&&form.stake?9:0}}>
  {quickUnits.map(u=>{
@@ -7987,9 +7987,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const isActive=parseFloat(form.stake)===s;
  return(
  <button key={u} onClick={()=>setForm(f=>({...f,stake:sStr}))}
- style={{height:52,borderRadius:12,border:"1px solid "+(isActive?"rgba(139,92,246,.65)":"rgba(255,255,255,.09)"),background:isActive?"rgba(139,92,246,.2)":"rgba(255,255,255,.03)",color:isActive?"#d4c5ff":"#8892a4",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:isActive?"0 0 16px rgba(139,92,246,.25)":"none",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
+ style={{height:52,borderRadius:12,border:"1px solid "+(isActive?AC:"rgba(255,255,255,.09)"),background:isActive?AC+"26":"rgba(255,255,255,.03)",color:isActive?"#fff":"#8892a4",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:isActive?"0 0 16px "+AC+"33":"none",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
  <span style={{fontSize:13,fontWeight:isActive?800:600,letterSpacing:"-.3px"}}>{u}u</span>
- <span style={{fontSize:11,fontWeight:500,color:isActive?"#c4b5fd":"#5a6478"}}>{sStr}$</span>
+ <span style={{fontSize:11,fontWeight:500,color:isActive?"#fff":"#5a6478",opacity:isActive?.8:1}}>{sStr}$</span>
  </button>
  );
  })}
@@ -8066,7 +8066,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"flex",gap:7}}>
  {MAP_TAGS.map(t=>(
  <button key={t} onClick={()=>!form.mapLocked&&setForm(f=>({...f,mapTag:f.mapTag===t?"":t}))}
- style={{flex:1,height:40,borderRadius:10,border:"1.5px solid "+(form.mapTag===t?"rgba(245,166,35,.6)":"rgba(255,255,255,.06)"),background:form.mapTag===t?"rgba(245,166,35,.08)":"rgba(255,255,255,.02)",color:form.mapTag===t?"#f5a623":"#5a6478",fontSize:12,cursor:form.mapLocked?"not-allowed":"pointer",fontFamily:"Inter,sans-serif",fontWeight:500,opacity:form.mapLocked&&form.mapTag!==t?0.35:1,transition:"all .12s"}}>
+ style={{flex:1,height:40,borderRadius:10,border:"1.5px solid "+(form.mapTag===t?AC:"rgba(255,255,255,.06)"),background:form.mapTag===t?AC+"22":"rgba(255,255,255,.02)",color:form.mapTag===t?"#fff":"#5a6478",fontSize:12,cursor:form.mapLocked?"not-allowed":"pointer",fontFamily:"Inter,sans-serif",fontWeight:500,opacity:form.mapLocked&&form.mapTag!==t?0.35:1,transition:"all .12s"}}>
  {t}
  </button>
  ))}
