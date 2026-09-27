@@ -4226,6 +4226,9 @@ function ClubWatermark({team,logo,game}){
  </>);
 }
 
+// Donne la couleur dominante du logo du club à ses enfants
+function ClubColor({logo,game,children}){const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";const col=useLogoColor(logo,acc);return children(col);}
+
 function openPlayerSheet(name){try{window.dispatchEvent(new CustomEvent("emeieks-open-player",{detail:name}));}catch(e){}}
 
 function PSStat({label,value,color,sub}){
@@ -7801,7 +7804,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   filter:"drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 0 6px rgba(255,255,255,.35)) drop-shadow(0 4px 10px rgba(0,0,0,.5))"}}/>:null;})()}
 
  {/* Zone photo (38% de la carte) */}
- <div style={{width:"38%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden"}}>
+ <div style={{width:"36%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"flex-start",paddingLeft:6,overflow:"hidden"}}>
  {/* Logo équipe en filigrane */}
 
  {/* Glow violet derrière la photo */}
@@ -7814,10 +7817,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  alt={form.autoInfo.name||form.player}
  style={{
  position:"relative",zIndex:1,
- width:"100%",height:"132px",
+ width:"100%",height:"124px",
  objectFit:"contain",
- objectPosition:"bottom center",
- transform:"scale(1.1)",transformOrigin:"bottom center",
+ objectPosition:"bottom left",
  display:"block",
  filter:"drop-shadow(0 6px 14px rgba(0,0,0,.55))",
  }}
@@ -7853,16 +7855,18 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
 
  {/* Bouton Changer */}
+ <ClubColor logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}>{cc=>(
  <div style={{position:"absolute",top:12,right:12,zIndex:3,display:"flex",alignItems:"flex-start",gap:6}}>
  <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
- style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(139,92,246,.3)",color:"#9d7bef",fontWeight:500,fontSize:11,background:"rgba(139,92,246,.05)",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+ style={{padding:"6px 10px",borderRadius:9,border:"1px solid "+cc+"80",color:"#fff",fontWeight:700,fontSize:11,background:cc+"33",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
  Changer
  </button>
  <button onClick={()=>setAddEditOpen(true)} title="Modifier le joueur" aria-label="Modifier le joueur"
- style={{width:30,height:30,borderRadius:9,border:"1px solid rgba(139,92,246,.3)",background:"rgba(139,92,246,.08)",color:"#c4b5fd",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ style={{width:30,height:30,borderRadius:9,border:"1px solid "+cc+"80",background:cc+"33",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
  </button>
  </div>
+ )}</ClubColor>
  </div>
  )}
  {form.player&&!form.autoInfo&&<div style={{marginTop:7,fontSize:11,color:"#F59E0B",fontWeight:600}}> Joueur non reconnu — tu peux quand même enregistrer.</div>}
