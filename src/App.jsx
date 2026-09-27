@@ -4219,8 +4219,8 @@ function ClubWatermark({team,logo,game}){
  const len=Math.max(4,String(team).length);
  return(<>
   <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:0,pointerEvents:"none",background:"radial-gradient(120% 140% at 85% 20%,"+col+"40 0%,transparent 62%)"}}/>
-  <div aria-hidden="true" style={{position:"absolute",left:"2%",bottom:"-0.12em",zIndex:0,pointerEvents:"none",
-   fontSize:"min(70px, calc(96cqw / "+(len*0.64).toFixed(2)+"))",fontWeight:900,letterSpacing:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
+  <div aria-hidden="true" style={{position:"absolute",left:6,bottom:"-0.12em",zIndex:0,pointerEvents:"none",
+   fontSize:"calc((100cqw - 96px) / "+(len*0.66).toFixed(2)+")",fontWeight:900,letterSpacing:-2,lineHeight:.85,whiteSpace:"nowrap",textTransform:"uppercase",
    color:col+"14",WebkitTextStroke:"1.2px "+col+"55"}}>{team}</div>
   <div aria-hidden="true" style={{position:"absolute",left:0,right:0,top:0,height:"58%",zIndex:0,pointerEvents:"none",background:"linear-gradient(180deg,rgba(12,18,38,.85),rgba(12,18,38,0))"}}/>
  </>);
@@ -7797,7 +7797,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {form.autoInfo&&(
  <div style={{position:"relative",isolation:"isolate",containerType:"inline-size",borderRadius:16,border:"1px solid rgba(139,92,246,.18)",background:"linear-gradient(105deg,rgba(12,18,38,.99) 55%,rgba(20,14,42,.97))",display:"flex",alignItems:"stretch",overflow:"hidden",minHeight:118}}>
  <ClubWatermark team={form.autoInfo.team} logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}/>
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",right:14,bottom:12,width:62,height:62,objectFit:"contain",zIndex:1,pointerEvents:"none",filter:"drop-shadow(0 4px 12px rgba(0,0,0,.5))"}}/>:null;})()}
+ {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",right:16,top:"calc(50% + 14px)",transform:"translateY(-50%)",width:52,height:52,objectFit:"contain",zIndex:1,pointerEvents:"none",
+  filter:"drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 0 6px rgba(255,255,255,.35)) drop-shadow(0 4px 10px rgba(0,0,0,.5))"}}/>:null;})()}
 
  {/* Zone photo (38% de la carte) */}
  <div style={{width:"38%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden"}}>
@@ -7813,9 +7814,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  alt={form.autoInfo.name||form.player}
  style={{
  position:"relative",zIndex:1,
- width:"100%",height:"118px",
+ width:"100%",height:"132px",
  objectFit:"contain",
  objectPosition:"bottom center",
+ transform:"scale(1.1)",transformOrigin:"bottom center",
  display:"block",
  filter:"drop-shadow(0 6px 14px rgba(0,0,0,.55))",
  }}
@@ -7833,32 +7835,19 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
 
  {/* Infos joueur (droite) */}
- <div style={{position:"relative",flex:1,padding:"16px 12px 12px 6px",display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:7,minWidth:0}}>
- <div style={{fontSize:21,fontWeight:800,letterSpacing:-.3,color:"#f0f4ff",lineHeight:1,paddingRight:104,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+ <div style={{position:"relative",flex:1,padding:"18px 12px 14px 8px",display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:8,minWidth:0}}>
+ <div style={{fontSize:22,fontWeight:800,letterSpacing:-.4,color:"#fff",lineHeight:1.05,paddingRight:104,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
  {capName(form.autoInfo.name||form.player)}
  </div>
- <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"nowrap",whiteSpace:"nowrap",overflow:"hidden"}}>
- <GameLogo game={form.autoInfo.game} size={16}/>
- {form.autoInfo.team&&(
- <>
- <span style={{color:"#4a5a6e",fontSize:12,fontWeight:300}}>·</span>
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt={form.autoInfo.team} style={{width:16,height:16,objectFit:"contain",verticalAlign:"middle",marginRight:3,borderRadius:3}} onError={e=>e.target.style.display='none'}/>:null;})()}
- <span style={{fontSize:12,fontWeight:700,color:"#c8d4e8"}}>{form.autoInfo.team}</span>
- </>
- )}
- {form.autoInfo.role&&(
- <>
- <span style={{color:"#4a5a6e",fontSize:12,fontWeight:300}}>·</span>
- <span style={{fontSize:11,color:"#7a8fa8",fontWeight:600}}>{form.autoInfo.role}</span>
- </>
- )}
+ <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",fontSize:13,fontWeight:600,color:"#fff"}}>
+ <GameLogo game={form.autoInfo.game} size={14}/>
+ <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{[form.autoInfo.team,form.autoInfo.role].filter(Boolean).join(" · ")}</span>
  </div>
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(bets.filter(b=>(b.player||"").toLowerCase().trim()===k));
-  if(!a.n)return <div style={{fontSize:12,color:"#6b7489",fontWeight:600}}>Aucun pari terminé</div>;
-  const c=a.profit>0?"#00E676":a.profit<0?"#f87171":"#9ca3af";
-  return <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-   <span style={{fontSize:15,fontWeight:800,color:"#e5e7eb"}}>{a.won} - {a.lost}</span>
-   <span style={{fontSize:17,fontWeight:900,color:c}}>{(a.profit>=0?"+":"")+a.profit.toFixed(0)+"$"}</span>
+  if(!a.n)return <div style={{fontSize:13,fontWeight:600,color:"#fff"}}>Aucun pari terminé</div>;
+  const c=a.profit>0?"#22e07a":a.profit<0?"#f87171":"#fff";
+  return <div style={{fontSize:13,fontWeight:600,color:"#fff",whiteSpace:"nowrap"}}>
+   {a.won}-{a.lost} · <span style={{color:c,fontWeight:700}}>{(a.profit>=0?"+":"")+a.profit.toFixed(0)+"$"}</span>
   </div>;})()}
  {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;return <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:5,background:"rgba(124,58,237,.1)",color:"#a78bfa",fontWeight:600,fontSize:10,border:"1px solid rgba(124,58,237,.2)",alignSelf:"flex-start"}}> {t.name}</span>})()}
  </div>
