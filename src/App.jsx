@@ -1963,6 +1963,31 @@ function roleLine(parts,role){
  const hi=/^(igl|awp(er)?)$/i.test(String(role||"").trim());
  return list.map((x,i)=><React.Fragment key={i}>{i?" · ":""}{hi&&x===role?<b style={{color:"#fff",fontWeight:800}}>{x}</b>:x}</React.Fragment>);
 }
+let _LEAGUES_SEEN={};
+function leagueOptions(game){
+ const base={LoL:["LCK","LPL","LEC","LCS","LTA","LCP"],Valorant:["VCT Americas","VCT EMEA","VCT Pacific","VCT China"],CS2:[],Dota2:[]}[game]||[];
+ const out=[],seen=new Set();const add=n=>{if(!n)return;const k=n.toLowerCase().trim();if(seen.has(k))return;seen.add(k);out.push(n.trim());};
+ base.forEach(add);(LEAGUES_BY_GAME[game]||[]).forEach(add);((_LEAGUES_SEEN||{})[game]||[]).forEach(add);
+ ((_CUSTOM_CLUBS||{})[game]||[]).forEach(c=>add(c&&c.league));
+ return out;
+}
+function LeagueSelect({game,value,onChange,height=46}){
+ const [open,setOpen]=useState(false);
+ const opts=leagueOptions(game);
+ const pick=v=>{onChange(v);setOpen(false);};
+ return(<div style={{position:"relative"}}>
+  <button type="button" onClick={()=>setOpen(o=>!o)} style={{width:"100%",height,borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"#0b1120",color:value?"#fff":"#6b7489",fontSize:15,padding:"0 12px",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left",boxSizing:"border-box"}}>
+   {value&&<LeagueLogo league={value} size={22}/>}<span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{value||"Choisir une ligue"}</span><Ic n={open?"up":"down"} s={14} c="#8b93a7"/>
+  </button>
+  {open&&<div style={{position:"absolute",left:0,right:0,top:height+4,zIndex:30,background:"#0f1524",border:"1px solid rgba(255,255,255,.12)",borderRadius:12,boxShadow:"0 14px 34px rgba(0,0,0,.6)",maxHeight:300,overflowY:"auto",padding:4}}>
+   {opts.map(o=>{const on=(value||"").toLowerCase()===o.toLowerCase();return(<button key={o} type="button" onClick={()=>pick(o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 10px",border:"none",borderRadius:9,background:on?"rgba(124,58,237,.18)":"transparent",color:"#fff",fontSize:14.5,fontWeight:on?800:600,cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+    <span style={{width:24,display:"flex",justifyContent:"center"}}><LeagueLogo league={o} size={20}/></span><span style={{flex:1}}>{o}</span>{on&&<Ic n="check" s={14} c="#a78bfa"/>}</button>);})}
+   <div style={{height:1,background:"rgba(255,255,255,.07)",margin:"4px 6px"}}/>
+   <button type="button" onClick={()=>{const v=window.prompt("Nouvelle ligue ("+game+")","");if(v&&v.trim())pick(v.trim());}} style={{width:"100%",padding:"10px",border:"none",borderRadius:9,background:"transparent",color:"#c4b5fd",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>+ Autre ligue…</button>
+   {value&&<button type="button" onClick={()=>pick("")} style={{width:"100%",padding:"10px",border:"none",borderRadius:9,background:"transparent",color:"#f87171",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>Aucune ligue</button>}
+  </div>}
+ </div>);
+}
 function ClubEditSheet({team,game,logo:logo0,league:league0,onClose,onSave,showToast}){
  const [f,setF]=useState({name:team,logo:logo0||"",league:league0||""});
  const [saving,setSaving]=useState(false);
@@ -1994,8 +2019,7 @@ function ClubEditSheet({team,game,logo:logo0,league:league0,onClose,onSave,showT
     <input style={I} value={f.name} onChange={e=>setF(x=>({...x,name:e.target.value}))}/>
     {f.name.trim()!==team&&<div style={{fontSize:12,color:"#8b93a7",margin:"6px 2px 0"}}>Les joueurs et les paris de « {team} » passeront sous « {f.name.trim()||"…"} ».</div>}
     <div style={L}>Ligue</div>
-    <input style={I} list="ce-leagues" placeholder="Ex : LCK, VCT EMEA…" value={f.league} onChange={e=>setF(x=>({...x,league:e.target.value}))}/>
-    <datalist id="ce-leagues">{(LEAGUES_BY_GAME[game]||[]).map(l=><option key={l} value={l}/>)}</datalist>
+    <LeagueSelect game={game} value={f.league} onChange={v=>setF(x=>({...x,league:v}))}/>
     <div style={L}>Logo</div>
     <ImageInput value={f.logo} onChange={v=>setF(x=>({...x,logo:v}))} folder="teams" size={40} radius="10px" placeholder="URL ou fichier…" showToast={showToast}/>
     <button onClick={save} disabled={!dirty||saving} style={{width:"100%",height:50,marginTop:22,borderRadius:14,border:"none",background:dirty?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.06)",color:dirty?"#fff":"#6b7280",fontSize:15,fontWeight:800,cursor:dirty?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{saving?"Enregistrement…":"Enregistrer"}</button>
@@ -2576,7 +2600,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
      {/* Ligue */}
      <div>
       <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"uppercase",letterSpacing:.7,marginBottom:3}}>Ligue</div>
-      <input value={editPForm.league||""} onChange={e=>setEditPForm(f=>({...f,league:e.target.value}))} style={inputStyle}/>
+      <LeagueSelect game={editPForm.game||editP?.game||""} value={editPForm.league||""} onChange={v=>setEditPForm(f=>({...f,league:v}))} height={36}/>
      </div>
      {/* Équipe - dropdown avec compteur */}
      <div>
@@ -4999,8 +5023,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
        )}
       </div>
       <div style={L}>Ligue {f.team&&<span style={{fontWeight:500,color:"#6b7489"}}>· appliquée à tout {f.team}</span>}</div>
-      <input style={I} list="pe-leagues" placeholder="Ex : LCK, EMEA, Pacific, Europe…" value={f.league} onChange={e=>set("league",e.target.value)}/>
-      <datalist id="pe-leagues">{(LEAGUES_BY_GAME[f.game]||[]).map(l=><option key={l} value={l}/>)}</datalist>
+      <LeagueSelect game={f.game} value={f.league} onChange={v=>set("league",v)}/>
       {f.team&&<>
        <div style={L}>Logo du club <span style={{fontWeight:500,color:"#6b7489"}}>· appliqué à tous les joueurs de {f.team}</span></div>
        {imgField("logo","teams",false)}
@@ -5700,6 +5723,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  },[]);
 
  // allPlayers : uniquement depuis Supabase (table "players")
+ useMemo(()=>{const m={};Object.values(players||{}).forEach(p=>{if(p&&p.game&&p.league)(m[p.game]=m[p.game]||new Set()).add(p.league);});const o={};Object.keys(m).forEach(g=>o[g]=[...m[g]].sort());_LEAGUES_SEEN=o;},[players]);
  const allPlayers=useMemo(function(){
  const merged={};
  Object.entries(players).forEach(([k,v])=>{
