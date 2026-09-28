@@ -1963,10 +1963,67 @@ function roleLine(parts,role){
  const hi=/^(igl|awp(er)?)$/i.test(String(role||"").trim());
  return list.map((x,i)=><React.Fragment key={i}>{i?" · ":""}{hi&&x===role?<b style={{color:"#fff",fontWeight:800}}>{x}</b>:x}</React.Fragment>);
 }
+function ClubEditSheet({team,game,logo:logo0,league:league0,onClose,onSave,showToast}){
+ const [f,setF]=useState({name:team,logo:logo0||"",league:league0||""});
+ const [saving,setSaving]=useState(false);
+ const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
+ const col=useLogoColor(f.logo||null,acc);
+ useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[onClose]);
+ const L={fontSize:12,fontWeight:800,color:"#8b93a7",textTransform:"uppercase",letterSpacing:.6,margin:"16px 2px 6px"};
+ const I={width:"100%",height:46,borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"#0b1120",color:"#fff",fontSize:15,padding:"0 14px",fontFamily:"Inter,sans-serif",outline:"none",boxSizing:"border-box"};
+ const dirty=f.name.trim()!==team||f.logo!==(logo0||"")||f.league.trim()!==(league0||"");
+ const save=async()=>{if(!f.name.trim())return showToast&&showToast("Nom requis","#EF4444");setSaving(true);try{await onSave({name:f.name.trim(),logo:f.logo,league:f.league.trim()});}catch(e){showToast&&showToast("Erreur : "+((e&&e.message)||e).slice(0,60),"#EF4444");}setSaving(false);};
+ const big=(f.name||team).toUpperCase();
+ return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:470,background:"rgba(0,0,0,.75)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",overflowY:"auto"}}>
+  <style>{".bottom-nav{display:none!important}.view-enter{animation:none!important;transform:none!important}"}</style>
+  <div onClick={e=>e.stopPropagation()} style={{maxWidth:760,margin:"0 auto",minHeight:"100%",background:"#0B1220"}}>
+   <div style={{position:"relative",overflow:"hidden",containerType:"inline-size",padding:"56px 18px 22px",background:"radial-gradient(120% 140% at 85% 0%,"+col+"55,rgba(11,18,32,0) 60%),linear-gradient(180deg,#101a33,#0b1220)",borderBottom:"3px solid "+col}}>
+    <div aria-hidden="true" style={{position:"absolute",left:"2%",top:"50%",transform:"translateY(-50%)",fontSize:"min(110px, calc(96cqw / "+Math.max(4,big.length)*0.62+"))",fontWeight:900,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+col+"55",pointerEvents:"none"}}>{big}</div>
+    <button onClick={onClose} aria-label="Fermer" style={{position:"absolute",left:14,top:12,width:40,height:40,borderRadius:20,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={18} w={2.6}/></button>
+    <div style={{position:"relative",display:"flex",alignItems:"center",gap:18}}>
+     {f.logo?<img src={f.logo} alt="" style={{width:"clamp(72px,20vw,110px)",height:"clamp(72px,20vw,110px)",objectFit:"contain",filter:"drop-shadow(0 6px 18px rgba(0,0,0,.5))"}}/>
+      :<div style={{width:90,height:90,borderRadius:22,background:col,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:900,color:"#fff"}}>{(f.name||"?").slice(0,3).toUpperCase()}</div>}
+     <div style={{minWidth:0}}>
+      <div style={{fontSize:"clamp(26px,7vw,44px)",fontWeight:900,color:"#fff",lineHeight:1.05}}>{f.name||team}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,fontSize:15,fontWeight:700,color:"#cbd5e1"}}><GameLogo game={game} size={18}/><span style={{color:acc}}>{game}</span>{f.league&&<><span style={{color:"#5b6478"}}>•</span><span>{f.league}</span></>}</div>
+     </div>
+    </div>
+   </div>
+   <div style={{padding:"4px 16px 40px"}}>
+    <div style={L}>Nom du club</div>
+    <input style={I} value={f.name} onChange={e=>setF(x=>({...x,name:e.target.value}))}/>
+    {f.name.trim()!==team&&<div style={{fontSize:12,color:"#8b93a7",margin:"6px 2px 0"}}>Les joueurs et les paris de « {team} » passeront sous « {f.name.trim()||"…"} ».</div>}
+    <div style={L}>Ligue</div>
+    <input style={I} list="ce-leagues" placeholder="Ex : LCK, VCT EMEA…" value={f.league} onChange={e=>setF(x=>({...x,league:e.target.value}))}/>
+    <datalist id="ce-leagues">{(LEAGUES_BY_GAME[game]||[]).map(l=><option key={l} value={l}/>)}</datalist>
+    <div style={L}>Logo</div>
+    <ImageInput value={f.logo} onChange={v=>setF(x=>({...x,logo:v}))} folder="teams" size={40} radius="10px" placeholder="URL ou fichier…" showToast={showToast}/>
+    <button onClick={save} disabled={!dirty||saving} style={{width:"100%",height:50,marginTop:22,borderRadius:14,border:"none",background:dirty?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.06)",color:dirty?"#fff":"#6b7280",fontSize:15,fontWeight:800,cursor:dirty?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{saving?"Enregistrement…":"Enregistrer"}</button>
+   </div>
+  </div>
+ </div>);
+}
+
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets}){
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
+ const [clubEdit,setClubEdit]=useState(null);
+ const saveClub=async({name,logo,league})=>{
+  const {team,game}=clubEdit;const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"};
+  let url=logo||"";
+  if(url&&url.startsWith("http")&&!url.includes("/storage/v1/object/public/")){try{url=await supaUploadPhotoFromUrl(url,"teams");}catch(e){}}
+  const body={team:name,league:league||null,team_logo_url:url||null};
+  const r=await fetch(SUPA_URL+"/rest/v1/players?team=eq."+encodeURIComponent(team)+"&game=eq."+encodeURIComponent(game),{method:"PATCH",headers:h,body:JSON.stringify(body)});
+  if(!r.ok)throw new Error("Supabase "+r.status);
+  setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{const p=n[k];if(p&&p.team===team&&p.game===game)n[k]={...p,team:name,league:league||p.league||"",team_logo_url:url||null};});return n;});
+  if(setTeamLogos)setTeamLogos(prev=>{const n={...prev};delete n[team+"__"+game];if(url)n[name+"__"+game]=url;return n;});
+  if(setCustomClubs)setCustomClubs(prev=>{const cl=(prev||{})[game]||[];if(!cl.some(c=>c.name===team))return prev;return {...prev,[game]:cl.map(c=>c.name===team?{...c,name,league,logoUrl:url}:c)};});
+  if(name!==team&&setBets)setBets(prev=>prev.map(b=>b.game===game&&b.team===team?{...b,team:name}:b));
+  if(league)window.dispatchEvent(new CustomEvent("emeieks-club-league",{detail:{team:name,game,league}}));
+  if(rosterTeam===team&&setRosterTeam)setRosterTeam(name);
+  showToast(name+" enregistré","#22C55E");setClubEdit(null);
+ };
  const [secOpen,setSecOpen]=useState(()=>{try{return localStorage.getItem("emeieks_roster_open")!=="0";}catch(e){return true;}});
  useEffect(()=>{try{localStorage.setItem("emeieks_roster_open",secOpen?"1":"0");}catch(e){}},[secOpen]);
  const [sortMode,setSortMode]=useState(""); // "asc" | "desc" | ""
@@ -2149,6 +2206,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
 
  return(
   <div style={{marginBottom:8}}>
+   {clubEdit&&<ClubEditSheet team={clubEdit.team} game={clubEdit.game} logo={clubEdit.logo} league={clubEdit.league} onClose={()=>setClubEdit(null)} onSave={saveClub} showToast={showToast}/>}
    <SuiviHead n="users" color="#a78bfa" title="Joueurs" sub={Object.keys(allPlayers).length+" joueurs · photos, équipes, rôles"}
     open={secOpen} onClick={()=>setSecOpen(v=>!v)}/>
 
@@ -2438,9 +2496,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                   try{window.dispatchEvent(new CustomEvent("emeieks-new-player",{detail:{name:"",game:rosterGame,team,league:lg,role:""}}));}catch(err){}}}
                   title={"Créer un joueur dans "+team} style={{padding:"5px 10px",background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.3)",borderRadius:6,color:"#4ade80",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>+ Créer un joueur</button>
                 <button onClick={e=>{e.stopPropagation();quickTeamLogo(team,rosterGame);}} title="Coller un logo (remplace l'ancien)" style={{padding:"5px 10px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Coller logo</button>
-                <button onClick={e=>{e.stopPropagation();setEditTeam({team,game:rosterGame});setTeamLogoUrl(logoUrl||"");}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-                 {logoUrl?<><Ic n="edit" s={11}/> Modifier logo</>:"+ Ajouter logo"}
-                </button>
+                <button onClick={e=>{e.stopPropagation();const lg=(Object.values(players||{}).find(x=>x&&x.team===team&&x.game===rosterGame&&x.league)||{}).league||(((customClubs||{})[rosterGame]||[]).find(c=>c.name===team)||{}).league||"";setClubEdit({team,game:rosterGame,logo:logoUrl||"",league:lg});}} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4,fontFamily:"Inter,sans-serif"}}><Ic n="edit" s={11}/> Modifier club</button>
                 </div>
                )}
               </div>
