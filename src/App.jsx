@@ -4294,7 +4294,8 @@ function TourDeletePanel({bets,setBets,savedTourneys,setSavedTourneys,activeTour
  const [game,setGame]=useState("CS2");
  const items=useMemo(()=>{const m={};const add=(n,kind)=>{if(!n)return;const k=n;if(!m[k])m[k]={name:n,kind,n:0};};
   ((savedTourneys||{})[game]||[]).forEach(n=>add(n,"Tournoi"));if(activeTourneys&&activeTourneys[game]&&activeTourneys[game].name)add(activeTourneys[game].name,"Tournoi");
-  bets.forEach(b=>{if(b.game!==game)return;if(b.tournament){add(b.tournament,"Tournoi");m[b.tournament].n++;}if(b.league&&b.league!==b.tournament){add(b.league,"Ligue");if(m[b.league].kind==="Ligue")m[b.league].n++;}});
+  const cT={},cL={};bets.forEach(b=>{if(b.game!==game)return;if(b.tournament){add(b.tournament,"Tournoi");cT[b.tournament]=(cT[b.tournament]||0)+1;}if(b.league){add(b.league,"Ligue");if(b.league!==b.tournament)cL[b.league]=(cL[b.league]||0)+1;}});
+  Object.values(m).forEach(it=>{const t=cT[it.name]||0,l=cL[it.name]||0;it.n=t+l;it.kind=l>t?"Ligue":(t?"Tournoi":it.kind);it.detail=t&&l?t+" en tournoi · "+l+" en ligue":"";});
   return Object.values(m).sort((a,b)=>a.name.localeCompare(b.name));},[bets,savedTourneys,activeTourneys,game]);
  const del=it=>{
   if(!window.confirm("Supprimer « "+it.name+" » ("+game+") ?\n"+(it.n?it.n+" pari(s) perdront ce "+(it.kind==="Ligue"?"nom de ligue":"tournoi")+" (les paris restent).":"Aucun pari lié.")))return;
@@ -4311,7 +4312,7 @@ function TourDeletePanel({bets,setBets,savedTourneys,setSavedTourneys,activeTour
    {items.length===0&&<div style={{fontSize:12,color:SV.sub,padding:10,textAlign:"center"}}>Rien pour {game}</div>}
    {items.map(it=>(<div key={it.name} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 4px",borderTop:"1px solid "+SV.line}}>
     <LeagueLogo league={it.name} size={22}/>
-    <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:700,color:SV.text}}>{it.name}</div><div style={{fontSize:11.5,color:SV.sub}}>{it.kind} · {it.n} pari(s)</div></div>
+    <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:700,color:SV.text}}>{it.name}</div><div style={{fontSize:11.5,color:SV.sub}}>{it.kind} · {it.n} pari(s){it.detail?" ("+it.detail+")":""}</div></div>
     <button onClick={()=>del(it)} style={{padding:"7px 11px",borderRadius:9,border:"1px solid rgba(239,68,68,.3)",background:"rgba(239,68,68,.1)",color:"#f87171",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><Ic n="trash" s={12}/>Supprimer</button>
    </div>))}
   </div>}
