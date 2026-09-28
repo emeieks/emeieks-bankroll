@@ -413,6 +413,46 @@ function CandleChart({points,h=155,tf="day"}){
 
 const AVATARS_BUCKET = SUPA_URL + "/storage/v1/object/public/avatars/";
 
+
+// ── Logos sombres : détection auto → passage en blanc ──
+const _LOGO_DARK={};           // src → true (sombre mono) / false
+const _LOGO_WAIT={};
+function logoOverride(){try{return JSON.parse(localStorage.getItem("emeieks_logo_mode")||"{}");}catch(e){return {};}}
+function setLogoOverride(src,mode){const m=logoOverride();if(!mode)delete m[src];else m[src]=mode;try{localStorage.setItem("emeieks_logo_mode",JSON.stringify(m));}catch(e){}
+ document.querySelectorAll("img").forEach(el=>{if(el.currentSrc===src||el.getAttribute("src")===src)applyLogoMode(el,src);});}
+function analyzeLogo(src){
+ if(src in _LOGO_DARK)return Promise.resolve(_LOGO_DARK[src]);
+ if(_LOGO_WAIT[src])return _LOGO_WAIT[src];
+ _LOGO_WAIT[src]=new Promise(res=>{
+  const im=new Image();im.crossOrigin="anonymous";
+  im.onload=()=>{try{
+   const W=48,H=Math.max(1,Math.round(48*im.naturalHeight/Math.max(1,im.naturalWidth)));
+   const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(im,0,0,W,H);
+   const d=x.getImageData(0,0,W,H).data;let tot=0,op=0,dark=0,col=0,lum=0;
+   for(let i=0;i<d.length;i+=4){tot++;const a=d[i+3];if(a<40)continue;op++;
+    const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+    const L=.2126*r+.7152*g+.0722*b;lum+=L;if(L<.28)dark++;if(mx-mn>.22&&mx>.25)col++;}
+   // Critères : fond transparent (au moins 10 %), presque pas de couleur (< 8 %), surtout sombre (> 70 %), luminosité moyenne basse
+   const ok=op>0&&(tot-op)/tot>.10&&col/op<.08&&dark/op>.70&&lum/op<.25;
+   _LOGO_DARK[src]=ok;res(ok);}catch(e){_LOGO_DARK[src]=false;res(false);}};
+  im.onerror=()=>{_LOGO_DARK[src]=false;res(false);};
+  im.src=src;});
+ return _LOGO_WAIT[src];
+}
+const LOGO_WHITE="brightness(0) invert(1)";
+function applyLogoMode(el,src){
+ if(!el||el.dataset.keep==="1")return;
+ const ov=logoOverride()[src];
+ const setW=on=>{const f=el.style.filter||"";const base=f.replace(LOGO_WHITE,"").trim();el.style.filter=on?(LOGO_WHITE+" "+base).trim():base;};
+ if(ov==="w")return setW(true);
+ if(ov==="o")return setW(false);
+ analyzeLogo(src).then(ok=>setW(ok));
+}
+if(typeof document!=="undefined"&&!window.__logoWatch){window.__logoWatch=1;
+ document.addEventListener("load",e=>{const el=e.target;if(!el||el.tagName!=="IMG")return;const src=el.getAttribute("src")||"";
+  if(!src||src.length<8)return;const w=el.naturalWidth,h=el.naturalHeight;if(!w||!h)return;
+  applyLogoMode(el,src);},true);}
+
 const JG="1fr 44px 52px 84px";
 function JHd({a}){return(<div style={{display:"grid",gridTemplateColumns:JG,gap:4,padding:"6px 14px"}}>
   {[a,"N","WR","Profit"].map((h,i)=><span key={h} style={{fontSize:10,color:"#6B7280",fontWeight:800,textTransform:"uppercase",letterSpacing:.5,textAlign:i===0?"left":i===3?"right":"center"}}>{h}</span>)}</div>);}
@@ -2728,7 +2768,7 @@ function PhotoMigrator({allPlayers,setPlayers,showToast}){
  );
 }
 
-const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},savedTourneys={},leagues={}}){
+const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToast,activeTourneys={},savedTourneys={},leagues={},stats={}}){
  const GAMES=["CS2","LoL","Dota2","Valorant"];
  const [open,setOpen]=useState(false);
  const [activeGame,setActiveGame]=useState("CS2");
@@ -2747,7 +2787,8 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
   if(savedTourneys&&savedTourneys[game]) savedTourneys[game].forEach(n=>{if(!names.includes(n))names.push(n);});
   const DEF={LoL:["LCK","LPL","LEC","LCS","LTA","LCP"],Valorant:["Americas","EMEA","Pacific","China"]};
   [...(DEF[game]||[]),...((leagues&&leagues[game])||[])].forEach(n=>{if(n&&!names.includes(n))names.push(n);});
-  return names;
+  const has=n=>!!mediaStore["tourney_"+game+"_"+n];
+  return names.map((n,i)=>[n,i]).sort((a,b)=>(has(a[0])?1:0)-(has(b[0])?1:0)||a[1]-b[1]).map(x=>x[0]);
  };
 
  const save=async(game,name,direct)=>{
@@ -2823,6 +2864,7 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
             <div style={{flex:1}}>
              <div style={{fontSize:12,fontWeight:700,color:"#E5E7EB"}}>{name}</div>
              <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
+              {stats[activeGame+"||"+name]&&<span style={{fontSize:11,color:"#cbd5e1",fontWeight:800}}>{stats[activeGame+"||"+name].w}-{stats[activeGame+"||"+name].l}</span>}
               {isActif&&<span style={{fontSize:9,color:"#22C55E",fontWeight:700}}>● ACTIF</span>}
               {logo&&<span style={{fontSize:9,color:isOK(logo)?"#22C55E":"#F59E0B",fontWeight:700}}>{isOK(logo)?"● Supabase":"● Externe"}</span>}
              </div>
@@ -3960,6 +4002,7 @@ function ClubsTab({bets,allPlayers,teamLogos}){
 }
 function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
  const [liveMode,setLiveMode]=useState("all");
+ const [logoMode,setLogoMode]=useState(()=>{const l=clubLogo(team,game,teamLogos,allPlayers);return (l&&logoOverride()[l])||"";});
  const isHSb=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
  const logo=clubLogo(team,game,teamLogos,allPlayers);
  const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";
@@ -3986,7 +4029,8 @@ function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
      <div style={{position:"absolute",left:"2%",top:"50%",transform:"translateY(-50%)",fontSize:"min(150px, calc(96cqw / "+(Math.max(4,team.length)*0.66).toFixed(2)+"))",fontWeight:900,letterSpacing:-2,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+col+"66",pointerEvents:"none",textTransform:"uppercase",lineHeight:1}}>{team}</div>
      <button onClick={onClose} aria-label="Fermer" style={{position:"absolute",top:12,left:12,zIndex:3,width:36,height:36,borderRadius:18,border:"none",background:"rgba(0,0,0,.4)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={16} w={2.6}/></button>
      <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:16,padding:"64px 18px 26px",minHeight:190}}>
-      {logo?<img src={logo} alt={team} style={{width:"clamp(80px,22vw,120px)",height:"clamp(80px,22vw,120px)",objectFit:"contain",flexShrink:0,filter:"drop-shadow(0 6px 18px rgba(0,0,0,.5))"}}/>
+      {logo?<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0}}><img src={logo} alt={team} style={{width:"clamp(80px,22vw,120px)",height:"clamp(80px,22vw,120px)",objectFit:"contain",flexShrink:0,filter:"drop-shadow(0 6px 18px rgba(0,0,0,.5))"}}/>
+       <button onClick={e=>{e.stopPropagation();const nx=logoMode===""?"w":logoMode==="w"?"o":"";setLogoOverride(logo,nx);setLogoMode(nx);}} style={{padding:"3px 9px",borderRadius:8,border:"1px solid rgba(255,255,255,.12)",background:"rgba(0,0,0,.35)",color:"#cbd5e1",fontSize:10.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Logo : {logoMode==="w"?"Blanc":logoMode==="o"?"Original":"Auto"}</button></div>
        :<div style={{width:96,height:96,borderRadius:24,background:col,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,fontWeight:900,color:"#fff"}}>{team.slice(0,3).toUpperCase()}</div>}
       <div style={{minWidth:0}}>
        <div style={{fontSize:"clamp(26px,7.5vw,40px)",fontWeight:900,color:"#fff",letterSpacing:-1,lineHeight:1.05}}>{team}</div>
@@ -4182,6 +4226,35 @@ function TourSheet({name,game,bets,allPlayers,teamLogos,onClose}){
 }
 
 // ── NETTOYAGE : doublons de joueurs, paris sans club / sans tournoi ──────────
+function TourDeletePanel({bets,setBets,savedTourneys,setSavedTourneys,activeTourneys,setActiveTourneys,mediaStore,setMediaStore,showToast}){
+ const [open,setOpen]=useState(false);
+ const [game,setGame]=useState("CS2");
+ const items=useMemo(()=>{const m={};const add=(n,kind)=>{if(!n)return;const k=n;if(!m[k])m[k]={name:n,kind,n:0};};
+  ((savedTourneys||{})[game]||[]).forEach(n=>add(n,"Tournoi"));if(activeTourneys&&activeTourneys[game]&&activeTourneys[game].name)add(activeTourneys[game].name,"Tournoi");
+  bets.forEach(b=>{if(b.game!==game)return;if(b.tournament){add(b.tournament,"Tournoi");m[b.tournament].n++;}if(b.league&&b.league!==b.tournament){add(b.league,"Ligue");if(m[b.league].kind==="Ligue")m[b.league].n++;}});
+  return Object.values(m).sort((a,b)=>a.name.localeCompare(b.name));},[bets,savedTourneys,activeTourneys,game]);
+ const del=it=>{
+  if(!window.confirm("Supprimer « "+it.name+" » ("+game+") ?\n"+(it.n?it.n+" pari(s) perdront ce "+(it.kind==="Ligue"?"nom de ligue":"tournoi")+" (les paris restent).":"Aucun pari lié.")))return;
+  setSavedTourneys&&setSavedTourneys(p=>{const n={...(p||{})};n[game]=(n[game]||[]).filter(x=>x!==it.name);return n;});
+  if(activeTourneys&&activeTourneys[game]&&activeTourneys[game].name===it.name)setActiveTourneys&&setActiveTourneys(p=>{const n={...(p||{})};delete n[game];return n;});
+  const k="tourney_"+game+"_"+it.name;if(mediaStore&&mediaStore[k]){const s={...mediaStore};delete s[k];setMediaStore(s);}
+  setBets(prev=>prev.map(b=>{if(b.game!==game)return b;let nb=b;if(b.tournament===it.name)nb={...nb,tournament:""};if(b.league===it.name)nb={...nb,league:""};return nb;}));
+  showToast&&showToast(it.name+" supprimé","#EF4444");
+ };
+ return(<div style={{marginBottom:8}}>
+  <SuiviHead n="trash" color="#f87171" title="Supprimer tournois / ligues" sub="Retire un nom de la liste et des paris" open={open} onClick={()=>setOpen(o=>!o)}/>
+  {open&&<div style={SV_BODY}>
+   <div style={{display:"flex",gap:6,marginBottom:10}}>{["CS2","LoL","Dota2","Valorant"].map(g=><button key={g} onClick={()=>setGame(g)} style={{flex:1,padding:"8px 4px",borderRadius:10,border:"2px solid "+(game===g?"#a78bfa":"transparent"),background:"rgba(255,255,255,.03)",cursor:"pointer",display:"flex",justifyContent:"center"}}><GameLogo game={g} size={18}/></button>)}</div>
+   {items.length===0&&<div style={{fontSize:12,color:SV.sub,padding:10,textAlign:"center"}}>Rien pour {game}</div>}
+   {items.map(it=>(<div key={it.name} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 4px",borderTop:"1px solid "+SV.line}}>
+    <LeagueLogo league={it.name} size={22}/>
+    <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:700,color:SV.text}}>{it.name}</div><div style={{fontSize:11.5,color:SV.sub}}>{it.kind} · {it.n} pari(s)</div></div>
+    <button onClick={()=>del(it)} style={{padding:"7px 11px",borderRadius:9,border:"1px solid rgba(239,68,68,.3)",background:"rgba(239,68,68,.1)",color:"#f87171",fontSize:12,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}><Ic n="trash" s={12}/>Supprimer</button>
+   </div>))}
+  </div>}
+ </div>);
+}
+
 function CleanupPanel({bets,setBets,allPlayers,tourneyCal=[],showToast,onShowBets,onPlayersReload}){
  const [open,setOpen]=useState(false);
  const [rows,setRows]=useState(null);
@@ -10644,7 +10717,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   setBets={setBets} supaPushBets={supaPushBets}
  />
 
- <TourneyLogos leagues={(()=>{const m={};bets.forEach(b=>{if(b.league&&(b.game==="LoL"||b.game==="Valorant")){(m[b.game]=m[b.game]||new Set()).add(b.league);}});const o={};Object.keys(m).forEach(g=>o[g]=[...m[g]]);return o;})()}
+ <TourneyLogos {...(()=>{const m={},st={};const add=(g,n)=>{(m[g]=m[g]||new Set()).add(n);};bets.forEach(b=>{if(!b.game)return;
+   if(b.tournament)add(b.game,b.tournament);if(b.league&&(b.game==="LoL"||b.game==="Valorant"))add(b.game,b.league);
+   if(b.status==="won"||b.status==="lost")[b.tournament,b.league].filter(Boolean).forEach(n=>{const k=b.game+"||"+n;const x=st[k]||(st[k]={w:0,l:0});b.status==="won"?x.w++:x.l++;});});
+   const o={};Object.keys(m).forEach(g=>o[g]=[...m[g]]);return {leagues:o,stats:st};})()}
   mediaStore={mediaStore} setMediaStore={setMediaStore}
   showToast={showToast} activeTourneys={activeTourneys}
   savedTourneys={savedTourneys}
@@ -10694,6 +10770,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <SuiviLabel>OUTILS</SuiviLabel>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
   onShowBets={(t,list)=>setLineBets({title:t,ids:new Set(list.map(b=>String(b.id)))})}/>
+ <TourDeletePanel bets={bets} setBets={setBets} savedTourneys={savedTourneys} setSavedTourneys={setSavedTourneys} activeTourneys={activeTourneys} setActiveTourneys={setActiveTourneys} mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/>
  <CreateSection
   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
   bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
