@@ -689,7 +689,7 @@ const BK_LOGOS={};
 const ALL_GAMES=["LoL","Dota2","CS2","Valorant"];
 const LEAGUES_BY_GAME={
  LoL:["LCK","LEC","LCS","LPL"],
- Valorant:["Americas","EMEA","Pacific"],
+ Valorant:["VCT Americas","VCT EMEA","VCT Pacific","VCT China"],
 };
 
 // LoL Role Logos 
@@ -2098,7 +2098,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
  };
 
  const deleteTeam=async(team,game,tPlayers)=>{
-  if(!window.confirm("Supprimer le club "+team+" et ses "+tPlayers.length+" joueurs ?"))return;
+  if(!window.confirm(tPlayers.length?"Supprimer le club "+team+" et ses "+tPlayers.length+" joueurs ?":"Supprimer le club "+team+" ?"))return;
   try{
    for(const p of tPlayers){if(p.id)await supaDeletePlayer(p.id);}
    setPlayers(prev=>{
@@ -2106,6 +2106,9 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
     tPlayers.forEach(p=>delete n[p.name.toLowerCase().trim()]);
     return n;
    });
+   if(setCustomClubs)setCustomClubs(prev=>{const cl=(prev||{})[game]||[];if(!cl.some(c=>(c.name||"").toLowerCase()===team.toLowerCase()))return prev;return {...prev,[game]:cl.filter(c=>(c.name||"").toLowerCase()!==team.toLowerCase())};});
+   if(setTeamLogos)setTeamLogos(prev=>{const k=team+"__"+game;if(!(k in (prev||{})))return prev;const n={...prev};delete n[k];try{localStorage.setItem("v7_team_logos",JSON.stringify(n));}catch(e){}return n;});
+   cloudDb("teams?name=eq."+encodeURIComponent(team)+"&game=eq."+encodeURIComponent(game),{method:"DELETE"}).catch(()=>{});
    setRosterTeam(null);
    showToast(team+" supprimé","#EF4444");
   }catch(e){showToast("Erreur: "+e.message,"#EF4444");}
@@ -2868,7 +2871,7 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
   const names=[];
   if(activeTourneys[game]&&activeTourneys[game].name) names.push(activeTourneys[game].name);
   if(savedTourneys&&savedTourneys[game]) savedTourneys[game].forEach(n=>{if(!names.includes(n))names.push(n);});
-  const DEF={LoL:["LCK","LPL","LEC","LCS","LTA","LCP"],Valorant:["Americas","EMEA","Pacific","China"]};
+  const DEF={LoL:["LCK","LPL","LEC","LCS","LTA","LCP"],Valorant:["VCT Americas","VCT EMEA","VCT Pacific","VCT China"]};
   [...(DEF[game]||[]),...((leagues&&leagues[game])||[])].forEach(n=>{if(n&&!names.includes(n))names.push(n);});
   const has=n=>!!mediaStore["tourney_"+game+"_"+n];
   return names.map((n,i)=>[n,i]).sort((a,b)=>(has(a[0])?1:0)-(has(b[0])?1:0)||a[1]-b[1]).map(x=>x[0]);
@@ -5724,6 +5727,20 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  // allPlayers : uniquement depuis Supabase (table "players")
  useMemo(()=>{const m={};Object.values(players||{}).forEach(p=>{if(p&&p.game&&p.league)(m[p.game]=m[p.game]||new Set()).add(p.league);});const o={};Object.keys(m).forEach(g=>o[g]=[...m[g]].sort());_LEAGUES_SEEN=o;},[players]);
+ // Valorant : Pacific / EMEA / Americas / China → VCT … (paris + joueurs)
+ useEffect(()=>{
+  if(!hydrated)return;
+  const MAP={"pacific":"VCT Pacific","emea":"VCT EMEA","americas":"VCT Americas","china":"VCT China","vct americas":"VCT Americas","vct emea":"VCT EMEA","vct pacific":"VCT Pacific","vct china":"VCT China"};
+  const fix=v=>{if(!v)return v;const m=MAP[String(v).toLowerCase().trim()];return m&&m!==v?m:v;};
+  const need=bets.some(b=>b.game==="Valorant"&&(fix(b.league)!==b.league||fix(b.tournament)!==b.tournament));
+  if(need)setBets(prev=>prev.map(b=>{if(b.game!=="Valorant")return b;const l=fix(b.league),t=fix(b.tournament);return l!==b.league||t!==b.tournament?{...b,league:l,tournament:t}:b;}));
+  const badP=Object.values(players||{}).filter(p=>p&&p.game==="Valorant"&&fix(p.league)!==p.league);
+  if(badP.length){
+   const groups={};badP.forEach(p=>{(groups[p.league]=groups[p.league]||[]).push(p);});
+   Object.entries(groups).forEach(([old,list])=>{cloudDb("players?game=eq.Valorant&league=eq."+encodeURIComponent(old),{method:"PATCH",body:{league:fix(old)}}).catch(()=>{});});
+   setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{const p=n[k];if(p&&p.game==="Valorant"&&fix(p.league)!==p.league)n[k]={...p,league:fix(p.league)};});return n;});
+  }
+ },[hydrated,bets.length,players]);
  const allPlayers=useMemo(function(){
  const merged={};
  Object.entries(players).forEach(([k,v])=>{
