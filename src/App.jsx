@@ -1279,7 +1279,7 @@ function tourLogoSrc(league){
  }
  return src?src.replace('__FAILED__',''):null;
 }
-const LeagueLogo=memo(function LeagueLogo({league,size=18}){
+const LeagueLogo=(function LeagueLogo({league,size=18}){
  if(!league)return null;
  var src=tourLogoSrc(league);
  if(!src)return <span style={{fontSize:size*0.65,color:"#4a5a6e",fontWeight:700,lineHeight:1}}>{league.slice(0,3).toUpperCase()}</span>;
@@ -2750,16 +2750,17 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
   return names;
  };
 
- const save=async(game,name)=>{
+ const save=async(game,name,direct)=>{
   const k=game+"_"+name;
-  const url=(urlInput[k]||"").trim();
+  const url=(direct||urlInput[k]||"").trim();
   if(!url)return showToast("URL requise","#EF4444");
   setSaving(s=>({...s,[k]:true}));
   let finalUrl=url;
   if(finalUrl.startsWith('http')&&!finalUrl.includes('/storage/v1/object/public/')){
    try{finalUrl=await supaUploadPhotoFromUrl(finalUrl,'tourneys');}catch(e){}
   }
-  const s={...mediaStore,[getKey(game,name)]:finalUrl};
+  const s={..._GLOBAL_MEDIA_STORE,...mediaStore,[getKey(game,name)]:finalUrl};
+  _GLOBAL_MEDIA_STORE=s;
   setMediaStore(s);
    applyMediaStore(s);
   supaSetMedia("mediaStore",s).catch(()=>{});
@@ -2830,7 +2831,7 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
            </div>
            <ImageInput
             value={urlInput[k]||""}
-            onChange={v=>setUrlInput(u=>({...u,[k]:v}))}
+            onChange={v=>{setUrlInput(u=>({...u,[k]:v}));const t=(v||"").trim();if(t.startsWith("data:")||t.includes("/storage/v1/object/public/"))save(activeGame,name,t);}}
             folder="tourneys" size={26} radius="6px"
             placeholder={logo?"Changer le logo...":"URL ou fichier..."}
             showToast={showToast}
@@ -4675,7 +4676,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
   return Object.values(m).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name));
  },[allPlayers,teamLogos,f.game]);
  const shownClubs=clubs.filter(c=>!clubQ||c.name.toLowerCase().includes(clubQ.toLowerCase())).slice(0,40);
- const pickClub=c=>{setF(x=>({...x,team:c.name,logo:c.logo||"",league:x.league||c.league||""}));setClubOpen(false);setClubQ("");};
+ const pickClub=c=>{setF(x=>({...x,team:c.name,logo:c.logo||"",league:c.name!==x.team?(c.league||""):(x.league||c.league||"")}));setClubOpen(false);setClubQ("");};
  const upload=async(file,folder,k)=>{
   if(!file)return;setBusy(k);
   try{const url=await supaUploadPhoto(file,folder);set(k,url);}catch(e){showToast&&showToast("Envoi impossible : "+((e&&e.message)||e),"#EF4444");}
@@ -4729,7 +4730,8 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
    }
    if(pid){const r=await cloudDb("players?id=eq."+encodeURIComponent(pid),{method:"PATCH",body:row,prefer:"return=representation"});saved=r&&r[0];}
    else{const r=await cloudDb("players",{method:"POST",body:row,prefer:"return=representation"});saved=r&&r[0];}
-   if(lg&&row.team){await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body:{team_logo_url:lg}}).catch(()=>{});}
+   if(row.team&&(lg||row.league)){const body={};if(lg)body.team_logo_url=lg;if(row.league)body.league=row.league;await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body}).catch(()=>{});
+    if(row.league&&typeof window!=="undefined")window.dispatchEvent(new CustomEvent("emeieks-club-league",{detail:{team:row.team,game:row.game,league:row.league}}));}
    const finalP={...p,...row,...(saved||{})},finalLogo=row.team?lg:null;
    // Position changée → menu pour choisir quels paris passent sur la nouvelle position
    if(row.role&&row.role!==(p.role||"")){
@@ -4858,7 +4860,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
         </div>
        )}
       </div>
-      <div style={L}>Ligue</div>
+      <div style={L}>Ligue {f.team&&<span style={{fontWeight:500,color:"#6b7489"}}>· appliquée à tout {f.team}</span>}</div>
       <input style={I} list="pe-leagues" placeholder="Ex : LCK, EMEA, Pacific, Europe…" value={f.league} onChange={e=>set("league",e.target.value)}/>
       <datalist id="pe-leagues">{(LEAGUES_BY_GAME[f.game]||[]).map(l=><option key={l} value={l}/>)}</datalist>
       {f.team&&<>
@@ -4923,6 +4925,7 @@ function AppMain(){
   return newKey;
  };
  useEffect(()=>{const h=e=>{setPform({name:"",game:"LoL",league:"",role:"",team:"",...(e.detail||{})});setModalPlayer(true);};window.addEventListener("emeieks-new-player",h);return()=>window.removeEventListener("emeieks-new-player",h);},[]);
+ useEffect(()=>{const h=e=>{const d=e.detail||{};setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{const p=n[k];if(p&&p.team===d.team&&p.game===d.game)n[k]={...p,league:d.league};});return n;});};window.addEventListener("emeieks-club-league",h);return()=>window.removeEventListener("emeieks-club-league",h);},[]);
  const [clubSheet,setClubSheet]=useState(null);
  const [tourSheet,setTourSheet]=useState(null);
  useEffect(()=>{const h=e=>setTourSheet(e.detail||null);window.addEventListener("emeieks-open-tour",h);return()=>window.removeEventListener("emeieks-open-tour",h);},[]);
@@ -5074,6 +5077,8 @@ function AppMain(){
  const [playerSortKey,setPlayerSortKey]=useState("profit");
  const [playerMinBets,setPlayerMinBets]=useState(1);
  const [playersWorst,setPlayersWorst]=useState(false);
+ const [ppLineSort,setPpLineSort]=useState("n");
+ const [ppLineAll,setPpLineAll]=useState({});
  const [testingOpen,setTestingOpen]=useState(false);
  const DEFAULT_TEST_FILTER={games:new Set(["CS2","LoL","Dota2","Valorant"]),headshot:"all",live:"all",oddsMin:"",oddsMax:"",hideTourneys:new Set(),hideLeagues:new Set(),hideRoles:new Set(),ppEdgeMin:"",ppEdgeMax:"",overUnder:"all"};
  const [testFilterDraft,setTestFilterDraft]=useState(DEFAULT_TEST_FILTER); // what user edits
@@ -5226,7 +5231,7 @@ function AppMain(){
  },
  media:async(obj,prev)=>{
  const rows=Object.entries(obj).filter(([k,v])=>!prev||JSON.stringify(prev[k])!==JSON.stringify(v)).map(([key,value])=>({key,value:JSON.stringify(value||{}),updated_at:Date.now()}));
- if(rows.length)await cloudDb("media_store",{method:"POST",body:rows,prefer:"resolution=merge-duplicates"});
+ if(rows.length)await cloudDb("media_store?on_conflict=key",{method:"POST",body:rows,prefer:"resolution=merge-duplicates"});
  },
  teams:async(map,prev)=>{
  const changed=Object.entries(map).filter(([k,v])=>v&&(!prev||prev[k]!==v));
@@ -9709,7 +9714,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const gb=settledFiltered.filter(b=>b.game===game&&(b.status==="won"||b.status==="lost"));
  const ag=arr=>{const n=arr.length,w=arr.filter(b=>b.status==="won").length,st=arr.reduce((t,b)=>t+(b.stake||0),0),pr=arr.reduce((t,b)=>t+(b.profit||0),0),od=n?arr.reduce((t,b)=>t+(parseFloat(b.odds)||0),0)/n:0;return{n,wr:n?w/n*100:0,need:od?100/od:0,roi:st?pr/st*100:0,pr};};
  const cell=(a,lab,c)=>(<div style={{flex:1,padding:"9px 12px",minWidth:0}}>
-  <div style={{fontSize:11,fontWeight:800,letterSpacing:.6,color:c}}>{lab} <span style={{color:"#6B7280",fontWeight:600}}>· {a.n}p</span></div>
+  <div style={{fontSize:11,fontWeight:800,letterSpacing:.6,color:"#fff"}}>{lab} <span style={{color:"#6B7280",fontWeight:600}}>· {a.n}p</span></div>
   {a.n?<><div style={{fontSize:16,fontWeight:900,color:a.pr>=0?"#22C55E":"#EF4444",marginTop:2}}>{fmtM(a.pr)}</div>
   <div style={{fontSize:11.5,color:"#9CA3AF",marginTop:1}}><b style={{color:a.wr>=a.need?"#22C55E":"#f87171"}}>{a.wr.toFixed(0)}%</b> / {a.need.toFixed(0)}% · <b style={{color:a.roi>=0?"#22C55E":"#f87171"}}>{(a.roi>=0?"+":"")+a.roi.toFixed(1)}%</b></div></>
   :<div style={{fontSize:13,color:"#4B5563",marginTop:4}}>—</div>}
@@ -9758,7 +9763,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const build=list=>{const by={};list.forEach(b=>{const pp=parseFloat(b.ppLine);if(isNaN(pp))return;const k=pp.toFixed(1);
   if(!by[k])by[k]={line:pp,over:{cnt:0,won:0,profit:0,staked:0},under:{cnt:0,won:0,profit:0,staked:0}};
   const t=b.overUnder==="Over"?by[k].over:by[k].under;t.cnt++;t.profit+=b.profit||0;t.staked+=b.stake||0;if(b.status==="won")t.won++;});
-  return Object.values(by).sort((a,b)=>a.line-b.line);};
+  const arr=Object.values(by);const tn=l=>l.over.cnt+l.under.cnt;
+  return ppLineSort==="n"?arr.sort((a,b)=>tn(b)-tn(a)||a.line-b.line):arr.sort((a,b)=>a.line-b.line);};
  const G="62px 1fr 38px 50px 62px 76px";
  const sub=(t,ou,first)=>{if(!t.cnt)return null;const wr=Math.round(t.won*100/t.cnt),roi=t.staked>0?t.profit/t.staked*100:0;return(
   <div key={ou} style={{display:"grid",gridTemplateColumns:G,gap:4,alignItems:"center",padding:"3px 0"}}>
@@ -9768,7 +9774,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <span style={{fontSize:12.5,fontWeight:700,color:wr>=55?"#22C55E":wr<45?"#f87171":"#9CA3AF",textAlign:"center"}}>{wr}%</span>
   <span style={{fontSize:12.5,fontWeight:700,color:roi>=0?"#22C55E":"#f87171",textAlign:"center"}}>{(roi>=0?"+":"")+roi.toFixed(0)}%</span>
   <span style={{fontSize:13.5,fontWeight:800,color:t.profit>=0?"#22C55E":"#f87171",textAlign:"right"}}>{fmtM(t.profit)}</span></div>);};
- const block=(title,lines)=>lines.length===0?null:(<>
+ const block=(title,all)=>{if(all.length===0)return null;const key=game+title;const showAll=!!ppLineAll[key];const LIM=8;const lines=showAll?all:all.slice(0,LIM);return(<>
   <div style={{fontSize:12,fontWeight:800,color:"#E5E7EB",letterSpacing:.6,padding:"12px 14px 4px"}}>{title}</div>
   <div style={{display:"grid",gridTemplateColumns:G,gap:4,padding:"2px 14px 6px"}}>
   {["Ligne","Sens","N","WR","ROI","Profit"].map((h,i)=><span key={h} style={{fontSize:11,color:"#6B7280",fontWeight:800,textTransform:"uppercase",textAlign:i<2?"left":i===5?"right":"center"}}>{h}</span>)}</div>
@@ -9776,10 +9782,14 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:16,fontWeight:900,color:"#fff"}}>{l.line.toFixed(1)}</span>
    {sub(l.over,"Over")}{sub(l.under,"Under")}
   </div>))}
- </>);
+  {all.length>LIM&&<button onClick={()=>setPpLineAll(p=>({...p,[key]:!showAll}))} style={{width:"100%",padding:"11px",background:"rgba(124,58,237,.08)",border:"none",borderTop:"1px solid #1F2937",color:"#c4b5fd",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{showAll?"Réduire":"Voir les "+all.length+" lignes"}</button>}
+ </>);};
  return(<>
  <div style={{fontSize:11,color:"#A78BFA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"16px 14px 6px",borderTop:"1px solid #1F2937",borderBottom:"1px solid rgba(139,92,246,.2)",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:7}}>
- <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>Lignes PrizePicks</div>
+ <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>Lignes PrizePicks
+ <div style={{marginLeft:"auto",display:"flex",background:"#070b16",border:"1px solid rgba(255,255,255,.07)",borderRadius:9,padding:2}}>
+ {[["n","Plus jouées"],["line","Par ligne"]].map(([k,l])=><button key={k} onClick={()=>setPpLineSort(k)} style={{padding:"4px 9px",borderRadius:7,border:"none",background:ppLineSort===k?"rgba(124,58,237,.35)":"transparent",color:ppLineSort===k?"#fff":"#6B7280",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:0,textTransform:"none"}}>{l}</button>)}
+ </div></div>
  {block("Kills",build(gamePPBets.filter(b=>!isHSb(b))))}
  {block("Headshots",build(gamePPBets.filter(isHSb)))}
  </>);
