@@ -1331,6 +1331,7 @@ const LeagueLogo=(function LeagueLogo({league,size=18}){
 const HEADSHOT_LOGO_B64="data:image/png;base64,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";
 // Global mediaStore ref for LeagueLogo (updated by App)
 let _GLOBAL_MEDIA_STORE={};
+let _CUSTOM_CLUBS={};
 const LEAGUE_LOGOS={
  "Americas":null,
  "EMEA":null,
@@ -2242,7 +2243,9 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
       const results=[...byName,...byClub];
       const clubMap={};
       Object.values(players).forEach(p=>{if(p&&p.team&&(!rosterGame||p.game===rosterGame)&&p.team.toLowerCase().includes(searchLower)){const k=p.team+"__"+p.game;if(!clubMap[k])clubMap[k]={team:p.team,game:p.game,league:p.league||"",n:0,logo:null};clubMap[k].n++;if(!clubMap[k].logo)clubMap[k].logo=teamLogos[k]||p.team_logo_url||null;}});
-      const clubList=Object.values(clubMap).sort((a,b)=>b.n-a.n);
+      Object.entries(customClubs||{}).forEach(([g,cls])=>{if(rosterGame&&g!==rosterGame)return;(cls||[]).forEach(cl=>{if(cl&&cl.name&&cl.name.toLowerCase().includes(searchLower)){const k=cl.name+"__"+g;if(!clubMap[k])clubMap[k]={team:cl.name,game:g,league:cl.league||"",n:0,logo:teamLogos[k]||cl.logoUrl||null};}});});
+      Object.entries(teamLogos||{}).forEach(([k,v])=>{const i=k.lastIndexOf("__");if(i<1)return;const t=k.slice(0,i),g=k.slice(i+2);if(rosterGame&&g!==rosterGame)return;if(t.toLowerCase().includes(searchLower)&&!clubMap[k])clubMap[k]={team:t,game:g,league:"",n:0,logo:v||null};});
+      const clubList=Object.values(clubMap).sort((a,b)=>b.n-a.n||a.team.localeCompare(b.team));
       if(results.length===0&&clubList.length===0)return <div style={{fontSize:11,color:"#4a5a6e",padding:"6px 0"}}>Aucun résultat pour "{searchQ}"</div>;
       const Sep=({t,n})=>(<div style={{display:"flex",alignItems:"center",gap:10,margin:"10px 2px 6px"}}>
        <span style={{fontSize:11,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"#8b93a7"}}>{t}</span>
@@ -4010,6 +4013,7 @@ function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
  useEffect(()=>{const k=e=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",k);return()=>window.removeEventListener("keydown",k);},[onClose]);
  const roster=Object.values(allPlayers).filter(p=>p&&p.team===team&&p.game===game);
  const league=(roster.find(p=>p.league)||{}).league||"";
+ const [lg,setLg]=useState(league);
  const mineAll=bets.filter(b=>b.game===game&&clubOfBet(b,allPlayers)===team&&(liveMode==="all"||(game==="CS2"?(liveMode==="hs"?isHSb(b):!isHSb(b)):(liveMode==="live"?!!b.isLive:!b.isLive))));
  const tot=psAgg(mineAll);
  const rows=roster.map(p=>{const k=(p.name||"").toLowerCase().trim();const l=mineAll.filter(b=>(b.player||"").toLowerCase().trim()===k);return{p,...psAgg(l),pending:l.filter(b=>b.status==="pending").length};})
@@ -4036,7 +4040,10 @@ function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
        <div style={{fontSize:"clamp(26px,7.5vw,40px)",fontWeight:900,color:"#fff",letterSpacing:-1,lineHeight:1.05}}>{team}</div>
        <div style={{display:"flex",alignItems:"center",gap:7,marginTop:10,flexWrap:"wrap",fontSize:14,color:"#cbd5e1",fontWeight:600}}>
         <GameLogo game={game} size={18}/><span style={{color:acc}}>{game}</span>
-        {league&&<><span style={{color:"#5b6478"}}>•</span><span>{league}</span></>}
+        <span style={{color:"#5b6478"}}>•</span><button onClick={e=>{e.stopPropagation();const v=window.prompt("Ligue de "+team+" ("+game+")",lg);if(v==null)return;const nv=v.trim();setLg(nv);
+         cloudDb("players?team=eq."+encodeURIComponent(team)+"&game=eq."+encodeURIComponent(game),{method:"PATCH",body:{league:nv}}).catch(()=>{});
+         window.dispatchEvent(new CustomEvent("emeieks-club-league",{detail:{team,game,league:nv}}));}}
+         style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.12)",borderRadius:8,padding:"2px 8px",color:"inherit",font:"inherit",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>{lg||"Ajouter une ligue"}<Ic n="edit" s={11}/></button>
        </div>
       </div>
      </div>
@@ -4746,6 +4753,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
   const m={};
   Object.values(allPlayers).forEach(x=>{if(x&&x.team&&x.game===f.game){const k=x.team;if(!m[k])m[k]={name:k,logo:null,league:x.league||"",n:0};m[k].n++;if(!m[k].logo&&x.team_logo_url)m[k].logo=x.team_logo_url;}});
   Object.entries(teamLogos).forEach(([k,v])=>{const i=k.lastIndexOf("__");if(i<1)return;const t=k.slice(0,i),g=k.slice(i+2);if(g!==f.game)return;if(!m[t])m[t]={name:t,logo:null,league:"",n:0};if(v)m[t].logo=v;});
+  ((_CUSTOM_CLUBS||{})[f.game]||[]).forEach(cl=>{if(!cl||!cl.name)return;if(!m[cl.name])m[cl.name]={name:cl.name,logo:cl.logoUrl||null,league:cl.league||"",n:0};});
   return Object.values(m).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name));
  },[allPlayers,teamLogos,f.game]);
  const shownClubs=clubs.filter(c=>!clubQ||c.name.toLowerCase().includes(clubQ.toLowerCase())).slice(0,40);
@@ -4998,7 +5006,7 @@ function AppMain(){
   return newKey;
  };
  useEffect(()=>{const h=e=>{setPform({name:"",game:"LoL",league:"",role:"",team:"",...(e.detail||{})});setModalPlayer(true);};window.addEventListener("emeieks-new-player",h);return()=>window.removeEventListener("emeieks-new-player",h);},[]);
- useEffect(()=>{const h=e=>{const d=e.detail||{};setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{const p=n[k];if(p&&p.team===d.team&&p.game===d.game)n[k]={...p,league:d.league};});return n;});};window.addEventListener("emeieks-club-league",h);return()=>window.removeEventListener("emeieks-club-league",h);},[]);
+ useEffect(()=>{const h=e=>{const d=e.detail||{};setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{const p=n[k];if(p&&p.team===d.team&&p.game===d.game)n[k]={...p,league:d.league};});return n;});setCustomClubs(prev=>{const cl=(prev||{})[d.game];if(!cl||!cl.some(c=>c.name===d.team))return prev;return {...prev,[d.game]:cl.map(c=>c.name===d.team?{...c,league:d.league}:c)};});};window.addEventListener("emeieks-club-league",h);return()=>window.removeEventListener("emeieks-club-league",h);},[]);
  const [clubSheet,setClubSheet]=useState(null);
  const [tourSheet,setTourSheet]=useState(null);
  useEffect(()=>{const h=e=>setTourSheet(e.detail||null);window.addEventListener("emeieks-open-tour",h);return()=>window.removeEventListener("emeieks-open-tour",h);},[]);
@@ -5077,6 +5085,7 @@ function AppMain(){
   try{if(Object.keys(bkPhotos).length)localStorage.setItem("emeieks_cache_bkphotos",JSON.stringify(bkPhotos));}catch(e){}
  },1500);return()=>clearTimeout(t);},[players,bookmakers,bkPhotos]);
  const [customClubs,setCustomClubs]=useState({}); // {game: [{name, league, logoUrl}]}
+ _CUSTOM_CLUBS=customClubs;
  const [mediaStore,setMediaStore]=useState({});
  const mediaLoadedRef=useRef(false); // true after initial Supabase load
  const [teamLogos,setTeamLogos]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_team_logos")||"{}");}catch(e){return {};}});
@@ -5150,6 +5159,7 @@ function AppMain(){
  const [playerSortKey,setPlayerSortKey]=useState("profit");
  const [playerMinBets,setPlayerMinBets]=useState(1);
  const [playersWorst,setPlayersWorst]=useState(false);
+ const [tierOpen,setTierOpen]=useState(false);
  const [ppLineSort,setPpLineSort]=useState("n");
  const [ppLineAll,setPpLineAll]=useState({});
  const [testingOpen,setTestingOpen]=useState(false);
@@ -10744,10 +10754,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   const activeTier=manualTier||autoTier;
   return(
    <div style={{marginBottom:8}}>
-    <SuiviHead n="target" color="#34d399" title="Palier bankroll" flat
+    <SuiviHead n="target" color="#34d399" title="Palier bankroll" open={tierOpen} onClick={()=>setTierOpen(o=>!o)}
      sub={(isAuto?"Automatique":"Manuel")+" · 1u = "+(activeTier*0.01).toFixed(0)+"$"}
      right={<span style={{fontSize:17,fontWeight:800,color:"#eef1f7",letterSpacing:-.3}}>{activeTier.toLocaleString("fr-FR")}$</span>}/>
-    <div style={SV_BODY}>
+    {tierOpen&&<div style={SV_BODY}>
      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6}}>
       {PALIERS.map(p=>{const on=p===activeTier;return(
        <button key={p} onClick={()=>{setManualTier(on&&!isAuto?null:p);}}
@@ -10759,7 +10769,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
       style={{width:"100%",marginTop:10,padding:"10px",background:"transparent",border:"1px solid "+SV.line,borderRadius:11,color:isAuto?"#4b5366":"#aab1c2",fontSize:12,fontWeight:600,cursor:isAuto?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
       {isAuto?"Mode automatique activé ("+autoTier.toLocaleString("fr-FR")+"$)":"↺ Repasser en automatique ("+autoTier.toLocaleString("fr-FR")+"$)"}
      </button>
-    </div>
+    </div>}
    </div>
   );
  })()}
