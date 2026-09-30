@@ -75,19 +75,20 @@ async function cloudDb(path,opts={}){
 // Full pull - loads all bets before updating UI to avoid sync issues
 async function supaPullBets() {
  const SELECT="id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,pp_map_type,pp_line,pp_edge";
- const limit=1000;
- const page=off=>supaFetch(`/rest/v1/bets?select=${SELECT}&order=id.desc&limit=${limit}&offset=${off}`);
+ // Pagination par clé (id < dernier id) : pas d'OFFSET qui oblige Postgres à tout relire → plus de "statement timeout"
  const conv=batch=>(batch||[]).map(b=>{
   let splits;try{splits=b.splits?JSON.parse(b.splits):undefined;}catch(e){splits=undefined;}
   return normalizeBet({...b,splits,ppMapType:b.pp_map_type||null,ppLine:b.pp_line||null,ppEdge:b.pp_edge!=null?b.pp_edge:null});
  });
- // 5 pages en parallèle (jusqu'à 5000 paris d'un coup), puis la suite si besoin
- const first=await Promise.all([0,1,2,3,4].map(i=>page(i*limit)));
- let all=[];first.forEach(p=>{all=all.concat(conv(p));});
- let off=5*limit;
- if(first[4]&&first[4].length===limit){
-  while(true){const p=await page(off);all=all.concat(conv(p));if(!p||p.length<limit)break;off+=limit;}
- }
+ const page=async(after,lim)=>{
+  let l=lim;
+  for(let t=0;t<4;t++){
+   try{return await supaFetch(`/rest/v1/bets?select=${SELECT}&order=id.desc&limit=${l}`+(after!=null?`&id=lt.${encodeURIComponent(after)}`:""));}
+   catch(e){if(!/57014|timeout/i.test(String(e&&e.message||e))||t===3)throw e;l=Math.max(100,Math.floor(l/2));await new Promise(r=>setTimeout(r,400*(t+1)));}
+  }
+ };
+ let all=[],after=null;const LIM=1000;
+ while(true){const p=await page(after,LIM);const c=p||[];all=all.concat(conv(c));if(!c.length)break;after=c[c.length-1].id;if(all.length>200000)break;}
  return all.sort((x,y)=>String(y.datetime||"").localeCompare(String(x.datetime||"")));
 }
 
@@ -5443,6 +5444,8 @@ function AppMain(){
  const betTimer=useRef(null);
  const retryTimer=useRef(null);
  const [pendingSync,setPendingSync]=useState(0);
+ const [advOpen,setAdvOpen]=useState(false);
+ useEffect(()=>{if(!supaModal)return;const t=setTimeout(()=>{const el=document.getElementById("integ-btn");el&&el.click();},300);return()=>clearTimeout(t);},[supaModal]);
  // File d'attente hors-ligne : paris non envoyés gardés sur l'appareil jusqu'au retour du réseau
  const savePending=()=>{try{
   const snap=betSnap.current;const cur=betsRef.current;
@@ -5452,6 +5455,14 @@ function AppMain(){
  }catch(e){}};
  const flushRef=useRef(null);
  const scheduleRetry=()=>{clearTimeout(retryTimer.current);retryTimer.current=setTimeout(()=>flushRef.current&&flushRef.current(),15000);};
+ // Envoi auto aussi quand l'app revient au premier plan ; alerte si on quitte avec des paris non envoyés
+ useEffect(()=>{const vis=()=>{if(document.visibilityState==="visible"&&flushRef.current)flushRef.current();};
+  const bu=e=>{if(pendingRef.current>0){e.preventDefault();e.returnValue="";}};
+  document.addEventListener("visibilitychange",vis);window.addEventListener("beforeunload",bu);
+  return()=>{document.removeEventListener("visibilitychange",vis);window.removeEventListener("beforeunload",bu);};},[]);
+ const pendingRef=useRef(0);pendingRef.current=pendingSync;
+ const [pendingOld,setPendingOld]=useState(false);
+ useEffect(()=>{if(!pendingSync){setPendingOld(false);return;}const t=setTimeout(()=>setPendingOld(true),90000);return()=>clearTimeout(t);},[pendingSync]);
  useEffect(()=>{const on=()=>flushRef.current&&flushRef.current();window.addEventListener("online",on);return()=>{window.removeEventListener("online",on);clearTimeout(retryTimer.current);};},[]);
  useEffect(()=>{
  if(!hydratedRef.current)return;
@@ -5485,6 +5496,7 @@ function AppMain(){
  },[bets,hydrated]);
 
  // Relecture complète des paris (au retour sur l'app / bouton Sync)
+ const pullFromSupaRef=useRef(null);
  const pullFromSupa=useCallback(async function(){
  setSyncing(true);
  try{
@@ -5505,6 +5517,7 @@ function AppMain(){
  }catch(e){fail("Lecture des paris",e);}
  setSyncing(false);
  },[]);
+ pullFromSupaRef.current=pullFromSupa;
 
 
 
@@ -5551,7 +5564,13 @@ function AppMain(){
  const safe=(p,w)=>p.catch(e=>{loadFailed=true;fail(w||"Chargement",e);return null;});
 try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}catch(e){}
  // Affichage immédiat : dernière copie connue (simple cache d'affichage, remplacé par Supabase en quelques secondes)
- try{const c=JSON.parse(localStorage.getItem("emeieks_cache_bets")||"null");if(Array.isArray(c)&&c.length&&betsRef.current.length===0)setBets(c);}catch(e){}
+ try{const c=JSON.parse(localStorage.getItem("emeieks_cache_bets")||"null");if(Array.isArray(c)&&c.length&&betsRef.current.length===0){
+  // Le cache sert de référence tant que Supabase n'a pas répondu : on n'envoie QUE ce qui change ensuite (jamais tout le cache)
+  const snap=new Map();c.forEach(b=>{if(b&&b.id!=null)snap.set(String(b.id),betJson(b));});
+  try{const pd=JSON.parse(localStorage.getItem("emeieks_pending")||"null");(pd&&pd.bets||[]).forEach(b=>snap.delete(String(b.id)));}catch(e){}
+  betSnap.current=snap;
+  let shown=c;try{const pd=JSON.parse(localStorage.getItem("emeieks_pending")||"null");if(pd){const byId=new Map(c.map(b=>[String(b.id),b]));(pd.bets||[]).forEach(b=>byId.set(String(b.id),b));shown=[...byId.values()].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));}}catch(e){}
+  setBets(shown);}}catch(e){}
  const SPECIAL=["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"];
  // Les paris s'affichent dès qu'ils arrivent, sans attendre le reste
  const betsP=safe(supaPullBets(),"Lecture des paris").then(rb=>{
@@ -5566,6 +5585,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
      if((pd.bets||[]).length||(pd.del||[]).length)showToast("Envoi des paris faits hors ligne…","#A78BFA");}}catch(e){}
    setBets(merged);
    good("bets");
+  }else if(alive){
+   // Lecture ratée : on réessaie toutes les 20 s sans rien écraser
+   const retry=()=>{if(!alive)return;supaPullBets().then(()=>pullFromSupaRef.current&&pullFromSupaRef.current()).catch(()=>setTimeout(retry,20000));};
+   setTimeout(retry,20000);
   }
   return rb;
  });
@@ -6927,6 +6950,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* CONFIRMATION VISUELLE BET */}
 
  {/* Syncing indicator */}
+ {pendingOld&&<div onClick={()=>flushRef.current&&flushRef.current()} style={{position:"fixed",left:12,right:12,top:"calc(8px + env(safe-area-inset-top))",zIndex:498,background:"#F59E0B",color:"#111",borderRadius:12,padding:"8px 12px",fontSize:12.5,fontWeight:800,textAlign:"center",boxShadow:"0 6px 20px rgba(0,0,0,.4)",cursor:"pointer"}}>{pendingSync} pari(s) pas encore envoyé(s) — gardés sur ce téléphone, nouvel essai automatique</div>}
  {syncing&&<><style>{"@keyframes syncPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}"}</style><div title="Synchronisation…" style={{position:"fixed",top:"calc(10px + env(safe-area-inset-top))",right:12,width:8,height:8,borderRadius:4,background:"#A78BFA",boxShadow:"0 0 8px #A78BFA",zIndex:499,pointerEvents:"none",animation:"syncPulse 1s ease-in-out infinite"}}/></>}
 
  {/* BANNIÈRE MODE TEST GLOBAL */}
@@ -11410,40 +11434,38 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {supaModal&&(
  <div className="moverlay" onClick={()=>{setSupaModal(false);setSupaError("");}}>
  <div className="modal" onClick={e=>e.stopPropagation()}>
- <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
- <span style={{fontSize:22}}><Ic n="cloud" s={22} c="#A78BFA"/></span>
- <div>
- <div style={{fontSize:15,fontWeight:700,color:"#E5E7EB"}}>Cloud Sync</div>
- <div style={{fontSize:11,color:"#6B7280"}}>Sync automatique entre tous tes appareils</div>
- </div>
- </div>
-
- {/* Status */}
- <div style={{background:supaOk?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.06)",border:"1px solid "+(supaOk?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.15)"),borderRadius:10,padding:"12px 14px",marginBottom:14}}>
- <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
- <span style={{width:7,height:7,borderRadius:"50%",background:supaOk?"#00E676":"#EF4444",boxShadow:"0 0 6px "+(supaOk?"rgba(34,197,94,0.8)":"rgba(239,68,68,0.6)")}}/>
- <span style={{fontSize:12,fontWeight:700,color:supaOk?"#00E676":"#EF4444"}}>{syncing?"Synchronisation…":supaOk?"Connecté à Supabase":"Hors ligne — vérifie ta connexion"}</span>
- </div>
- <div style={{fontSize:11,color:"#6B7280"}}>{bets.length} paris · temps réel : {liveState==="SUBSCRIBED"?"actif":liveState}</div>
- {syncErr&&<div style={{fontSize:11,color:"#fca5a5",marginTop:6,wordBreak:"break-word"}}>Dernière erreur — {syncErr}</div>}
- </div>
- <button onClick={downloadBackup} disabled={backingUp} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:10,color:"#00E676",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Ic n="down" s={14} w={2.6}/>{backingUp?"Sauvegarde en cours…":"Télécharger une sauvegarde complète"}</button>
- <button onClick={runDiag} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:10,color:"#93c5fd",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13}}>Tester la connexion</button>
- {diag&&<div style={{background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
- {diag.map((d,i)=><div key={i} style={{display:"flex",gap:8,fontSize:11,padding:"4px 0",borderBottom:i<diag.length-1?"1px solid #1F2937":"none"}}>
- <span style={{color:d.ok===null?"#9CA3AF":d.ok?"#00E676":"#EF4444",fontWeight:700,flexShrink:0}}>{d.ok===null?"…":d.ok?"OK":"ERREUR"}</span>
- <span style={{color:"#E5E7EB",flexShrink:0}}>{d.t}</span>
- <span style={{color:"#9CA3AF",marginLeft:"auto",textAlign:"right",wordBreak:"break-word"}}>{d.m}</span>
- </div>)}
- </div>}
-
+ {(()=>{
+  const st=!supaOk?"off":pendingSync>0?"wait":"ok";
+  const C3={ok:["#22C55E","Tout est enregistré","Tes paris sont en sécurité dans Supabase."],wait:["#F59E0B",pendingSync+" pari"+(pendingSync>1?"s":"")+" en attente","Gardés sur ce téléphone, envoi automatique dès que possible."],off:["#EF4444","Connexion perdue","Tes paris restent sur ce téléphone et partiront automatiquement."]}[st];
+  const live=liveState==="SUBSCRIBED"?["Actif","#22C55E"]:["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(liveState)?["Reconnexion…","#F59E0B"]:["…","#9CA3AF"];
+  const tile=(v,l,c)=>(<div key={l} style={{flex:1,background:"#0B1220",border:"1px solid #1F2937",borderRadius:12,padding:"10px 6px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:900,color:c||"#E5E7EB",whiteSpace:"nowrap"}}>{v}</div><div style={{fontSize:10.5,color:"#6B7280",fontWeight:700,marginTop:2,textTransform:"uppercase",letterSpacing:.5}}>{l}</div></div>);
+  return(<>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+   <div style={{fontSize:17,fontWeight:800,color:"#fff"}}>Sauvegarde</div>
+   <button onClick={()=>{setSupaModal(false);setConfirmDelete(false);}} aria-label="Fermer" style={{width:32,height:32,borderRadius:16,border:"none",background:"#1F2937",color:"#9CA3AF",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={15}/></button>
+  </div>
+  <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",padding:"18px 14px 16px",borderRadius:18,marginBottom:12,background:"radial-gradient(120% 100% at 50% 0%,"+C3[0]+"26,transparent 70%)",border:"1px solid "+C3[0]+"40"}}>
+   <div style={{width:58,height:58,borderRadius:29,background:C3[0]+"22",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10,boxShadow:"0 0 24px "+C3[0]+"44"}}>
+    <Ic n={st==="ok"?"check":st==="wait"?"clock":"cloud"} s={28} c={C3[0]} w={2.6}/></div>
+   <div style={{fontSize:19,fontWeight:900,color:C3[0]}}>{syncing&&st==="ok"?"Synchronisation…":C3[1]}</div>
+   <div style={{fontSize:12.5,color:"#9CA3AF",marginTop:4,lineHeight:1.45}}>{C3[2]}</div>
+  </div>
+  <div style={{display:"flex",gap:8,marginBottom:12}}>
+   {tile(bets.length.toLocaleString("fr-FR"),"Paris")}
+   {tile(pendingSync,"En attente",pendingSync?"#F59E0B":"#22C55E")}
+   {tile(live[0],"Temps réel",live[1])}
+  </div>
+  <button onClick={()=>{flushRef.current&&flushRef.current();pullFromSupa();}} disabled={syncing} style={{width:"100%",height:48,marginBottom:10,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14.5,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}><Ic n="refresh" s={16}/>{syncing?"Synchronisation…":"Synchroniser maintenant"}</button>
+  {syncErr&&st==="off"&&<div style={{fontSize:11,color:"#6B7280",margin:"0 2px 10px",wordBreak:"break-word"}}>Détail : {syncErr.replace(/\{.*"message":"([^"]+)".*\}/,"$1")}</div>}
+  </>);
+ })()}
  {/* Integrity check */}
  <div style={{marginBottom:14}}>
- <button onClick={async()=>{
+ <button id="integ-btn" onClick={async()=>{
  setIntegrityChecking(true);setIntegrityReport(null);
  try{
  const remote=await supaPullBets();
- if(!remote||!remote.length){showToast("Erreur sync","#EF4444");setSyncing(false);return;}
+ if(!remote){setIntegrityReport({error:"Supabase ne répond pas"});setIntegrityChecking(false);return;}
  const localIds=new Set(bets.map(b=>String(b.id)));
  const remoteIds=new Set(remote.filter(b=>b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__").map(b=>String(b.id)));
  const onlyLocal=bets.filter(b=>!remoteIds.has(String(b.id))&&b.player!=="__SETTINGS__"&&b.player!=="__TEAM_LOGOS__"&&b.player!=="__BK_PHOTOS__"&&b.player!=="__MEDIA_STORE__");
@@ -11455,12 +11477,14 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   const n=(b.player||"").toLowerCase().trim();
   return n&&!playerNames.has(n);
  });
- setIntegrityReport({local:bets.length,remote:remoteIds.size,onlyLocal,onlyRemote,orphans});
+ const rmap=new Map(remote.map(b=>[String(b.id),b]));
+ const changed=bets.filter(b=>{const r=rmap.get(String(b.id));return r&&betJson(r)!==betJson(b);});
+ setIntegrityReport({local:bets.length,remote:remoteIds.size,onlyLocal,onlyRemote,orphans,changed});
  }catch(e){setIntegrityReport({error:e.message});}
  setIntegrityChecking(false);
  }} disabled={integrityChecking}
  style={{width:"100%",padding:"11px",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.25)",borderRadius:10,color:"#60A5FA",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",marginBottom:integrityReport?8:0}}>
- {integrityChecking?" Vérification…":" Vérifier l'intégrité des données"}
+ {integrityChecking?"Comparaison…":"Comparer téléphone ↔ Supabase"}
  </button>
  {integrityReport&&(
  <div style={{background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"12px 14px"}}>
@@ -11471,14 +11495,22 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
  <div style={{background:"rgba(124,58,237,0.08)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
  <div style={{fontSize:20,fontWeight:800,color:"#A78BFA"}}>{integrityReport.local}</div>
- <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Local (iPhone)</div>
+ <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Ce téléphone</div>
  </div>
  <div style={{background:"rgba(34,197,94,0.08)",borderRadius:8,padding:"8px 12px",textAlign:"center"}}>
  <div style={{fontSize:20,fontWeight:800,color:"#00E676"}}>{integrityReport.remote}</div>
  <div style={{fontSize:10,color:"#6B7280",marginTop:2}}>Supabase (Cloud)</div>
  </div>
  </div>
- {integrityReport.onlyLocal.length===0&&integrityReport.onlyRemote.length===0?(
+ {(integrityReport.changed||[]).length>0&&(
+ <div style={{marginBottom:10,padding:"10px",borderRadius:10,background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.25)"}}>
+  <div style={{fontSize:12,fontWeight:800,color:"#F59E0B",marginBottom:6}}><Ic n="warn" s={12}/> {integrityReport.changed.length} pari(s) différent(s) entre ce téléphone et Supabase</div>
+  <div style={{maxHeight:180,overflowY:"auto"}}>{integrityReport.changed.map(b=>(<div key={b.id} style={{display:"flex",justifyContent:"space-between",gap:6,fontSize:11,padding:"4px 0",borderBottom:"1px solid #1F2937"}}>
+   <span style={{color:"#E5E7EB",fontWeight:700}}>{b.player} <span style={{color:"#9CA3AF",fontWeight:500}}>{b.description}</span></span><span style={{color:b.status==="won"?"#00E676":b.status==="lost"?"#EF4444":"#9CA3AF",fontWeight:700}}>{b.status}</span></div>))}</div>
+  <button onClick={()=>supaPushBets(integrityReport.changed.map(b=>({...b,updatedAt:Date.now()}))).then(()=>{integrityReport.changed.forEach(b=>betSnap.current.set(String(b.id),betJson(b)));showToast(integrityReport.changed.length+" paris envoyés","#00E676");document.getElementById("integ-btn")&&document.getElementById("integ-btn").click();}).catch(e=>showToast("Erreur : "+((e&&e.message)||e).slice(0,60),"#EF4444"))}
+   style={{width:"100%",marginTop:8,padding:"8px",background:"rgba(245,158,11,.12)",border:"1px solid rgba(245,158,11,.35)",borderRadius:8,color:"#F59E0B",fontWeight:800,fontSize:12,cursor:"pointer"}}>↑ Envoyer la version de ce téléphone</button>
+ </div>)}
+ {integrityReport.onlyLocal.length===0&&integrityReport.onlyRemote.length===0&&!(integrityReport.changed||[]).length?(
  <div style={{display:"flex",alignItems:"center",gap:6,color:"#00E676",fontSize:12,fontWeight:700}}>
  Parfait — local et cloud sont identiques
  </div>
@@ -11614,6 +11646,21 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
 
 
+ {(()=>{return(<>
+  <button onClick={()=>setAdvOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",marginBottom:advOpen?10:0,background:"#0B1220",border:"1px solid #1F2937",borderRadius:12,color:"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+   <span style={{display:"flex",alignItems:"center",gap:8}}><Ic n="wrench" s={14}/>Outils avancés</span><Ic n={advOpen?"up":"down"} s={13}/></button>
+ </>);})()}
+ {advOpen&&<div>
+ <button onClick={downloadBackup} disabled={backingUp} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:10,color:"#00E676",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><Ic n="down" s={14} w={2.6}/>{backingUp?"Sauvegarde en cours…":"Télécharger une sauvegarde complète"}</button>
+ <button onClick={runDiag} style={{width:"100%",padding:"11px",marginBottom:10,background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.3)",borderRadius:10,color:"#93c5fd",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13}}>Tester la connexion</button>
+ {diag&&<div style={{background:"#0B1220",border:"1px solid #1F2937",borderRadius:10,padding:"8px 12px",marginBottom:12}}>
+ {diag.map((d,i)=><div key={i} style={{display:"flex",gap:8,fontSize:11,padding:"4px 0",borderBottom:i<diag.length-1?"1px solid #1F2937":"none"}}>
+ <span style={{color:d.ok===null?"#9CA3AF":d.ok?"#00E676":"#EF4444",fontWeight:700,flexShrink:0}}>{d.ok===null?"…":d.ok?"OK":"ERREUR"}</span>
+ <span style={{color:"#E5E7EB",flexShrink:0}}>{d.t}</span>
+ <span style={{color:"#9CA3AF",marginLeft:"auto",textAlign:"right",wordBreak:"break-word"}}>{d.m}</span>
+ </div>)}
+ </div>}
+
  <PhotoMigrator allPlayers={allPlayers} setPlayers={setPlayers} showToast={showToast}/>
  {/* Actions manuelles */}
  <button onClick={()=>{
@@ -11657,10 +11704,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {confirmDelete?" Confirmer la suppression de TOUS les paris":" Remettre à zéro"}
  </button>
 
- <button onClick={()=>{setSupaModal(false);setConfirmDelete(false);}}
- style={{width:"100%",padding:"11px",background:"#1F2937",border:"none",borderRadius:10,color:"#6B7280",fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13}}>
- Fermer
- </button>
+ </div>}
  </div>
  </div>
  )}
