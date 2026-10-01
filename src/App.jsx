@@ -4432,6 +4432,58 @@ function ClubWatermark({team:rawTeam,logo,game}){
 function ClubColor({logo,game,children}){const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";const col=useLogoColor(logo,acc);return children(col);}
 
 
+// PP Board Analyzer 
+function PPReferenceTable({bets=[]}){
+ const [open,setOpen]=useState(false);
+ const [game,setGame]=useState("CS2");
+ const [evMin,setEvMin]=useState(1.25);
+ const RANGE={CS2:[10,44],"CS2 HS":[4,30],Valorant:[10,44],LoL:[0.5,15],Dota2:[1.5,22.5]};
+ const COL={CS2:"#f97316","CS2 HS":"#fb923c",Valorant:"#ef4444",LoL:"#6366f1",Dota2:"#dc2626"};
+ const realG=game==="CS2 HS"?"CS2":game;
+ const isHS=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
+ const col=COL[game];
+ const num=v=>parseFloat(String(v||"").replace(",",".").replace(/[^0-9.\-]/g,""));
+ const pool=bets.filter(b=>b.game===realG&&(realG!=="CS2"||(game==="CS2 HS")===isHS(b))&&(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppMapType==="Map 1+2");
+ const rows=(()=>{const [lo,hi]=RANGE[game];const out=[];
+  for(let p=lo;p<=hi+0.001;p+=0.5){const u=p/2+evMin;if(Math.abs(u%1-0.5)>1e-9)continue;
+   const l=pool.filter(b=>Math.abs(num(b.ppLine)-p)<0.001&&Math.abs(num(b.description)-u)<0.001);
+   const w=l.filter(b=>b.status==="won").length;
+   out.push({p,u,n:l.length,w,pr:l.reduce((t,b)=>t+(b.profit||0),0),st:l.reduce((t,b)=>t+(b.stake||0),0)});}
+  return out;})();
+ const pc=v=>v>0?"#22c55e":v<0?"#f87171":"#6b7280";
+ const G=".8fr 1.15fr .6fr 1.05fr .8fr";
+ const tot=rows.reduce((a,r)=>({n:a.n+r.n,w:a.w+r.w,pr:a.pr+r.pr,st:a.st+r.st}),{n:0,w:0,pr:0,st:0});
+ const roi=r=>r.st?r.pr/r.st*100:0;
+ return(
+ <div style={{margin:"0 0 16px"}}>
+ <SuiviHead img={_B64_PP_LOGO_B64} color="#a78bfa" title="Table de référence PP" sub="Map 1+2 → Under par map" open={open} onClick={()=>setOpen(v=>!v)}/>
+ {open&&<div style={SV_BODY}>
+  <div style={{display:"flex",gap:5,marginBottom:8}}>{["CS2","CS2 HS","Valorant","LoL","Dota2"].map(g=>{const on=game===g;return(
+   <button key={g} onClick={()=>{setGame(g);if(g==="LoL"?evMin>2:evMin<1.25)setEvMin(1.25);}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"7px 4px",borderRadius:8,border:"1px solid "+(on?COL[g]+"88":"rgba(255,255,255,.07)"),background:on?COL[g]+"22":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+    <GameLogo game={g==="CS2 HS"?"CS2":g} size={13}/>{g==="CS2"?"Kills":g==="CS2 HS"?"HS":g==="Valorant"?"Valo":g==="Dota2"?"Dota":g}</button>);})}</div>
+  <div style={{display:"flex",gap:5,marginBottom:10}}>{(game==="LoL"?[0.75,1,1.25,1.5,1.75,2]:[1.25,1.5,1.75,2,2.25,2.5]).map(v=><button key={v} onClick={()=>setEvMin(v)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1px solid "+(evMin===v?"#22c55e":"rgba(255,255,255,.07)"),background:evMin===v?"rgba(34,197,94,.15)":"transparent",color:evMin===v?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+{v.toFixed(2)}</button>)}</div>
+  <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
+   <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.4)"}}>{["PP 1+2","Under / map","Paris","Profit","ROI"].map(h=><div key={h} style={{padding:"8px 4px",fontSize:9.5,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>{h}</div>)}</div>
+   {rows.map((r,i)=><div key={r.p} style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2?"rgba(255,255,255,.01)":"transparent",opacity:r.n>0&&r.n<5?.45:1}}>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#fbbf24"}}>{r.p.toFixed(1)}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#60a5fa"}}>Under {r.u.toFixed(1)}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:12.5,color:r.n?"#e5e7eb":"#4b5563"}}>{r.n?<b>{r.n}</b>:"—"}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:13,fontWeight:800,color:pc(r.pr)}}>{r.n?(r.pr>=0?"+":"")+r.pr.toFixed(2)+"$":"—"}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:12.5,fontWeight:700,color:pc(roi(r))}}>{r.n?(roi(r)>=0?"+":"")+roi(r).toFixed(0)+"%":"—"}</div>
+   </div>)}
+   <div style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"2px solid "+col+"55",background:"rgba(0,0,0,.35)"}}>
+    <div style={{padding:"11px 4px",textAlign:"center",fontSize:12,fontWeight:900,color:"#fff",gridColumn:"1 / 3"}}>TOTAL +{evMin.toFixed(2)}</div>
+    <div style={{padding:"11px 4px",textAlign:"center",fontSize:13,fontWeight:900,color:"#fff"}}>{tot.n||"—"}</div>
+    <div style={{padding:"11px 4px",textAlign:"center",fontSize:13.5,fontWeight:900,color:pc(tot.pr)}}>{tot.n?(tot.pr>=0?"+":"")+tot.pr.toFixed(2)+"$":"—"}</div>
+    <div style={{padding:"11px 4px",textAlign:"center",fontSize:13,fontWeight:900,color:pc(roi(tot))}}>{tot.n?(roi(tot)>=0?"+":"")+roi(tot).toFixed(1)+"%":"—"}</div>
+   </div>
+  </div>
+  <div style={{marginTop:8,fontSize:10,color:"#6b7280",textAlign:"center"}}>Combinaisons à EV +{evMin.toFixed(2)} pile · Paris = tes Under joués sur cette ligne exacte (Live exclus) · lignes grisées = moins de 5 paris</div>
+ </div>}
+ </div>
+ );
+}
+
 // ── VÉRIF D'UN BET : EV PrizePicks + historique ──────────────
 function EvCheck({bets}){
  const [open,setOpen]=useState(false);
@@ -10983,19 +11035,19 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
       style={{width:"100%",marginTop:10,padding:"10px",background:"transparent",border:"1px solid "+SV.line,borderRadius:11,color:isAuto?"#4b5366":"#aab1c2",fontSize:12,fontWeight:600,cursor:isAuto?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
       {isAuto?"Mode automatique activé ("+autoTier.toLocaleString("fr-FR")+"$)":"↺ Repasser en automatique ("+autoTier.toLocaleString("fr-FR")+"$)"}
      </button>
+     <div style={{marginTop:12}}><QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>setQuickUnits(su)}/></div>
     </div>}
    </div>
   );
  })()}
 
 
- <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>setQuickUnits(su)}/>
 
  <SuiviLabel>OUTILS</SuiviLabel>
  <EvCheck bets={bets}/>
+ <PPReferenceTable bets={bets}/>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
   onShowBets={(t,list)=>setLineBets({title:t,ids:new Set(list.map(b=>String(b.id)))})}/>
- <TourDeletePanel bets={bets} setBets={setBets} savedTourneys={savedTourneys} setSavedTourneys={setSavedTourneys} activeTourneys={activeTourneys} setActiveTourneys={setActiveTourneys} mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/>
  <CreateSection
   teamLogos={teamLogos} setTeamLogos={setTeamLogos}
   bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
@@ -11006,7 +11058,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
  <div style={{marginBottom:8}}>
- <SuiviHead n="trash" color="#f87171" title="Corbeille" sub={deletedBets.length+" pari(s) supprimé(s) récemment"} open={showCorbeille} onClick={()=>setShowCorbeille(v=>!v)}
+ <SuiviHead n="trash" color="#f87171" title="Corbeille & suppressions" sub={deletedBets.length+" pari(s) supprimé(s) · tournois / ligues"} open={showCorbeille} onClick={()=>setShowCorbeille(v=>!v)}
   right={deletedBets.length>0?<span role="button" onClick={e=>{e.stopPropagation();setDeletedBets([]);}} style={{fontSize:12,color:"#f87171",fontWeight:600,padding:"4px 8px"}}>Vider</span>:null}/>
  {showCorbeille&&(
  <div style={{...SV_BODY,display:"flex",flexDirection:"column",gap:6}}>
@@ -11034,12 +11086,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </button>
  </div>
  ))}
+ <div style={{marginTop:8}}><TourDeletePanel bets={bets} setBets={setBets} savedTourneys={savedTourneys} setSavedTourneys={setSavedTourneys} activeTourneys={activeTourneys} setActiveTourneys={setActiveTourneys} mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/></div>
  </div>
  )}
  </div>
 
- {/* PP BOARD ANALYZER */}
- <PPReferenceTable bets={bets}/>
 
 
  </div>
@@ -11813,46 +11864,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
 
-// PP Board Analyzer 
-function PPReferenceTable({bets=[]}){
- const [open,setOpen]=useState(false);
- const [game,setGame]=useState("CS2");
- const [evMin,setEvMin]=useState(1.25);
- const RANGE={CS2:[10,44],Valorant:[10,44],LoL:[0.5,15],Dota2:[1.5,22.5]};
- const COL={CS2:"#f97316",Valorant:"#ef4444",LoL:"#6366f1",Dota2:"#dc2626"};
- const col=COL[game];
- const num=v=>parseFloat(String(v||"").replace(",",".").replace(/[^0-9.\-]/g,""));
- const pool=bets.filter(b=>b.game===game&&(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppMapType==="Map 1+2");
- const rows=(()=>{const [lo,hi]=RANGE[game];const out=[];
-  for(let p=lo;p<=hi+0.001;p+=0.5){const u=p/2+evMin;if(Math.abs(u%1-0.5)>1e-9)continue;
-   const l=pool.filter(b=>Math.abs(num(b.ppLine)-p)<0.001&&Math.abs(num(b.description)-u)<0.001);
-   const w=l.filter(b=>b.status==="won").length;
-   out.push({p,u,n:l.length,w,pr:l.reduce((t,b)=>t+(b.profit||0),0)});}
-  return out;})();
- const pc=v=>v>0?"#22c55e":v<0?"#f87171":"#6b7280";
- const G="1fr 1.2fr .8fr 1fr";
- return(
- <div style={{margin:"0 0 16px"}}>
- <SuiviHead img={_B64_PP_LOGO_B64} color="#a78bfa" title="Table de référence PP" sub="Map 1+2 → Under par map" open={open} onClick={()=>setOpen(v=>!v)}/>
- {open&&<div style={SV_BODY}>
-  <div style={{display:"flex",gap:5,marginBottom:8}}>{["CS2","Valorant","LoL","Dota2"].map(g=>{const on=game===g;return(
-   <button key={g} onClick={()=>setGame(g)} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"7px 4px",borderRadius:8,border:"1px solid "+(on?COL[g]+"88":"rgba(255,255,255,.07)"),background:on?COL[g]+"22":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-    <GameLogo game={g} size={13}/>{g}</button>);})}</div>
-  <div style={{display:"flex",gap:5,marginBottom:10}}>{[1.25,1.5,1.75,2,2.25,2.5].map(v=><button key={v} onClick={()=>setEvMin(v)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1px solid "+(evMin===v?"#22c55e":"rgba(255,255,255,.07)"),background:evMin===v?"rgba(34,197,94,.15)":"transparent",color:evMin===v?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+{v.toFixed(2)}</button>)}</div>
-  <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
-   <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.4)"}}>{["PP Map 1+2","Under par map","Paris","Profit"].map(h=><div key={h} style={{padding:"8px 4px",fontSize:9.5,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>{h}</div>)}</div>
-   {rows.map((r,i)=><div key={r.p} style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2?"rgba(255,255,255,.01)":"transparent"}}>
-    <div style={{padding:"10px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#fbbf24"}}>{r.p.toFixed(1)}</div>
-    <div style={{padding:"10px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#60a5fa"}}>Under {r.u.toFixed(1)}</div>
-    <div style={{padding:"10px 4px",textAlign:"center",fontSize:12.5,color:r.n?"#e5e7eb":"#4b5563"}}>{r.n?<><span style={{color:"#22c55e"}}>{r.w}✓</span> <span style={{color:"#f87171"}}>{r.n-r.w}✗</span></>:"—"}</div>
-    <div style={{padding:"10px 4px",textAlign:"center",fontSize:13.5,fontWeight:800,color:pc(r.pr)}}>{r.n?(r.pr>=0?"+":"")+r.pr.toFixed(2)+"$":"—"}</div>
-   </div>)}
-  </div>
-  <div style={{marginTop:8,fontSize:10,color:"#6b7280",textAlign:"center"}}>Combinaisons à EV +{evMin.toFixed(2)} pile · Paris = tes Under joués sur cette ligne exacte (Live exclus)</div>
- </div>}
- </div>
- );
-}
 
 
 
