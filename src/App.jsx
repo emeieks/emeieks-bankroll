@@ -4432,28 +4432,46 @@ function ClubWatermark({team:rawTeam,logo,game}){
 function ClubColor({logo,game,children}){const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";const col=useLogoColor(logo,acc);return children(col);}
 
 
-// ── VÉRIF D'UN BET : EV PrizePicks + historique sur ce même edge ──────────────
+// ── VÉRIF D'UN BET : EV PrizePicks + historique ──────────────
 function EvCheck({bets}){
  const [open,setOpen]=useState(false);
  const [mt,setMt]=useState("Map 1+2");
  const [pp,setPp]=useState("");
  const [bk,setBk]=useState("");
  const [res,setRes]=useState(null);
- const num=v=>parseFloat(String(v).replace(",","."));
+ const num=v=>parseFloat(String(v||"").replace(",",".").replace(/[^0-9.\-]/g,""));
+ const ppOpts=[];for(let v=0.5;v<=(mt==="Map 3"?40:mt==="Map 1+2"?80:120);v+=0.5)ppOpts.push(v.toFixed(1));
+ const bkOpts=[];for(let v=0.5;v<=40;v+=0.5)bkOpts.push(v.toFixed(1));
  const calc=()=>{const P=num(pp),B=num(bk);if(isNaN(P)||isNaN(B))return;
   const per=mt==="Map 1+2"?P/2:mt==="Map 1+2+3"?P/3:P;
-  setRes(parseFloat((B-per).toFixed(2)));};
- const agg=arr=>{const n=arr.length,w=arr.filter(b=>b.status==="won").length,st=arr.reduce((t,b)=>t+(b.stake||0),0),pr=arr.reduce((t,b)=>t+(b.profit||0),0);return{n,w,wr:n?w/n*100:0,roi:st?pr/st*100:0,pr};};
- const pool=res==null?[]:bets.filter(b=>(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppEdge!=null&&Math.abs(parseFloat(b.ppEdge)-res)<0.001);
- const pc=v=>v>=0?"#22c55e":"#f87171";
- const inp={width:"100%",boxSizing:"border-box",height:48,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:20,fontWeight:800,padding:"0 12px",fontFamily:"Inter,sans-serif",outline:"none"};
+  setRes({edge:parseFloat((B-per).toFixed(2)),P,B,mt});};
+ const agg=arr=>{const n=arr.length,w=arr.filter(b=>b.status==="won").length,st=arr.reduce((t,b)=>t+(b.stake||0),0),pr=arr.reduce((t,b)=>t+(b.profit||0),0);return{n,w,l:n-w,wr:n?w/n*100:0,roi:st?pr/st*100:0,pr};};
+ const base=bets.filter(b=>(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppEdge!=null);
+ const sameEdge=res==null?[]:base.filter(b=>Math.abs(parseFloat(b.ppEdge)-res.edge)<0.001);
+ const sameBet=res==null?[]:sameEdge.filter(b=>b.ppMapType===res.mt&&Math.abs(num(b.ppLine)-res.P)<0.001&&Math.abs(num(b.description)-res.B)<0.001);
+ const hs=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
+ const GAMES=[["CS2","Kills",b=>b.game==="CS2"&&!hs(b)],["CS2","HS",b=>b.game==="CS2"&&hs(b)],["LoL","LoL",b=>b.game==="LoL"],["Dota2","Dota",b=>b.game==="Dota2"],["Valorant","Valo",b=>b.game==="Valorant"]];
+ const pc=v=>v>0?"#22c55e":v<0?"#f87171":"#9ca3af";
+ const sel={width:"100%",boxSizing:"border-box",height:48,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:20,fontWeight:800,padding:"0 12px",fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark"};
  const lab={fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"};
- const Stat=({a,big})=>a.n?(<div style={{display:"flex",gap:big?18:10,flexWrap:"wrap",alignItems:"baseline"}}>
-   <span style={{fontSize:big?24:17,fontWeight:900,color:pc(a.pr)}}>{(a.pr>=0?"+":"")+a.pr.toFixed(2)}$</span>
-   <span style={{fontSize:big?14:12.5,color:"#cbd5e1"}}><b>{a.wr.toFixed(0)} %</b> WR</span>
-   <span style={{fontSize:big?14:12.5,color:pc(a.roi)}}>ROI {(a.roi>=0?"+":"")+a.roi.toFixed(1)} %</span>
-   <span style={{fontSize:big?13:12,color:"#6b7280"}}>{a.w}/{a.n} paris</span></div>)
-  :<div style={{fontSize:13,color:"#6b7280"}}>Pas de données</div>;
+ const Row=({title,list})=>{const a=agg(list);return(<div style={{marginTop:12,padding:"12px",borderRadius:16,border:"1px solid #1F2937",background:"#111827"}}>
+   <div style={{fontSize:11.5,fontWeight:800,letterSpacing:.8,color:"#9ca3af"}}>{title}</div>
+   {a.n?<div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap",margin:"6px 0 10px"}}>
+     <span style={{fontSize:22,fontWeight:900,color:pc(a.pr)}}>{(a.pr>=0?"+":"")+a.pr.toFixed(2)}$</span>
+     <span style={{fontSize:13,color:"#cbd5e1"}}><b style={{color:"#22c55e"}}>{a.w} gagné{a.w>1?"s":""}</b> · <b style={{color:"#f87171"}}>{a.l} perdu{a.l>1?"s":""}</b></span>
+     <span style={{fontSize:13,color:"#cbd5e1"}}>Réussite <b>{a.wr.toFixed(0)} %</b></span>
+     <span style={{fontSize:13,color:pc(a.roi)}}>ROI {(a.roi>=0?"+":"")+a.roi.toFixed(1)} %</span>
+   </div>:<div style={{fontSize:13,color:"#6b7280",margin:"6px 0 10px"}}>Jamais joué</div>}
+   <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
+    {GAMES.map(([g,l,fn])=>{const x=agg(list.filter(fn));return(<div key={l} style={{padding:"7px 3px",borderRadius:10,textAlign:"center",border:"1px solid "+(x.n?pc(x.pr)+"55":"#1F2937"),background:x.n?pc(x.pr)+"14":"#0b1120",minWidth:0}}>
+     <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:3,fontSize:10.5,fontWeight:800,color:"#cbd5e1"}}><GameLogo game={g} size={12}/>{l}</div>
+     {x.n?<>
+      <div style={{fontSize:12.5,fontWeight:900,color:pc(x.pr),marginTop:4,whiteSpace:"nowrap"}}>{(x.pr>=0?"+":"")+Math.round(x.pr)}$</div>
+      <div style={{fontSize:11,fontWeight:800,color:"#e5e7eb",marginTop:2}}>{x.wr.toFixed(0)} %</div>
+      <div style={{fontSize:10,color:"#8b93a7",marginTop:2,whiteSpace:"nowrap"}}><span style={{color:"#22c55e"}}>{x.w}✓</span> <span style={{color:"#f87171"}}>{x.l}✗</span></div>
+     </>:<div style={{fontSize:16,color:"#4b5563",marginTop:8}}>—</div>}
+    </div>);})}
+   </div></div>);};
  return(<div style={{marginBottom:8}}>
   <SuiviHead n="target" color="#a78bfa" title="Vérifier un bet" sub="EV PrizePicks + tes résultats sur ce cut" open={open} onClick={()=>setOpen(o=>!o)}/>
   {open&&<div style={{padding:"12px 4px 4px"}}>
@@ -4461,26 +4479,18 @@ function EvCheck({bets}){
    <div style={{display:"flex",gap:6,marginBottom:10}}>{["Map 1+2","Map 1+2+3","Map 3"].map(m=>
     <button key={m} onClick={()=>{setMt(m);setRes(null);}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1px solid "+(mt===m?"#7C3AED":"#1F2937"),background:mt===m?"rgba(124,58,237,.18)":"#0b1120",color:mt===m?"#fff":"#9ca3af",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{m}</button>)}</div>
    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-    <div><div style={lab}>PrizePicks ({mt})</div><input inputMode="decimal" value={pp} onChange={e=>{setPp(e.target.value);setRes(null);}} placeholder="14.5" style={inp}/></div>
-    <div><div style={lab}>Cut map de mon bet (Under)</div><input inputMode="decimal" value={bk} onChange={e=>{setBk(e.target.value);setRes(null);}} placeholder="8.5" style={inp}/></div>
+    <div><div style={lab}>PrizePicks ({mt})</div><select value={pp} onChange={e=>{setPp(e.target.value);setRes(null);}} style={{...sel,color:pp?"#fff":"#6b7280"}}><option value="">Choisir</option>{ppOpts.map(v=><option key={v} value={v} style={{fontSize:15}}>{v}</option>)}</select></div>
+    <div><div style={lab}>Cut map de mon bet (Under)</div><select value={bk} onChange={e=>{setBk(e.target.value);setRes(null);}} style={{...sel,color:bk?"#fff":"#6b7280"}}><option value="">Choisir</option>{bkOpts.map(v=><option key={v} value={v} style={{fontSize:15}}>{v}</option>)}</select></div>
    </div>
-   <button onClick={calc} style={{width:"100%",height:48,borderRadius:13,border:"none",background:"linear-gradient(135deg,#7C3AED,#6366F1)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Calculer</button>
+   <button onClick={calc} disabled={!pp||!bk} style={{width:"100%",height:48,borderRadius:13,border:"none",background:pp&&bk?"linear-gradient(135deg,#7C3AED,#6366F1)":"#1f2937",color:pp&&bk?"#fff":"#6b7280",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Calculer</button>
    {res!=null&&<>
-    <div style={{marginTop:14,padding:"16px",borderRadius:16,border:"1px solid "+(res>0?"#22c55e55":"#f8717155"),background:(res>0?"rgba(34,197,94,.10)":"rgba(248,113,113,.10)")}}>
+    <div style={{marginTop:14,padding:"14px 16px",borderRadius:16,border:"1px solid "+(res.edge>0?"#22c55e55":"#f8717155"),background:(res.edge>0?"rgba(34,197,94,.10)":"rgba(248,113,113,.10)")}}>
      <div style={{fontSize:12,fontWeight:800,letterSpacing:1,color:"#9ca3af"}}>EV PRIZEPICKS</div>
-     <div style={{fontSize:34,fontWeight:900,color:pc(res),marginTop:2}}>PrizePicks {(res>=0?"+":"")+res.toFixed(2)}</div>
+     <div style={{fontSize:32,fontWeight:900,color:pc(res.edge),marginTop:2}}>PrizePicks {(res.edge>=0?"+":"")+res.edge.toFixed(2)}</div>
     </div>
-    <div style={{marginTop:12,padding:"14px 16px",borderRadius:16,border:"1px solid #1F2937",background:"#111827"}}>
-     <div style={{fontSize:12,fontWeight:800,letterSpacing:1,color:"#9ca3af",marginBottom:8}}>TES UNDER À {(res>=0?"+":"")+res.toFixed(2)} · TOUS LES JEUX</div>
-     <Stat a={agg(pool)} big/>
-    </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
-     {(()=>{const hs=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
-     return [["CS2","CS2 Kills",b=>b.game==="CS2"&&!hs(b)],["CS2","CS2 Headshots",b=>b.game==="CS2"&&hs(b)],["LoL","LoL",b=>b.game==="LoL"],["Dota2","Dota2",b=>b.game==="Dota2"],["Valorant","Valorant",b=>b.game==="Valorant"]].map(([g,l,fn],i)=>(<div key={l} style={{padding:"12px",borderRadius:14,border:"1px solid #1F2937",background:"#0f1524",gridColumn:i===4?"1 / -1":undefined}}>
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,fontSize:13,fontWeight:800,color:"#e5e7eb"}}><GameLogo game={g} size={16}/>{l}</div>
-      <Stat a={agg(pool.filter(fn))}/></div>));})()}
-    </div>
-    <div style={{fontSize:11.5,color:"#6b7280",marginTop:8}}>Paris Live exclus.</div>
+    <Row title={"CE BET · PP "+res.mt+" "+res.P.toFixed(1)+" / UNDER "+res.B.toFixed(1)} list={sameBet}/>
+    <Row title={"TOUS TES UNDER À "+(res.edge>=0?"+":"")+res.edge.toFixed(2)} list={sameEdge}/>
+    <div style={{fontSize:11.5,color:"#6b7280",marginTop:8}}>✓ gagnés · ✗ perdus · % = taux de réussite · Paris Live exclus.</div>
    </>}
   </div>}
  </div>);
@@ -11835,8 +11845,11 @@ function PPReferenceTable(){
  ],
  };
 
- const games=Object.keys(DATA);
+ const games=Object.keys(DATA).concat(["CS2 EV+"]);
  var rows=DATA[game]||[];
+ // Combinaisons Map 1+2 → Under par map (lignes en .5) donnant EV +1.25 pile
+ const [evMin,setEvMin]=useState(1.25);
+ const evRows=(()=>{const out=[];for(let p=10;p<=70.001;p+=0.5){const u=p/2+evMin;if(Math.abs(u%1-0.5)<1e-9)out.push({p,u});}return out;})();
 
  var gameColors={"LoL":"#6366f1","Dota2":"#ef4444","CS2/Valorant":"#f97316"};
  var col=gameColors[game]||"#c4b5fd";
@@ -11855,12 +11868,25 @@ function PPReferenceTable(){
  style={{flex:1,padding:"7px 6px",borderRadius:8,border:"1px solid "+(on?"rgba("+( g==="LoL"?"99,102,241":g==="Dota2"?"239,68,68":"249,115,22")+",.4)":"rgba(255,255,255,.07)"),background:on?"rgba("+(g==="LoL"?"99,102,241":g==="Dota2"?"239,68,68":"249,115,22")+",.12)":"transparent",color:on?gc:"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
  {g==="LoL"&&<GameLogo game="LoL" size={13}/>}
  {g==="Dota2"&&<GameLogo game="Dota2" size={13}/>}
+ {g==="CS2 EV+"&&<GameLogo game="CS2" size={13}/>}
  {g==="CS2/Valorant"&&<><GameLogo game="CS2" size={11}/><span style={{color:"#4a5a6e",fontSize:9}}>|</span><GameLogo game="Valorant" size={11}/></>}
  {g}
  </button>;
  })}
  </div>
 
+ {game==="CS2 EV+"&&<div>
+  <div style={{display:"flex",gap:5,marginBottom:10}}>{[1.25,1.5,1.75,2,2.25,2.5].map(v=><button key={v} onClick={()=>setEvMin(v)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1px solid "+(evMin===v?"#22c55e":"rgba(255,255,255,.07)"),background:evMin===v?"rgba(34,197,94,.15)":"transparent",color:evMin===v?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+{v.toFixed(2)}</button>)}</div>
+  <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",background:"rgba(0,0,0,.4)"}}>{["PP Map 1+2","Under par map"].map(h=><div key={h} style={{padding:"8px 6px",fontSize:10,fontWeight:700,color:"#f97316",textTransform:"uppercase",letterSpacing:.6,textAlign:"center"}}>{h}</div>)}</div>
+   {evRows.map((r,i)=><div key={r.p} style={{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2?"rgba(255,255,255,.01)":"transparent"}}>
+    <div style={{padding:"10px 6px",textAlign:"center",fontSize:14,fontWeight:700,color:"#fbbf24"}}>{r.p.toFixed(1)}</div>
+    <div style={{padding:"10px 6px",textAlign:"center",fontSize:14,fontWeight:700,color:"#60a5fa"}}>Under {r.u.toFixed(1)}</div>
+   </div>)}
+  </div>
+  <div style={{marginTop:8,fontSize:10,color:"#6b7280",textAlign:"center"}}>Toutes les combinaisons à EV +{evMin.toFixed(2)} pile</div>
+ </div>}
+ {game!=="CS2 EV+"&&<>
  {/* Table */}
  <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",background:"rgba(0,0,0,.4)"}}>
@@ -11879,7 +11905,7 @@ function PPReferenceTable(){
 
  <div style={{marginTop:8,fontSize:10,color:"#3a4a5e",textAlign:"center"}}>
  Source: analyse PP historique · Under = ligne Map3 PP − 1 kill
- </div>
+ </div></>}
  </div>}
  </div>
  );
