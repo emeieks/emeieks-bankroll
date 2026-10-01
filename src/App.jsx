@@ -749,7 +749,7 @@ function toDateKey(dt){
  try{const s=String(dt).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
  catch{return "";}
 }
-const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
+const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 function nowDT(){
  // Toujours utiliser l'heure de Montréal (America/Toronto)
@@ -4431,6 +4431,60 @@ function ClubWatermark({team:rawTeam,logo,game}){
 // Donne la couleur dominante du logo du club à ses enfants
 function ClubColor({logo,game,children}){const acc=(GAME_CFG[game]||{}).accent||"#A78BFA";const col=useLogoColor(logo,acc);return children(col);}
 
+
+// ── VÉRIF D'UN BET : EV PrizePicks + historique sur ce même edge ──────────────
+function EvCheck({bets}){
+ const [open,setOpen]=useState(false);
+ const [mt,setMt]=useState("Map 1+2");
+ const [pp,setPp]=useState("");
+ const [bk,setBk]=useState("");
+ const [res,setRes]=useState(null);
+ const num=v=>parseFloat(String(v).replace(",","."));
+ const calc=()=>{const P=num(pp),B=num(bk);if(isNaN(P)||isNaN(B))return;
+  const per=mt==="Map 1+2"?P/2:mt==="Map 1+2+3"?P/3:P;
+  setRes(parseFloat((B-per).toFixed(2)));};
+ const agg=arr=>{const n=arr.length,w=arr.filter(b=>b.status==="won").length,st=arr.reduce((t,b)=>t+(b.stake||0),0),pr=arr.reduce((t,b)=>t+(b.profit||0),0);return{n,w,wr:n?w/n*100:0,roi:st?pr/st*100:0,pr};};
+ const pool=res==null?[]:bets.filter(b=>(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppEdge!=null&&Math.abs(parseFloat(b.ppEdge)-res)<0.001);
+ const pc=v=>v>=0?"#22c55e":"#f87171";
+ const inp={width:"100%",boxSizing:"border-box",height:48,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:20,fontWeight:800,padding:"0 12px",fontFamily:"Inter,sans-serif",outline:"none"};
+ const lab={fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"};
+ const Stat=({a,big})=>a.n?(<div style={{display:"flex",gap:big?18:10,flexWrap:"wrap",alignItems:"baseline"}}>
+   <span style={{fontSize:big?24:17,fontWeight:900,color:pc(a.pr)}}>{(a.pr>=0?"+":"")+a.pr.toFixed(2)}$</span>
+   <span style={{fontSize:big?14:12.5,color:"#cbd5e1"}}><b>{a.wr.toFixed(0)} %</b> WR</span>
+   <span style={{fontSize:big?14:12.5,color:pc(a.roi)}}>ROI {(a.roi>=0?"+":"")+a.roi.toFixed(1)} %</span>
+   <span style={{fontSize:big?13:12,color:"#6b7280"}}>{a.w}/{a.n} paris</span></div>)
+  :<div style={{fontSize:13,color:"#6b7280"}}>Pas de données</div>;
+ return(<div style={{marginBottom:8}}>
+  <SuiviHead n="target" color="#a78bfa" title="Vérifier un bet" sub="EV PrizePicks + tes résultats sur ce cut" open={open} onClick={()=>setOpen(o=>!o)}/>
+  {open&&<div style={{padding:"12px 4px 4px"}}>
+   <div style={lab}>Cut PrizePicks</div>
+   <div style={{display:"flex",gap:6,marginBottom:10}}>{["Map 1+2","Map 1+2+3","Map 3"].map(m=>
+    <button key={m} onClick={()=>{setMt(m);setRes(null);}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1px solid "+(mt===m?"#7C3AED":"#1F2937"),background:mt===m?"rgba(124,58,237,.18)":"#0b1120",color:mt===m?"#fff":"#9ca3af",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{m}</button>)}</div>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+    <div><div style={lab}>PrizePicks ({mt})</div><input inputMode="decimal" value={pp} onChange={e=>{setPp(e.target.value);setRes(null);}} placeholder="14.5" style={inp}/></div>
+    <div><div style={lab}>Cut map de mon bet (Under)</div><input inputMode="decimal" value={bk} onChange={e=>{setBk(e.target.value);setRes(null);}} placeholder="8.5" style={inp}/></div>
+   </div>
+   <button onClick={calc} style={{width:"100%",height:48,borderRadius:13,border:"none",background:"linear-gradient(135deg,#7C3AED,#6366F1)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Calculer</button>
+   {res!=null&&<>
+    <div style={{marginTop:14,padding:"16px",borderRadius:16,border:"1px solid "+(res>0?"#22c55e55":"#f8717155"),background:(res>0?"rgba(34,197,94,.10)":"rgba(248,113,113,.10)")}}>
+     <div style={{fontSize:12,fontWeight:800,letterSpacing:1,color:"#9ca3af"}}>EV PRIZEPICKS</div>
+     <div style={{fontSize:34,fontWeight:900,color:pc(res),marginTop:2}}>PrizePicks {(res>=0?"+":"")+res.toFixed(2)}</div>
+    </div>
+    <div style={{marginTop:12,padding:"14px 16px",borderRadius:16,border:"1px solid #1F2937",background:"#111827"}}>
+     <div style={{fontSize:12,fontWeight:800,letterSpacing:1,color:"#9ca3af",marginBottom:8}}>TES UNDER À {(res>=0?"+":"")+res.toFixed(2)} · TOUS LES JEUX</div>
+     <Stat a={agg(pool)} big/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
+     {(()=>{const hs=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
+     return [["CS2","CS2 Kills",b=>b.game==="CS2"&&!hs(b)],["CS2","CS2 Headshots",b=>b.game==="CS2"&&hs(b)],["LoL","LoL",b=>b.game==="LoL"],["Dota2","Dota2",b=>b.game==="Dota2"],["Valorant","Valorant",b=>b.game==="Valorant"]].map(([g,l,fn],i)=>(<div key={l} style={{padding:"12px",borderRadius:14,border:"1px solid #1F2937",background:"#0f1524",gridColumn:i===4?"1 / -1":undefined}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,fontSize:13,fontWeight:800,color:"#e5e7eb"}}><GameLogo game={g} size={16}/>{l}</div>
+      <Stat a={agg(pool.filter(fn))}/></div>));})()}
+    </div>
+    <div style={{fontSize:11.5,color:"#6b7280",marginTop:8}}>Paris Live exclus.</div>
+   </>}
+  </div>}
+ </div>);
+}
 // ── LABO EDGE : à partir de quel Edge PrizePicks je gagne ? (simple) ─────────
 function LaboOver({bets}){
  const [dir,setDir]=useState(null);
@@ -4438,7 +4492,7 @@ function LaboOver({bets}){
  const [sub,setSub]=useState("all");
  const isHS=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
  const edgeOf=b=>Math.abs(parseFloat(b.ppEdge));
- const withEdge=bets.filter(b=>(b.status==="won"||b.status==="lost")&&b.ppEdge!=null&&!isNaN(parseFloat(b.ppEdge)));
+ const withEdge=bets.filter(b=>(b.status==="won"||b.status==="lost")&&!b.isLive&&b.ppEdge!=null&&!isNaN(parseFloat(b.ppEdge)));
  const agg=arr=>{const n=arr.length,w=arr.filter(b=>b.status==="won").length,st=arr.reduce((t,b)=>t+(b.stake||0),0),pr=arr.reduce((t,b)=>t+(b.profit||0),0),od=n?arr.reduce((t,b)=>t+(parseFloat(b.odds)||0),0)/n:0;
   return{n,w,wr:n?w/n:0,need:od?1/od:0,roi:st?pr/st*100:0,pr};};
  const pc=v=>v>=0?"#22c55e":"#f87171";
@@ -4485,7 +4539,6 @@ function LaboOver({bets}){
    {["CS2","LoL","Dota2","Valorant"].filter(g=>withEdge.some(b=>b.game===g&&b.overUnder===dir)).map(g=>chip(game===g,g,()=>{setGame(g);setSub("all");},<GameLogo game={g} size={14}/>))}
   </div>
   {game==="CS2"&&<div style={{display:"flex",gap:6,marginBottom:8}}>{chip(sub==="all","Tout",()=>setSub("all"))}{chip(sub==="kills","Kills",()=>setSub("kills"))}{chip(sub==="hs","Headshots",()=>setSub("hs"))}</div>}
-  {game==="LoL"&&<div style={{display:"flex",gap:6,marginBottom:8}}>{chip(sub==="all","Tout",()=>setSub("all"))}{chip(sub==="live","Live",()=>setSub("live"))}{chip(sub==="nolive","Non live",()=>setSub("nolive"))}</div>}
 
   {!all?<div style={{padding:30,textAlign:"center",color:"#6b7280"}}>Aucun pari {dir} avec un Edge PrizePicks.</div>:<>
   {/* Réponse en une phrase */}
@@ -5442,6 +5495,10 @@ function AppMain(){
  // ── Paris : on envoie tout pari ajouté / modifié / supprimé ──
  const betJson=b=>JSON.stringify([b.player,b.description,b.overUnder,b.odds,b.stake,b.bookmaker,b.status,b.game,b.league,b.role,b.team,b.datetime,!!b.isHeadshot,!!b.isLive,b.mapTag||"",b.profit,b.tournament||"",b.splits&&b.splits.length?b.splits:null,b.ppMapType||null,b.ppLine||null,b.ppEdge!=null?b.ppEdge:null]);
  const betTimer=useRef(null);
+ const inflight=useRef(new Set());
+ // Paris envoyés récemment / en cours d'envoi : protégés de toute suppression par une relecture
+ const recentPush=useRef(new Map());
+ const isProtected=id=>{const t=recentPush.current.get(String(id));return t&&Date.now()-t<180000;};
  const retryTimer=useRef(null);
  const [pendingSync,setPendingSync]=useState(0);
  const [advOpen,setAdvOpen]=useState(false);
@@ -5449,7 +5506,7 @@ function AppMain(){
  // File d'attente hors-ligne : paris non envoyés gardés sur l'appareil jusqu'au retour du réseau
  const savePending=()=>{try{
   const snap=betSnap.current;const cur=betsRef.current;
-  const ch=cur.filter(b=>b&&b.id!=null&&snap.get(String(b.id))!==betJson(b));
+  const ch=cur.filter(b=>b&&b.id!=null&&(snap.get(String(b.id))!==betJson(b)||inflight.current.has(String(b.id))));
   const del=[];snap.forEach((j,id)=>{if(j==="__del__")del.push(id);});
   localStorage.setItem("emeieks_pending",JSON.stringify({bets:ch,del}));setPendingSync(ch.length+del.length);
  }catch(e){}};
@@ -5480,7 +5537,9 @@ function AppMain(){
  const removed=[];
  snap.forEach((j,id)=>{if(!seen.has(id))removed.push(id);});
  removed.forEach(id=>snap.delete(id));
- if(changed.length){lastPushRef.current=Date.now();supaPushBets(changed.map(b=>({...b,updatedAt:Date.now()}))).then(()=>{good("bets");savePending();}).catch(e=>{fail("Envoi des paris",e);changed.forEach(b=>snap.delete(String(b.id)));savePending();scheduleRetry();showToast("Hors ligne : pari gardé, envoi automatique au retour du réseau","#F59E0B");});}
+ if(changed.length){lastPushRef.current=Date.now();changed.forEach(b=>{inflight.current.add(String(b.id));recentPush.current.set(String(b.id),Date.now());});savePending();
+ const done=()=>changed.forEach(b=>inflight.current.delete(String(b.id)));
+ supaPushBets(changed.map(b=>({...b,updatedAt:Date.now()}))).then(()=>{done();good("bets");savePending();}).catch(e=>{done();fail("Envoi des paris",e);changed.forEach(b=>snap.delete(String(b.id)));savePending();scheduleRetry();showToast("Hors ligne : pari gardé, envoi automatique au retour du réseau","#F59E0B");});}
  if(removed.length)supaDeleteManyBets(removed).then(()=>savePending()).catch(()=>{removed.forEach(id=>snap.set(id,"__del__"));savePending();scheduleRetry();});
  if(!changed.length&&!removed.length)savePending();
  };
@@ -5497,6 +5556,19 @@ function AppMain(){
 
  // Relecture complète des paris (au retour sur l'app / bouton Sync)
  const pullFromSupaRef=useRef(null);
+ // Un pari absent d'une relecture n'est JAMAIS retiré à l'aveugle (relecture en retard, pagination…) :
+ // on redemande au serveur ces ids précis, et seuls ceux qu'il confirme supprimés disparaissent.
+ const verifyMissing=useCallback(async function(ids){
+ if(!ids.length)return;
+ try{
+ const found=new Set();
+ for(let i=0;i<ids.length;i+=100){const part=ids.slice(i,i+100);const r=await cloudDb("bets?select=id&id=in.("+part.join(",")+")");(r||[]).forEach(x=>found.add(String(x.id)));}
+ const gone=new Set(ids.filter(id=>!found.has(String(id))&&!isProtected(id)&&!inflight.current.has(String(id))).map(String));
+ if(!gone.size)return;
+ gone.forEach(id=>betSnap.current.delete(id));
+ setBets(prev=>prev.filter(b=>!gone.has(String(b.id))));
+ }catch(e){}
+ },[]);
  const pullFromSupa=useCallback(async function(){
  setSyncing(true);
  try{
@@ -5509,10 +5581,16 @@ function AppMain(){
  if(l&&snap.get(String(r.id))!==betJson(l))return l;
  return r;
  });
- betsRef.current.forEach(l=>{if(!remote.some(r=>String(r.id)===String(l.id))&&!snap.has(String(l.id)))next.unshift(l);});
+ const rIds=new Set(remote.map(r=>String(r.id)));
  const ns=new Map();remote.forEach(r=>ns.set(String(r.id),betJson(r)));
+ const toCheck=[];
+ betsRef.current.forEach(l=>{const id=String(l.id);if(rIds.has(id))return;
+  next.push(l); // on garde toujours
+  if(snap.has(id)){ns.set(id,snap.get(id));toCheck.push(id);}});
+ next.sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
  betSnap.current=ns;
  setBets(next);
+ verifyMissing(toCheck);
  good("bets");
  }catch(e){fail("Lecture des paris",e);}
  setSyncing(false);
@@ -5579,8 +5657,15 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    const snap=new Map();real.forEach(b=>snap.set(String(b.id),betJson(b)));
    betSnap.current=snap;
    let merged=real;
+   // paris déjà affichés (cache) absents de la lecture : gardés puis vérifiés un par un
+   const rIds=new Set(real.map(b=>String(b.id)));const toCheck=[];
+   let pend=new Set();try{const pd0=JSON.parse(localStorage.getItem("emeieks_pending")||"null");(pd0&&pd0.bets||[]).forEach(b=>pend.add(String(b.id)));}catch(e){}
+   const kept=betsRef.current.filter(b=>!rIds.has(String(b.id)));
+   kept.filter(b=>!pend.has(String(b.id))).forEach(b=>{snap.set(String(b.id),betJson(b));toCheck.push(String(b.id));});
+   if(kept.length)merged=[...real,...kept].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
+   setTimeout(()=>verifyMissing(toCheck),1500);
    try{const pd=JSON.parse(localStorage.getItem("emeieks_pending")||"null");
-    if(pd){const byId=new Map(real.map(b=>[String(b.id),b]));(pd.bets||[]).forEach(b=>byId.set(String(b.id),b));
+    if(pd){const byId=new Map(merged.map(b=>[String(b.id),b]));(pd.bets||[]).forEach(b=>byId.set(String(b.id),b));
      (pd.del||[]).forEach(id=>byId.delete(String(id)));merged=[...byId.values()].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
      if((pd.bets||[]).length||(pd.del||[]).length)showToast("Envoi des paris faits hors ligne…","#A78BFA");}}catch(e){}
    setBets(merged);
@@ -8280,11 +8365,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  
  Type de pari
  </div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
- <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
- style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Over"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Over"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
- OVER
- </button>
+ <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8}}>
  <button onClick={()=>setForm(f=>({...f,overUnder:"Under"}))}
  style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Under"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Under"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Under"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Under"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  UNDER
@@ -8641,6 +8722,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  if(!form.bookmaker) missing.push("Bookmaker");
  if(!form.player) missing.push("Joueur");
  if(!form.overUnder) missing.push("Over/Under");
+ if(form.overUnder==="Over"&&!editingBet) missing.push("Over interdit (Under uniquement)");
  if(!form.description) missing.push("Kills");
  if(!form.odds) missing.push("Cote");
  if(!form.stake) missing.push("Mise");
@@ -10900,6 +10982,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <QuickUnitsEditor quickUnits={quickUnits} setQuickUnits={su=>setQuickUnits(su)}/>
 
  <SuiviLabel>OUTILS</SuiviLabel>
+ <EvCheck bets={bets}/>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
   onShowBets={(t,list)=>setLineBets({title:t,ids:new Set(list.map(b=>String(b.id)))})}/>
  <TourDeletePanel bets={bets} setBets={setBets} savedTourneys={savedTourneys} setSavedTourneys={setSavedTourneys} activeTourneys={activeTourneys} setActiveTourneys={setActiveTourneys} mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/>
