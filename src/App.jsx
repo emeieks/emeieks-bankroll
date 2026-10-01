@@ -11039,7 +11039,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
 
  {/* PP BOARD ANALYZER */}
- <PPReferenceTable/>
+ <PPReferenceTable bets={bets}/>
 
 
  </div>
@@ -11814,98 +11814,41 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
 // PP Board Analyzer 
-function PPReferenceTable(){
+function PPReferenceTable({bets=[]}){
  const [open,setOpen]=useState(false);
- const [game,setGame]=useState("LoL");
-
- const DATA={
- "LoL":[
- {pp12:"3.5 – 4.5",map3:"1.5",under:"Under 2.5"},
- {pp12:"5 – 5.5",map3:"2.5",under:"Under 3.5"},
- {pp12:"6 – 7.5",map3:"3.5",under:"Under 4.5"},
- {pp12:"8 – 9.5",map3:"4.5",under:"Under 5.5"},
- {pp12:"10 – 11.5",map3:"5.5",under:"Under 6.5"},
- {pp12:"12 – 12.5",map3:"6.5",under:"Under 7.5"},
- ],
- "Dota2":[
- {pp12:"10 – 10.5",map3:"5",under:"Under 6.5"},
- {pp12:"11 – 13",map3:"5.5 – 6",under:"Under 7.5"},
- {pp12:"13.5 – 14.5",map3:"6.5 – 7",under:"Under 8.5"},
- {pp12:"15 – 16.5",map3:"7.5 – 8",under:"Under 9.5"},
- {pp12:"17 – 18.5",map3:"8.5 – 9",under:"Under 10.5"},
- ],
- "CS2/Valorant":[
- {pp12:"23 – 24.5",map3:"11.5 – 12",under:"Under 13.5"},
- {pp12:"25 – 26.5",map3:"12.5 – 13",under:"Under 14.5"},
- {pp12:"27 – 28.5",map3:"13.5 – 14",under:"Under 15.5"},
- {pp12:"29 – 30.5",map3:"14.5 – 15",under:"Under 16.5"},
- {pp12:"31 – 32.5",map3:"15.5 – 16",under:"Under 17.5"},
- {pp12:"33 – 34.5",map3:"16.5 – 17",under:"Under 18.5"},
- {pp12:"35 – 36.5",map3:"17.5 – 18",under:"Under 19.5"},
- ],
- };
-
- const games=Object.keys(DATA).concat(["CS2 EV+"]);
- var rows=DATA[game]||[];
- // Combinaisons Map 1+2 → Under par map (lignes en .5) donnant EV +1.25 pile
+ const [game,setGame]=useState("CS2");
  const [evMin,setEvMin]=useState(1.25);
- const evRows=(()=>{const out=[];for(let p=10;p<=70.001;p+=0.5){const u=p/2+evMin;if(Math.abs(u%1-0.5)<1e-9)out.push({p,u});}return out;})();
-
- var gameColors={"LoL":"#6366f1","Dota2":"#ef4444","CS2/Valorant":"#f97316"};
- var col=gameColors[game]||"#c4b5fd";
-
+ const RANGE={CS2:[10,44],Valorant:[10,44],LoL:[0.5,15],Dota2:[1.5,22.5]};
+ const COL={CS2:"#f97316",Valorant:"#ef4444",LoL:"#6366f1",Dota2:"#dc2626"};
+ const col=COL[game];
+ const num=v=>parseFloat(String(v||"").replace(",",".").replace(/[^0-9.\-]/g,""));
+ const pool=bets.filter(b=>b.game===game&&(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppMapType==="Map 1+2");
+ const rows=(()=>{const [lo,hi]=RANGE[game];const out=[];
+  for(let p=lo;p<=hi+0.001;p+=0.5){const u=p/2+evMin;if(Math.abs(u%1-0.5)>1e-9)continue;
+   const l=pool.filter(b=>Math.abs(num(b.ppLine)-p)<0.001&&Math.abs(num(b.description)-u)<0.001);
+   const w=l.filter(b=>b.status==="won").length;
+   out.push({p,u,n:l.length,w,pr:l.reduce((t,b)=>t+(b.profit||0),0)});}
+  return out;})();
+ const pc=v=>v>0?"#22c55e":v<0?"#f87171":"#6b7280";
+ const G="1fr 1.2fr .8fr 1fr";
  return(
  <div style={{margin:"0 0 16px"}}>
- <SuiviHead img={_B64_PP_LOGO_B64} color="#a78bfa" title="Table de référence PP" sub="Map 1+2 → Map 3" open={open} onClick={function(){setOpen(function(v){return !v;});}}/>
-
+ <SuiviHead img={_B64_PP_LOGO_B64} color="#a78bfa" title="Table de référence PP" sub="Map 1+2 → Under par map" open={open} onClick={()=>setOpen(v=>!v)}/>
  {open&&<div style={SV_BODY}>
- {/* Game selector */}
- <div style={{display:"flex",gap:5,marginBottom:12}}>
- {games.map(function(g){
- var on=game===g;
- var gc=gameColors[g]||"#c4b5fd";
- return <button key={g} onClick={function(){setGame(g);}}
- style={{flex:1,padding:"7px 6px",borderRadius:8,border:"1px solid "+(on?"rgba("+( g==="LoL"?"99,102,241":g==="Dota2"?"239,68,68":"249,115,22")+",.4)":"rgba(255,255,255,.07)"),background:on?"rgba("+(g==="LoL"?"99,102,241":g==="Dota2"?"239,68,68":"249,115,22")+",.12)":"transparent",color:on?gc:"#6B7280",fontSize:10,fontWeight:on?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
- {g==="LoL"&&<GameLogo game="LoL" size={13}/>}
- {g==="Dota2"&&<GameLogo game="Dota2" size={13}/>}
- {g==="CS2 EV+"&&<GameLogo game="CS2" size={13}/>}
- {g==="CS2/Valorant"&&<><GameLogo game="CS2" size={11}/><span style={{color:"#4a5a6e",fontSize:9}}>|</span><GameLogo game="Valorant" size={11}/></>}
- {g}
- </button>;
- })}
- </div>
-
- {game==="CS2 EV+"&&<div>
+  <div style={{display:"flex",gap:5,marginBottom:8}}>{["CS2","Valorant","LoL","Dota2"].map(g=>{const on=game===g;return(
+   <button key={g} onClick={()=>setGame(g)} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"7px 4px",borderRadius:8,border:"1px solid "+(on?COL[g]+"88":"rgba(255,255,255,.07)"),background:on?COL[g]+"22":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+    <GameLogo game={g} size={13}/>{g}</button>);})}</div>
   <div style={{display:"flex",gap:5,marginBottom:10}}>{[1.25,1.5,1.75,2,2.25,2.5].map(v=><button key={v} onClick={()=>setEvMin(v)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1px solid "+(evMin===v?"#22c55e":"rgba(255,255,255,.07)"),background:evMin===v?"rgba(34,197,94,.15)":"transparent",color:evMin===v?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+{v.toFixed(2)}</button>)}</div>
   <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",background:"rgba(0,0,0,.4)"}}>{["PP Map 1+2","Under par map"].map(h=><div key={h} style={{padding:"8px 6px",fontSize:10,fontWeight:700,color:"#f97316",textTransform:"uppercase",letterSpacing:.6,textAlign:"center"}}>{h}</div>)}</div>
-   {evRows.map((r,i)=><div key={r.p} style={{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2?"rgba(255,255,255,.01)":"transparent"}}>
-    <div style={{padding:"10px 6px",textAlign:"center",fontSize:14,fontWeight:700,color:"#fbbf24"}}>{r.p.toFixed(1)}</div>
-    <div style={{padding:"10px 6px",textAlign:"center",fontSize:14,fontWeight:700,color:"#60a5fa"}}>Under {r.u.toFixed(1)}</div>
+   <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.4)"}}>{["PP Map 1+2","Under par map","Paris","Profit"].map(h=><div key={h} style={{padding:"8px 4px",fontSize:9.5,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5,textAlign:"center"}}>{h}</div>)}</div>
+   {rows.map((r,i)=><div key={r.p} style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2?"rgba(255,255,255,.01)":"transparent"}}>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#fbbf24"}}>{r.p.toFixed(1)}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#60a5fa"}}>Under {r.u.toFixed(1)}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:12.5,color:r.n?"#e5e7eb":"#4b5563"}}>{r.n?<><span style={{color:"#22c55e"}}>{r.w}✓</span> <span style={{color:"#f87171"}}>{r.n-r.w}✗</span></>:"—"}</div>
+    <div style={{padding:"10px 4px",textAlign:"center",fontSize:13.5,fontWeight:800,color:pc(r.pr)}}>{r.n?(r.pr>=0?"+":"")+r.pr.toFixed(2)+"$":"—"}</div>
    </div>)}
   </div>
-  <div style={{marginTop:8,fontSize:10,color:"#6b7280",textAlign:"center"}}>Toutes les combinaisons à EV +{evMin.toFixed(2)} pile</div>
- </div>}
- {game!=="CS2 EV+"&&<>
- {/* Table */}
- <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",background:"rgba(0,0,0,.4)"}}>
- {["PP Map 1+2","Map 3 estimée","Under intéressant"].map(function(h){
- return <div key={h} style={{padding:"8px 10px",fontSize:9,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.6,textAlign:"center",borderRight:"1px solid rgba(255,255,255,.04)"}}>{h}</div>;
- })}
- </div>
- {rows.map(function(r,i){
- return <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2===0?"transparent":"rgba(255,255,255,.01)"}}>
- <div style={{padding:"10px 10px",textAlign:"center",fontSize:13,fontWeight:700,color:"#fbbf24",borderRight:"1px solid rgba(255,255,255,.04)"}}>{r.pp12}</div>
- <div style={{padding:"10px 10px",textAlign:"center",fontSize:13,fontWeight:600,color:"#9CA3AF",borderRight:"1px solid rgba(255,255,255,.04)"}}>{r.map3}</div>
- <div style={{padding:"10px 10px",textAlign:"center",fontSize:13,fontWeight:700,color:"#60a5fa"}}>{r.under}</div>
- </div>;
- })}
- </div>
-
- <div style={{marginTop:8,fontSize:10,color:"#3a4a5e",textAlign:"center"}}>
- Source: analyse PP historique · Under = ligne Map3 PP − 1 kill
- </div></>}
+  <div style={{marginTop:8,fontSize:10,color:"#6b7280",textAlign:"center"}}>Combinaisons à EV +{evMin.toFixed(2)} pile · Paris = tes Under joués sur cette ligne exacte (Live exclus)</div>
  </div>}
  </div>
  );
