@@ -3702,7 +3702,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
    </div>
    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"12px 2px 0",fontSize:14}}>
     <span style={{color:"#8b93a7"}}>{activeF?visibleBets.length+" paris · ":""}Touche les paris à modifier</span>
-    <button onClick={()=>setSelected(allSel?new Set():new Set(visibleBets.map(b=>b.id)))} style={{border:"none",background:"transparent",color:VL,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{allSel?"Tout désélectionner":"Tout sélectionner"}</button>
+    {selected.size>0&&<button onClick={()=>setSelected(new Set())} style={{border:"none",background:"transparent",color:VL,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tout désélectionner</button>}
    </div>
   </div>
   {/* Liste */}
@@ -5661,7 +5661,10 @@ function AppMain(){
   const snap=betSnap.current;const cur=betsRef.current;
   const ch=cur.filter(b=>b&&b.id!=null&&snap.get(String(b.id))!==betJson(b));
   const del=dqGet();
-  localStorage.setItem("emeieks_pending",JSON.stringify({bets:ch,del}));setPendingSync(ch.length+del.length);
+  const pend={bets:ch,del,at:Date.now()};
+  try{localStorage.setItem("emeieks_pending",JSON.stringify(pend));}catch(e){}
+  idbSet("pending",pend).catch(()=>{});
+  setPendingSync(ch.length+del.length);
  }catch(e){}};
  const flushRef=useRef(null);
  const scheduleRetry=()=>{clearTimeout(retryTimer.current);retryTimer.current=setTimeout(()=>flushRef.current&&flushRef.current(),15000);};
@@ -5736,7 +5739,7 @@ function AppMain(){
  if(!hydratedRef.current)return;
  const t=setTimeout(()=>{const cur=betsRef.current;
   if(cur.length)idbSet("bets",{at:Date.now(),bets:cur}).catch(()=>{});
-  try{localStorage.setItem("emeieks_cache_bets",JSON.stringify(cur));}catch(e){try{localStorage.removeItem("emeieks_cache_bets");}catch(e2){}}},2500);
+  try{localStorage.removeItem("emeieks_cache_bets");}catch(e){}},2500);
  return()=>clearTimeout(t);
  },[bets,hydrated]);
 
@@ -5894,6 +5897,10 @@ function AppMain(){
  const safe=(p,w)=>p.catch(e=>{loadFailed=true;fail(w||"Chargement",e);return null;});
 try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}catch(e){}
  // Affichage immédiat : dernière copie connue (simple cache d'affichage, remplacé par Supabase en quelques secondes)
+ try{const ip=await Promise.race([idbGet("pending"),new Promise(r=>setTimeout(()=>r(null),1200))]);
+  let lp=null;try{lp=JSON.parse(localStorage.getItem("emeieks_pending")||"null");}catch(e){}
+  if(ip&&(ip.bets||[]).length+(ip.del||[]).length>0&&(!lp||(ip.at||0)>(lp.at||0)))localStorage.setItem("emeieks_pending",JSON.stringify(ip));
+ }catch(e){}
  let idbCopy=null;try{idbCopy=await Promise.race([idbGet("bets"),new Promise(r=>setTimeout(()=>r(null),1500))]);}catch(e){}
  try{let c=JSON.parse(localStorage.getItem("emeieks_cache_bets")||"null");if((!Array.isArray(c)||!c.length)&&idbCopy&&Array.isArray(idbCopy.bets))c=idbCopy.bets;if(Array.isArray(c)&&c.length&&betsRef.current.length===0){
   // Le cache sert de référence tant que Supabase n'a pas répondu : on n'envoie QUE ce qui change ensuite (jamais tout le cache)
@@ -5902,6 +5909,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   betSnap.current=snap;
   let shown=c;try{const pd=JSON.parse(localStorage.getItem("emeieks_pending")||"null");if(pd){const byId=new Map(c.map(b=>[String(b.id),b]));(pd.bets||[]).forEach(b=>byId.set(String(b.id),b));dqGet().forEach(id=>byId.delete(String(id)));shown=[...byId.values()].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));}}catch(e){}
   setBets(shown);}}catch(e){}
+ // Ouverture instantanée : dernière copie des réglages / logos / joueurs gardée sur le téléphone
+ try{const boot=await Promise.race([idbGet("boot"),new Promise(r=>setTimeout(()=>r(null),1200))]);
+  if(boot&&alive){
+   if(boot.bkRows&&boot.bkRows.length)applyBk(boot.bkRows);
+   if(boot.tourRows&&boot.tourRows.length)applyTour(boot.tourRows);
+   if(boot.setRows){const o={};boot.setRows.forEach(r=>{o[r.key]=r.value;});applySettings(o);}
+   if(boot.mediaRows){const m={};boot.mediaRows.forEach(r=>{try{m[r.key]=JSON.parse(r.value);}catch(e){}});if(m.mediaStore||m.customClubs)applyMedia(m);}
+   if(boot.players)setPlayers(boot.players);
+   if(boot.teamLogos)setTeamLogos(boot.teamLogos);
+  }}catch(e){}
  const SPECIAL=["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"];
  // Les paris s'affichent dès qu'ils arrivent, sans attendre le reste
  const betsP=safe(supaPullBets(),"Lecture des paris").then(rb=>{
@@ -5997,6 +6014,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  Object.assign(tl,legacy.__TEAM_LOGOS__||{},ls("v7_team_logos")||{});
  (teamRows||[]).forEach(t=>{if(t.logo_url&&t.name&&t.game)tl[t.name+"__"+t.game]=t.logo_url;});
  setTeamLogos(tl);cloudSkip.current.teams=true;
+ if(bkRows&&setRows&&mediaRows)idbSet("boot",{at:Date.now(),bkRows,tourRows:tourRows||[],setRows,mediaRows,players:playersObj||null,teamLogos:tl}).catch(()=>{});
 
  // Les canaux récupérés de l'ancien site partent dans Supabase au 1er rendu
  Object.keys(seeded).forEach(ch=>{cloudSkip.current[ch]=false;});
@@ -12054,10 +12072,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* Actions manuelles */}
  <button onClick={()=>{
  setSyncing(true);
- supaPullBets().then(remote=>{
+ Promise.resolve(pullFromSupa()).then(()=>{const remote=betsRef.current;
  if(remote&&remote.length>0){
- setBets(remote);
- localStorage.setItem("v7_bets",JSON.stringify(remote));
  showToast(" "+remote.length+" paris rechargés","#7C3AED");
  setSupaOk(true);
  }
