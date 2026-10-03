@@ -611,6 +611,27 @@ async function supaUploadFile(file, folder) {
 }
 
 
+// Retire le fond blanc d'une image (remplissage depuis les bords : le blanc à l'intérieur du maillot est gardé)
+async function removeWhiteBgBlob(src){
+ const blob=await (await fetch(src)).blob();
+ const url=URL.createObjectURL(blob);
+ try{
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+  const W=img.naturalWidth,H=img.naturalHeight;const c=document.createElement("canvas");c.width=W;c.height=H;
+  const x=c.getContext("2d");x.drawImage(img,0,0);const im=x.getImageData(0,0,W,H);const d=im.data;
+  const white=i=>d[i+3]>0&&d[i]>232&&d[i+1]>232&&d[i+2]>232&&Math.max(d[i],d[i+1],d[i+2])-Math.min(d[i],d[i+1],d[i+2])<22;
+  const seen=new Uint8Array(W*H);const st=[];
+  for(let X=0;X<W;X++){st.push(X,(H-1)*W+X);}for(let Y=0;Y<H;Y++){st.push(Y*W,Y*W+W-1);}
+  while(st.length){const q=st.pop();if(seen[q])continue;seen[q]=1;const i=q*4;if(!white(i))continue;d[i+3]=0;
+   const X=q%W,Y=(q/W)|0;if(X>0)st.push(q-1);if(X<W-1)st.push(q+1);if(Y>0)st.push(q-W);if(Y<H-1)st.push(q+W);}
+  // bords adoucis : pixels presque blancs voisins d'un pixel retiré → semi-transparents
+  for(let q=0;q<W*H;q++){const i=q*4;if(d[i+3]===0||seen[q])continue;const l=(d[i]+d[i+1]+d[i+2])/3;if(l>215){const X=q%W,Y=(q/W)|0;
+   if((X>0&&d[i-1]===0)||(X<W-1&&d[i+7]===0)||(Y>0&&d[i-W*4+3]===0)||(Y<H-1&&d[i+W*4+3]===0))d[i+3]=Math.round(255*(255-l)/40);}}
+  x.putImageData(im,0,0);
+  return await new Promise(res=>c.toBlob(res,"image/png"));
+ }finally{URL.revokeObjectURL(url);}
+}
+
 async function supaUploadPhoto(file, folder) {
  // Upload image to Supabase Storage and return permanent public URL
  const ext = file.name.split('.').pop() || 'png';
@@ -1485,7 +1506,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  const glowStyle=!isPending&&(isWon
  ?"0 0 10px rgba(34,197,94,.18)":"0 0 8px rgba(239,68,68,.14)");
  return(
- <div style={{borderBottom:"1px solid rgba(255,255,255,.1)",WebkitTapHighlightColor:"transparent",contain:"layout style",borderLeft:"2.5px solid "+(isPending?"#60a5fa":isWon?"#00E676":"#f43f5e"),background:"transparent",position:"relative",transition:"all .15s"}}>
+ <div style={{borderBottom:"1px solid rgba(255,255,255,.1)",WebkitTapHighlightColor:"transparent",contain:"layout style",contentVisibility:open?"visible":"auto",containIntrinsicSize:"auto 72px",borderLeft:"2.5px solid "+(isPending?"#60a5fa":isWon?"#00E676":"#f43f5e"),background:"transparent",position:"relative",transition:"all .15s"}}>
  <div onClick={()=>setOpen(v=>!v)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
  <div style={{display:"flex",alignItems:"center",gap:11}}>
 
@@ -4572,65 +4593,60 @@ function PPReferenceTable({bets=[]}){
  );
 }
 
-// ── VÉRIF D'UN BET : EV PrizePicks + historique ──────────────
+// ── VÉRIF D'UN BET : je choisis le cut de mon book + le jeu → quels cuts PrizePicks m'ont le plus rapporté ──
 function EvCheck({bets}){
  const [open,setOpen]=useState(false);
- const [mt,setMt]=useState("Map 1+2");
- const [pp,setPp]=useState("");
  const [bk,setBk]=useState("");
- const [res,setRes]=useState(null);
+ const [game,setGame]=useState("CS2");
  const num=v=>parseFloat(String(v||"").replace(",",".").replace(/[^0-9.\-]/g,""));
- const ppOpts=[];for(let v=0.5;v<=(mt==="Map 3"?40:mt==="Map 1+2"?80:120);v+=0.5)ppOpts.push(v.toFixed(1));
- const bkOpts=[];for(let v=0.5;v<=40;v+=0.5)bkOpts.push(v.toFixed(1));
- const calc=()=>{const P=num(pp),B=num(bk);if(isNaN(P)||isNaN(B))return;
-  const per=mt==="Map 1+2"?P/2:mt==="Map 1+2+3"?P/3:P;
-  setRes({edge:parseFloat((B-per).toFixed(2)),P,B,mt});};
- const agg=arr=>{const n=arr.length,w=arr.filter(b=>b.status==="won").length,st=arr.reduce((t,b)=>t+(b.stake||0),0),pr=arr.reduce((t,b)=>t+(b.profit||0),0);return{n,w,l:n-w,wr:n?w/n*100:0,roi:st?pr/st*100:0,pr};};
- const base=bets.filter(b=>(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&b.ppEdge!=null);
- const sameEdge=res==null?[]:base.filter(b=>Math.abs(parseFloat(b.ppEdge)-res.edge)<0.001);
- const sameBet=res==null?[]:sameEdge.filter(b=>b.ppMapType===res.mt&&Math.abs(num(b.ppLine)-res.P)<0.001&&Math.abs(num(b.description)-res.B)<0.001);
  const hs=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
- const GAMES=[["CS2","Kills",b=>b.game==="CS2"&&!hs(b)],["CS2","HS",b=>b.game==="CS2"&&hs(b)],["LoL","LoL",b=>b.game==="LoL"],["Dota2","Dota",b=>b.game==="Dota2"],["Valorant","Valo",b=>b.game==="Valorant"]];
+ const GAMES=[["CS2","CS2","Kills"],["CS2 HS","CS2","Headshots"],["LoL","LoL","LoL"],["Dota2","Dota2","Dota"],["Valorant","Valorant","Valo"]];
+ const bkOpts=[];for(let v=0.5;v<=40.5;v+=1)bkOpts.push(v.toFixed(1));
+ const real=game==="CS2 HS"?"CS2":game;
+ const B=num(bk);
+ const pool=!bk?[]:bets.filter(b=>b.game===real&&(real!=="CS2"||(game==="CS2 HS")===hs(b))&&(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&Math.abs(num(b.description)-B)<0.001&&b.ppMapType&&num(b.ppLine));
+ const groups={};
+ pool.forEach(b=>{const k=b.ppMapType+"|"+num(b.ppLine);(groups[k]=groups[k]||{mt:b.ppMapType,pp:num(b.ppLine),l:[]}).l.push(b);});
+ const rows=Object.values(groups).map(g=>{const n=g.l.length,w=g.l.filter(b=>b.status==="won").length,st=g.l.reduce((t,b)=>t+(b.stake||0),0),pr=g.l.reduce((t,b)=>t+(b.profit||0),0);
+  const per=g.mt==="Map 1+2"?g.pp/2:g.mt==="Map 1+2+3"?g.pp/3:g.pp;
+  return {...g,n,w,wr:n?w/n*100:0,pr,roi:st?pr/st*100:0,ev:+(B-per).toFixed(2)};})
+  .sort((a,z)=>(z.n>=3)-(a.n>=3)||z.pr-a.pr);
+ const best=rows.find(r=>r.n>=3&&r.pr>0);
+ const tot=rows.reduce((a,r)=>({n:a.n+r.n,pr:a.pr+r.pr}),{n:0,pr:0});
  const pc=v=>v>0?"#22c55e":v<0?"#f87171":"#9ca3af";
- const sel={width:"100%",boxSizing:"border-box",height:48,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:20,fontWeight:800,padding:"0 12px",fontFamily:"Inter,sans-serif",outline:"none",colorScheme:"dark"};
- const lab={fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"};
- const Row=({title,list})=>{const a=agg(list);return(<div style={{marginTop:12,padding:"12px",borderRadius:16,border:"1px solid #1F2937",background:"#111827"}}>
-   <div style={{fontSize:11.5,fontWeight:800,letterSpacing:.8,color:"#9ca3af"}}>{title}</div>
-   {a.n?<div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap",margin:"6px 0 10px"}}>
-     <span style={{fontSize:22,fontWeight:900,color:pc(a.pr)}}>{(a.pr>=0?"+":"")+a.pr.toFixed(2)}$</span>
-     <span style={{fontSize:13,color:"#cbd5e1"}}><b style={{color:"#22c55e"}}>{a.w} gagné{a.w>1?"s":""}</b> · <b style={{color:"#f87171"}}>{a.l} perdu{a.l>1?"s":""}</b></span>
-     <span style={{fontSize:13,color:"#cbd5e1"}}>Réussite <b>{a.wr.toFixed(0)} %</b></span>
-     <span style={{fontSize:13,color:pc(a.roi)}}>ROI {(a.roi>=0?"+":"")+a.roi.toFixed(1)} %</span>
-   </div>:<div style={{fontSize:13,color:"#6b7280",margin:"6px 0 10px"}}>Jamais joué</div>}
-   <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
-    {GAMES.map(([g,l,fn])=>{const x=agg(list.filter(fn));return(<div key={l} style={{padding:"7px 3px",borderRadius:10,textAlign:"center",border:"1px solid "+(x.n?pc(x.pr)+"55":"#1F2937"),background:x.n?pc(x.pr)+"14":"#0b1120",minWidth:0}}>
-     <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:3,fontSize:10.5,fontWeight:800,color:"#cbd5e1"}}><GameLogo game={g} size={12}/>{l}</div>
-     {x.n?<>
-      <div style={{fontSize:12.5,fontWeight:900,color:pc(x.pr),marginTop:4,whiteSpace:"nowrap"}}>{(x.pr>=0?"+":"")+Math.round(x.pr)}$</div>
-      <div style={{fontSize:11,fontWeight:800,color:"#e5e7eb",marginTop:2}}>{x.wr.toFixed(0)} %</div>
-      <div style={{fontSize:10,color:"#8b93a7",marginTop:2,whiteSpace:"nowrap"}}><span style={{color:"#22c55e"}}>{x.w}✓</span> <span style={{color:"#f87171"}}>{x.l}✗</span></div>
-     </>:<div style={{fontSize:16,color:"#4b5563",marginTop:8}}>—</div>}
-    </div>);})}
-   </div></div>);};
+ const G="1.25fr .7fr .55fr .7fr 1fr";
  return(<div style={{marginBottom:8}}>
-  <SuiviHead n="target" color="#a78bfa" title="Vérifier un bet" sub="EV PrizePicks + tes résultats sur ce cut" open={open} onClick={()=>setOpen(o=>!o)}/>
+  <SuiviHead n="target" color="#a78bfa" title="Vérifier un bet" sub="Ton cut + le jeu → tes meilleurs cuts PrizePicks" open={open} onClick={()=>setOpen(o=>!o)}/>
   {open&&<div style={{padding:"12px 4px 4px"}}>
-   <div style={lab}>Cut PrizePicks</div>
-   <div style={{display:"flex",gap:6,marginBottom:10}}>{["Map 1+2","Map 1+2+3","Map 3"].map(m=>
-    <button key={m} onClick={()=>{setMt(m);setRes(null);}} style={{flex:1,padding:"9px 0",borderRadius:10,border:"1px solid "+(mt===m?"#7C3AED":"#1F2937"),background:mt===m?"rgba(124,58,237,.18)":"#0b1120",color:mt===m?"#fff":"#9ca3af",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{m}</button>)}</div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-    <div><div style={lab}>PrizePicks ({mt})</div><select value={pp} onChange={e=>{setPp(e.target.value);setRes(null);}} style={{...sel,color:pp?"#fff":"#6b7280"}}><option value="">Choisir</option>{ppOpts.map(v=><option key={v} value={v} style={{fontSize:15}}>{v}</option>)}</select></div>
-    <div><div style={lab}>Cut map de mon bet (Under)</div><select value={bk} onChange={e=>{setBk(e.target.value);setRes(null);}} style={{...sel,color:bk?"#fff":"#6b7280"}}><option value="">Choisir</option>{bkOpts.map(v=><option key={v} value={v} style={{fontSize:15}}>{v}</option>)}</select></div>
-   </div>
-   <button onClick={calc} disabled={!pp||!bk} style={{width:"100%",height:48,borderRadius:13,border:"none",background:pp&&bk?"linear-gradient(135deg,#7C3AED,#6366F1)":"#1f2937",color:pp&&bk?"#fff":"#6b7280",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Calculer</button>
-   {res!=null&&<>
-    <div style={{marginTop:14,padding:"14px 16px",borderRadius:16,border:"1px solid "+(res.edge>0?"#22c55e55":"#f8717155"),background:(res.edge>0?"rgba(34,197,94,.10)":"rgba(248,113,113,.10)")}}>
-     <div style={{fontSize:12,fontWeight:800,letterSpacing:1,color:"#9ca3af"}}>EV PRIZEPICKS</div>
-     <div style={{fontSize:32,fontWeight:900,color:pc(res.edge),marginTop:2}}>PrizePicks {(res.edge>=0?"+":"")+res.edge.toFixed(2)}</div>
-    </div>
-    <Row title={"CE BET · PP "+res.mt+" "+res.P.toFixed(1)+" / UNDER "+res.B.toFixed(1)} list={sameBet}/>
-    <Row title={"TOUS TES UNDER À "+(res.edge>=0?"+":"")+res.edge.toFixed(2)} list={sameEdge}/>
-    <div style={{fontSize:11.5,color:"#6b7280",marginTop:8}}>✓ gagnés · ✗ perdus · % = taux de réussite · Paris Live exclus.</div>
+   <div style={{fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"}}>Jeu</div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:12}}>{GAMES.map(([k,g,l])=>
+    <button key={k} onClick={()=>setGame(k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"8px 2px",borderRadius:10,border:"1px solid "+(game===k?"#7C3AED":"#1F2937"),background:game===k?"rgba(124,58,237,.18)":"#0b1120",color:game===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}><GameLogo game={g} size={13}/>{l}</button>)}</div>
+   <div style={{fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"}}>Cut de mon book (Under, par map)</div>
+   <select value={bk} onChange={e=>setBk(e.target.value)} style={{width:"100%",height:48,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:bk?"#fff":"#6b7280",fontSize:20,fontWeight:800,padding:"0 12px",fontFamily:"Inter,sans-serif",colorScheme:"dark"}}>
+    <option value="">Choisir</option>{bkOpts.map(v=><option key={v} value={v} style={{fontSize:15}}>Under {v}</option>)}</select>
+   {bk&&<>
+    {best?<div style={{marginTop:12,padding:"12px 14px",borderRadius:14,border:"1px solid #22c55e55",background:"rgba(34,197,94,.08)"}}>
+      <div style={{fontSize:11.5,fontWeight:800,letterSpacing:.8,color:"#9ca3af"}}>TON MEILLEUR CUT PRIZEPICKS</div>
+      <div style={{fontSize:22,fontWeight:900,color:"#fff",marginTop:2}}>{best.mt} {best.pp.toFixed(1)} <span style={{fontSize:15,color:"#22c55e"}}>(EV {(best.ev>=0?"+":"")+best.ev.toFixed(2)})</span></div>
+      <div style={{fontSize:13,color:"#cbd5e1",marginTop:2}}>{best.n} paris · {best.wr.toFixed(0)} % réussite · <b style={{color:pc(best.pr)}}>{(best.pr>=0?"+":"")+best.pr.toFixed(2)}$</b> · ROI {(best.roi>=0?"+":"")+best.roi.toFixed(0)}%</div>
+     </div>
+    :<div style={{marginTop:12,fontSize:13,color:"#9ca3af",textAlign:"center"}}>{rows.length?"Pas encore de cut gagnant avec au moins 3 paris.":"Aucun Under "+bk+" joué sur ce jeu avec une ligne PrizePicks enregistrée."}</div>}
+    {rows.length>0&&<div style={{marginTop:10,borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
+     <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.35)"}}>{["Cut PP","EV","Paris","Réussite","Profit"].map(h=><div key={h} style={{padding:"8px 4px",fontSize:10,fontWeight:800,color:"#a78bfa",textTransform:"uppercase",textAlign:"center"}}>{h}</div>)}</div>
+     {rows.map((r,i)=><div key={r.mt+r.pp} style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"1px solid rgba(255,255,255,.04)",background:r===best?"rgba(34,197,94,.08)":i%2?"rgba(255,255,255,.01)":"transparent",opacity:r.n<3?.5:1}}>
+      <div style={{padding:"9px 4px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:800,color:"#fbbf24"}}>{r.pp.toFixed(1)}</div><div style={{fontSize:9.5,color:"#6b7280"}}>{r.mt}</div></div>
+      <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:pc(r.ev)}}>{(r.ev>=0?"+":"")+r.ev.toFixed(2)}</div>
+      <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#e5e7eb"}}>{r.n}</div>
+      <div style={{textAlign:"center",fontSize:13,color:"#cbd5e1"}}>{r.wr.toFixed(0)}%</div>
+      <div style={{textAlign:"center",fontSize:13.5,fontWeight:800,color:pc(r.pr)}}>{(r.pr>=0?"+":"")+r.pr.toFixed(0)}$<div style={{fontSize:10,fontWeight:600,color:"#8b93a7"}}>{(r.roi>=0?"+":"")+r.roi.toFixed(0)}%</div></div>
+     </div>)}
+     <div style={{display:"grid",gridTemplateColumns:G,borderTop:"2px solid #7C3AED55",background:"rgba(0,0,0,.3)"}}>
+      <div style={{padding:"9px 4px",textAlign:"center",fontSize:11.5,fontWeight:900,color:"#fff",gridColumn:"1 / 3"}}>TOTAL UNDER {bk}</div>
+      <div style={{textAlign:"center",fontSize:13,fontWeight:900,color:"#fff",alignSelf:"center"}}>{tot.n}</div><div/>
+      <div style={{textAlign:"center",fontSize:13.5,fontWeight:900,color:pc(tot.pr),alignSelf:"center"}}>{(tot.pr>=0?"+":"")+tot.pr.toFixed(0)}$</div>
+     </div>
+    </div>}
+    <div style={{fontSize:11,color:"#6b7280",marginTop:8}}>Trié du plus rentable au moins rentable · lignes grisées = moins de 3 paris · Live exclus</div>
    </>}
   </div>}
  </div>);
@@ -5074,6 +5090,11 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
      <label style={smallBtn}>{busy===k?"Envoi…":"Fichier"}<input type="file" accept="image/*" style={{display:"none"}} onChange={e=>upload(e.target.files&&e.target.files[0],folder,k)}/></label>
      <button type="button" style={smallBtn} onClick={()=>pasteImg(folder,k)}>Coller</button>
+     {f[k]&&<button type="button" style={smallBtn} disabled={busy===k} onClick={async()=>{
+      setBusy(k);
+      try{const b=await removeWhiteBgBlob(f[k]);const url=await supaUploadPhoto(new File([b],"image.png",{type:"image/png"}),folder);set(k,url);showToast&&showToast("Fond blanc retiré ✓","#00E676");}
+      catch(e){showToast&&showToast("Impossible de retirer le fond : "+((e&&e.message)||e),"#EF4444");}
+      setBusy("");}}>{busy===k?"…":"Retirer le fond blanc"}</button>}
      {f[k]&&<button type="button" style={{...smallBtn,color:"#f87171"}} onClick={()=>set(k,"")}>Retirer</button>}
     </div>
    </div>
@@ -5645,6 +5666,9 @@ function AppMain(){
 
  // ── Paris : on envoie tout pari ajouté / modifié / supprimé ──
  const betJson=b=>JSON.stringify([b.player,b.description,b.overUnder,b.odds,b.stake,b.bookmaker,b.status,b.game,b.league,b.role,b.team,b.datetime,!!b.isHeadshot,!!b.isLive,b.mapTag||"",b.profit,b.tournament||"",b.splits&&b.splits.length?b.splits:null,b.ppMapType||null,b.ppLine||null,b.ppEdge!=null?b.ppEdge:null]);
+ // Cache : on ne re-sérialise un pari que s'il a vraiment changé (évite 3 800 JSON à chaque action)
+ const jsonCache=useRef(new Map());
+ const betJ=b=>{const id=String(b.id);const c=jsonCache.current.get(id);if(c&&c.r===b)return c.j;const j=betJson(b);jsonCache.current.set(id,{r:b,j});return j;};
  const betTimer=useRef(null);
  const inflight=useRef(new Set());
  // Paris envoyés récemment / en cours d'envoi : protégés de toute suppression par une relecture
@@ -5659,7 +5683,7 @@ function AppMain(){
  // File d'attente hors-ligne : paris non envoyés gardés sur l'appareil jusqu'au retour du réseau
  const savePending=()=>{try{
   const snap=betSnap.current;const cur=betsRef.current;
-  const ch=cur.filter(b=>b&&b.id!=null&&snap.get(String(b.id))!==betJson(b));
+  const ch=cur.filter(b=>b&&b.id!=null&&snap.get(String(b.id))!==betJ(b));
   const del=dqGet();
   const pend={bets:ch,del,at:Date.now()};
   try{localStorage.setItem("emeieks_pending",JSON.stringify(pend));}catch(e){}
@@ -5690,7 +5714,7 @@ function AppMain(){
  if(b==null||b.id==null)return;
  const id=String(b.id);seen.add(id);
  if(inflight.current.has(id))return;
- const j=betJson(b);
+ const j=betJ(b);
  if(snap.get(id)===j)return;
  (snap.has(id)?changed:fresh).push([b,j]);
  });
@@ -5724,7 +5748,7 @@ function AppMain(){
  })().then(()=>{
   all.forEach(([b])=>inflight.current.delete(String(b.id)));
   good("bets");savePending();setSaveState("ok");
-  if(betsRef.current.some(b=>b&&b.id!=null&&betSnap.current.get(String(b.id))!==betJson(b)))setTimeout(()=>flushRef.current&&flushRef.current(),60);
+  if(betsRef.current.some(b=>b&&b.id!=null&&betSnap.current.get(String(b.id))!==betJ(b)))setTimeout(()=>flushRef.current&&flushRef.current(),60);
  }).catch(e=>{
   all.forEach(([b])=>inflight.current.delete(String(b.id)));
   fail("Envoi des paris",e);savePending();setSaveState("offline");scheduleRetry();
@@ -5852,7 +5876,7 @@ function AppMain(){
  // Sauvegarde complète téléchargeable (toutes les tables)
  const [backingUp,setBackingUp]=useState(false);
  const [backupAge,setBackupAge]=useState(()=>{try{const t=Number(localStorage.getItem("emeieks_last_backup")||0);return t?Math.floor((Date.now()-t)/86400000):999;}catch(e){return 0;}});
- const [backupHide,setBackupHide]=useState(false);
+ const [backupOpen,setBackupOpen]=useState(false);
  const downloadBackup=async function(){
  setBackingUp(true);
  try{
@@ -5921,9 +5945,27 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   }}catch(e){}
  const SPECIAL=["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"];
  // Les paris s'affichent dès qu'ils arrivent, sans attendre le reste
- const betsP=safe(supaPullBets(),"Lecture des paris").then(rb=>{
+ // Copie complète déjà sur le téléphone → on ne télécharge QUE le mois en cours + ce qui a changé depuis la dernière fois
+ // (les anciens mois viennent de la copie). Sinon : lecture complète (1re fois / nouveau téléphone).
+ const quick=betsRef.current.length>200;
+ const pullStart=Date.now();
+ let quickGone=new Set();
+ const pullBets=async()=>{
+  if(!quick)return supaPullBets();
+  let last=0;try{last=Number(localStorage.getItem("emeieks_last_pull")||0);}catch(e){}
+  if(!last&&idbCopy&&idbCopy.at)last=idbCopy.at;
+  const since=Math.max(0,(last||0)-15*60*1000);
+  const d=new Date();const m0=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";
+  const [chg,month]=await Promise.all([supaPullSince(since),
+   supaFetch("/rest/v1/bets?select="+BET_SELECT+(SOFT_DEL?"&deleted_at=is.null":"")+"&datetime=gte."+m0+"&order=datetime.desc&limit=2000").then(r=>(r||[]).map(convRow))]);
+  const byId=new Map();month.forEach(b=>byId.set(String(b.id),b));
+  chg.forEach(b=>{if(b._deleted){quickGone.add(String(b.id));byId.delete(String(b.id));}else byId.set(String(b.id),b);});
+  return [...byId.values()];
+ };
+ const betsP=safe(pullBets(),"Lecture des paris").then(rb=>{
   if(rb&&alive){
-   const dq0=new Set(dqGet());
+   try{localStorage.setItem("emeieks_last_pull",String(pullStart));}catch(e){}
+   const dq0=new Set([...dqGet(),...quickGone]);
    const real=rb.filter(b=>!SPECIAL.includes(b.player)&&!dq0.has(String(b.id)));
    const snap=new Map();real.forEach(b=>snap.set(String(b.id),betJson(b)));
    betSnap.current=snap;
@@ -5931,10 +5973,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    // paris déjà affichés (cache) absents de la lecture : gardés puis vérifiés un par un
    const rIds=new Set(real.map(b=>String(b.id)));const toCheck=[];
    let pend=new Set();try{const pd0=JSON.parse(localStorage.getItem("emeieks_pending")||"null");(pd0&&pd0.bets||[]).forEach(b=>pend.add(String(b.id)));}catch(e){}
-   const kept=betsRef.current.filter(b=>!rIds.has(String(b.id)));
+   const kept=betsRef.current.filter(b=>!rIds.has(String(b.id))&&!dq0.has(String(b.id)));
    kept.filter(b=>!pend.has(String(b.id))).forEach(b=>{snap.set(String(b.id),betJson(b));toCheck.push(String(b.id));});
    if(kept.length)merged=[...real,...kept].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
-   setTimeout(()=>verifyMissing(toCheck),1500);
+   if(!quick)setTimeout(()=>verifyMissing(toCheck),1500);
    try{const pd=JSON.parse(localStorage.getItem("emeieks_pending")||"null");
     if(pd){const byId=new Map(merged.map(b=>[String(b.id),b]));(pd.bets||[]).forEach(b=>byId.set(String(b.id),b));
      (pd.del||[]).forEach(id=>byId.delete(String(id)));merged=[...byId.values()].sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
@@ -6065,8 +6107,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const client=mod.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false}});
  const ch=client.channel("emeieks-live");
  ch.on("postgres_changes",{event:"*",schema:"public",table:"bets"},p=>onBet(p.eventType,p.new,p.old));
- ["bookmakers","tournaments","settings","media_store","teams","players"].forEach(t=>{
+ ["bookmakers","tournaments","settings","media_store","teams"].forEach(t=>{
  ch.on("postgres_changes",{event:"*",schema:"public",table:t},()=>later(t,refetch[t]));
+ });
+ // Joueurs : on applique juste la ligne modifiée (plus de re-téléchargement de TOUS les joueurs à chaque ajout)
+ ch.on("postgres_changes",{event:"*",schema:"public",table:"players"},pl=>{
+  const r=pl.new&&pl.new.name?pl.new:null,o=pl.old||{};
+  if(pl.eventType==="DELETE"){setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{if(n[k]&&n[k].id===o.id)delete n[k];});return n;});return;}
+  if(!r){later("players",refetch.players);return;}
+  setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{if(n[k]&&n[k].id===r.id&&k!==r.name.toLowerCase())delete n[k];});
+   n[r.name.toLowerCase()]={...(n[r.name.toLowerCase()]||{}),id:r.id,name:r.name,game:r.game,league:r.league,role:r.role,team:r.team,photo_url:r.photo_url||null,team_logo_url:r.team_logo_url||null,avatar_url:r.avatar_url||null,avatar_file:r.avatar_file||null};return n;});
  });
  ch.subscribe(s=>{setLiveState(s);});
  stop=()=>client.removeChannel(ch);
@@ -6218,7 +6268,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  },[statsSettled,statsPeriod,isTestActive,filteredByTest]);
 
  // ANALYSE AVANCÉE 
- const advancedStats=useMemo(function(){
+ const advancedStats=useMemo(function(){if(true)return null;
  if(!settledFiltered.length)return null;
  const DAYS=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
  // Snap edge to nearest 0.25 (PP standard values: 0.5, 0.75, 1, 1.25, 1.5...)
@@ -6394,9 +6444,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  .sort((a,b)=>a.edge-b.edge);
 
  return{dow,DAYS,curStreak,curType,bestWin,bestLoss,calibration,signalList,comboList,breakevenData,coteIdéale,weekList};
- },[settledFiltered,hideLolLive]);
+ },[settledFiltered,hideLolLive,view]);
 
- const globalOverUnderStats=useMemo(function(){
+ const globalOverUnderStats=useMemo(function(){if(true)return null;
  const mk=()=>({cnt:0,won:0,profit:0,staked:0});
  const over=mk(),under=mk();
  const overLive=mk(),underLive=mk(),overNonLive=mk(),underNonLive=mk();
@@ -6451,10 +6501,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  overByOdds:oddsOrder.map(k=>overByOdds[k]?{label:k,...toS(overByOdds[k])}:null).filter(Boolean),
  overByBK:Object.entries(overByBK).map(([k,v])=>({label:k,...toS(v)})).sort((a,b)=>a.profit-b.profit),
  };
- },[settledFiltered]);
+ },[settledFiltered,view]);
 
  // Stats
- const bkStats=useMemo(function(){
+ const bkStats=useMemo(function(){if(view!=="statistiques")return {};
  const bk={};
  const add=(k,stake,profit,odds,won)=>{
  if(!bk[k])bk[k]={profit:0,count:0,staked:0,won:0,oddsSum:0};
@@ -6483,12 +6533,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  }
  });
  return bk;
- },[settledFiltered]);
+ },[settledFiltered,view]);
 
  const bkStatsSorted=useMemo(()=>Object.entries(bkStats).sort((a,z)=>z[1].profit-a[1].profit),[bkStats]);
 
  // Per-bookmaker detailed stats: bkDrillStats[bk][game] = {count,won,profit,staked,oddsSum,over,under,live,hs,nonHs,ppEdges,oddsRanges}
- const bkDrillStats=useMemo(function(){
+ const bkDrillStats=useMemo(function(){if(view!=="statistiques")return {};
   const res={};
   const mk=(bk,game)=>{
    if(!res[bk])res[bk]={};
@@ -6537,10 +6587,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    }
   });
   return res;
- },[settledFiltered]);
+ },[settledFiltered,view]);
 
 
- const oddsRangeStats=useMemo(function(){
+ const oddsRangeStats=useMemo(function(){if(true)return null;
  const step=0.05;
  const start=1.00;
  const ranges={};
@@ -6558,7 +6608,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  .filter(r=>r.count>=1)
  .map(r=>({...r,wr:r.count>0?r.won/r.count*100:0,roi:r.staked>0?r.profit/r.staked*100:0}))
  .sort((a,b)=>a.lo-b.lo);
- },[statsSettled]);
+ },[statsSettled,view]);
 
 
  const {currentStreak,streakType}=useMemo(function(){
@@ -6575,7 +6625,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
  // Stats par jeu regroupées 
- const perGameStats=useMemo(function(){
+ const perGameStats=useMemo(function(){if(view!=="statistiques")return {};
  // Single pass: group by game first to avoid 4x full-array scans
  const byGame={};
  settledFiltered.forEach(b=>{if(!byGame[b.game])byGame[b.game]=[];byGame[b.game].push(b);});
@@ -6687,7 +6737,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  result[game]={count:gb.length,won,profit,staked,oddsSum,wr:gb.length>0?won/gb.length*100:0,roi:staked>0?profit/staked*100:0,avgOdds:gb.length>0?oddsSum/gb.length:0,topP,worstP,allPlayers:allPSorted,roles,leagues,maps,tourneys,kills:killsArr,hs:hsArr,liveS,nonLiveS,hsS,hsNonS,duels:duelsArr,overS,underS};
  });
  return result;
- },[settledFiltered,allPlayers]);
+ },[settledFiltered,allPlayers,view]);
 
  const rosterHierarchy=useMemo(()=>{
   const GAMES_R=["CS2","LoL","Dota2","Valorant"];
@@ -7330,10 +7380,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {(saveState==="saving"||saveState==="ok"||saveState==="offline")&&<div onClick={()=>flushRef.current&&flushRef.current()} style={{position:"fixed",right:12,bottom:"calc(96px + env(safe-area-inset-bottom))",zIndex:497,display:"flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:20,fontSize:12.5,fontWeight:800,fontFamily:"Inter,sans-serif",boxShadow:"0 6px 18px rgba(0,0,0,.45)",
   background:saveState==="ok"?"rgba(16,185,129,.95)":saveState==="offline"?"#F59E0B":"rgba(30,41,59,.95)",color:saveState==="offline"?"#111":"#fff",cursor:"pointer"}}>
   {saveState==="ok"?"✓ Enregistré":saveState==="offline"?"Hors ligne · "+pendingSync+" en attente":"Enregistrement…"}</div>}
- {backupAge>=7&&!backupHide&&!integ&&<div style={{position:"fixed",left:12,right:12,top:"calc(8px + env(safe-area-inset-top))",zIndex:496,background:"#1e293b",border:"1px solid rgba(34,197,94,.4)",color:"#e5e7eb",borderRadius:12,padding:"8px 10px",fontSize:12.5,fontWeight:700,display:"flex",alignItems:"center",gap:8,boxShadow:"0 6px 20px rgba(0,0,0,.4)"}}>
-  <span style={{flex:1}}>💾 Dernière sauvegarde sur ton téléphone : {backupAge>=999?"jamais":"il y a "+backupAge+" j"}</span>
-  <button onClick={downloadBackup} style={{padding:"6px 10px",borderRadius:9,border:"none",background:"#22C55E",color:"#05130a",fontWeight:900,fontSize:12,cursor:"pointer"}}>{backingUp?"…":"Télécharger"}</button>
-  <button onClick={()=>setBackupHide(true)} style={{background:"none",border:"none",color:"#9ca3af",fontSize:18,cursor:"pointer"}}>×</button></div>}
  {integ&&!integOpen&&<div onClick={()=>setIntegOpen(true)} style={{position:"fixed",left:12,right:12,top:"calc(8px + env(safe-area-inset-top))",zIndex:499,background:"#EF4444",color:"#fff",borderRadius:12,padding:"9px 12px",fontSize:12.5,fontWeight:800,textAlign:"center",boxShadow:"0 6px 20px rgba(0,0,0,.4)",cursor:"pointer"}}>⚠ {integ.phoneOnly.length+integ.srvOnly.length} pari(s) différent(s) entre ce téléphone et Supabase — Voir</div>}
  {integOpen&&integ&&<div onClick={()=>setIntegOpen(false)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto",background:"#0b1120",borderRadius:"20px 20px 0 0",border:"1px solid #1F2937",padding:"18px 14px calc(18px + env(safe-area-inset-bottom))",fontFamily:"Inter,sans-serif"}}>
@@ -11312,6 +11358,19 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
  <SuiviLabel>OUTILS</SuiviLabel>
+ <div style={{marginBottom:8}}>
+  <SuiviHead n="cloud" color={backupAge>=7?"#F59E0B":"#22C55E"} title="Sauvegarde sur le téléphone" sub={"Dernière : "+(backupAge>=999?"jamais":backupAge===0?"aujourd'hui":"il y a "+backupAge+" j")+" · copie hors Supabase"} open={backupOpen} onClick={()=>setBackupOpen(v=>!v)}
+   right={backupAge>=7?<span style={{fontSize:11,fontWeight:800,color:"#111",background:"#F59E0B",padding:"3px 8px",borderRadius:8}}>À faire</span>:null}/>
+  {backupOpen&&<div style={{...SV_BODY,display:"flex",flexDirection:"column",gap:8}}>
+   <div style={{fontSize:12.5,color:"#9ca3af",lineHeight:1.5}}>Crée un fichier avec tous tes paris, joueurs, logos et réglages. Range-le dans iCloud Drive : il ne dépend pas de Supabase. Conseillé : 1 fois par semaine.</div>
+   <button onClick={downloadBackup} disabled={backingUp} style={{height:46,borderRadius:12,border:"none",background:"linear-gradient(135deg,#22C55E,#16A34A)",color:"#04130a",fontWeight:900,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{backingUp?"Sauvegarde en cours…":"Télécharger la sauvegarde"}</button>
+   <label style={{height:42,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:"#cbd5e1",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    Restaurer depuis un fichier
+    <input type="file" accept=".json,application/json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
+   </label>
+   <div style={{fontSize:11,color:"#6b7280"}}>La restauration ajoute seulement les paris manquants (aucun doublon, rien n'est écrasé).</div>
+  </div>}
+ </div>
  <EvCheck bets={bets}/>
  <PPReferenceTable bets={bets}/>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
