@@ -849,7 +849,7 @@ function toDateKey(dt){
  try{const s=String(dt).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
  catch{return "";}
 }
-const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
+const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 function nowDT(){
  // Toujours utiliser l'heure de Montréal (America/Toronto)
@@ -4593,6 +4593,33 @@ function PPReferenceTable({bets=[]}){
  );
 }
 
+
+// ── Paris en double (même joueur, ligne, map, cote, mise, bookmaker, date) ──
+function BetDupes({bets,setBets,showToast}){
+ const [open,setOpen]=useState(false);
+ const groups=useMemo(()=>{if(!open)return [];const m={};
+  bets.forEach(b=>{if(!b||b.id==null)return;const k=[String(b.player||"").toLowerCase(),b.description,b.overUnder,b.mapTag||"",Number(b.odds),Number(b.stake),b.bookmaker||"",String(b.datetime||"").slice(0,16),b.game].join("|");(m[k]=m[k]||[]).push(b);});
+  return Object.values(m).filter(g=>g.length>1);},[bets,open]);
+ const extra=groups.reduce((t,g)=>t+g.length-1,0);
+ const fix=list=>{const del=[];list.forEach(g=>{const keep=[...g].sort((a,z)=>Number(a.id)-Number(z.id))[0];g.forEach(b=>{if(b!==keep)del.push(String(b.id));});});
+  if(!del.length)return;if(!window.confirm(del.length+" doublon(s) vont aller à la corbeille (récupérables). Continuer ?"))return;
+  const ds=new Set(del);setBets(prev=>prev.filter(b=>!ds.has(String(b.id))));supaDeleteManyBets(del).catch(()=>{});showToast&&showToast(del.length+" doublon(s) supprimé(s) ✓","#22C55E");};
+ return(<div style={{marginBottom:8}}>
+  <SuiviHead n="warn" color="#F59E0B" title="Paris en double" sub={open?(extra?extra+" doublon(s) trouvé(s)":"Aucun doublon"):"Repère les paris enregistrés deux fois"} open={open} onClick={()=>setOpen(v=>!v)}/>
+  {open&&<div style={SV_BODY}>
+   {!groups.length?<div style={{fontSize:13,color:"#8b93a7",textAlign:"center",padding:10}}>Aucun pari en double ✓</div>:<>
+    <button onClick={()=>fix(groups)} style={{width:"100%",height:42,borderRadius:12,border:"none",background:"#F59E0B",color:"#111",fontWeight:900,fontSize:14,cursor:"pointer",marginBottom:10}}>Supprimer les {extra} doublon(s) (garder 1 de chaque)</button>
+    {groups.map(g=>{const b=g[0];return(<div key={g.map(x=>x.id).join()} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 4px",borderTop:"1px solid rgba(255,255,255,.06)"}}>
+     <GameLogo game={b.game} size={16}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,fontWeight:700,color:"#e5e7eb"}}>{b.player} · {b.description} {b.mapTag?"· "+b.mapTag:""}</div>
+     <div style={{fontSize:11.5,color:"#8b93a7"}}>{String(b.datetime||"").replace("T"," ").slice(0,16)} · @{b.odds} · {b.stake}$ · {b.bookmaker}</div></div>
+     <span style={{fontSize:12,fontWeight:900,color:"#F59E0B"}}>×{g.length}</span>
+     <button onClick={()=>fix([g])} style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(245,158,11,.4)",background:"rgba(245,158,11,.1)",color:"#F59E0B",fontSize:12,fontWeight:800,cursor:"pointer"}}>Garder 1</button>
+    </div>);})}
+   </>}
+  </div>}
+ </div>);
+}
+
 // ── VÉRIF D'UN BET : je choisis le cut de mon book + le jeu → quels cuts PrizePicks m'ont le plus rapporté ──
 function EvCheck({bets}){
  const [open,setOpen]=useState(false);
@@ -5735,14 +5762,10 @@ function AppMain(){
    const conflict=fresh.filter(([b])=>!ins.has(String(b.id)));
    fresh.filter(([b])=>ins.has(String(b.id))).forEach(([b,j])=>snap.set(String(b.id),j));
    if(conflict.length){
-    // même id déjà sur Supabase : si c'est ce même pari → déjà enregistré ; sinon autre pari → nouvel id
-    const srv=await supaBetsByIds(conflict.map(([b])=>b.id));
-    const byId=new Map(srv.map(r=>[String(r.id),r]));
-    const remap=new Map();
-    conflict.forEach(([b,j])=>{const r=byId.get(String(b.id));
-     if(r&&!r.deleted_at&&r.player===b.player&&String(r.datetime||"").slice(0,16)===String(b.datetime||"").slice(0,16)&&String(r.description)===String(b.description)){snap.set(String(b.id),betJson(convRow(r)));}
-     else remap.set(String(b.id),Date.now()*10+Math.floor(Math.random()*10)+remap.size);});
-    if(remap.size)setBets(prev=>prev.map(x=>remap.has(String(x.id))?{...x,id:remap.get(String(x.id))}:x));
+    // Même id déjà sur Supabase = c'est CE pari (envoi précédent arrivé mais réponse perdue, ex. hors ligne).
+    // On ne crée JAMAIS de nouvel id (c'était la cause des doublons) : on met simplement à jour la ligne.
+    await supaPushBets(conflict.map(([b])=>({...b,updatedAt:now})));
+    conflict.forEach(([b,j])=>snap.set(String(b.id),j));
    }
   }
  })().then(()=>{
@@ -8734,7 +8757,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  
  Type de pari
  </div>
- <div style={{display:"grid",gridTemplateColumns:"1fr",gap:8}}>
+ <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+ <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
+ style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Over"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Over"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
+ OVER
+ </button>
  <button onClick={()=>setForm(f=>({...f,overUnder:"Under"}))}
  style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Under"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Under"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Under"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Under"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  UNDER
@@ -9091,7 +9118,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  if(!form.bookmaker) missing.push("Bookmaker");
  if(!form.player) missing.push("Joueur");
  if(!form.overUnder) missing.push("Over/Under");
- if(form.overUnder==="Over"&&!editingBet) missing.push("Over interdit (Under uniquement)");
  if(!form.description) missing.push("Kills");
  if(!form.odds) missing.push("Cote");
  if(!form.stake) missing.push("Mise");
@@ -11372,6 +11398,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>}
  </div>
  <EvCheck bets={bets}/>
+ <BetDupes bets={bets} setBets={setBets} showToast={showToast}/>
  <PPReferenceTable bets={bets}/>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
   onShowBets={(t,list)=>setLineBets({title:t,ids:new Set(list.map(b=>String(b.id)))})}/>
