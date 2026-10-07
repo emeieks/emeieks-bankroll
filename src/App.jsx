@@ -531,6 +531,8 @@ function applyLogoMode(el,src){
 if(typeof document!=="undefined"&&!window.__logoWatch){window.__logoWatch=1;
  document.addEventListener("load",e=>{const el=e.target;if(!el||el.tagName!=="IMG")return;const src=el.getAttribute("src")||"";
   if(!src||src.length<8)return;const w=el.naturalWidth,h=el.naturalHeight;if(!w||!h)return;
+  // Photos de joueurs : jamais passées en blanc (sinon un maillot noir sur fond transparent devient une silhouette blanche)
+  if(/players|photos?\/|avatar|headshot|portrait/i.test(src)||h>w*1.12){if(el.style.filter&&el.style.filter.includes(LOGO_WHITE))el.style.filter=el.style.filter.replace(LOGO_WHITE,"").trim();return;}
   applyLogoMode(el,src);},true);}
 
 const JG="1fr 44px 52px 84px";
@@ -6727,7 +6729,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const isKills=parts.length>=3&&parts[2]==="Kills";
  const isHS=parts.length>=3&&parts[2]==="Headshots";
  if(isHS){const k=parts[1]+" HS";if(!hs[k])hs[k]={line:k,count:0,won:0,profit:0,staked:0};hs[k].count++;hs[k].profit+=b.profit;hs[k].staked+=b.stake;if(b.status==="won")hs[k].won++;}
- else if(isKills){const k=parts[1]+" K";if(!kills[k])kills[k]={line:k,count:0,won:0,profit:0,staked:0};kills[k].count++;kills[k].profit+=b.profit;kills[k].staked+=b.stake;if(b.status==="won")kills[k].won++;}
+ else if(isKills&&!/Duel vs/.test(b.description)){const k=parts[1]+" K";if(!kills[k])kills[k]={line:k,count:0,won:0,profit:0,staked:0};kills[k].count++;kills[k].profit+=b.profit;kills[k].staked+=b.stake;if(b.status==="won")kills[k].won++;}
  // Duel bets
  const isDuel=b.description&&b.description.includes("Duel vs");
  if(isDuel){const dk="Duel";if(!duels[dk])duels[dk]={line:"Duel",count:0,won:0,profit:0,staked:0};duels[dk].count++;duels[dk].profit+=b.profit;duels[dk].staked+=b.stake;if(b.status==="won")duels[dk].won++;}
@@ -6752,6 +6754,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  let overCnt=0,overWon=0,overProfit=0,overStaked=0;
  let underCnt=0,underWon=0,underProfit=0,underStaked=0;
  gb.forEach(b=>{
+ if(b.description&&/Duel vs/.test(b.description))return;
  if(b.overUnder==="Over"){overCnt++;overProfit+=b.profit;overStaked+=b.stake;if(b.status==="won")overWon++;}
  else if(b.overUnder==="Under"){underCnt++;underProfit+=b.profit;underStaked+=b.stake;if(b.status==="won")underWon++;}
  });
@@ -7313,10 +7316,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const todayKey=useMemo(()=>toDateKey(nowDT()),[]);
 
  // Rafraîchir datetime Montréal à chaque ouverture du formulaire d'ajout 
+ // (seulement pour un NOUVEAU pari : en modification on garde la date d'origine)
  useEffect(()=>{
- if(view==="add"){
+ if(view==="add"&&!editingBet){
  setForm(f=>({...f,datetime:nowDT()}));
  }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  },[view]);
 
 
@@ -10246,6 +10251,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{fontSize:11,color:"#A78BFA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"16px 14px 8px",borderBottom:"1px solid rgba(124,58,237,0.2)",fontFamily:"'Inter',sans-serif",borderTop:"1px solid #1F2937"}}>Over / Under</div>
  <Hd a="Type"/>
  {[{l:"Over",s:gs.overS},{l:"Under",s:gs.underS}].filter(x=>x.s).map(x=><Row key={x.l} l={x.l} r={x.s}/>)}
+ </>}
+ {gs.duels&&gs.duels.length>0&&<>
+ <div style={{fontSize:11,color:"#A78BFA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"16px 14px 8px",borderBottom:"1px solid rgba(124,58,237,0.2)",fontFamily:"'Inter',sans-serif",borderTop:"1px solid #1F2937"}}>Duel</div>
+ <Hd a="Type"/>
+ {gs.duels.map(r=><Row key="duel" l="⚔️ Duel" r={r} col="#FBBF24"/>)}
  </>}
  {gs.kills.length>0&&<>
  <div style={{fontSize:11,color:"#A78BFA",fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",padding:"16px 14px 8px",borderBottom:"1px solid rgba(124,58,237,0.2)",fontFamily:"'Inter',sans-serif",borderTop:"1px solid #1F2937"}}>Lignes Kills</div>
