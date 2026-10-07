@@ -851,7 +851,7 @@ function toDateKey(dt){
  try{const s=String(dt).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
  catch{return "";}
 }
-const EMPTY_FORM={player:"",overUnder:"",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
+const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 function nowDT(){
  // Toujours utiliser l'heure de Montréal (America/Toronto)
@@ -5475,6 +5475,7 @@ function AppMain(){
  const [ppCalcOu,setPpCalcOu]=useState("Over");
  const [statsGameOpen,setStatsGameOpen]=useState({});
  const [lolLiveMode,setLolLiveMode]=useState("live");
+ const [lolStatMode,setLolStatMode]=useState("all");
  const [bkDrillOpen,setBkDrillOpen]=useState(null); // selected bookmaker name
  const [bkDrillGame,setBkDrillGame]=useState(null); // selected game within bookmaker
  const [ouDrill,setOuDrill]=useState(null);
@@ -6656,7 +6657,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  settledFiltered.forEach(b=>{if(!byGame[b.game])byGame[b.game]=[];byGame[b.game].push(b);});
  const result={};
  ALL_GAMES.forEach(game=>{
- const gb=byGame[game]||[];
+ let gb=byGame[game]||[];
+ if(game==="LoL"&&lolStatMode!=="all")gb=gb.filter(b=>lolStatMode==="live"?!!b.isLive:!b.isLive);
  if(gb.length===0){result[game]=null;return;}
  // Global - computed inline in single forEach
  let won=0,profit=0,staked=0,oddsSum=0;
@@ -6763,7 +6765,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  result[game]={count:gb.length,won,profit,staked,oddsSum,wr:gb.length>0?won/gb.length*100:0,roi:staked>0?profit/staked*100:0,avgOdds:gb.length>0?oddsSum/gb.length:0,topP,worstP,allPlayers:allPSorted,roles,leagues,maps,tourneys,kills:killsArr,hs:hsArr,liveS,nonLiveS,hsS,hsNonS,duels:duelsArr,overS,underS};
  });
  return result;
- },[settledFiltered,allPlayers,view]);
+ },[settledFiltered,allPlayers,view,lolStatMode]);
 
  const rosterHierarchy=useMemo(()=>{
   const GAMES_R=["CS2","LoL","Dota2","Valorant"];
@@ -8762,11 +8764,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  
  Type de pari
  </div>
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
- <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
+ <div style={{display:"grid",gridAutoFlow:"column",gridAutoColumns:"1fr",gap:8}}>
+ {editingBet&&form.overUnder==="Over"&&<> <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
  style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Over"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Over"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  OVER
- </button>
+ </button></>}
  <button onClick={()=>setForm(f=>({...f,overUnder:"Under"}))}
  style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Under"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Under"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Under"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Under"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  UNDER
@@ -10243,6 +10245,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {isOpen&&(
  <div style={{background:"#111827",border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 14px 14px",overflow:"hidden",fontVariantNumeric:"tabular-nums"}}>
  <GamePlayerSearch game={game} bets={statsBets} allPlayers={allPlayers} teamLogos={teamLogos}/>
+ {game==="LoL"&&<div style={{display:"flex",gap:6,padding:"2px 14px 12px"}}>
+  {[["all","Tout","#A78BFA"],["live","🔴 Live","#FF4757"],["nonlive","Non-Live","#E5E7EB"]].map(([k,l,c])=>{const on=lolStatMode===k;return(
+   <button key={k} onClick={()=>setLolStatMode(k)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"1px solid "+(on?c:"#1F2937"),background:on?c+"22":"transparent",color:on?c:"#6B7280",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>);})}
+ </div>}
  {(()=>{
  const Hd=JHd,Row=JRow;
  const lineNum=x=>parseFloat(String(x).replace(/[^0-9.]/g,""))||0;
