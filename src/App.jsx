@@ -1263,8 +1263,12 @@ function taxQcBreakdown(usd){
  return {cad,impot,fed,qc,rrq,rqap,marge,total,rate:cad?total/cad*100:0};
 }
 function taxQcCad(usd){return taxQcBreakdown(usd).total;}
-function TaxLine({usd,size=12}){const t=taxQcBreakdown(usd);const f=v=>Math.round(v).toLocaleString("fr-CA");
- return <div title={"Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $ (sur "+f(t.cad)+" $ CA)"} style={{fontSize:size,color:"#fbbf24",fontWeight:700,marginTop:5}}>Impôt : {f(t.total)} $ CA <span style={{color:"#a16207",fontWeight:600}}>· {t.rate.toFixed(0)}%</span></div>;}
+function TaxLine({usd,size=12,saved=null}){const t=taxQcBreakdown(usd);const f=v=>Math.round(v).toLocaleString("fr-CA");
+ const left=saved==null?null:t.total-saved;
+ return <div title={"Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $ (sur "+f(t.cad)+" $ CA)"} style={{fontSize:size,color:"#fbbf24",fontWeight:700,marginTop:5}}>
+  Impôt : {f(t.total)} $ CA <span style={{color:"#a16207",fontWeight:600}}>· {t.rate.toFixed(0)}%</span>
+  {left!=null&&saved>0&&<span style={{display:"block",fontSize:Math.max(10,size-1),fontWeight:700,color:left>0?"#fbbf24":"#22c55e",marginTop:2}}>{left>0?"Reste à mettre de côté : "+f(left)+" $ CA":"✓ Impôt couvert"+(left<0?" (+"+f(-left)+" $ d'avance)":"")}</span>}
+ </div>;}
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
  const [draftDate,setDraftDate]=useState("");
  const dateInputRef=useRef(null);
@@ -4254,6 +4258,48 @@ function CutGuide(){
   </div>}
  </div>);
 }
+
+// ── Compte impôt : ce que tu as mis de côté (en $ CA) comparé à l'impôt estimé ──
+function TaxAccount({deposits,setDeposits,profitUsd}){
+ const [open,setOpen]=useState(false);
+ const [amt,setAmt]=useState("");
+ const [date,setDate]=useState(()=>new Date().toISOString().slice(0,10));
+ const [del,setDel]=useState(null);
+ const t=taxQcBreakdown(profitUsd);
+ const saved=deposits.reduce((x,d)=>x+(Number(d.amount)||0),0);
+ const left=t.total-saved;
+ const f=v=>Math.round(v).toLocaleString("fr-CA");
+ const add=()=>{const v=parseFloat(String(amt).replace(",","."));if(!v)return;setDeposits(p=>[...p,{id:Date.now(),date,amount:Math.round(v*100)/100}].sort((a,b)=>String(b.date).localeCompare(String(a.date))));setAmt("");};
+ const pct=t.total>0?Math.min(100,saved/t.total*100):100;
+ return(<div style={{marginBottom:8}}>
+  <SuiviHead n="wallet" color="#fbbf24" title="Compte impôt" sub={"Mis de côté "+f(saved)+" $ CA · "+(left>0?"reste "+f(left)+" $":"couvert ✓")} open={open} onClick={()=>setOpen(v=>!v)}/>
+  {open&&<div style={SV_BODY}>
+   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:12}}>
+    {[["Impôt estimé",f(t.total)+" $","#fbbf24"],["Mis de côté",f(saved)+" $","#e5e7eb"],[left>0?"Reste":"D'avance",f(Math.abs(left))+" $",left>0?"#f87171":"#22c55e"]].map(([l,v,c])=>(
+     <div key={l} style={{padding:"10px 8px",borderRadius:10,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",textAlign:"center"}}>
+      <div style={{fontSize:10.5,color:"#8b93a7",fontWeight:700}}>{l}</div>
+      <div style={{fontSize:16,fontWeight:900,color:c,marginTop:2}}>{v}</div>
+     </div>))}
+   </div>
+   <div style={{height:6,borderRadius:3,background:"rgba(255,255,255,.06)",overflow:"hidden",marginBottom:14}}><div style={{width:pct+"%",height:"100%",background:pct>=100?"#22c55e":"#fbbf24"}}/></div>
+   <div style={{fontSize:12,fontWeight:700,color:"#8b93a7",marginBottom:6}}>Ajouter un dépôt (en $ CA)</div>
+   <div style={{display:"flex",gap:6,marginBottom:12}}>
+    <input type="number" inputMode="decimal" placeholder="2000" value={amt} onChange={e=>setAmt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} style={{flex:1,minWidth:0,height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:16,fontWeight:700,padding:"0 12px",colorScheme:"dark"}}/>
+    <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:140,height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:"#cbd5e1",fontSize:13,padding:"0 8px",colorScheme:"dark"}}/>
+    <button onClick={add} disabled={!amt} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:amt?"#fbbf24":"#374151",color:"#111",fontWeight:900,cursor:amt?"pointer":"default"}}>Ajouter</button>
+   </div>
+   {deposits.length===0?<div style={{fontSize:12.5,color:"#8b93a7",textAlign:"center",padding:8}}>Aucun dépôt. Chaque fois que tu verses de l'argent dans ton compte impôt, note-le ici.</div>:
+    deposits.map(d=>(<div key={d.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 4px",borderTop:"1px solid rgba(255,255,255,.06)"}}>
+     <span style={{flex:1,fontSize:13,color:"#cbd5e1"}}>{new Date(d.date+"T12:00:00").toLocaleDateString("fr-CA",{day:"numeric",month:"short",year:"numeric"})}</span>
+     <span style={{fontSize:14,fontWeight:800,color:"#fbbf24"}}>{f(d.amount)} $</span>
+     {del===d.id
+      ?<button onClick={()=>{setDeposits(p=>p.filter(x=>x.id!==d.id));setDel(null);}} style={{padding:"5px 9px",borderRadius:8,border:"none",background:"#dc2626",color:"#fff",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>Supprimer</button>
+      :<button onClick={()=>setDel(d.id)} aria-label="Supprimer le dépôt" style={{padding:"5px 8px",borderRadius:8,border:"1px solid rgba(239,68,68,.25)",background:"transparent",color:"#f87171",fontSize:12,cursor:"pointer"}}>✕</button>}
+    </div>))}
+   <div style={{fontSize:10.5,color:"#6b7280",marginTop:10,lineHeight:1.5}}>Impôt estimé sur ton profit total ({f(t.cad)} $ CA), travailleur autonome au Québec, marge de 2,5 % incluse. Enregistré dans Supabase.</div>
+  </div>}
+ </div>);
+}
 // ── Paris en double (même joueur, ligne, map, cote, mise, bookmaker, date) ──
 function BetDupes({bets,setBets,showToast}){
  const [open,setOpen]=useState(false);
@@ -5137,6 +5183,8 @@ function AppMain(){
  
  
  const [ppData,setPpData]=useState(()=>{try{const s=localStorage.getItem("v7_pp_data");return s?JSON.parse(s):[];}catch(e){return[];}});
+ const [taxDeposits,setTaxDepositsRaw]=useState(()=>{try{const s=localStorage.getItem("v7_tax_deposits");return s?JSON.parse(s):[];}catch(e){return[];}});
+ const setTaxDeposits=v=>setTaxDepositsRaw(prev=>{const n=typeof v==="function"?v(prev):v;try{localStorage.setItem("v7_tax_deposits",JSON.stringify(n));}catch(e){}return n;});
  
  
  
@@ -5288,7 +5336,7 @@ function AppMain(){
  const setPayload=()=>({
  bankroll,manual_tier:manualTier,quick_units:quickUnits,
  sticky_bk:{active:stickyBK,bk:stickyBK?form.bookmaker:""},
- locked_status:lockedStatus,pp_data:ppData,
+ locked_status:lockedStatus,pp_data:ppData,tax_deposits:taxDeposits,
  });
  const applySettings=s=>{
  if(s.bankroll!=null)setBankroll(Number(s.bankroll)||5000);
@@ -5297,6 +5345,7 @@ function AppMain(){
  if(s.sticky_bk){setStickyBK(!!s.sticky_bk.active);if(s.sticky_bk.active&&s.sticky_bk.bk)setForm(f=>({...f,bookmaker:s.sticky_bk.bk}));}
  if("locked_status" in s)setLockedStatus(s.locked_status||null);
  if(Array.isArray(s.pp_data))setPpData(s.pp_data);
+ if(Array.isArray(s.tax_deposits))setTaxDeposits(s.tax_deposits);
  };
  const mediaPayload=()=>({mediaStore,customClubs});
  const applyMedia=m=>{
@@ -5340,7 +5389,7 @@ function AppMain(){
  const channelState={
  bookmakers:[bookmakers,bkPhotos,hiddenBKs],
  tournaments:[savedTourneys,activeTourneys,tourneyCal],
- settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,ppData],
+ settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,ppData,taxDeposits],
  media:[mediaStore,customClubs],
  teams:[teamLogos],
  };
@@ -5730,13 +5779,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  // Réglages
  const sObj={};(setRows||[]).forEach(r=>{sObj[r.key]=r.value;});
- const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","pp_data"].filter(k=>!(k in sObj));
+ const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","pp_data","tax_deposits"].filter(k=>!(k in sObj));
  if(need.length){
  const old={
  bankroll:ls("v7_bankroll")!=null?parseFloat(ls("v7_bankroll")):undefined,
  manual_tier:ls("v7_manual_tier")!=null?parseInt(ls("v7_manual_tier")):undefined,
  quick_units:ls("v7_quick_units"),sticky_bk:ls("v7_sticky_bk"),
- locked_status:ls("v7_locked_status")||undefined,pp_data:ls("v7_pp_data"),
+ locked_status:ls("v7_locked_status")||undefined,pp_data:ls("v7_pp_data"),tax_deposits:ls("v7_tax_deposits"),
  };
  need.forEach(k=>{if(old[k]!==undefined&&old[k]!==null&&!(typeof old[k]==="number"&&isNaN(old[k])))sObj[k]=old[k];});
  applySettings(sObj);
@@ -6861,7 +6910,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{fontSize:34,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1.2px",lineHeight:1,textShadow:totalProfit>=0?"0 0 24px rgba(0,230,118,.35)":"0 0 24px rgba(239,68,68,.35)"}}>{fmtM(totalProfit)}</div>
  <div style={{fontSize:12,color:"#4a5a6e",fontWeight:600}}>Bankroll {bankroll.toFixed(0)}$</div>
  </div>
- <TaxLine usd={totalProfit}/>
+ <TaxLine usd={totalProfit} saved={taxDeposits.reduce((x,d)=>x+(Number(d.amount)||0),0)}/>
 
  </div>
  <BankrollChart points={chartPointsFiltered} h={190}/>
@@ -10796,6 +10845,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>}
  </div>
  <EvCheck bets={bets}/>
+ <TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>
  <BetDupes bets={bets} setBets={setBets} showToast={showToast}/>
  <CutGuide/>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
