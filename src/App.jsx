@@ -1264,7 +1264,7 @@ function taxQcBreakdown(usd){
 }
 function taxQcCad(usd){return taxQcBreakdown(usd).total;}
 function TaxLine({usd,size=12}){const t=taxQcBreakdown(usd);const f=v=>Math.round(v).toLocaleString("fr-CA");
- return <div title={"Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $ (sur "+f(t.cad)+" $ CA)"} style={{fontSize:size,color:"#fbbf24",fontWeight:700,marginTop:5}}>Impôt + cotisations (QC, autonome) : {f(t.total)} $ CA <span style={{color:"#a16207",fontWeight:600}}>· {t.rate.toFixed(0)}%</span></div>;}
+ return <div title={"Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $ (sur "+f(t.cad)+" $ CA)"} style={{fontSize:size,color:"#fbbf24",fontWeight:700,marginTop:5}}>Impôt : {f(t.total)} $ CA <span style={{color:"#a16207",fontWeight:600}}>· {t.rate.toFixed(0)}%</span></div>;}
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
  const [draftDate,setDraftDate]=useState("");
  const dateInputRef=useRef(null);
@@ -6909,7 +6909,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{fontSize:9,color:"#5a6a7e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>PROFIT BRUT</div>
  <div style={{fontSize:22,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1,marginBottom:4}}>{fmtM(totalProfit)}</div>
  <div style={{fontSize:10,color:"#3a4a5a"}}>ROI {roi2>=0?"+":""}{roi2.toFixed(1)}%</div>
- <TaxLine usd={totalProfit} size={10}/>
+
  </div>
  </div>
  );
