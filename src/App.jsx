@@ -1243,6 +1243,28 @@ const VirtualizedDayBets = memo(function VirtualizedDayBets({bets=[], onStatus, 
  );
 });
 
+// Impôt estimé au Québec — travailleur autonome (paris sportifs), barèmes officiels progressifs
+// Fédéral (taux le plus bas 14 %) avec abattement du Québec 16,5 %, Québec 2025, RRQ + RQAP autonome,
+// puis +2,5 points de marge de sécurité. Profit converti en $ CA à 1,42.
+const USD_CAD=1.42, TAX_MARGIN=0.025;
+const FED_BRACKETS=[[57375,0.14],[114750,0.205],[177882,0.26],[253414,0.29],[Infinity,0.33]];
+const QC_BRACKETS=[[53255,0.14],[106495,0.19],[129590,0.24],[Infinity,0.2575]];
+const FED_BPA=16129, QC_BPA=18571;
+function progTax(inc,br){let t=0,prev=0;for(const [top,r] of br){if(inc<=prev)break;t+=(Math.min(inc,top)-prev)*r;prev=top;}return t;}
+function taxQcBreakdown(usd){
+ const cad=Math.max(0,Number(usd)||0)*USD_CAD;
+ const rrq=Math.min(Math.max(cad-3500,0),71300-3500)*0.128+Math.min(Math.max(cad-71300,0),81200-71300)*0.08;
+ const rqap=Math.min(cad,98000)*0.00878;
+ const taxable=Math.max(0,cad-rrq*0.5-rqap*0.44); // part « employeur » déductible
+ const fed=Math.max(0,progTax(taxable,FED_BRACKETS)-FED_BPA*0.14)*(1-0.165);
+ const qc=Math.max(0,progTax(taxable,QC_BRACKETS)-QC_BPA*0.14);
+ const impot=fed+qc, marge=cad*TAX_MARGIN;
+ const total=cad>0?impot+rrq+rqap+marge:0;
+ return {cad,impot,fed,qc,rrq,rqap,marge,total,rate:cad?total/cad*100:0};
+}
+function taxQcCad(usd){return taxQcBreakdown(usd).total;}
+function TaxLine({usd,size=12}){const t=taxQcBreakdown(usd);const f=v=>Math.round(v).toLocaleString("fr-CA");
+ return <div title={"Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $ (sur "+f(t.cad)+" $ CA)"} style={{fontSize:size,color:"#fbbf24",fontWeight:700,marginTop:5}}>Impôt + cotisations (QC, autonome) : {f(t.total)} $ CA <span style={{color:"#a16207",fontWeight:600}}>· {t.rate.toFixed(0)}%</span></div>;}
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
  const [draftDate,setDraftDate]=useState("");
  const dateInputRef=useRef(null);
@@ -6834,11 +6856,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* HERO PROFIT + GRAPHIQUE */}
  <div style={{background:"linear-gradient(160deg,rgba(13,18,38,.99),rgba(8,12,26,.99))",border:"1px solid rgba(99,130,200,.12)",borderRadius:20,padding:"18px 16px 12px",marginBottom:12,boxShadow:"0 8px 30px rgba(0,0,0,.35)"}}>
  <div style={{marginBottom:14}}>
- <div style={{fontSize:10,color:"#5a6a7e",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:4}}>Profit Net</div>
+ <div style={{fontSize:10,color:"#5a6a7e",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:4}}>Profit brut</div>
  <div style={{display:"flex",alignItems:"baseline",gap:10}}>
  <div style={{fontSize:34,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1.2px",lineHeight:1,textShadow:totalProfit>=0?"0 0 24px rgba(0,230,118,.35)":"0 0 24px rgba(239,68,68,.35)"}}>{fmtM(totalProfit)}</div>
  <div style={{fontSize:12,color:"#4a5a6e",fontWeight:600}}>Bankroll {bankroll.toFixed(0)}$</div>
  </div>
+ <TaxLine usd={totalProfit}/>
 
  </div>
  <BankrollChart points={chartPointsFiltered} h={190}/>
@@ -6883,9 +6906,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(totalProfit>=0?"rgba(0,230,118,.18)":"rgba(239,68,68,.18)"),borderRadius:14,padding:"13px 12px",position:"relative",overflow:"hidden"}}>
  <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:totalProfit>=0?"linear-gradient(90deg,#059669,#00E676)":"linear-gradient(90deg,#dc2626,#ef4444)"}}/>
- <div style={{fontSize:9,color:"#5a6a7e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>PROFIT NET</div>
+ <div style={{fontSize:9,color:"#5a6a7e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>PROFIT BRUT</div>
  <div style={{fontSize:22,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1,marginBottom:4}}>{fmtM(totalProfit)}</div>
  <div style={{fontSize:10,color:"#3a4a5a"}}>ROI {roi2>=0?"+":""}{roi2.toFixed(1)}%</div>
+ <TaxLine usd={totalProfit} size={10}/>
  </div>
  </div>
  );
@@ -8911,9 +8935,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <div style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",fontSize:"min(110px, calc(50cqw / 3.4))",fontWeight:900,letterSpacing:-2,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+pc+"40",pointerEvents:"none",lineHeight:1}}>BILAN</div>
    <div style={{position:"relative",zIndex:1,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
     <div>
-     <div style={{fontSize:12,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"#9ca3af"}}>Profit net</div>
+     <div style={{fontSize:12,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"#9ca3af"}}>Profit brut</div>
      <div style={{fontSize:"clamp(34px,10vw,54px)",fontWeight:900,letterSpacing:-1.5,color:pc,lineHeight:1.05,textShadow:"0 2px 14px rgba(0,0,0,.5)"}}>{fmtM(statsProfit)}</div>
      <div style={{fontSize:13,color:"#cbd5e1",fontWeight:600,marginTop:6}}>{won} - {lost} · ROI <b style={{color:globalROI>=0?"#22C55E":"#f87171"}}>{globalROI>=0?"+":""}{globalROI.toFixed(1)}%</b></div>
+     <TaxLine usd={statsProfit} size={13}/>
     </div>
    </div>
   </div>
