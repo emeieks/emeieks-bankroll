@@ -1264,10 +1264,9 @@ function taxQcBreakdown(usd){
 }
 function taxQcCad(usd){return taxQcBreakdown(usd).total;}
 function TaxLine({usd,size=12,saved=null}){const t=taxQcBreakdown(usd);const f=v=>Math.round(v).toLocaleString("fr-CA");
- const left=saved==null?null:t.total-saved;
- return <div title={"Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $ (sur "+f(t.cad)+" $ CA)"} style={{fontSize:size,color:"#fbbf24",fontWeight:700,marginTop:5}}>
-  Impôt : {f(t.total)} $ CA <span style={{color:"#a16207",fontWeight:600}}>· {t.rate.toFixed(0)}%</span>
-  {left!=null&&saved>0&&<span style={{display:"block",fontSize:Math.max(10,size-1),fontWeight:700,color:left>0?"#fbbf24":"#22c55e",marginTop:2}}>{left>0?"Reste à mettre de côté : "+f(left)+" $ CA":"✓ Impôt couvert"+(left<0?" (+"+f(-left)+" $ d'avance)":"")}</span>}
+ const left=t.total-(saved||0);
+ return <div title={"Impôt estimé "+f(t.total)+" $ CA ("+t.rate.toFixed(0)+"%) · Fédéral "+f(t.fed)+" $ · Québec "+f(t.qc)+" $ · RRQ "+f(t.rrq)+" $ · RQAP "+f(t.rqap)+" $ · marge 2,5 % "+f(t.marge)+" $"} style={{fontSize:size,fontWeight:700,marginTop:5,color:left>0?"#fbbf24":"#22c55e"}}>
+  {left>0?"Impôt à payer : "+f(left)+" $ CA":"✓ Impôt couvert"+(left<0?" (+"+f(-left)+" $ d'avance)":"")}
  </div>;}
 const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSplit,bkPhotos=EMPTY_OBJ,onSave,allTourneys=[],savedTourneys={}}){
  const [draftDate,setDraftDate]=useState("");
@@ -6502,7 +6501,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const totalProfit=useMemo(()=>homeSettled.reduce((s,b)=>s+(b.profit||0),0),[homeSettled]);
  
  
- const progression=useMemo(()=>bankroll>0?(totalProfit/bankroll)*100:0,[totalProfit,bankroll]);
+ const progression=useMemo(()=>bankroll>0?((totalProfit-taxQcCad(totalProfit)/USD_CAD)/bankroll)*100:0,[totalProfit,bankroll]);
  // Compound bankroll system: tier = floor(liveBK/2500)*2500 (min 5000), 1u = 1% of tier 
  const pendingCount=useMemo(()=>bets.filter(b=>b.status==="pending").length,[bets]);
  const settledCount=useMemo(()=>bets.filter(b=>b.status!=="pending").length,[bets]);
@@ -7013,7 +7012,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:progression>=0?"linear-gradient(90deg,#059669,#00E676)":"linear-gradient(90deg,#dc2626,#ef4444)"}}/>
  <div style={{fontSize:9,color:"#5a6a7e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>PROGRESSION</div>
  <div style={{fontSize:22,fontWeight:900,color:progression>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1,marginBottom:4}}>{progression>=0?"+":""}{progression.toFixed(1)}%</div>
- <div style={{fontSize:10,color:"#3a4a5a"}}>BK: {bankroll.toFixed(0)}$</div>
+ <div style={{fontSize:10,color:"#3a4a5a"}}>Net · BK {bankroll.toFixed(0)}$</div>
  </div>
  {(()=>{const netP=totalProfit-taxQcCad(totalProfit)/USD_CAD;const netPct=bankroll?netP/bankroll*100:0;return(
  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(netP>=0?"rgba(0,230,118,.18)":"rgba(239,68,68,.18)"),borderRadius:14,padding:"13px 12px",position:"relative",overflow:"hidden"}}>
