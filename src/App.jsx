@@ -3224,13 +3224,15 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  const removePP=function(){
  setSaving(true);
  var toSync=[];
+ var selS=new Set([...selected].map(String));
  var updated=bets.map(function(b){
- if(!selected.has(b.id))return b;
+ if(!selS.has(String(b.id)))return b;
  var nb=Object.assign({},b,{ppEdge:null,ppLine:null,ppMapType:null,updatedAt:Date.now()});
  toSync.push(nb);
  return nb;
  });
- setBets(updated);
+ var byId=new Map(toSync.map(function(x){return[String(x.id),x];}));
+ setBets(function(prev){return prev.map(function(b){return byId.get(String(b.id))||b;});});
  if(supaPushBets&&toSync.length){supaPushBets(toSync).catch(function(){});if(onAfterPush)onAfterPush();}
  try{var stored=JSON.parse(localStorage.getItem("v7_bets")||"[]");var ids=new Set(toSync.map(function(b){return b.id;}));var merged=stored.map(function(b){return ids.has(b.id)?toSync.find(function(n){return n.id===b.id;})||b:b;});localStorage.setItem("v7_bets",JSON.stringify(merged));}catch(e){}
  setSaving(false);
@@ -3267,8 +3269,9 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  if(!canApply)return;
  setSaving(true);
  const toSync=[];
+ const selS=new Set([...selected].map(String));
  const updated=bets.map(b=>{
- if(!selected.has(b.id))return b;
+ if(!selS.has(String(b.id)))return b;
  const time=b.datetime?String(b.datetime).slice(11,16):"12:00";
  const newDatetime=newDate?newDate+"T"+time:b.datetime;
  const newSettledAt=b.status!=="pending"&&newDate?new Date(newDatetime).getTime():(b.settledAt||null);
@@ -3278,7 +3281,8 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
  toSync.push(nb);
  return nb;
  });
- setBets(updated);
+ const byId=new Map(toSync.map(x=>[String(x.id),x]));
+ setBets(prev=>prev.map(b=>byId.get(String(b.id))||b));
  // Sauvegarder immédiatement en localStorage
  // Stocker les overrides séparément pour survivre au pull Supabase
  try{
@@ -3427,7 +3431,7 @@ function SelectionModal({bets,onClose,setBets,supaPushBets,showToast,fmtDay,byDa
 
 // MesParisView 
 const MesParisView=memo(function MesParisView({
- bets,setBets,bookmakers,bkPhotos,hiddenBKs=new Set(),updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
+ bets,adjBets=[],setBets,bookmakers,bkPhotos,hiddenBKs=new Set(),updateStatus,deleteBet,duplicateBet,openEdit,splitBet,showToast,
  fBKs,setFBKs,setView,supaPushBets,supaDeleteManyBets,supaDeleteOneBet,setDeletedBets,BK_LOGOS,
  fGames,setFGames,fStatus,setFStatus,fOverUnder,setFOverUnder,
  fMinOdds,setFMinOdds,fMaxOdds,setFMaxOdds,fMinStake,setFMinStake,fMaxStake,setFMaxStake,
@@ -3623,7 +3627,7 @@ const MesParisView=memo(function MesParisView({
  // Par défaut seul le mois le plus récent est ouvert (rendu beaucoup plus rapide)
  const isCollapsed=k=>(k!==monthKeys[0])!==collapsedMonths.has(k);
  const days=byMonth[mk]||[];
- const allBets=days.flatMap(dk=>byDay[dk]||[]);
+ const allBets=days.flatMap(dk=>byDay[dk]||[]).concat(adjBets.filter(a=>String(a.datetime||"").slice(0,7)===mk));
  const profit=allBets.reduce((s,b)=>s+(b.profit||0),0);
  const staked=allBets.reduce((s,b)=>s+(b.stake||0),0);
  const won=allBets.filter(b=>b.status==="won").length;
@@ -5583,6 +5587,8 @@ function AppMain(){
  const l=local.get(String(r.id));
  // un pari modifié ici mais pas encore envoyé reste prioritaire
  if(l&&snap.get(String(r.id))!==betJson(l))return l;
+ // relecture commencée avant un envoi récent : la version locale plus récente gagne
+ if(l&&(Number(l.updatedAt)||0)>(Number(r.updatedAt)||0))return l;
  return r;
  });
  const rIds=new Set(remote.map(r=>String(r.id)));
@@ -7240,6 +7246,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {view==="mesparis"&&(
  <MesParisView
  bets={betsForMesParis}
+ adjBets={betsForDisplay.filter(isAdjBet)}
  setBets={setBets}
  bookmakers={bookmakers}
  bkPhotos={bkPhotos}
