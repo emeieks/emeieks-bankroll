@@ -1301,13 +1301,13 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  {/* Centre — 2 lignes */}
  <div style={{flex:1,minWidth:0}}>
  {/* L1 : Joueur — Kills — Map */}
- <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"wrap"}}>
+ <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"nowrap",minWidth:0}}>
  <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
  {bet.game==="LoL"&&bet.role&&<RoleLogo role={bet.role} size={14}/>}
  {bet.splits&&bet.splits.length>0&&<span style={{fontSize:8,color:"#cbd5e1",background:"rgba(148,163,184,.12)",border:"1px solid rgba(148,163,184,.25)",borderRadius:4,padding:"1px 5px",fontWeight:700,flexShrink:0}}>{1+bet.splits.length}</span>}
  {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
  {bet.isHeadshot&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7,verticalAlign:"middle"}}/>}
- {bet.mapTag&&<span onClick={e=>e.stopPropagation()} style={{position:"relative",display:"inline-flex",alignItems:"center",fontSize:12,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"3px 6px",borderRadius:5,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4,marginRight:2}}>{bet.mapTag}
+ {bet.mapTag&&<span onClick={e=>e.stopPropagation()} style={{position:"relative",display:"inline-flex",alignItems:"center",fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4,marginRight:2}}>{bet.mapTag}
   <select aria-label="Changer la map" value={bet.mapTag} onChange={e=>{const m=e.target.value;if(m!==bet.mapTag&&onSave)onSave(Object.assign({},bet,{mapTag:m,ppMapType:bet.ppMapType&&/^Map \d$/.test(bet.ppMapType)?m:bet.ppMapType,updatedAt:Date.now()}));}}
    style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}>
    {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=><option key={m} value={m}>{m}</option>)}
@@ -1315,9 +1315,9 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  {descLine&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
  </div>
  {/* L2 : Cote · BK · Mise · Ligue — plus visible */}
- <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap"}}>
+ <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap"}}>
  <span style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
- {(bkLogo||bet.bookmaker)&&<span style={{color:"#5a6e84",margin:"0 6px",fontSize:18,fontWeight:900,lineHeight:1}}>·</span>}
+ {(bkLogo||bet.bookmaker)&&<span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {bkLogo
  ? (<img src={bkLogo} alt={bet.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>)
  : bet.bookmaker ? (<span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.bookmaker}</span>) : null
@@ -1327,8 +1327,8 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  if(!spLogo)return(<span key={i} style={{fontSize:12,fontWeight:700,color:"#7a9cbd",marginLeft:3}}>{sp.bookmaker}</span>);
  return(<img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:3}}/>);
  })}
- {bet.stake&&<><span style={{color:"#5a6e84",margin:"0 6px",fontSize:18,fontWeight:900,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></>}
- {hasPP&&<><span style={{color:"#5a6e84",margin:"0 6px",fontSize:18,fontWeight:900,lineHeight:1}}>·</span><img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
+ {bet.stake&&<><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></>}
+ {hasPP&&<><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
  {/* Tournament/League — affichage custom + select invisible */}
  {(()=>{
  const lolLeagues=["LCK","LEC","LCS","LPL"];
@@ -1377,7 +1377,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  return(
  <span style={{display:"inline-flex",alignItems:"center",gap:3,marginLeft:4,position:"relative",cursor:"pointer"}}
  onClick={e=>e.stopPropagation()}>
- {currentVal&&<span style={{color:"#5a6e84",margin:"0 6px",fontSize:18,fontWeight:900,lineHeight:1}}>·</span>}
+ {currentVal&&<span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {/* Affichage custom : logo + nom */}
  <span style={{display:"inline-flex",alignItems:"center",gap:3,pointerEvents:"none"}}>
  {currentVal
@@ -4260,6 +4260,56 @@ function CutGuide(){
 }
 
 // ── Compte impôt : ce que tu as mis de côté (en $ CA) comparé à l'impôt estimé ──
+const ADJ_DESC="Ajustement";
+const isAdjBet=b=>b&&b.description===ADJ_DESC;
+const adjToBet=({id,date,amount,note,bookmaker})=>{const v=Math.abs(Number(amount)||0);return{id:id||Date.now(),player:note||ADJ_DESC,description:ADJ_DESC,overUnder:"",odds:2,stake:v,bookmaker:bookmaker||"",status:amount<0?"lost":"won",profit:Math.round((Number(amount)||0)*100)/100,game:"",league:"",role:"",team:"",datetime:(date||new Date().toISOString().slice(0,10))+"T12:00",isHeadshot:false,isLive:false,mapTag:"",tournament:"",updatedAt:Date.now()};};
+function Adjustments({bets,setBets,bookmakers}){
+ const items=useMemo(()=>bets.filter(isAdjBet).sort((a,b)=>String(b.datetime).localeCompare(String(a.datetime))).map(b=>({id:b.id,date:String(b.datetime).slice(0,10),amount:Number(b.profit)||0,note:b.player===ADJ_DESC?"":b.player,bookmaker:b.bookmaker})),[bets]);
+ const [bk,setBk]=useState("");
+ const [open,setOpen]=useState(false);
+ const [amt,setAmt]=useState("");
+ const [sign,setSign]=useState(-1);
+ const [note,setNote]=useState("");
+ const [date,setDate]=useState(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");});
+ const [del,setDel]=useState(null);
+ const tot=items.reduce((x,d)=>x+(Number(d.amount)||0),0);
+ const f=v=>(v>0?"+":v<0?"−":"")+Math.abs(Math.round(v*100)/100).toLocaleString("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2})+" $";
+ const add=()=>{const v=Math.abs(parseFloat(String(amt).replace(",",".")));if(!v)return;setBets(p=>[adjToBet({id:Date.now(),date,amount:sign*v,note:note.trim(),bookmaker:bk}),...p]);setAmt("");setNote("");};
+ const segB=on=>({flex:1,height:38,borderRadius:9,border:"none",fontWeight:900,fontSize:13,cursor:"pointer",background:on?(sign<0?"#dc2626":"#16a34a"):"transparent",color:on?"#fff":"#8b93a7"});
+ return(<div style={{marginBottom:8}}>
+  <SuiviHead n="wallet" color="#a78bfa" title="Ajustements" sub={items.length?items.length+" ajustement(s) · "+f(tot)+" US":"Gain ou perte sans jeu (ex. compte banni)"} open={open} onClick={()=>setOpen(v=>!v)}/>
+  {open&&<div style={SV_BODY}>
+   <div style={{display:"flex",gap:4,padding:3,borderRadius:11,background:"rgba(255,255,255,.04)",marginBottom:8}}>
+    <button onClick={()=>setSign(-1)} style={segB(sign<0)}>− Perte</button>
+    <button onClick={()=>setSign(1)} style={segB(sign>0)}>+ Gain</button>
+   </div>
+   <div style={{display:"flex",gap:6,marginBottom:6}}>
+    <input type="number" inputMode="decimal" placeholder="Montant $ US" value={amt} onChange={e=>setAmt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} style={{flex:1,minWidth:0,height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:16,fontWeight:700,padding:"0 12px",colorScheme:"dark"}}/>
+    <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:140,height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:"#cbd5e1",fontSize:13,padding:"0 8px",colorScheme:"dark"}}/>
+   </div>
+   <select value={bk} onChange={e=>setBk(e.target.value)} style={{width:"100%",height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:bk?"#fff":"#6b7280",fontSize:14,padding:"0 10px",marginBottom:6,colorScheme:"dark"}}>
+    <option value="">Bookmaker (aucun)</option>
+    {(bookmakers||[]).map(x=><option key={x} value={x}>{x}</option>)}
+   </select>
+   <div style={{display:"flex",gap:6,marginBottom:12}}>
+    <input placeholder="Note (ex. Toshi bet — compte banni)" value={note} onChange={e=>setNote(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} style={{flex:1,minWidth:0,height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:14,padding:"0 12px"}}/>
+    <button onClick={add} disabled={!amt} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:amt?"#a78bfa":"#374151",color:"#111",fontWeight:900,cursor:amt?"pointer":"default"}}>Ajouter</button>
+   </div>
+   {items.length===0?<div style={{fontSize:12.5,color:"#8b93a7",textAlign:"center",padding:8}}>Aucun ajustement. Le montant est compté dans ton profit, sans être attribué à un jeu.</div>:
+    items.map(d=>(<div key={d.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 4px",borderTop:"1px solid rgba(255,255,255,.06)"}}>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:13,color:"#e5e7eb",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.note||"Ajustement"}</div>
+      <div style={{fontSize:11.5,color:"#8b93a7"}}>{new Date(d.date+"T12:00:00").toLocaleDateString("fr-CA",{day:"numeric",month:"short",year:"numeric"})}{d.bookmaker?" · "+d.bookmaker:""}</div>
+     </div>
+     <span style={{fontSize:14,fontWeight:800,color:d.amount<0?"#f87171":"#22c55e"}}>{f(d.amount)}</span>
+     {del===d.id
+      ?<button onClick={()=>{setBets(p=>p.filter(x=>String(x.id)!==String(d.id)));supaDeleteManyBets([String(d.id)]).catch(()=>{});setDel(null);}} style={{padding:"5px 9px",borderRadius:8,border:"none",background:"#dc2626",color:"#fff",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>Supprimer</button>
+      :<button onClick={()=>setDel(d.id)} aria-label="Supprimer" style={{padding:"5px 8px",borderRadius:8,border:"1px solid rgba(239,68,68,.25)",background:"transparent",color:"#f87171",fontSize:12,cursor:"pointer"}}>✕</button>}
+    </div>))}
+   <div style={{fontSize:10.5,color:"#6b7280",marginTop:10,lineHeight:1.5}}>Compté comme un pari (profit, bilan, mois, bookmaker, impôt) mais caché dans Mes Paris. Enregistré dans Supabase.</div>
+  </div>}
+ </div>);
+}
 function TaxAccount({deposits,setDeposits,profitUsd}){
  const [open,setOpen]=useState(false);
  const [amt,setAmt]=useState("");
@@ -5184,6 +5234,8 @@ function AppMain(){
  
  const [ppData,setPpData]=useState(()=>{try{const s=localStorage.getItem("v7_pp_data");return s?JSON.parse(s):[];}catch(e){return[];}});
  const [taxDeposits,setTaxDepositsRaw]=useState(()=>{try{const s=localStorage.getItem("v7_tax_deposits");return s?JSON.parse(s):[];}catch(e){return[];}});
+ const [adjustments,setAdjRaw]=useState(()=>{try{const s=localStorage.getItem("v7_adjustments");return s?JSON.parse(s):[];}catch(e){return[];}});
+ const setAdjustments=v=>setAdjRaw(prev=>{const n=typeof v==="function"?v(prev):v;try{localStorage.setItem("v7_adjustments",JSON.stringify(n));}catch(e){}return n;});
  const setTaxDeposits=v=>setTaxDepositsRaw(prev=>{const n=typeof v==="function"?v(prev):v;try{localStorage.setItem("v7_tax_deposits",JSON.stringify(n));}catch(e){}return n;});
  
  
@@ -5336,7 +5388,7 @@ function AppMain(){
  const setPayload=()=>({
  bankroll,manual_tier:manualTier,quick_units:quickUnits,
  sticky_bk:{active:stickyBK,bk:stickyBK?form.bookmaker:""},
- locked_status:lockedStatus,pp_data:ppData,tax_deposits:taxDeposits,
+ locked_status:lockedStatus,pp_data:ppData,tax_deposits:taxDeposits,adjustments,
  });
  const applySettings=s=>{
  if(s.bankroll!=null)setBankroll(Number(s.bankroll)||5000);
@@ -5346,6 +5398,7 @@ function AppMain(){
  if("locked_status" in s)setLockedStatus(s.locked_status||null);
  if(Array.isArray(s.pp_data))setPpData(s.pp_data);
  if(Array.isArray(s.tax_deposits))setTaxDeposits(s.tax_deposits);
+ if(Array.isArray(s.adjustments))setAdjustments(s.adjustments);
  };
  const mediaPayload=()=>({mediaStore,customClubs});
  const applyMedia=m=>{
@@ -5389,7 +5442,7 @@ function AppMain(){
  const channelState={
  bookmakers:[bookmakers,bkPhotos,hiddenBKs],
  tournaments:[savedTourneys,activeTourneys,tourneyCal],
- settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,ppData,taxDeposits],
+ settings:[bankroll,manualTier,quickUnits,stickyBK,form.bookmaker,lockedStatus,ppData,taxDeposits,adjustments],
  media:[mediaStore,customClubs],
  teams:[teamLogos],
  };
@@ -5779,13 +5832,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  // Réglages
  const sObj={};(setRows||[]).forEach(r=>{sObj[r.key]=r.value;});
- const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","pp_data","tax_deposits"].filter(k=>!(k in sObj));
+ const need=["bankroll","manual_tier","quick_units","sticky_bk","locked_status","pp_data","tax_deposits","adjustments"].filter(k=>!(k in sObj));
  if(need.length){
  const old={
  bankroll:ls("v7_bankroll")!=null?parseFloat(ls("v7_bankroll")):undefined,
  manual_tier:ls("v7_manual_tier")!=null?parseInt(ls("v7_manual_tier")):undefined,
  quick_units:ls("v7_quick_units"),sticky_bk:ls("v7_sticky_bk"),
- locked_status:ls("v7_locked_status")||undefined,pp_data:ls("v7_pp_data"),tax_deposits:ls("v7_tax_deposits"),
+ locked_status:ls("v7_locked_status")||undefined,pp_data:ls("v7_pp_data"),tax_deposits:ls("v7_tax_deposits"),adjustments:ls("v7_adjustments"),
  };
  need.forEach(k=>{if(old[k]!==undefined&&old[k]!==null&&!(typeof old[k]==="number"&&isNaN(old[k])))sObj[k]=old[k];});
  applySettings(sObj);
@@ -6007,6 +6060,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  },[isTestActive,testFilter]);
 
  const betsForDisplay=useMemo(()=>isTestActive?filteredByTest(bets):bets,[bets,isTestActive,filteredByTest]);
+ const betsForMesParis=useMemo(()=>betsForDisplay.filter(b=>!isAdjBet(b)),[betsForDisplay]);
+ // Anciens ajustements (réglages) → convertis en paris
+ useEffect(()=>{if(!adjustments.length)return;setBets(p=>[...adjustments.map(adjToBet),...p]);setAdjustments([]);},[adjustments]);
 
  const settledFiltered=useMemo(function(){
  let base=statsSettled;
@@ -7183,7 +7239,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* MES PARIS */}
  {view==="mesparis"&&(
  <MesParisView
- bets={betsForDisplay}
+ bets={betsForMesParis}
  setBets={setBets}
  bookmakers={bookmakers}
  bkPhotos={bkPhotos}
@@ -10845,7 +10901,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>}
  </div>
  <EvCheck bets={bets}/>
- <TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>
+ <Adjustments bets={bets} setBets={setBets} bookmakers={bookmakers}/>
+<TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>
  <BetDupes bets={bets} setBets={setBets} showToast={showToast}/>
  <CutGuide/>
  <CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast}
