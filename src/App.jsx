@@ -4263,6 +4263,62 @@ function CutGuide(){
 }
 
 // ── Compte impôt : ce que tu as mis de côté (en $ CA) comparé à l'impôt estimé ──
+// ── Opportunités : lignes PrizePicks (Apify) × Unders Betby ──
+const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+function OppsPP(){
+ const [open,setOpen]=useState(false);
+ const [pp,setPp]=useState([]);const [bb,setBb]=useState([]);
+ const [loading,setLoading]=useState(false);const [msg,setMsg]=useState("");
+ const [game,setGame]=useState("all");const [minEdge,setMinEdge]=useState(0.25);const [minOdds,setMinOdds]=useState(1.5);
+ const load=useCallback(async()=>{setLoading(true);
+  try{const [a,b]=await Promise.all([cloudDb("pp_props?select=*&limit=5000"),cloudDb("betby_props?select=*&limit=20000")]);setPp(a||[]);setBb(b||[]);setMsg("");}
+  catch(e){setMsg("Tables introuvables : lance bot_supabase.sql dans Supabase.");}
+  setLoading(false);},[]);
+ useEffect(()=>{if(open)load();},[open,load]);
+ const refreshPP=async()=>{setMsg("Actualisation PrizePicks… (≈ 30 s)");
+  try{const r=await fetch(SUPA_URL+"/functions/v1/pp-sync",{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPA_KEY,Authorization:"Bearer "+SUPA_KEY},body:"{}"});
+   const j=await r.json();setMsg(j.ok?"✓ "+j.saved+" lignes PrizePicks":"✗ "+(j.error||r.status));if(j.ok)load();}catch(e){setMsg("✗ fonction pp-sync introuvable");}};
+ const rows=useMemo(()=>{
+  const ppBy={};pp.forEach(x=>{if(!x.maps||!x.line)return;const k=x.game+"|"+normName(x.player);(ppBy[k]=ppBy[k]||[]).push(x);});
+  const out=[];
+  bb.forEach(b=>{if(!b.under)return;const list=ppBy[b.game+"|"+normName(b.player)];if(!list)return;
+   list.forEach(p=>{const avg=Number(p.line)/p.maps;const edge=Number(b.line)-avg;
+    out.push({id:b.id+"|"+p.id,game:b.game,player:b.player,match:b.match,start:b.start_time,map:b.map,line:Number(b.line),under:Number(b.under),ppLine:Number(p.line),ppMaps:p.maps,avg,edge});});});
+  return out.sort((a,z)=>z.edge-a.edge||z.under-a.under);},[pp,bb]);
+ const shown=rows.filter(r=>(game==="all"||r.game===game)&&r.edge>=minEdge&&r.under>=minOdds);
+ const games=[...new Set(rows.map(r=>r.game))];
+ const chip=(on)=>({padding:"5px 10px",borderRadius:9,border:"1px solid "+(on?"#7c3aed":"#1f2937"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#c4b5fd":"#8b93a7",fontSize:12,fontWeight:800,cursor:"pointer"});
+ const fmtT=t=>t?new Date(t).toLocaleString("fr-CA",{weekday:"short",hour:"2-digit",minute:"2-digit"}):"";
+ return(<div style={{marginBottom:8}}>
+  <SuiviHead n="search" color="#22c55e" title="Opportunités PP × Betby" sub={open?(shown.length+" Under intéressant(s)"):"Unders Betby au-dessus de la moyenne PrizePicks"} open={open} onClick={()=>setOpen(v=>!v)}/>
+  {open&&<div style={SV_BODY}>
+   <div style={{display:"flex",gap:6,marginBottom:8}}>
+    <button onClick={refreshPP} style={{flex:1,height:38,borderRadius:10,border:"none",background:"#7c3aed",color:"#fff",fontWeight:900,cursor:"pointer"}}>Actualiser PP</button>
+    <button onClick={load} disabled={loading} style={{height:38,padding:"0 14px",borderRadius:10,border:"1px solid #1f2937",background:"transparent",color:"#cbd5e1",fontWeight:800,cursor:"pointer"}}>{loading?"…":"↻"}</button>
+   </div>
+   <div style={{fontSize:11,color:"#64748b",marginBottom:8}}>{pp.length} lignes PP · {bb.length} lignes Betby{msg?" · "+msg:""}</div>
+   <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>
+    {["all",...games].map(g=><button key={g} onClick={()=>setGame(g)} style={chip(game===g)}>{g==="all"?"Tous":g}</button>)}
+   </div>
+   <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10,alignItems:"center"}}>
+    <span style={{fontSize:11,color:"#8b93a7",fontWeight:700}}>Écart min</span>
+    {[0,0.25,0.5,1].map(v=><button key={v} onClick={()=>setMinEdge(v)} style={chip(minEdge===v)}>+{v}</button>)}
+    <span style={{fontSize:11,color:"#8b93a7",fontWeight:700,marginLeft:6}}>Cote min</span>
+    {[1.5,1.7,1.8].map(v=><button key={v} onClick={()=>setMinOdds(v)} style={chip(minOdds===v)}>{v.toFixed(2)}</button>)}
+   </div>
+   {!shown.length?<div style={{fontSize:12.5,color:"#8b93a7",textAlign:"center",padding:10}}>{rows.length?"Aucun Under avec ces filtres.":"Aucune correspondance : il faut des lignes PP (Actualiser PP) et Betby (script Tampermonkey ouvert sur Betby)."}</div>:
+    shown.slice(0,200).map(r=>(<div key={r.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 4px",borderTop:"1px solid rgba(255,255,255,.06)"}}>
+     <GameLogo game={r.game} size={18}/>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.player} <span style={{color:"#fbbf24",fontWeight:800}}>Map {r.map}</span> · Under {r.line} <span style={{color:"#22c55e"}}>@{r.under.toFixed(2)}</span></div>
+      <div style={{fontSize:11.5,color:"#8b93a7",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>PP {r.ppLine} (Maps 1-{r.ppMaps}) ≈ {r.avg.toFixed(2)}/map · {r.match} · {fmtT(r.start)}</div>
+     </div>
+     <span style={{fontSize:13,fontWeight:900,color:r.edge>=0.5?"#22c55e":"#a3e635",padding:"3px 8px",borderRadius:8,background:"rgba(34,197,94,.1)"}}>+{r.edge.toFixed(2)}</span>
+    </div>))}
+   <div style={{fontSize:10.5,color:"#6b7280",marginTop:10,lineHeight:1.5}}>Écart = ligne Betby − (ligne PP standard ÷ nb de maps). Plus il est grand, plus l'Under Betby est au-dessus de la moyenne attendue par PrizePicks.</div>
+  </div>}
+ </div>);
+}
 const ADJ_DESC="Ajustement";
 const isAdjBet=b=>b&&b.description===ADJ_DESC;
 const adjToBet=({id,date,amount,note,bookmaker})=>{const v=Math.abs(Number(amount)||0);return{id:id||Date.now(),player:note||ADJ_DESC,description:ADJ_DESC,overUnder:"",odds:2,stake:v,bookmaker:bookmaker||"",status:amount<0?"lost":"won",profit:Math.round((Number(amount)||0)*100)/100,game:"",league:"",role:"",team:"",datetime:(date||new Date().toISOString().slice(0,10))+"T12:00",isHeadshot:false,isLive:false,mapTag:"",tournament:"",updatedAt:Date.now()};};
@@ -6966,9 +7022,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* HERO PROFIT + GRAPHIQUE */}
  <div style={{background:"linear-gradient(160deg,rgba(13,18,38,.99),rgba(8,12,26,.99))",border:"1px solid rgba(99,130,200,.12)",borderRadius:20,padding:"18px 16px 12px",marginBottom:12,boxShadow:"0 8px 30px rgba(0,0,0,.35)"}}>
  <div style={{marginBottom:14}}>
- <div style={{fontSize:10,color:"#5a6a7e",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:4}}>Profit brut</div>
+ <div style={{fontSize:10,color:"#5a6a7e",fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:4}}>Profit net</div>
  <div style={{display:"flex",alignItems:"baseline",gap:10}}>
- <div style={{fontSize:34,fontWeight:900,color:totalProfit>=0?"#00E676":"#ef4444",letterSpacing:"-1.2px",lineHeight:1,textShadow:totalProfit>=0?"0 0 24px rgba(0,230,118,.35)":"0 0 24px rgba(239,68,68,.35)"}}>{fmtM(totalProfit)}</div>
+ {(()=>{const n=totalProfit-taxQcCad(totalProfit)/USD_CAD;return <div style={{fontSize:34,fontWeight:900,color:n>=0?"#00E676":"#ef4444",letterSpacing:"-1.2px",lineHeight:1,textShadow:n>=0?"0 0 24px rgba(0,230,118,.35)":"0 0 24px rgba(239,68,68,.35)"}}>{fmtM(n)}</div>;})()}
  <div style={{fontSize:12,color:"#4a5a6e",fontWeight:600}}>Bankroll {bankroll.toFixed(0)}$</div>
  </div>
  <TaxLine usd={totalProfit} saved={taxDeposits.reduce((x,d)=>x+(Number(d.amount)||0),0)}/>
@@ -7014,12 +7070,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{fontSize:22,fontWeight:900,color:progression>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1,marginBottom:4}}>{progression>=0?"+":""}{progression.toFixed(1)}%</div>
  <div style={{fontSize:10,color:"#3a4a5a"}}>Net · BK {bankroll.toFixed(0)}$</div>
  </div>
- {(()=>{const netP=totalProfit-taxQcCad(totalProfit)/USD_CAD;const netPct=bankroll?netP/bankroll*100:0;return(
+ {(()=>{const netP=totalProfit;const netPct=bankroll?netP/bankroll*100:0;return(
  <div style={{background:"rgba(10,16,34,.98)",border:"1px solid "+(netP>=0?"rgba(0,230,118,.18)":"rgba(239,68,68,.18)"),borderRadius:14,padding:"13px 12px",position:"relative",overflow:"hidden"}}>
  <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:netP>=0?"linear-gradient(90deg,#059669,#00E676)":"linear-gradient(90deg,#dc2626,#ef4444)"}}/>
- <div style={{fontSize:9,color:"#5a6a7e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>PROFIT NET</div>
+ <div style={{fontSize:9,color:"#5a6a7e",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>PROFIT BRUT</div>
  <div style={{fontSize:22,fontWeight:900,color:netP>=0?"#00E676":"#ef4444",letterSpacing:"-1px",lineHeight:1,marginBottom:4}}>{fmtM(netP)}</div>
- <div style={{fontSize:10,color:"#3a4a5a"}}>{netPct>=0?"+":""}{netPct.toFixed(1)}% · après impôt</div>
+ <div style={{fontSize:10,color:"#3a4a5a"}}>{netPct>=0?"+":""}{netPct.toFixed(1)}% · avant impôt</div>
  </div>);})()}
  <div style={{display:"none"}}>
 
@@ -8254,7 +8310,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  Type de pari
  </div>
  <div style={{display:"grid",gridAutoFlow:"column",gridAutoColumns:"1fr",gap:8}}>
- {editingBet&&form.overUnder==="Over"&&<> <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
+ {<> <button onClick={()=>setForm(f=>({...f,overUnder:"Over"}))}
  style={{height:54,borderRadius:13,border:"1.5px solid "+(form.overUnder==="Over"?AC:"rgba(255,255,255,.08)"),background:form.overUnder==="Over"?AC+"26":"rgba(255,255,255,.02)",color:form.overUnder==="Over"?"#fff":"#6b7489",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:.5,boxShadow:form.overUnder==="Over"?"0 0 22px "+AC+"33":"none",transition:"all .15s"}}>
  OVER
  </button></>}
@@ -9049,8 +9105,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <div style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",fontSize:"min(110px, calc(50cqw / 3.4))",fontWeight:900,letterSpacing:-2,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+pc+"40",pointerEvents:"none",lineHeight:1}}>BILAN</div>
    <div style={{position:"relative",zIndex:1,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
     <div>
-     <div style={{fontSize:12,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"#9ca3af"}}>Profit brut</div>
-     <div style={{fontSize:"clamp(34px,10vw,54px)",fontWeight:900,letterSpacing:-1.5,color:pc,lineHeight:1.05,textShadow:"0 2px 14px rgba(0,0,0,.5)"}}>{fmtM(statsProfit)}</div>
+     <div style={{fontSize:12,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"#9ca3af"}}>Profit net</div>
+     <div style={{fontSize:"clamp(34px,10vw,54px)",fontWeight:900,letterSpacing:-1.5,color:pc,lineHeight:1.05,textShadow:"0 2px 14px rgba(0,0,0,.5)"}}>{fmtM(statsProfit-taxQcCad(statsProfit)/USD_CAD)}</div>
+     <div style={{fontSize:12,color:"#8b93a7",fontWeight:600,marginTop:2}}>Brut {fmtM(statsProfit)}</div>
      <div style={{fontSize:13,color:"#cbd5e1",fontWeight:600,marginTop:6}}>{won} - {lost} · ROI <b style={{color:globalROI>=0?"#22C55E":"#f87171"}}>{globalROI>=0?"+":""}{globalROI.toFixed(1)}%</b></div>
      <TaxLine usd={statsProfit} size={13}/>
     </div>
@@ -10907,7 +10964,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>}
  </div>
  <EvCheck bets={bets}/>
- <Adjustments bets={bets} setBets={setBets} bookmakers={bookmakers}/>
+ <OppsPP/>
+<Adjustments bets={bets} setBets={setBets} bookmakers={bookmakers}/>
 <TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>
  <BetDupes bets={bets} setBets={setBets} showToast={showToast}/>
  <CutGuide/>
