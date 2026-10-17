@@ -3915,6 +3915,78 @@ function ClubsTab({bets,allPlayers,teamLogos}){
  </div>);
 }
 function anyTourLogo(name,game){try{const st=typeof _GLOBAL_MEDIA_STORE!=="undefined"&&_GLOBAL_MEDIA_STORE;const v=st&&(st["tourney_"+(game||"")+"_"+name]||st["tourney_"+name]);if(v&&!String(v).includes("__FAILED__"))return v;}catch(e){}return tourLogoSrc(name);}
+// ── Bilan de la semaine (lundi → dimanche) ──
+function weekStart(d){const x=new Date(d);x.setHours(0,0,0,0);const wd=(x.getDay()+6)%7;x.setDate(x.getDate()-wd);return x;}
+function WeeklyRecap({bets,onClose}){
+ const [off,setOff]=useState(()=>new Date().getDay()===0?0:-1); // dimanche : semaine en cours, sinon semaine passée
+ const ws=weekStart(new Date());ws.setDate(ws.getDate()+off*7);const we=new Date(ws);we.setDate(we.getDate()+7);
+ const prevS=new Date(ws);prevS.setDate(prevS.getDate()-7);
+ const ymd=localYMD;const a=ymd(ws),z=ymd(we),pa=ymd(prevS);
+ const done=bets.filter(b=>(b.status==="won"||b.status==="lost")&&!isAdjBet(b));
+ const wk=done.filter(b=>{const d=String(b.datetime||"").slice(0,10);return d>=a&&d<z;});
+ const pv=done.filter(b=>{const d=String(b.datetime||"").slice(0,10);return d>=pa&&d<a;});
+ const ag=l=>{const n=l.length,w=l.filter(b=>b.status==="won").length,st=l.reduce((t,b)=>t+(b.stake||0),0),pr=l.reduce((t,b)=>t+(b.profit||0),0);return{n,w,l:n-w,st,pr,roi:st?pr/st*100:0};};
+ const T=ag(wk),P=ag(pv);
+ const seg={};const add=(k,b)=>{(seg[k]=seg[k]||[]).push(b);};
+ wk.forEach(b=>{const ou=b.overUnder||"";const hs=(b.isHeadshot||/headshot/i.test(b.description||""))?"Headshots":"Kills";
+  if(b.game&&ou)add(b.game+" · "+ou+(b.game==="CS2"?" "+hs:""),b);
+  if(b.game&&b.role&&ou)add(b.game+" · "+b.role+" "+ou,b);
+  if(/^duel/i.test(b.description||""))add("Duels",b);});
+ const segs=Object.entries(seg).map(([k,l])=>({k,...ag(l)})).filter(x=>x.n>=3);
+ const best=[...segs].sort((x,y)=>y.pr-x.pr)[0];const worst=[...segs].sort((x,y)=>x.pr-y.pr)[0];
+ const byP={};wk.forEach(b=>{const k=capName(b.player||"?");(byP[k]=byP[k]||[]).push(b);});
+ const pl=Object.entries(byP).map(([k,l])=>({k,...ag(l)}));
+ const topP=[...pl].sort((x,y)=>y.pr-x.pr)[0],flopP=[...pl].sort((x,y)=>x.pr-y.pr)[0];
+ const byD={};wk.forEach(b=>{const d=String(b.datetime||"").slice(0,10);byD[d]=(byD[d]||0)+(b.profit||0);});
+ const days=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].map((l,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);const k=ymd(d);return{l,v:byD[k]||0,has:k in byD};});
+ const maxAbs=Math.max(1,...days.map(d=>Math.abs(d.v)));
+ const ov=ag(wk.filter(b=>b.overUnder==="Over")),un=ag(wk.filter(b=>b.overUnder==="Under"));
+ const tips=[];
+ if(ov.n>=3&&ov.pr<0)tips.push("Tes Overs t'ont coûté "+fmtM(ov.pr)+" cette semaine. Reste sur les Unders.");
+ if(worst&&worst.pr<0)tips.push("Évite « "+worst.k+" » la semaine prochaine ("+fmtM(worst.pr)+").");
+ if(best&&best.pr>0)tips.push("Ton meilleur spot : « "+best.k+" ». Tu peux monter un peu la mise.");
+ if(!tips.length&&T.n)tips.push("Semaine propre, continue comme ça.");
+ const net=T.pr-(T.pr>0?taxQcCad(T.pr)/USD_CAD:0);
+ const fmtD=d=>d.toLocaleDateString("fr-CA",{day:"numeric",month:"short"});
+ const endD=new Date(we);endD.setDate(endD.getDate()-1);
+ const col=v=>v>=0?"#22c55e":"#f87171";
+ const Box=({t,children})=>(<div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"12px 14px",marginBottom:10}}><div style={{fontSize:11,fontWeight:800,letterSpacing:1,color:"#9ca3af",marginBottom:8,textTransform:"uppercase"}}>{t}</div>{children}</div>);
+ const Li=({l,x})=>x?(<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",gap:8}}><span style={{fontSize:14,fontWeight:700,color:"#eef1f7",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><span style={{color:"#9ca3af",fontWeight:600}}>{l} · </span>{x.k}</span><span style={{fontSize:14,fontWeight:900,color:col(x.pr),whiteSpace:"nowrap"}}>{fmtM(x.pr)} <span style={{fontSize:11,color:"#9ca3af",fontWeight:600}}>{x.w}-{x.l}</span></span></div>):null;
+ return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:480,background:"rgba(0,0,0,.8)",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"}}>
+  <div onClick={e=>e.stopPropagation()} style={{maxWidth:620,margin:"0 auto",minHeight:"100%",background:"#0B1220",padding:"16px 14px calc(30px + env(safe-area-inset-bottom))"}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+    <button onClick={onClose} aria-label="Fermer" style={{width:38,height:38,borderRadius:19,border:"none",background:"rgba(255,255,255,.06)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="x" s={15} w={2.6}/></button>
+    <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#fff"}}>Bilan de la semaine</div><div style={{fontSize:12.5,color:"#9ca3af"}}>{fmtD(ws)} → {fmtD(endD)}</div></div>
+    <button onClick={()=>setOff(o=>o-1)} style={{width:36,height:36,borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",cursor:"pointer"}}>‹</button>
+    <button onClick={()=>setOff(o=>Math.min(0,o+1))} disabled={off>=0} style={{width:36,height:36,borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:off>=0?"#374151":"#cbd5e1",cursor:"pointer"}}>›</button>
+   </div>
+   {!T.n?<div style={{padding:30,textAlign:"center",color:"#9ca3af"}}>Aucun pari terminé cette semaine.</div>:<>
+   <div style={{borderRadius:18,padding:"18px 16px",marginBottom:10,background:"radial-gradient(120% 150% at 88% 20%,"+col(T.pr)+"33 0%,rgba(11,18,32,0) 60%),linear-gradient(180deg,#0d1830,#09101f)",border:"1px solid rgba(255,255,255,.07)",borderBottom:"3px solid "+col(T.pr)}}>
+    <div style={{fontSize:12,fontWeight:800,letterSpacing:1.2,color:"#9ca3af"}}>PROFIT NET</div>
+    <div style={{fontSize:44,fontWeight:900,color:col(net),letterSpacing:-1.5,lineHeight:1.05}}>{fmtM(net)}</div>
+    <div style={{fontSize:13,color:"#cbd5e1",fontWeight:600,marginTop:4}}>Brut {fmtM(T.pr)} · {T.w}-{T.l} · ROI <b style={{color:col(T.roi)}}>{(T.roi>=0?"+":"")+T.roi.toFixed(1)}%</b> · {T.n} paris</div>
+    {P.n>0&&<div style={{fontSize:12.5,color:"#9ca3af",marginTop:4}}>Semaine d'avant : {fmtM(P.pr)} → <b style={{color:col(T.pr-P.pr)}}>{T.pr-P.pr>=0?"mieux":"moins bien"} ({fmtM(T.pr-P.pr)})</b></div>}
+   </div>
+   <Box t="Jour par jour">
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,alignItems:"end",height:90}}>
+     {days.map(d=>(<div key={d.l} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%",gap:3}}>
+      <span style={{fontSize:9.5,fontWeight:800,color:d.has?col(d.v):"#4b5563"}}>{d.has?Math.round(d.v):""}</span>
+      <div style={{width:"70%",height:Math.max(3,Math.abs(d.v)/maxAbs*56),borderRadius:4,background:d.has?col(d.v):"#1f2937"}}/>
+      <span style={{fontSize:11,color:"#9ca3af"}}>{d.l}</span></div>))}
+    </div>
+   </Box>
+   <Box t="Ce qui a marché / pas marché">
+    <Li l="Meilleur spot" x={best&&best.pr>0?best:null}/>
+    <Li l="Pire spot" x={worst&&worst.pr<0?worst:null}/>
+    <Li l="Meilleur joueur" x={topP&&topP.pr>0?topP:null}/>
+    <Li l="Pire joueur" x={flopP&&flopP.pr<0?flopP:null}/>
+    <div style={{display:"flex",gap:8,marginTop:8}}>{[["Over",ov],["Under",un]].map(([l,x])=>(<div key={l} style={{flex:1,background:"#0d1424",borderRadius:12,padding:"8px 10px"}}><div style={{fontSize:11,fontWeight:800,color:"#9ca3af"}}>{l.toUpperCase()} · {x.n}p</div><div style={{fontSize:17,fontWeight:900,color:col(x.pr)}}>{fmtM(x.pr)}</div></div>))}</div>
+   </Box>
+   <Box t="Pour la semaine prochaine">{tips.map((t,i)=><div key={i} style={{fontSize:14,color:"#e5e7eb",lineHeight:1.45,padding:"4px 0"}}>• {t}</div>)}</Box>
+   </>}
+  </div>
+ </div>);
+}
 // ── Meilleurs coups : où monter / baisser tes unités, par jeu ──
 function spotEdge(b){const m=String(b.description||"").replace(",",".").match(/-?\d+(\.\d+)?/);const bk=m?parseFloat(m[0]):NaN;const pp=parseFloat(String(b.ppLine||"").replace(",","."));
  const n=b.ppMapType==="Map 1+2"?2:b.ppMapType==="Map 1+2+3"?3:1;if(isNaN(bk)||isNaN(pp))return b.ppEdge!=null&&b.ppEdge!==""?Number(b.ppEdge):null;return b.overUnder==="Over"?pp/n-bk:bk-pp/n;}
@@ -6677,6 +6749,29 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  };
  reader.readAsText(file);
  },[showToast]);
+ const [suiviTab,setSuiviTab]=useState("suivi");
+ const [showWeek,setShowWeek]=useState(false);
+ useEffect(()=>{const d=new Date();const day=d.getDay();if(!(day===0&&d.getHours()>=18)&&day!==1)return;
+  const ws=weekStart(d);if(day===1)ws.setDate(ws.getDate()-7);const k=localYMD(ws);
+  try{if(localStorage.getItem("emeieks_week_seen")===k)return;localStorage.setItem("emeieks_week_seen",k);}catch(e){return;}
+  const t=setTimeout(()=>setShowWeek(true),2500);return()=>clearTimeout(t);},[]);
+ const [pendSince,setPendSince]=useState(0);
+ useEffect(()=>{if(pendingSync>0){if(!pendSince)setPendSince(Date.now());}else if(pendSince)setPendSince(0);},[pendingSync,pendSince]);
+ const [tick,setTick]=useState(0);useEffect(()=>{const i=setInterval(()=>setTick(x=>x+1),30000);return()=>clearInterval(i);},[]);
+ const syncAlert=pendingSync>0&&(!supaOk||(pendSince&&Date.now()-pendSince>90000&&tick>=0));
+ // Copie auto locale (IndexedDB) une fois par jour, 7 derniers jours gardés
+ const [autoBks,setAutoBks]=useState([]);
+ useEffect(()=>{idbGet("autobk_index").then(ix=>setAutoBks(Array.isArray(ix)?ix:[])).catch(()=>{});},[]);
+ useEffect(()=>{if(!bets.length)return;const t=setTimeout(async()=>{try{
+  const k=localYMD(new Date());let ix=await idbGet("autobk_index");ix=Array.isArray(ix)?ix:[];
+  await idbSet("autobk_"+k,{at:Date.now(),bets:betsRef.current,players:Object.values(players||{}),bankroll,bookmakers});
+  ix=[{k,at:Date.now(),n:betsRef.current.length},...ix.filter(x=>x.k!==k)];
+  const old=ix.slice(7);ix=ix.slice(0,7);for(const o of old){try{await idbSet("autobk_"+o.k,null);}catch(e){}}
+  await idbSet("autobk_index",ix);setAutoBks(ix);}catch(e){}},20000);return()=>clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[bets.length>0]);
+ const restoreAuto=async k=>{try{const d=await idbGet("autobk_"+k);if(!d||!Array.isArray(d.bets))return showToast("Copie introuvable","#EF4444");
+  importJSON(new File([JSON.stringify({bets:d.bets})],"auto.json",{type:"application/json"}));}catch(e){showToast("Erreur : "+((e&&e.message)||e),"#EF4444");}};
 
  const {dailyProfit,dailyPending,dailyCount}=useMemo(function(){
  const dp={},dpd={},dc={};
@@ -7335,8 +7430,17 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  );
  })()}
 
+ {/* Alerte synchro */}
+ {syncAlert&&<div style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",marginBottom:10,borderRadius:14,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.4)"}}>
+  <Ic n="warn" s={16} c="#f87171"/><div style={{flex:1,fontSize:13,color:"#fecaca",fontWeight:700,lineHeight:1.35}}>{pendingSync} pari(s) pas encore envoyé(s) sur Supabase<div style={{fontSize:11.5,color:"#fca5a5",fontWeight:500}}>Ils sont gardés sur ton téléphone{syncErr?" · "+String(syncErr).replace(/\{.*"message":"([^"]+)".*\}/,"$1").slice(0,60):""}</div></div>
+  <button onClick={()=>{flushRef.current&&flushRef.current();}} style={{height:34,padding:"0 12px",borderRadius:10,border:"none",background:"#ef4444",color:"#fff",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Réessayer</button>
+ </div>}
  {/* BOUTONS ACTIONS */}
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+ <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+ <button onClick={()=>setShowWeek(true)}
+ style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"14px 6px",background:"linear-gradient(135deg,rgba(34,197,94,.14),rgba(16,185,129,.06))",border:"1px solid rgba(34,197,94,.28)",borderRadius:14,color:"#86efac",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+ <Ic n="trendUp" s={16}/>Bilan
+ </button>
  <button onClick={()=>setView("calendrier")}
  style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"linear-gradient(135deg,rgba(124,58,237,.14),rgba(99,102,241,.08))",border:"1px solid rgba(167,139,250,.25)",borderRadius:14,color:"#c4b5fd",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -10976,6 +11080,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  {entityEd&&<EntityEditor kind={entityEd} onClose={()=>setEntityEd(null)} teamLogos={teamLogos} setTeamLogos={setTeamLogos} customClubs={customClubs} setCustomClubs={setCustomClubs} bkPhotos={bkPhotos} setBkPhotos={setBkPhotos} bookmakers={bookmakers} setBookmakers={setBookmakers} showToast={showToast}/>}
 
+ <div style={{display:"flex",gap:4,padding:3,borderRadius:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)",margin:"10px 0 6px"}}>
+ {[["suivi","Suivi"],["reglages","Réglages"]].map(([k,l])=><button key={k} onClick={()=>setSuiviTab(k)} style={{flex:1,height:38,borderRadius:9,border:"none",background:suiviTab===k?"#7c3aed":"transparent",color:suiviTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
+ </div>
+ {suiviTab==="suivi"&&<>
  <SuiviLabel>COMPÉTITIONS</SuiviLabel>
  {/* TOURNOIS ACTIFS */}
  <div style={{marginBottom:8}}>
@@ -11053,6 +11161,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  />
 
 
+ <SuiviLabel>ANALYSE</SuiviLabel>
+ <EvCheck bets={bets}/>
+ <CutGuide/>
+
+ <SuiviLabel>ARGENT</SuiviLabel>
+<Adjustments bets={bets} setBets={setBets} bookmakers={bookmakers}/>
+<TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>
+
+ </>}
+ {suiviTab==="reglages"&&<>
  <SuiviLabel>BOOKMAKERS & MISES</SuiviLabel>
  {/* ── Bookmakers ── */}
  <BookmarkersSection
@@ -11093,18 +11211,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
 
- <SuiviLabel>ANALYSE</SuiviLabel>
- <EvCheck bets={bets}/>
- <CutGuide/>
-
- <SuiviLabel>ARGENT</SuiviLabel>
-<Adjustments bets={bets} setBets={setBets} bookmakers={bookmakers}/>
-<TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>
-
  <SuiviLabel>DONNÉES & SAUVEGARDE</SuiviLabel>
  <div style={{marginBottom:8}}>
   <SuiviHead n="cloud" color={backupAge>=7?"#F59E0B":"#22C55E"} title="Sauvegarde sur le téléphone" sub={"Dernière : "+(backupAge>=999?"jamais":backupAge===0?"aujourd'hui":"il y a "+backupAge+" j")+" · copie hors Supabase"} open={backupOpen} onClick={()=>setBackupOpen(v=>!v)}
-   right={backupAge>=7?<span style={{fontSize:11,fontWeight:800,color:"#111",background:"#F59E0B",padding:"3px 8px",borderRadius:8}}>À faire</span>:null}/>
+   right={backupAge>=14?<span style={{fontSize:11,fontWeight:800,color:"#111",background:"#F59E0B",padding:"3px 8px",borderRadius:8}}>À faire</span>:null}/>
   {backupOpen&&<div style={{...SV_BODY,display:"flex",flexDirection:"column",gap:8}}>
    <div style={{fontSize:12.5,color:"#9ca3af",lineHeight:1.5}}>Crée un fichier avec tous tes paris, joueurs, logos et réglages. Range-le dans iCloud Drive : il ne dépend pas de Supabase. Conseillé : 1 fois par semaine.</div>
    <button onClick={downloadBackup} disabled={backingUp} style={{height:46,borderRadius:12,border:"none",background:"linear-gradient(135deg,#22C55E,#16A34A)",color:"#04130a",fontWeight:900,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{backingUp?"Sauvegarde en cours…":"Télécharger la sauvegarde"}</button>
@@ -11113,6 +11223,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     <input type="file" accept=".json,application/json" style={{display:"none"}} onChange={e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value="";}}/>
    </label>
    <div style={{fontSize:11,color:"#6b7280"}}>La restauration ajoute seulement les paris manquants (aucun doublon, rien n'est écrasé).</div>
+   <div style={{fontSize:12,fontWeight:800,color:"#cbd5e1",marginTop:6}}>Copies automatiques (sur ce téléphone, 1 par jour)</div>
+   {autoBks.length===0&&<div style={{fontSize:12,color:"#6b7280"}}>La première copie se fait quelques secondes après l'ouverture de l'app.</div>}
+   {autoBks.map(x=>(<div key={x.k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,background:"#0b1120",border:"1px solid #1F2937"}}>
+    <span style={{flex:1,fontSize:13,color:"#e5e7eb"}}>{new Date(x.at).toLocaleString("fr-CA",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} · {x.n} paris</span>
+    <button onClick={()=>{if(window.confirm("Restaurer les paris manquants depuis cette copie ?"))restoreAuto(x.k);}} style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid rgba(34,197,94,.35)",background:"rgba(34,197,94,.1)",color:"#22c55e",fontSize:12,fontWeight:800,cursor:"pointer"}}>Restaurer</button>
+   </div>))}
   </div>}
  </div>
  <BetDupes bets={bets} setBets={setBets} showToast={showToast}/>
@@ -11145,6 +11261,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  )}
  </div>
+ </>}
 
 
 
@@ -11252,6 +11369,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   }}/>;
  })()}
  {tourSheet&&<TourSheet name={tourSheet.name} game={tourSheet.game} bets={bets} allPlayers={allPlayers} teamLogos={teamLogos} onClose={()=>setTourSheet(null)}/>}
+ {showWeek&&<WeeklyRecap bets={bets} onClose={()=>setShowWeek(false)}/>}
  {clubSheet&&<ClubSheet team={clubSheet.team} game={clubSheet.game} bets={bets} allPlayers={allPlayers} teamLogos={teamLogos} onClose={()=>setClubSheet(null)}/>}
  {playerSheet&&(()=>{
  const fp=findPlayer(playerSheet);
