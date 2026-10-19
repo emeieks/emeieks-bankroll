@@ -1171,11 +1171,11 @@ function tourLogoSrc(league){
  else if(lc.includes("stake ranked")||lc.includes("ranked by starladder"))key="Stake Ranked";
  else if(lc.includes("msi")||lc.includes("mid-season")||lc.includes("mid season"))key="MSI";
  else if(lc.includes("valorant champions")||lc.includes("vct champions"))key="Valorant Champions";
- else if(lc.includes("worlds")||lc.includes("world championship")||lc.includes("world 20"))key="LCK";
  else key=Object.keys(KEY_MAP).find(function(k){return league.toLowerCase().includes(k.toLowerCase());})||null;
  }
  var src=null;
  {const games0=["LoL","CS2","Dota2","Valorant"];for(const g of games0){const mk="tourney_"+g+"_"+league;if(_GLOBAL_MEDIA_STORE[mk]){src=_GLOBAL_MEDIA_STORE[mk];break;}}}
+ if(!src){const nl=lc.replace(/\s*20\d\d$/,"").trim();const hit=Object.keys(_GLOBAL_MEDIA_STORE||{}).find(k=>{if(!k.startsWith("tourney_"))return false;const v=_GLOBAL_MEDIA_STORE[k];if(!v||String(v).includes("__FAILED__"))return false;const tn=k.replace(/^tourney_[^_]+_/,"").toLowerCase().replace(/\s*20\d\d$/,"").trim();return tn===nl||(nl.length>=4&&(tn.startsWith(nl)||nl.startsWith(tn)));});if(hit)src=_GLOBAL_MEDIA_STORE[hit];}
  if(!src)src=key?LEAGUE_LOGOS[key]:null;
  if(!src){
   // Try all games
@@ -6751,10 +6751,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  },[showToast]);
  const [suiviTab,setSuiviTab]=useState("suivi");
  const [showWeek,setShowWeek]=useState(false);
- useEffect(()=>{const d=new Date();const day=d.getDay();if(!(day===0&&d.getHours()>=18)&&day!==1)return;
-  const ws=weekStart(d);if(day===1)ws.setDate(ws.getDate()-7);const k=localYMD(ws);
-  try{if(localStorage.getItem("emeieks_week_seen")===k)return;localStorage.setItem("emeieks_week_seen",k);}catch(e){return;}
-  const t=setTimeout(()=>setShowWeek(true),2500);return()=>clearTimeout(t);},[]);
  const [pendSince,setPendSince]=useState(0);
  useEffect(()=>{if(pendingSync>0){if(!pendSince)setPendSince(Date.now());}else if(pendSince)setPendSince(0);},[pendingSync,pendSince]);
  const [tick,setTick]=useState(0);useEffect(()=>{const i=setInterval(()=>setTick(x=>x+1),30000);return()=>clearInterval(i);},[]);
@@ -7436,11 +7432,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <button onClick={()=>{flushRef.current&&flushRef.current();}} style={{height:34,padding:"0 12px",borderRadius:10,border:"none",background:"#ef4444",color:"#fff",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Réessayer</button>
  </div>}
  {/* BOUTONS ACTIONS */}
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
- <button onClick={()=>setShowWeek(true)}
- style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"14px 6px",background:"linear-gradient(135deg,rgba(34,197,94,.14),rgba(16,185,129,.06))",border:"1px solid rgba(34,197,94,.28)",borderRadius:14,color:"#86efac",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- <Ic n="trendUp" s={16}/>Bilan
- </button>
+ <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
  <button onClick={()=>setView("calendrier")}
  style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",background:"linear-gradient(135deg,rgba(124,58,237,.14),rgba(99,102,241,.08))",border:"1px solid rgba(167,139,250,.25)",borderRadius:14,color:"#c4b5fd",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -8970,7 +8962,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
  <div style={{display:"flex",alignItems:"baseline",gap:7,minWidth:0,flex:1,whiteSpace:"nowrap",overflow:"hidden"}}>
  <span style={{fontSize:fs,fontWeight:800,color:"#f0f4ff",letterSpacing:-.4,lineHeight:1.1,overflow:"hidden",textOverflow:"ellipsis"}}>{nm}</span>
- <span style={{fontSize:Math.max(12,fs-6),fontWeight:600,color:"#7a9cc4",flexShrink:0,position:"relative",top:3}}>{ln}</span>
+ <span style={{fontSize:Math.max(12,fs-6),fontWeight:600,color:"#7a9cc4",flexShrink:0}}>{ln}</span>
  </div>
  {(()=>{
  const bk=parseFloat(form.description);
@@ -9003,7 +8995,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <span style={{fontSize:14,fontWeight:700,color:"#e4eaf6"}}>{form.stake}$</span>
  </div>
  </div>
- <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>{form.bookmaker&&(BK_LOGOS[form.bookmaker]||bkPhotos[form.bookmaker])&&<img src={BK_LOGOS[form.bookmaker]||bkPhotos[form.bookmaker]} alt="" style={{width:30,height:30,objectFit:"contain",borderRadius:7}}/>}</div>
+ <div style={{flex:1,display:"flex",alignItems:"flex-end",justifyContent:"center",alignSelf:"stretch",paddingBottom:0}}>{form.bookmaker&&(BK_LOGOS[form.bookmaker]||bkPhotos[form.bookmaker])&&<img src={BK_LOGOS[form.bookmaker]||bkPhotos[form.bookmaker]} alt="" style={{width:24,height:24,objectFit:"contain",borderRadius:6}}/>}</div>
  {gain&&(
  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
  <span style={{fontSize:8,color:"#3d4d62",fontWeight:600,letterSpacing:.5}}>GAIN POTENTIEL</span>
