@@ -1325,7 +1325,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  </div>
  {/* L2 : Cote · BK · Mise · Ligue — plus visible */}
  <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap"}}>
- <span style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
+ <span className="br-m" style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
  {(bkLogo||bet.bookmaker)&&<span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {bkLogo
  ? (<img src={bkLogo} alt={bet.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>)
@@ -1336,7 +1336,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  if(!spLogo)return(<span key={i} style={{fontSize:12,fontWeight:700,color:"#7a9cbd",marginLeft:3}}>{sp.bookmaker}</span>);
  return(<img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:3}}/>);
  })}
- {bet.stake&&<><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></>}
+ {bet.stake&&<span className="br-m"><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></span>}
  {hasPP&&<><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#f87171",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
  {/* Tournament/League — affichage custom + select invisible */}
  {(()=>{
@@ -1427,8 +1427,14 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  </div>
  </div>
 
+ <div className="br-cols">
+ {(()=>{const st=+bet.stake||0,od=+bet.odds||0,pf=+bet.profit||0;const ret=isPending?st*od:isWon?st+pf:bet.status==="void"?st:0;
+  return [["Cote",od.toFixed(2),"#E5E7EB"],["Mise",st.toFixed(2)+"$","#E5E7EB"],[isPending?"Gain pot.":"Retour",ret.toFixed(2)+"$",isPending?"#E5E7EB":isWon?"#00E676":isLost?"#EF4444":"#E5E7EB"],["Bénéfice",isPending?"—":(pf>=0?"+":"")+pf.toFixed(2)+"$",isPending?"#6B7280":profitColor]].map(([l,v,c])=>(
+  <div key={l}><div style={{fontSize:15,fontWeight:700,color:c,whiteSpace:"nowrap"}}>{v}</div><div style={{fontSize:11.5,color:"#9CA3AF",marginTop:2}}>{l}</div></div>));})()}
+ </div>
+ <span className="br-strip" style={{background:isWon?"rgba(0,230,118,.12)":isLost?"rgba(239,68,68,.12)":"rgba(255,255,255,.05)",color:isWon?"#00E676":isLost?"#EF4444":"#9CA3AF"}}>{isWon?"Gagné":isLost?"Perdu":isPending?"En cours":"Void"}</span>
  {/* Droite : profit seul */}
- <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,minWidth:56}}>
+ <div className="br-res" style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,minWidth:56}}>
  <div style={{fontWeight:800,fontSize:14,color:profitColor,fontFamily:"Inter,sans-serif",letterSpacing:"-.4px",lineHeight:1,textShadow:isPending?"none":glowStyle||"none"}}>{profitTxt}</div>
  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{transition:"transform .2s",transform:open?"rotate(180deg)":"none",opacity:.25}}>
  <path d="M2 3.5L5 6.5L8 3.5" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -7279,9 +7285,28 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  button{-webkit-tap-highlight-color:transparent;}
  button:focus{outline:none;}
  input:focus{outline:none;}
+ .br-cols,.br-strip{display:none;}
+ @media (min-width:1024px){
+  .app-main{max-width:1180px!important;padding:28px 32px 40px 268px!important;}
+  .bottom-nav{left:0!important;right:auto!important;top:0!important;bottom:0!important;width:232px;border-top:none!important;border-right:1px solid rgba(255,255,255,.06)!important;box-shadow:none!important;padding:28px 14px!important;}
+  .bottom-nav-in{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:4px;max-width:none!important;}
+  .bottom-nav-in::before{content:"Esport Tracker";order:-2;font-size:17px;font-weight:800;color:#fff;padding:0 12px 22px;}
+  .navitem{flex-direction:row!important;justify-content:flex-start!important;gap:12px!important;padding:0 12px!important;height:44px;border-radius:12px!important;width:100%;}
+  .navitem:hover{background:rgba(255,255,255,.04);}
+  .navitem.on{background:rgba(124,58,237,.12);}
+  .navitem .lbl{font-size:13px!important;}
+  .nav-fab{order:-1;width:100%!important;height:44px!important;border-radius:12px!important;margin:0 0 14px!important;transform:none!important;gap:8px;}
+  .nav-fab::after{content:"Nouveau pari";color:#fff;font-size:14px;font-weight:700;}
+  .nav-fab span{font-size:22px!important;}
+  .moverlay{align-items:center!important;}
+  .modal{border-radius:22px!important;max-width:560px!important;}
+  .br-cols{display:grid;grid-template-columns:repeat(4,110px);gap:8px;margin-left:auto;padding-right:52px;}
+  .br-res,.br-m{display:none!important;}
+  .br-strip{display:flex;position:absolute;right:0;top:0;bottom:0;width:38px;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:700;}
+ }
  `}</style>
 
- <div style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
+ <div className="app-main" style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
 
  {/* Toast */}
  {toast&&<div style={{position:"fixed",top:18,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",padding:"10px 20px",borderRadius:12,fontWeight:700,fontSize:13,zIndex:500,boxShadow:"0 8px 24px rgba(124,58,237,0.4)",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",animation:"fadeUp .2s ease"}}>{toast.msg}</div>}
@@ -11376,14 +11401,14 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {(()=>{
  return(
  <div className="bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,transform:"translate3d(0,0,0)",WebkitTransform:"translate3d(0,0,0)",willChange:"transform",background:"rgba(9,14,28,.95)",borderTop:"1px solid rgba(255,255,255,.06)",zIndex:50,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",boxShadow:"0 -4px 24px rgba(0,0,0,.4)",padding:"8px 4px calc(14px + env(safe-area-inset-bottom))"}}>
- <div style={{maxWidth:500,margin:"0 auto",display:"flex",justifyContent:"space-around",alignItems:"center"}}>
+ <div className="bottom-nav-in" style={{maxWidth:500,margin:"0 auto",display:"flex",justifyContent:"space-around",alignItems:"center"}}>
  {(()=>{
  const navItems=NAV.filter(n=>n.id!=="add");
  const mid=Math.floor(navItems.length/2);
  const items=[];
  navItems.forEach((n,idx)=>{
  if(idx===mid){
- items.push(<button key="add-fab" onClick={()=>{setView("add");setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),80);}}
+ items.push(<button key="add-fab" className="nav-fab" onClick={()=>{setView("add");setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),80);}}
  style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 16px rgba(124,58,237,0.45)",flexShrink:0,transform:view==="add"?"scale(0.93)":"scale(1)",transition:"transform .15s ease",marginBottom:4}}>
  <span style={{fontSize:30,color:"#fff",lineHeight:1,marginTop:-1}}>+</span>
  </button>);
