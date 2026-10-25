@@ -1324,7 +1324,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  {descLine&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
  </div>
  {/* L2 : Cote · BK · Mise · Ligue — plus visible */}
- <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap"}}>
+ <div className="br-l2" style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap"}}>
  <span className="br-m" style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
  {(bkLogo||bet.bookmaker)&&<span className="br-m" style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {bkLogo
@@ -7288,7 +7288,20 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  .br-cols,.br-strip{display:none;}
  .desk-logo{display:none;}
  @media (min-width:1024px){
-  .app-main{max-width:1180px!important;padding:28px 32px 120px!important;}
+  .app-main{max-width:1320px!important;padding:28px 40px 130px!important;}
+  .bottom-nav{padding:10px 0 calc(12px + env(safe-area-inset-bottom))!important;}
+  .bottom-nav-in{max-width:none!important;justify-content:space-evenly!important;padding:0 40px;}
+  .navitem{flex-direction:row!important;gap:10px!important;padding:10px 22px!important;border-radius:14px!important;}
+  .navitem:hover{background:rgba(255,255,255,.05);}
+  .navitem.on{background:rgba(124,58,237,.14);}
+  .navitem .lbl{font-size:13px!important;letter-spacing:.6px;}
+  .br-l2{gap:6px!important;margin-top:4px;font-size:13px;}
+  .br-l2>span,.br-l2>img{margin-left:2px!important;margin-right:2px!important;}
+  .br-cols>div>div:first-child{font-size:16px!important;}
+  .betrow:hover,.bet-row-tap:hover,[style*="contain: layout style"]:hover{background:rgba(255,255,255,.025)!important;}
+  .card,.stat-bloc{transition:border-color .15s;}
+  .card:hover{border-color:#2C3A50;}
+  button{cursor:pointer;}
   .desk-logo{display:flex;align-items:center;gap:10px;margin:0 0 22px;cursor:pointer;width:max-content;}
   .moverlay{align-items:center!important;}
   .modal{border-radius:22px!important;max-width:560px!important;}
