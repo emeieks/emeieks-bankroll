@@ -1326,7 +1326,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  {/* L2 : Cote · BK · Mise · Ligue — plus visible */}
  <div style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap"}}>
  <span className="br-m" style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
- {(bkLogo||bet.bookmaker)&&<span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
+ {(bkLogo||bet.bookmaker)&&<span className="br-m" style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {bkLogo
  ? (<img src={bkLogo} alt={bet.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>)
  : bet.bookmaker ? (<span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.bookmaker}</span>) : null
@@ -7286,18 +7286,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  button:focus{outline:none;}
  input:focus{outline:none;}
  .br-cols,.br-strip{display:none;}
+ .desk-logo{display:none;}
  @media (min-width:1024px){
-  .app-main{max-width:1180px!important;padding:28px 32px 40px 268px!important;}
-  .bottom-nav{left:0!important;right:auto!important;top:0!important;bottom:0!important;width:232px;border-top:none!important;border-right:1px solid rgba(255,255,255,.06)!important;box-shadow:none!important;padding:28px 14px!important;}
-  .bottom-nav-in{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:4px;max-width:none!important;}
-  .bottom-nav-in::before{content:"Esport Tracker";order:-2;font-size:17px;font-weight:800;color:#fff;padding:0 12px 22px;}
-  .navitem{flex-direction:row!important;justify-content:flex-start!important;gap:12px!important;padding:0 12px!important;height:44px;border-radius:12px!important;width:100%;}
-  .navitem:hover{background:rgba(255,255,255,.04);}
-  .navitem.on{background:rgba(124,58,237,.12);}
-  .navitem .lbl{font-size:13px!important;}
-  .nav-fab{order:-1;width:100%!important;height:44px!important;border-radius:12px!important;margin:0 0 14px!important;transform:none!important;gap:8px;}
-  .nav-fab::after{content:"Nouveau pari";color:#fff;font-size:14px;font-weight:700;}
-  .nav-fab span{font-size:22px!important;}
+  .app-main{max-width:1180px!important;padding:28px 32px 120px!important;}
+  .desk-logo{display:flex;align-items:center;gap:10px;margin:0 0 22px;cursor:pointer;width:max-content;}
   .moverlay{align-items:center!important;}
   .modal{border-radius:22px!important;max-width:560px!important;}
   .br-cols{display:grid;grid-template-columns:repeat(4,110px);gap:8px;margin-left:auto;padding-right:52px;}
@@ -7307,6 +7299,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  `}</style>
 
  <div className="app-main" style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
+ {view!=="home"&&<div className="desk-logo" onClick={()=>setView("home")}>
+  <div style={{width:38,height:38,borderRadius:11,background:"linear-gradient(135deg,#7c3aed,#3b82f6)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(124,58,237,.4)"}}>
+   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg></div>
+  <div><div style={{fontSize:19,fontWeight:900,letterSpacing:".5px",color:"#f0f4ff",lineHeight:1}}>EMEIEKS</div>
+   <div style={{fontSize:9,color:"#4a5a6e",letterSpacing:"3px",fontWeight:700,marginTop:3,lineHeight:1}}>BANKROLL</div></div>
+ </div>}
 
  {/* Toast */}
  {toast&&<div style={{position:"fixed",top:18,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",padding:"10px 20px",borderRadius:12,fontWeight:700,fontSize:13,zIndex:500,boxShadow:"0 8px 24px rgba(124,58,237,0.4)",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",animation:"fadeUp .2s ease"}}>{toast.msg}</div>}
@@ -7370,7 +7368,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* TOP BAR */}
  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,paddingTop:2,gap:10}}>
  {/* Logo + nom */}
- <div style={{display:"flex",alignItems:"center",gap:10}}>
+ <div className="home-logo" style={{display:"flex",alignItems:"center",gap:10}}>
  <div style={{width:38,height:38,borderRadius:11,background:"linear-gradient(135deg,#7c3aed,#3b82f6)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 4px 16px rgba(124,58,237,.4)"}}>
  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
  </div>
