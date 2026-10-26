@@ -3920,7 +3920,12 @@ function ClubsTab({bets,allPlayers,teamLogos}){
   <div style={{fontSize:11.5,color:"#5b6478",lineHeight:1.5}}>Club = équipe actuelle du joueur parié. Touche un club pour voir sa fiche.</div>
  </div>);
 }
-function anyTourLogo(name,game){try{const st=typeof _GLOBAL_MEDIA_STORE!=="undefined"&&_GLOBAL_MEDIA_STORE;const v=st&&(st["tourney_"+(game||"")+"_"+name]||st["tourney_"+name]);if(v&&!String(v).includes("__FAILED__"))return v;}catch(e){}return tourLogoSrc(name);}
+function anyTourLogo(name,game){try{const st=typeof _GLOBAL_MEDIA_STORE!=="undefined"&&_GLOBAL_MEDIA_STORE;const ok=v=>v&&!String(v).includes("__FAILED__");
+  let v=st&&(st["tourney_"+(game||"")+"_"+name]||st["tourney_"+name]);if(ok(v))return v;
+  // jeu inconnu (vue « Tous les jeux ») ou casse différente : on cherche dans tous les jeux
+  if(st&&name){const n=String(name).toLowerCase().trim();for(const g of ["CS2","LoL","Dota2","Valorant",""]){const x=st["tourney_"+g+"_"+name];if(ok(x))return x;}
+    const k=Object.keys(st).find(k=>k.startsWith("tourney_")&&k.slice(k.indexOf("_",8)+1).toLowerCase().trim()===n&&ok(st[k]));if(k)return st[k];}
+}catch(e){}return tourLogoSrc(name);}
 // ── Bilan de la semaine (lundi → dimanche) ──
 function weekStart(d){const x=new Date(d);x.setHours(0,0,0,0);const wd=(x.getDay()+6)%7;x.setDate(x.getDate()-wd);return x;}
 function WeeklyRecap({bets,onClose}){
@@ -7287,37 +7292,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  input:focus{outline:none;}
  .br-cols,.br-strip{display:none;}
  .desk-logo{display:none;}
- @media (min-width:1024px){
-  .app-main{max-width:1320px!important;padding:28px 40px 130px!important;}
-  .bottom-nav{padding:10px 0 calc(12px + env(safe-area-inset-bottom))!important;}
-  .bottom-nav-in{max-width:none!important;justify-content:space-evenly!important;padding:0 40px;}
-  .navitem{flex-direction:row!important;gap:10px!important;padding:10px 22px!important;border-radius:14px!important;}
-  .navitem:hover{background:rgba(255,255,255,.05);}
-  .navitem.on{background:rgba(124,58,237,.14);}
-  .navitem .lbl{font-size:13px!important;letter-spacing:.6px;}
-  .br-l2{gap:6px!important;margin-top:4px;font-size:13px;}
-  .br-l2>span,.br-l2>img{margin-left:2px!important;margin-right:2px!important;}
-  .br-cols>div>div:first-child{font-size:16px!important;}
-  .betrow:hover,.bet-row-tap:hover,[style*="contain: layout style"]:hover{background:rgba(255,255,255,.025)!important;}
-  .card,.stat-bloc{transition:border-color .15s;}
-  .card:hover{border-color:#2C3A50;}
-  button{cursor:pointer;}
-  .desk-logo{display:flex;align-items:center;gap:10px;margin:0 0 22px;cursor:pointer;width:max-content;}
-  .moverlay{align-items:center!important;}
-  .modal{border-radius:22px!important;max-width:560px!important;}
-  .br-cols{display:grid;grid-template-columns:repeat(4,110px);gap:8px;margin-left:auto;padding-right:52px;}
-  .br-res,.br-m{display:none!important;}
-  .br-strip{display:flex;position:absolute;right:0;top:0;bottom:0;width:38px;align-items:center;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:700;}
- }
+
  `}</style>
 
  <div className="app-main" style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
- {view!=="home"&&<div className="desk-logo" onClick={()=>setView("home")}>
-  <div style={{width:38,height:38,borderRadius:11,background:"linear-gradient(135deg,#7c3aed,#3b82f6)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(124,58,237,.4)"}}>
-   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg></div>
-  <div><div style={{fontSize:19,fontWeight:900,letterSpacing:".5px",color:"#f0f4ff",lineHeight:1}}>EMEIEKS</div>
-   <div style={{fontSize:9,color:"#4a5a6e",letterSpacing:"3px",fontWeight:700,marginTop:3,lineHeight:1}}>BANKROLL</div></div>
- </div>}
+
 
  {/* Toast */}
  {toast&&<div style={{position:"fixed",top:18,left:"50%",transform:"translateX(-50%)",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",padding:"10px 20px",borderRadius:12,fontWeight:700,fontSize:13,zIndex:500,boxShadow:"0 8px 24px rgba(124,58,237,0.4)",whiteSpace:"nowrap",fontFamily:"'Inter',sans-serif",animation:"fadeUp .2s ease"}}>{toast.msg}</div>}
