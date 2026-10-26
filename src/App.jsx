@@ -3444,7 +3444,7 @@ function SelectionModal({bets,scopeIds=null,scopeLabel="",onClose,setBets,supaPu
    </div>}
    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"12px 2px 0",fontSize:14}}>
     <span style={{color:"#8b93a7"}}>{activeF?visibleBets.length+" paris · ":""}Touche les paris à modifier</span>
-    {visibleBets.length>0&&<button onClick={()=>setSelected(prev=>{const n=new Set(prev);if(allSel)visibleBets.forEach(b=>n.delete(b.id));else visibleBets.forEach(b=>n.add(b.id));return n;})} style={{border:"none",background:"transparent",color:VL,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{allSel?"Tout décocher":"Tout cocher ("+visibleBets.length+")"}</button>}
+
     {false&&selected.size>0&&<button onClick={()=>setSelected(new Set())} style={{border:"none",background:"transparent",color:VL,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tout désélectionner</button>}
    </div>
   </div>
@@ -5620,6 +5620,20 @@ function AppMain(){
  const [editTeam,setEditTeam]=useState(null);
  const [teamLogoUrl,setTeamLogoUrl]=useState("");
  const [teamLogoSaving,setTeamLogoSaving]=useState(false);
+ // Tournoi actif : les paris importés (robot / Betby) arrivent avec le nom brut du bookmaker (« Russia »…).
+ // Si un tournoi est actif pour ce jeu, on le pose à la place de ces noms inconnus.
+ useEffect(()=>{
+  const now=Date.now();let changed=0;
+  const fix=bets.map(b=>{const t=activeTourneys&&activeTourneys[b.game];if(!t||!t.name||b.tournament===t.name)return b;
+    if(t.end&&new Date(t.end)<new Date())return b;
+    const bt=String(b.tournament||"").trim();const known=(savedTourneys&&savedTourneys[b.game]||[]).includes(bt);if(bt&&known)return b;
+    const d=new Date(b.datetime||b.createdAt||0).getTime();if(!d)return b;
+    const from=t.start?new Date(t.start).getTime()-12*3600e3:now-3*86400e3;if(d<from)return b;
+    if(t.end&&d>new Date(t.end).getTime()+86400e3)return b;
+    changed++;return {...b,tournament:t.name,updatedAt:Date.now()};});
+  if(changed)setBets(fix);
+ // eslint-disable-next-line
+ },[bets.length,activeTourneys,savedTourneys]);
  const [tourneyCal,setTourneyCal]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_tourney_cal")||"[]");}catch(e){return[];}});
  
  
@@ -7165,7 +7179,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  showToast("Pari duplique");
  },[showToast]);
 
+ const splitScrollY=useRef(0);
+ const keepScroll=()=>{const y=splitScrollY.current;const go=()=>{try{window.scrollTo({top:y,behavior:"instant"});}catch(e){window.scrollTo(0,y);}};requestAnimationFrame(()=>{go();requestAnimationFrame(go);});setTimeout(go,60);setTimeout(go,250);};
  const splitBet=useCallback(function(bet){
+ splitScrollY.current=window.scrollY||document.documentElement.scrollTop||0;
  setSplitForm({bookmaker:"",stake:"",odds:String(bet.odds||"")});
  setSplitModal(bet);
  },[]);
@@ -11110,7 +11127,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{flex:1,minWidth:0,position:"relative"}}>
  <div style={{fontSize:11,fontWeight:700,color:cfg.accent||"#A78BFA",marginBottom:2}}>{game}</div>
  <select value={hasActive?t.name:""}
- onChange={e=>{const val=e.target.value;if(!val){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}else{setActiveTourneys(prev=>({...prev,[game]:{name:val,end:""}}));}}}
+ onChange={e=>{const val=e.target.value;if(!val){setActiveTourneys(prev=>{const n={...prev};delete n[game];return n;});}else{setActiveTourneys(prev=>({...prev,[game]:{name:val,end:"",start:new Date().toISOString()}}));}}}
  style={{width:"100%",background:"transparent",border:"none",padding:0,color:hasActive?"#eef1f7":"#5b6478",fontWeight:hasActive?600:500,fontSize:14,fontFamily:"Inter,sans-serif",outline:"none",cursor:"pointer",textOverflow:"ellipsis"}}>
  <option value="">Aucun tournoi actif</option>
  {[...new Set([...(t&&t.name?[t.name]:[]),...saved])].map(x=><option key={x} value={x}>{x}</option>)}
@@ -11312,7 +11329,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  <div style={{display:"flex",gap:6}}>
  <button onClick={()=>{
- setActiveTourneys(prev=>({...prev,[game]:{name:s,end:""}}));
+ setActiveTourneys(prev=>({...prev,[game]:{name:s,end:"",start:new Date().toISOString()}}));
  setModalTourney(false);showToast(" "+s+" activé");
  }} style={{padding:"3px 9px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:6,color:"#00E676",cursor:"pointer",fontSize:10,fontFamily:"'Inter',sans-serif",fontWeight:600}}>
  Activer
@@ -11344,7 +11361,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  return{...prev,[game]:[...list,name]};
  });
  // Activer directement
- setActiveTourneys(prev=>({...prev,[game]:{name,end}}));
+ setActiveTourneys(prev=>({...prev,[game]:{name,end,start:new Date().toISOString()}}));
  setModalTourney(false);
  showToast(" "+name+" ajouté & activé");
  }} style={{padding:"11px",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:13}}>
@@ -11621,7 +11638,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  {/* MODAL SPLIT BET */}
  {splitModal&&(
- <div className="moverlay" onClick={()=>setSplitModal(null)}>
+ <div className="moverlay" onClick={()=>{setSplitModal(null);keepScroll();}}>
  <div className="modal" style={{padding:0,overflow:"hidden",borderRadius:24}} onClick={e=>e.stopPropagation()}>
 
  {/* Header */}
@@ -11720,7 +11737,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  {/* Boutons */}
  <div style={{display:"grid",gridTemplateColumns:"1fr 2fr",gap:8}}>
- <button onClick={()=>setSplitModal(null)}
+ <button onClick={()=>{setSplitModal(null);keepScroll();}}
  style={{padding:"13px",background:"rgba(255,255,255,0.05)",border:"1px solid #1F2937",borderRadius:12,color:"#6B7280",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13}}>
  Annuler
  </button>
@@ -11743,7 +11760,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const newProfit=betProfit({...splitModal,splits:newSplits},splitModal.status,newTotalStake,splitModal.odds);
  setBets(b=>b.map(bet=>String(bet.id)===String(splitModal.id)?{...bet,stake:newTotalStake,splits:newSplits,profit:newProfit,updatedAt:Date.now()}:bet));
  showToast(splitForm.bookmaker+" "+addStake+"$ · Total "+newTotalStake.toFixed(0)+"$","#A78BFA");
- setSplitModal(null);
+ setSplitModal(null);keepScroll();
  }}
  style={{padding:"13px",background:splitForm.bookmaker&&splitForm.stake?"linear-gradient(135deg,#7C3AED,#3B82F6)":"#1F2937",border:"none",borderRadius:12,color:splitForm.bookmaker&&splitForm.stake?"#fff":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13,boxShadow:splitForm.bookmaker&&splitForm.stake?"0 4px 20px rgba(124,58,237,0.35)":"none",transition:"all .15s"}}>
  + Ajouter
