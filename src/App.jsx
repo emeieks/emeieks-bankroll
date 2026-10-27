@@ -6428,20 +6428,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  return null;
  },[allPlayers]);
 
- const settled=useMemo(()=>bets.filter(b=>b.status!=="pending"),[bets]);
- // Stats : filtre par mois (toute la section Stats)
- const periodCut=statsPeriod?(()=>{const c=new Date();c.setDate(c.getDate()-statsPeriod);return localYMD(c);})():null;
- const inMonth=b=>(!statsMonth||String(b.datetime||"").slice(0,7)===statsMonth)&&(!periodCut||String(b.datetime||"").slice(0,10)>=periodCut);
- // eslint-disable-next-line react-hooks/exhaustive-deps
- const statsBets=useMemo(()=>(statsMonth||periodCut)?bets.filter(inMonth):bets,[bets,statsMonth,periodCut]);
- // eslint-disable-next-line react-hooks/exhaustive-deps
- const statsSettled=useMemo(()=>(statsMonth||periodCut)?settled.filter(inMonth):settled,[settled,statsMonth,periodCut]);
- const statsMonths=useMemo(()=>[...new Set(bets.map(b=>String(b.datetime||"").slice(0,7)).filter(k=>/^\d{4}-\d{2}$/.test(k)))].sort().reverse(),[bets]);
- const statsProfit=useMemo(()=>statsSettled.reduce((t,b)=>t+(b.profit||0),0),[statsSettled]);
- const statsChartPoints=useMemo(()=>{const pts=[{v:0,dt:""}];let run=0;[...statsSettled].sort((a,b2)=>String(a.datetime||"").localeCompare(String(b2.datetime||""))).forEach(b=>{run+=b.profit||0;pts.push({v:run,dt:toDateKey(b.datetime)});});return pts;},[statsSettled]);
-
- 
-
  // Filtre Test + MIB 
  const isTestActive=useMemo(()=>{
  const f=testFilter;
@@ -6472,6 +6458,20 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  },[isTestActive,testFilter]);
 
  const betsForDisplay=useMemo(()=>isTestActive?filteredByTest(bets):bets,[bets,isTestActive,filteredByTest]);
+ const settled=useMemo(()=>betsForDisplay.filter(b=>b.status!=="pending"),[betsForDisplay]);
+ // Stats : filtre par mois (toute la section Stats)
+ const periodCut=statsPeriod?(()=>{const c=new Date();c.setDate(c.getDate()-statsPeriod);return localYMD(c);})():null;
+ const inMonth=b=>(!statsMonth||String(b.datetime||"").slice(0,7)===statsMonth)&&(!periodCut||String(b.datetime||"").slice(0,10)>=periodCut);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ const statsBets=useMemo(()=>(statsMonth||periodCut)?betsForDisplay.filter(inMonth):betsForDisplay,[betsForDisplay,statsMonth,periodCut]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ const statsSettled=useMemo(()=>(statsMonth||periodCut)?settled.filter(inMonth):settled,[settled,statsMonth,periodCut]);
+ const statsMonths=useMemo(()=>[...new Set(bets.map(b=>String(b.datetime||"").slice(0,7)).filter(k=>/^\d{4}-\d{2}$/.test(k)))].sort().reverse(),[bets]);
+ const statsProfit=useMemo(()=>statsSettled.reduce((t,b)=>t+(b.profit||0),0),[statsSettled]);
+ const statsChartPoints=useMemo(()=>{const pts=[{v:0,dt:""}];let run=0;[...statsSettled].sort((a,b2)=>String(a.datetime||"").localeCompare(String(b2.datetime||""))).forEach(b=>{run+=b.profit||0;pts.push({v:run,dt:toDateKey(b.datetime)});});return pts;},[statsSettled]);
+
+ 
+
  const betsForMesParis=useMemo(()=>betsForDisplay.filter(b=>!isAdjBet(b)),[betsForDisplay]);
  // Anciens ajustements (réglages) → convertis en paris
  useEffect(()=>{if(!adjustments.length)return;setBets(p=>[...adjustments.map((a,i)=>adjToBet({...a,id:a.id||Date.now()*10+i})),...p]);setAdjustments([]);},[adjustments]);
@@ -6821,8 +6821,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const filteredBets=useMemo(function(){
  // Fast path: no active filters
  const noFilters=fGames.length===0&&fBKs.length===0&&!fPlayer&&fStatus==="All"&&fOverUnder==="All"&&!fLive&&!fHeadshot&&!fDuel&&!fMinOdds&&!fMaxOdds&&!fMinStake&&!fMaxStake&&fMapFilter==="all"&&fRole==="All"&&fLeague==="All"&&fTourneys.size===0&&!fDateFrom&&!fDateTo;
- if(noFilters)return bets;
- return bets.filter(b=>{
+ if(noFilters)return betsForDisplay;
+ return betsForDisplay.filter(b=>{
  if(fGames.length>0&&!fGames.includes(b.game))return false;
  if(fBKs.length>0&&!fBKs.includes(b.bookmaker||"Autre")&&!(b.splits||[]).some(sp=>fBKs.includes(sp.bookmaker)))return false;
  if(fPlayer&&!b.player.toLowerCase().includes(fPlayer.toLowerCase()))return false;
@@ -6848,9 +6848,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  // Sort by datetime (when bet was placed), not updatedAt
  return (String(b2.datetime||"")).localeCompare(String(a.datetime||""));
  });
- },[bets,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
+ },[betsForDisplay,fGames,fBKs,fPlayer,fStatus,fOverUnder,fLive,fHeadshot,fDuel,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fMapFilter,fRole,fLeague,fTourneys,fDateFrom,fDateTo]);
 
- const calFilteredBets=useMemo(function(){const gf=calGames.length>0?calGames:fGames;return gf.length>0?bets.filter(b=>gf.includes(b.game)):bets;},[bets,calGames,fGames]);
+ const calFilteredBets=useMemo(function(){const gf=calGames.length>0?calGames:fGames;return gf.length>0?betsForDisplay.filter(b=>gf.includes(b.game)):betsForDisplay;},[betsForDisplay,calGames,fGames]);
 
  const {allSortedBets,byDay,byMonth,monthKeys}=useMemo(function(){
  const src=isTestActive?betsForDisplay:bets;
@@ -6929,8 +6929,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  
  const progression=useMemo(()=>bankroll>0?((totalProfit-taxQcCad(totalProfit)/USD_CAD)/bankroll)*100:0,[totalProfit,bankroll]);
  // Compound bankroll system: tier = floor(liveBK/2500)*2500 (min 5000), 1u = 1% of tier 
- const pendingCount=useMemo(()=>bets.filter(b=>b.status==="pending").length,[bets]);
- const settledCount=useMemo(()=>bets.filter(b=>b.status!=="pending").length,[bets]);
+ const pendingCount=useMemo(()=>betsForDisplay.filter(b=>b.status==="pending").length,[betsForDisplay]);
+ const settledCount=useMemo(()=>betsForDisplay.filter(b=>b.status!=="pending").length,[betsForDisplay]);
  const liveBankroll=useMemo(()=>bankroll+totalProfit,[bankroll,totalProfit]);
  const bkTier=useMemo(()=>manualTier||Math.max(5000,Math.floor(liveBankroll/2500)*2500),[liveBankroll,manualTier]);
  const unitValue=useMemo(()=>bkTier*0.01,[bkTier]);
@@ -7425,7 +7425,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* 3 KPI CARDS */}
  {(()=>{
  const settled2=homeSettled;
- const pending2=bets.filter(b=>b.status==="pending").length;
+ const pending2=betsForDisplay.filter(b=>b.status==="pending").length;
  const won2=settled2.filter(b=>b.status==="won").length;
  const lost2=settled2.filter(b=>b.status==="lost").length;
  const roi2=settled2.length>0&&settled2.reduce((s,b)=>s+(b.stake||0),0)>0
@@ -11392,12 +11392,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    setForm(f=>({...f,player:np.name||f.player,autoInfo:{...f.autoInfo,...np,team_logo_url:logo||np.team_logo_url||f.autoInfo.team_logo_url}}));
   }}/>;
  })()}
- {tourSheet&&<TourSheet name={tourSheet.name} game={tourSheet.game} bets={bets} allPlayers={allPlayers} teamLogos={teamLogos} onClose={()=>setTourSheet(null)}/>}
- {showWeek&&<WeeklyRecap bets={bets} onClose={()=>setShowWeek(false)}/>}
- {clubSheet&&<ClubSheet team={clubSheet.team} game={clubSheet.game} bets={bets} allPlayers={allPlayers} teamLogos={teamLogos} onClose={()=>setClubSheet(null)}/>}
+ {tourSheet&&<TourSheet name={tourSheet.name} game={tourSheet.game} bets={betsForDisplay} allPlayers={allPlayers} teamLogos={teamLogos} onClose={()=>setTourSheet(null)}/>}
+ {showWeek&&<WeeklyRecap bets={betsForDisplay} onClose={()=>setShowWeek(false)}/>}
+ {clubSheet&&<ClubSheet team={clubSheet.team} game={clubSheet.game} bets={betsForDisplay} allPlayers={allPlayers} teamLogos={teamLogos} onClose={()=>setClubSheet(null)}/>}
  {playerSheet&&(()=>{
  const fp=findPlayer(playerSheet);
- return <PlayerSheet name={playerSheet} player={fp} bets={bets} teamLogos={teamLogos} allPlayers={allPlayers} activeTourneys={activeTourneys} showToast={showToast}
+ return <PlayerSheet name={playerSheet} player={fp} bets={betsForDisplay} teamLogos={teamLogos} allPlayers={allPlayers} activeTourneys={activeTourneys} showToast={showToast}
   onClose={()=>setPlayerSheet(null)}
   onSaved={(np,logo)=>{
    applyPlayerSaved((playerSheet||"").toLowerCase().trim(),np,logo);
