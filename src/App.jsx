@@ -4077,6 +4077,7 @@ function exDims(ap){return [
  {k:"role",t:"Poste",v:b=>exRole(b,ap)||null},
  {k:"tour",t:"Ligue / tournoi",v:b=>effectiveTournament(b,ap)||"Hors tournoi"},
  {k:"ppmap",t:"Format PrizePicks",v:b=>b.ppMapType&&b.ppMapType!=="HIDE"?b.ppMapType:null},
+ {k:"edge",t:"Écart PrizePicks",v:b=>{const e=spotEdge(b);return e==null||isNaN(e)?null:(Math.round(e*4)/4).toFixed(2);},sort:"num"},
  {k:"ppline",t:"Ligne PrizePicks",v:b=>{const v=exNum(b.ppLine);return v==null?null:v.toFixed(1);},sort:"num"},
  {k:"line",t:"Ligne jouée",v:b=>{const v=exBkLine(b);return v==null?null:v.toFixed(1);},sort:"num"},
  {k:"odds",t:"Tranche de cote",v:b=>{const o=b.odds||0;const r=EX_ODDS.find(([a,z])=>o>=a&&o<z);return r?r[2]:null;},sort:"odds"},
@@ -4167,13 +4168,15 @@ function Explorer({bets,allPlayers,initial=[],title,onClose}){
 // ── RECHERCHE : je coche ce que je veux, j'obtiens la stat ──
 function StatSearch({bets,allPlayers,onSearch}){
  const base=useMemo(()=>bets.filter(b=>(b.status==="won"||b.status==="lost"||b.status==="void")&&!isAdjBet(b)),[bets]);
- const E={game:"",role:"",tour:"",sens:"",type:"",ppmap:"",ppMin:"",ppMax:"",lnMin:"",lnMax:"",oMin:"",oMax:"",sMin:"",sMax:"",bk:"",live:"",player:"",from:"",to:""};
+ const E={edge:"",edgeMode:"eq",game:"",role:"",tour:"",sens:"",type:"",ppmap:"",ppMin:"",ppMax:"",lnMin:"",lnMax:"",oMin:"",oMax:"",sMin:"",sMax:"",bk:"",live:"",player:"",from:"",to:""};
  const [q,setQ]=useState(E);const set=(k,v)=>setQ(o=>({...o,[k]:o[k]===v?"":v}));const setv=(k,v)=>setQ(o=>({...o,[k]:v}));
  const gb=q.game?base.filter(b=>b.game===q.game):base;
  const uniq=fn=>[...new Set(gb.map(fn).filter(Boolean))];
  const roles=uniq(b=>exRole(b,allPlayers)).sort();
  const tours=(()=>{const m={};gb.forEach(b=>{const t=effectiveTournament(b,allPlayers);if(t)m[t]=(m[t]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);})();
  const bks=uniq(b=>b.bookmaker).sort();
+ const edgeOf=b=>{const e=spotEdge(b);return e==null||isNaN(e)?null:Math.round(e*4)/4;};
+ const edges=(()=>{const m={};gb.forEach(b=>{const e=edgeOf(b);if(e!=null)m[e]=(m[e]||0)+1;});return Object.keys(m).map(Number).sort((a,b)=>a-b);})();
  const build=()=>{const f=[];const add=(k,label,fn)=>f.push({k,label,fn});
   if(q.game)add("game","Jeu : "+q.game,b=>b.game===q.game);
   if(q.role)add("role","Poste : "+q.role,b=>exRole(b,allPlayers)===q.role);
@@ -4181,6 +4184,7 @@ function StatSearch({bets,allPlayers,onSearch}){
   if(q.sens)add("sens","Sens : "+q.sens,b=>b.overUnder===q.sens);
   if(q.type)add("type","Type : "+q.type,b=>q.type==="Headshots"?exHS(b):!exHS(b));
   if(q.ppmap)add("ppmap","Format PP : "+q.ppmap,b=>b.ppMapType===q.ppmap);
+  if(q.edge!==""){const ev=+q.edge;const md=q.edgeMode;add("edge","Écart PP "+(md==="ge"?"≥ ":md==="le"?"≤ ":"")+(ev>0?"+":"")+ev,b=>{const e=edgeOf(b);if(e==null)return false;return md==="ge"?e>=ev-1e-9:md==="le"?e<=ev+1e-9:Math.abs(e-ev)<1e-9;});}
   if(q.ppMin||q.ppMax)add("ppline","Ligne PP "+(q.ppMin||"…")+" → "+(q.ppMax||"…"),b=>{const v=exNum(b.ppLine);return v!=null&&(!q.ppMin||v>=+q.ppMin)&&(!q.ppMax||v<=+q.ppMax);});
   if(q.lnMin||q.lnMax)add("line","Ligne jouée "+(q.lnMin||"…")+" → "+(q.lnMax||"…"),b=>{const v=exBkLine(b);return v!=null&&(!q.lnMin||v>=+q.lnMin)&&(!q.lnMax||v<=+q.lnMax);});
   if(q.oMin||q.oMax)add("odds","Cote "+(q.oMin||"…")+" → "+(q.oMax||"…"),b=>(!q.oMin||(b.odds||0)>=+q.oMin)&&(!q.oMax||(b.odds||0)<=+q.oMax));
@@ -4205,6 +4209,11 @@ function StatSearch({bets,allPlayers,onSearch}){
   <div style={lab}>Type</div><Chips k="type" items={["Kills","Headshots"]}/>
   {tours.length>0&&<><div style={lab}>Ligue / tournoi</div><select value={q.tour} onChange={e=>setv("tour",e.target.value)} style={inp}><option value="">Tous</option>{tours.map(t=><option key={t}>{t}</option>)}</select></>}
   <div style={lab}>Format PrizePicks</div><Chips k="ppmap" items={["Map 1+2","Map 3","Map 1+2+3"]}/>
+  {edges.length>0&&<><div style={lab}>Écart PrizePicks</div>
+   <div style={{display:"grid",gridTemplateColumns:"110px 1fr",gap:8}}>
+    <select value={q.edgeMode} onChange={e=>setv("edgeMode",e.target.value)} style={inp}><option value="eq">Exactement</option><option value="ge">Au moins</option><option value="le">Au plus</option></select>
+    <select value={q.edge} onChange={e=>setv("edge",e.target.value)} style={inp}><option value="">Tous les écarts</option>{edges.map(e=>{const n=gb.filter(b=>edgeOf(b)===e).length;return <option key={e} value={e}>{(e>0?"+":"")+e} ({n} paris)</option>;})}</select>
+   </div></>}
   <div style={lab}>Ligne PrizePicks (entre)</div><Range a="ppMin" b="ppMax" ph1="ex. 14.5" ph2="ex. 18.5"/>
   <div style={lab}>Ligne jouée (entre)</div><Range a="lnMin" b="lnMax"/>
   <div style={lab}>Cote (entre)</div><Range a="oMin" b="oMax" ph1="ex. 1.70" ph2="ex. 2.00"/>
