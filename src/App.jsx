@@ -11911,8 +11911,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
        </div>
        <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
         <span>@{Number(a.book_odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
-        <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,marginRight:3}}/><span>{a.pp_line} ({a.pp_maps})</span>
-        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"rgba(167,139,250,.9)"}}>+{a.edge}</span>
+        <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,marginRight:4}}/><span style={{color:"rgba(167,139,250,.95)"}}>+{a.edge}</span>
         <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>{(()=>{const [t1,t2]=String(a.match||"").split(/\s+vs\.?\s+/i);const T=t=>{const u=evLogo(t);return u?<img src={u} alt={t} title={t} style={{width:16,height:16,objectFit:"contain",borderRadius:3,flexShrink:0}} onError={e=>{e.target.replaceWith(document.createTextNode(teamAbbr(t)));}}/>:<span style={{color:"#9ca3af"}}>{teamAbbr(t)}</span>;};
          return <span style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0}}>{T(t1)}<span style={{color:"#5a6e84",fontSize:10.5}}>vs</span>{t2?T(t2):null}{a.start?<span style={{color:"#5a6e84",marginLeft:3}}>{hhmm(a.start)}</span>:null}</span>;})()}
        </div>
