@@ -4686,6 +4686,62 @@ function ppEdgeEq(b){
  if(e==null||isNaN(e))return null;
  return b.ppMapType==="Map 1+2+3"?e*1.5:e;
 }
+
+// ── Console du bot (journal en direct d'un run lancé depuis l'app) ──
+function EvConsole({text,live}){
+ const ref=useRef(null);
+ useEffect(()=>{if(ref.current)ref.current.scrollTop=ref.current.scrollHeight;},[text]);
+ return(<div style={{marginTop:10,borderRadius:12,border:"1px solid rgba(34,197,94,.25)",background:"#05080d",overflow:"hidden"}}>
+  <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:11,fontWeight:700,color:"#8b93a7",fontFamily:"Inter,sans-serif"}}>
+   <span style={{width:7,height:7,borderRadius:4,background:live?"#22C55E":"#4b5563",boxShadow:live?"0 0 8px #22C55E":"none"}}/>{live?"Bot en cours":"Dernier run"}</div>
+  <pre ref={ref} style={{margin:0,padding:"8px 10px",maxHeight:190,overflowY:"auto",fontFamily:"ui-monospace,SFMono-Regular,Menlo,Consolas,monospace",fontSize:11.5,lineHeight:1.55,color:"#a7f3d0",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
+   {text.split("\n").map((l,i)=><div key={i} style={{color:/ERREUR|KO/.test(l)?"#fca5a5":/Terminé|bet\(s\)/.test(l)?"#86efac":"#9ca3af"}}>{l}</div>)}
+   {live&&<span style={{color:"#22C55E"}}>▍</span>}</pre>
+ </div>);
+}
+
+// ── Recherche d'un joueur : ses cuts PrizePicks / Betby + compilation Map 1+2 → Map 3 ──
+const cutNorm=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+function CutSearch(){
+ const [q,setQ]=useState("");const [rows,setRows]=useState(null);const [busy,setBusy]=useState(false);const [pick,setPick]=useState(null);
+ useEffect(()=>{const k=cutNorm(q);if(k.length<2){setRows(null);setPick(null);return;}
+  setBusy(true);const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?pkey=ilike.*"+encodeURIComponent(k)+"*&order=at.desc&limit=400");setRows(Array.isArray(r)?r:[]);}catch(e){setRows([]);}setBusy(false);},300);
+  return()=>clearTimeout(t);},[q]);
+ const players=rows?[...new Map(rows.map(r=>[r.pkey,r])).values()]:[];
+ const cur=pick||(players.length===1?players[0].pkey:null);
+ const mine=rows&&cur?rows.filter(r=>r.pkey===cur):[];
+ const fmtD=t=>t?new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+ const stats=[...new Set(mine.map(r=>r.stat))];
+ const box={background:"#0B1220",borderRadius:10,border:"1px solid rgba(255,255,255,.05)",overflow:"hidden",marginTop:8};
+ const head={padding:"7px 10px",fontSize:11,fontWeight:800,color:"#A78BFA",borderBottom:"1px solid rgba(255,255,255,.05)"};
+ const row={display:"grid",gridTemplateColumns:"1fr .8fr .8fr 1.1fr",gap:4,padding:"7px 10px",fontSize:12.5,borderTop:"1px solid rgba(255,255,255,.03)",color:"#cbd5e1",alignItems:"center"};
+ return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
+  <div style={{position:"relative"}}>
+   <span style={{position:"absolute",left:11,top:11,color:"#6b7280"}}><Ic n="search" s={16}/></span>
+   <input value={q} onChange={e=>{setQ(e.target.value);setPick(null);}} placeholder="Rechercher un joueur · voir ses cuts" style={{width:"100%",boxSizing:"border-box",height:40,borderRadius:11,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 12px 0 34px",fontFamily:"Inter,sans-serif",outline:"none"}}/>
+  </div>
+  {busy&&<div style={{fontSize:12,color:"#6b7280",marginTop:8}}>Recherche…</div>}
+  {!busy&&rows&&!players.length&&<div style={{fontSize:12,color:"#6b7280",marginTop:8}}>Aucun cut enregistré pour ce joueur (l'historique se remplit à chaque passage du bot).</div>}
+  {!busy&&players.length>1&&!cur&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>{players.slice(0,12).map(p=><button key={p.pkey} onClick={()=>setPick(p.pkey)} style={{padding:"6px 10px",borderRadius:9,border:"1px solid #1F2937",background:"transparent",color:"#e5e7eb",fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{p.player} <span style={{color:"#6b7280"}}>{p.game}</span></button>)}</div>}
+  {cur&&mine.length>0&&stats.map(st=>{const L=mine.filter(r=>r.stat===st);const word=st==="headshots"?"HS":"kills";
+   const pp12=L.filter(r=>r.source==="pp"&&r.maps==="1+2").slice(0,10);
+   const pp3=L.filter(r=>r.source==="pp"&&r.maps==="3").slice(0,10);
+   const bb=L.filter(r=>r.source==="betby").slice(0,10);
+   // Compilation : même match (même heure de début) → dernier cut Map 1+2 avant match et cut Map 3
+   const byStart={};L.filter(r=>r.source==="pp").forEach(r=>{const k=String(r.start||"").slice(0,16);(byStart[k]=byStart[k]||{m:r.match,s:r.start});const o=byStart[k];if(r.maps==="1+2"&&o.a==null)o.a=+r.line;if(r.maps==="3"&&o.b==null)o.b=+r.line;});
+   const pairs=Object.values(byStart).filter(o=>o.a!=null&&o.b!=null);
+   const avg=pairs.length?pairs.reduce((t,o)=>t+o.b/o.a,0)/pairs.length:null;
+   return(<div key={st} style={{marginTop:10}}>
+    <div style={{fontSize:13.5,fontWeight:800,color:"#fff"}}>{L[0].player} · {L[0].game} · {word}</div>
+    <div style={box}><div style={head}>Compilation Map 1+2 → Map 3 {avg!=null&&<span style={{color:"#22C55E",marginLeft:6}}>Map 3 ≈ {(avg*100).toFixed(0)}% du cut 1+2</span>}</div>
+     {pairs.length?pairs.slice(0,10).map((o,i)=><div key={i} style={row}><span style={{color:"#8b93a7",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.m||fmtD(o.s)}</span><span>1+2 : <b>{o.a}</b></span><span>Map 3 : <b>{o.b}</b></span><span style={{color:"#A78BFA",fontWeight:700}}>{(o.b/o.a*100).toFixed(0)}% · {(o.a/2).toFixed(2)}/map</span></div>)
+      :<div style={{padding:"8px 10px",fontSize:12,color:"#6b7280"}}>Pas encore de match avec un cut Map 1+2 et un cut Map 3 enregistrés.</div>}</div>
+    {[["PrizePicks Map 1+2",pp12],["PrizePicks Map 3",pp3],["Betby (ligne principale)",bb]].map(([t,arr])=>arr.length>0&&<div key={t} style={box}><div style={head}>{t} · {arr.length} dernier{arr.length>1?"s":""}</div>
+     {arr.map(r=><div key={r.key} style={row}><span style={{color:"#8b93a7"}}>{fmtD(r.at)}</span><span><b>{r.source==="betby"?"Map "+r.maps+" · ":""}{r.line}</b></span><span style={{color:"#7a9cbd"}}>{r.source==="betby"?"U "+r.odds_under:""}</span><span style={{color:"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.match||""}</span></div>)}</div>)}
+   </div>);})}
+ </div>);
+}
+
 function PPReferenceTable({bets=[],fixedGame=null}){
  const [open,setOpen]=useState(false);
  const [game,setGame]=useState(fixedGame||"CS2");
@@ -5957,9 +6013,11 @@ function AppMain(){
  const loadEvRun=useCallback(async()=>{try{const r=await cloudDb("ev_runs?order=id.desc&limit=1");setEvRun(Array.isArray(r)&&r[0]?r[0]:null);}catch(e){}
   try{const b=await cloudDb("bot_status?id=eq.1");setBotSt(Array.isArray(b)&&b[0]?b[0]:null);}catch(e){}},[]);
  useEffect(()=>{loadEvRun();const i=setInterval(()=>{loadEvRun();},20000);return()=>clearInterval(i);},[loadEvRun]);
+ const evRunning=!!(evRun&&(evRun.status==="pending"||evRun.status==="running"));
+ useEffect(()=>{if(!evRunning)return;const i=setInterval(loadEvRun,2000);return()=>clearInterval(i);},[evRunning,loadEvRun]);
  useEffect(()=>{if(evRun&&evRun.status==="done")loadEv();},[evRun&&evRun.status,evRun&&evRun.id]);
- const evLaunch=async()=>{if(!evGames.length)return;const codes={CS2:"cs2",LoL:"lol",Dota2:"dota",Valorant:"valo"};
-  try{const r=await cloudDb("ev_runs",{method:"POST",body:{games:evGames.map(g=>codes[g]).join(","),status:"pending"},prefer:"return=representation"});
+ const evLaunch=async(betbyOnly)=>{if(!evGames.length)return;const codes={CS2:"cs2",LoL:"lol",Dota2:"dota",Valorant:"valo"};
+  try{const r=await cloudDb("ev_runs",{method:"POST",body:{games:(betbyOnly===true?"betby:":"")+evGames.map(g=>codes[g]).join(","),status:"pending"},prefer:"return=representation"});
    setEvRun(Array.isArray(r)?r[0]:r);
    if(ghCfg.repo&&ghCfg.token){const g=await fetch("https://api.github.com/repos/"+ghCfg.repo.trim()+"/actions/workflows/betby.yml/dispatches",{method:"POST",headers:{"Authorization":"Bearer "+ghCfg.token.trim(),"Accept":"application/vnd.github+json"},body:JSON.stringify({ref:ghCfg.branch||"main"})});
     showToast(g.ok?"Run lancé sur GitHub · ~1-2 min":"GitHub refuse ("+g.status+") · le run partira au prochain cycle",g.ok?"#7C3AED":"#F59E0B");}
@@ -11532,59 +11590,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {[["suivi","Suivi"],["reglages","Réglages"]].map(([k,l])=><button key={k} onClick={()=>setSuiviTab(k)} style={{flex:1,height:38,borderRadius:9,border:"none",background:suiviTab===k?"#7c3aed":"transparent",color:suiviTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
  </div>
  {suiviTab==="suivi"&&<>
- <SuiviLabel>BOT</SuiviLabel>
- {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(isNew).length;
-  const running=evRun&&(evRun.status==="pending"||evRun.status==="running");
-  const hhmm=t=>t?new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
-  return <div style={{marginBottom:8}}>
-  <SuiviHead img={_B64_PP_LOGO_B64} color="#22C55E" title="Bets potentiels" badge={nNew?<span style={{fontSize:10,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 6px",borderRadius:6}}>{nNew} NEW</span>:null}
-   sub={evAlerts.length?evAlerts.length+" bet"+(evAlerts.length>1?"s":"")+" à jouer":"Aucun bet pour l'instant"}
-   open={suiviOpen.ev} onClick={()=>{setSuiviOpen(s=>({...s,ev:!s.ev}));try{localStorage.setItem("ev_seen",String(Date.now()));}catch(e){}}}/>
-  {suiviOpen.ev&&<div style={{...SV_BODY,padding:0}}>
-   <div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
-    <div style={{display:"flex",gap:5}}>{["CS2","Valorant","Dota2","LoL"].map(g=>{const on=evGames.includes(g);return(
-     <button key={g} onClick={()=>setEvGames(l=>on?l.filter(x=>x!==g):[...l,g])} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.55)":"rgba(255,255,255,.07)"),background:on?"rgba(34,197,94,.12)":"transparent",color:on?"#fff":"#6b7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:on?1:.7}}>
-      <GameLogo game={g} size={14}/>{g==="Valorant"?"Valo":g==="Dota2"?"Dota":g}</button>);})}</div>
-    <button disabled={running||!evGames.length} onClick={evLaunch} style={{width:"100%",marginTop:8,height:44,borderRadius:12,border:"none",background:running?"rgba(255,255,255,.06)":"linear-gradient(135deg,#22C55E,#16a34a)",color:running?"#9ca3af":"#05231A",fontWeight:900,fontSize:14.5,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
-     {running?(evRun.status==="pending"?"En attente du bot…":"Run en cours…"):"Lancer un run"}</button>
-    <div style={{fontSize:11.5,color:"#8b93a7",marginTop:6,textAlign:"center"}}>
-     {botSt&&<div style={{color:"#cbd5e1",fontWeight:600,marginBottom:2}}>Betby {hhmm(botSt.betby_at)} · Apify {hhmm(botSt.apify_at)}</div>}
-     {evRun?(evRun.status==="done"?"Dernier run "+hhmm(evRun.finished_at||evRun.created_at)+" · "+(evRun.games||"")+" · "+(evRun.n_alerts!=null?evRun.n_alerts+" bet(s)":""):evRun.status==="error"?"Erreur : "+(evRun.error||"").slice(0,80):"Demandé à "+hhmm(evRun.created_at)):""}
-     <span onClick={()=>setGhOpen(v=>!v)} style={{marginLeft:6,color:"#A78BFA",cursor:"pointer",fontWeight:700}}>{ghCfg.repo&&ghCfg.token?"GitHub ✓":"Relier GitHub"}</span></div>
-    {ghOpen&&<div style={{marginTop:8,display:"grid",gap:6}}>
-     {[["repo","Dépôt (ex. maxime/bot-ev)"],["token","Token GitHub (Actions : write)"]].map(([k,ph])=><input key={k} type={k==="token"?"password":"text"} placeholder={ph} value={ghCfg[k]||""} onChange={e=>saveGh({...ghCfg,[k]:e.target.value})} style={{height:40,borderRadius:10,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 10px",fontFamily:"Inter,sans-serif"}}/>)}
-     <div style={{fontSize:11,color:"#6b7280"}}>Gardé seulement sur cet appareil.</div></div>}
-   </div>
-   {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
-   {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet potentiel</div>}
-   {evAlerts.map(a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
-    <div key={a.key} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid "+(nw?"#22C55E":"#60a5fa")}}>
-     <div onClick={()=>setEvPick(x=>x===a.key?null:a.key)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
-      <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}><GameLogo game={G} size={37}/></div>
-      <div style={{flex:1,minWidth:0}}>
-       <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
-        <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{a.player}</span>
-        {nw&&<span style={{fontSize:8,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 5px",borderRadius:4,letterSpacing:.4,flexShrink:0}}>NEW</span>}
-        {hs&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7}}/>}
-        <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {a.map||"?"}</span>
-        <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
-        <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.side==="over"?"Over":"Under"} {a.book_line} {hs?"Headshots":"Kills"}</span>
-       </div>
-       <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
-        <span>@{Number(a.book_odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
-        <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,marginRight:3}}/><span>{a.pp_line} ({a.pp_maps})</span>
-        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"rgba(167,139,250,.9)"}}>+{a.edge}</span>
-        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"#5a6e84",overflow:"hidden",textOverflow:"ellipsis"}}>{a.match}{a.start?" · "+hhmm(a.start):""}</span>
-       </div>
-      </div>
-     </div>
-     {evPick===a.key&&<div style={{display:"flex",gap:8,padding:"0 13px 12px 60px"}}>
-      <button onClick={()=>{setEvPick(null);evOpenAdd(a);}} style={{flex:1,height:40,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
-      <button onClick={()=>{setEvPick(null);evSetStatus(a,"ignored");}} style={{height:40,padding:"0 14px",borderRadius:11,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ignorer</button>
-     </div>}
-    </div>);})}
-  </div>}
- </div>;})()}
  <SuiviLabel>COMPÉTITIONS</SuiviLabel>
  {/* TOURNOIS ACTIFS */}
  <div style={{marginBottom:8}}>
@@ -11663,6 +11668,63 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  />
 
 
+ <SuiviLabel>BOT</SuiviLabel>
+ {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(isNew).length;
+  const running=evRun&&(evRun.status==="pending"||evRun.status==="running");
+  const hhmm=t=>t?new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
+  return <div style={{marginBottom:8}}>
+  <SuiviHead img={_B64_PP_LOGO_B64} color="#22C55E" title="Bets potentiels" badge={nNew?<span style={{fontSize:10,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 6px",borderRadius:6}}>{nNew} NEW</span>:null}
+   sub={evAlerts.length?evAlerts.length+" bet"+(evAlerts.length>1?"s":"")+" à jouer":"Aucun bet pour l'instant"}
+   open={suiviOpen.ev} onClick={()=>{setSuiviOpen(s=>({...s,ev:!s.ev}));try{localStorage.setItem("ev_seen",String(Date.now()));}catch(e){}}}/>
+  {suiviOpen.ev&&<div style={{...SV_BODY,padding:0}}>
+   <div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
+    <div style={{display:"flex",gap:5}}>{["CS2","Valorant","Dota2","LoL"].map(g=>{const on=evGames.includes(g);return(
+     <button key={g} onClick={()=>setEvGames(l=>on?l.filter(x=>x!==g):[...l,g])} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:5,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.55)":"rgba(255,255,255,.07)"),background:on?"rgba(34,197,94,.12)":"transparent",color:on?"#fff":"#6b7280",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",opacity:on?1:.7}}>
+      <GameLogo game={g} size={14}/>{g==="Valorant"?"Valo":g==="Dota2"?"Dota":g}</button>);})}</div>
+    <div style={{display:"flex",gap:8,marginTop:8}}>
+    <button disabled={running||!evGames.length} onClick={()=>evLaunch(true)} title="Betby seulement · gratuit" style={{flex:"0 0 38%",height:44,borderRadius:12,border:"1px solid rgba(34,197,94,.5)",background:"transparent",color:running?"#6b7280":"#22C55E",fontWeight:800,fontSize:13.5,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>Refresh Betby</button>
+    <button disabled={running||!evGames.length} onClick={()=>evLaunch(false)} style={{flex:1,height:44,borderRadius:12,border:"none",background:running?"rgba(255,255,255,.06)":"linear-gradient(135deg,#22C55E,#16a34a)",color:running?"#9ca3af":"#05231A",fontWeight:900,fontSize:14.5,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
+     {running?(evRun.status==="pending"?"En attente du bot…":"Run en cours…"):"Run complet (+ Apify)"}</button></div>
+    <div style={{fontSize:11.5,color:"#8b93a7",marginTop:6,textAlign:"center"}}>
+     {botSt&&<div style={{color:"#cbd5e1",fontWeight:600,marginBottom:2}}>Betby {hhmm(botSt.betby_at)} · Apify {hhmm(botSt.apify_at)}</div>}
+     {evRun?(evRun.status==="done"?"Dernier run "+hhmm(evRun.finished_at||evRun.created_at)+" · "+(evRun.games||"")+" · "+(evRun.n_alerts!=null?evRun.n_alerts+" bet(s)":""):evRun.status==="error"?"Erreur : "+(evRun.error||"").slice(0,80):"Demandé à "+hhmm(evRun.created_at)):""}
+     <span onClick={()=>setGhOpen(v=>!v)} style={{marginLeft:6,color:"#A78BFA",cursor:"pointer",fontWeight:700}}>{ghCfg.repo&&ghCfg.token?"GitHub ✓":"Relier GitHub"}</span></div>
+    {evRun&&evRun.log&&(evRunning||Date.now()-new Date(evRun.finished_at||evRun.created_at).getTime()<15*60000)&&<EvConsole text={evRun.log} live={evRunning}/>}
+    {ghOpen&&<div style={{marginTop:8,display:"grid",gap:6}}>
+     {[["repo","Dépôt (ex. maxime/bot-ev)"],["token","Token GitHub (Actions : write)"]].map(([k,ph])=><input key={k} type={k==="token"?"password":"text"} placeholder={ph} value={ghCfg[k]||""} onChange={e=>saveGh({...ghCfg,[k]:e.target.value})} style={{height:40,borderRadius:10,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 10px",fontFamily:"Inter,sans-serif"}}/>)}
+     <div style={{fontSize:11,color:"#6b7280"}}>Gardé seulement sur cet appareil.</div></div>}
+   </div>
+   <CutSearch/>
+   {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
+   {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet potentiel</div>}
+   {evAlerts.map(a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
+    <div key={a.key} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid "+(nw?"#22C55E":"#60a5fa")}}>
+     <div onClick={()=>setEvPick(x=>x===a.key?null:a.key)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
+      <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}><GameLogo game={G} size={37}/></div>
+      <div style={{flex:1,minWidth:0}}>
+       <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
+        <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{a.player}</span>
+        {nw&&<span style={{fontSize:8,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 5px",borderRadius:4,letterSpacing:.4,flexShrink:0}}>NEW</span>}
+        {hs&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7}}/>}
+        <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {a.map||"?"}</span>
+        <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
+        <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.side==="over"?"Over":"Under"} {a.book_line} {hs?"Headshots":"Kills"}</span>
+       </div>
+       <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
+        <span>@{Number(a.book_odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
+        <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,marginRight:3}}/><span>{a.pp_line} ({a.pp_maps})</span>
+        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"rgba(167,139,250,.9)"}}>+{a.edge}</span>
+        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"#5a6e84",overflow:"hidden",textOverflow:"ellipsis"}}>{a.match}{a.start?" · "+hhmm(a.start):""}</span>
+       </div>
+      </div>
+     </div>
+     {evPick===a.key&&<div style={{display:"flex",gap:8,padding:"0 13px 12px 60px"}}>
+      <button onClick={()=>{setEvPick(null);evOpenAdd(a);}} style={{flex:1,height:40,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
+      <button onClick={()=>{setEvPick(null);evSetStatus(a,"ignored");}} style={{height:40,padding:"0 14px",borderRadius:11,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ignorer</button>
+     </div>}
+    </div>);})}
+  </div>}
+ </div>;})()}
  <SuiviLabel>ANALYSE</SuiviLabel>
  <EvCheck bets={betsForDisplay}/>
  <CutGuide/>
