@@ -5951,12 +5951,19 @@ function AppMain(){
  const [evSeenAt]=useState(()=>{try{return Number(localStorage.getItem("ev_seen")||0);}catch(e){return 0;}});
  const [evRun,setEvRun]=useState(null);const [evPick,setEvPick]=useState(null);const [evGames,setEvGames]=useState(["CS2","LoL","Dota2"]);
  const evPendingRef=useRef(null);
- const loadEvRun=useCallback(async()=>{try{const r=await cloudDb("ev_runs?order=id.desc&limit=1");setEvRun(Array.isArray(r)&&r[0]?r[0]:null);}catch(e){}},[]);
+ const [botSt,setBotSt]=useState(null);
+ const [ghCfg,setGhCfg]=useState(()=>{try{return JSON.parse(localStorage.getItem("gh_bot")||"{}");}catch(e){return {};}});const [ghOpen,setGhOpen]=useState(false);
+ const saveGh=c=>{setGhCfg(c);try{localStorage.setItem("gh_bot",JSON.stringify(c));}catch(e){}};
+ const loadEvRun=useCallback(async()=>{try{const r=await cloudDb("ev_runs?order=id.desc&limit=1");setEvRun(Array.isArray(r)&&r[0]?r[0]:null);}catch(e){}
+  try{const b=await cloudDb("bot_status?id=eq.1");setBotSt(Array.isArray(b)&&b[0]?b[0]:null);}catch(e){}},[]);
  useEffect(()=>{loadEvRun();const i=setInterval(()=>{loadEvRun();},20000);return()=>clearInterval(i);},[loadEvRun]);
  useEffect(()=>{if(evRun&&evRun.status==="done")loadEv();},[evRun&&evRun.status,evRun&&evRun.id]);
  const evLaunch=async()=>{if(!evGames.length)return;const codes={CS2:"cs2",LoL:"lol",Dota2:"dota",Valorant:"valo"};
   try{const r=await cloudDb("ev_runs",{method:"POST",body:{games:evGames.map(g=>codes[g]).join(","),status:"pending"},prefer:"return=representation"});
-   setEvRun(Array.isArray(r)?r[0]:r);showToast("Run demandé · le bot le lance","#7C3AED");}
+   setEvRun(Array.isArray(r)?r[0]:r);
+   if(ghCfg.repo&&ghCfg.token){const g=await fetch("https://api.github.com/repos/"+ghCfg.repo.trim()+"/actions/workflows/betby.yml/dispatches",{method:"POST",headers:{"Authorization":"Bearer "+ghCfg.token.trim(),"Accept":"application/vnd.github+json"},body:JSON.stringify({ref:ghCfg.branch||"main"})});
+    showToast(g.ok?"Run lancé sur GitHub · ~1-2 min":"GitHub refuse ("+g.status+") · le run partira au prochain cycle",g.ok?"#7C3AED":"#F59E0B");}
+   else showToast("Run demandé · le bot le lance (~10 s)","#7C3AED");}
   catch(e){const m=String(e.message||e);showToast("Run impossible : "+m.slice(0,140),"#EF4444");console.error("ev_runs",m);}};
  const evOpenAdd=a=>{const info=findPlayer(a.player)||null;const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
   const live=/3/.test(a.pp_maps||"")&&!/1/.test(a.pp_maps||"");
@@ -11541,7 +11548,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     <button disabled={running||!evGames.length} onClick={evLaunch} style={{width:"100%",marginTop:8,height:44,borderRadius:12,border:"none",background:running?"rgba(255,255,255,.06)":"linear-gradient(135deg,#22C55E,#16a34a)",color:running?"#9ca3af":"#05231A",fontWeight:900,fontSize:14.5,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>
      {running?(evRun.status==="pending"?"En attente du bot…":"Run en cours…"):"Lancer un run"}</button>
     <div style={{fontSize:11.5,color:"#8b93a7",marginTop:6,textAlign:"center"}}>
-     {evRun?(evRun.status==="done"?"Dernier run "+hhmm(evRun.finished_at||evRun.created_at)+" · "+(evRun.games||"")+" · "+(evRun.n_alerts!=null?evRun.n_alerts+" bet(s)":""):evRun.status==="error"?"Erreur : "+(evRun.error||"").slice(0,80):"Demandé à "+hhmm(evRun.created_at)+" · le bot doit être ouvert sur ton PC"):"Le bot doit être ouvert sur ton PC (bot.py --ecoute)"}</div>
+     {botSt&&<div style={{color:"#cbd5e1",fontWeight:600,marginBottom:2}}>Betby {hhmm(botSt.betby_at)} · Apify {hhmm(botSt.apify_at)}</div>}
+     {evRun?(evRun.status==="done"?"Dernier run "+hhmm(evRun.finished_at||evRun.created_at)+" · "+(evRun.games||"")+" · "+(evRun.n_alerts!=null?evRun.n_alerts+" bet(s)":""):evRun.status==="error"?"Erreur : "+(evRun.error||"").slice(0,80):"Demandé à "+hhmm(evRun.created_at)):""}
+     <span onClick={()=>setGhOpen(v=>!v)} style={{marginLeft:6,color:"#A78BFA",cursor:"pointer",fontWeight:700}}>{ghCfg.repo&&ghCfg.token?"GitHub ✓":"Relier GitHub"}</span></div>
+    {ghOpen&&<div style={{marginTop:8,display:"grid",gap:6}}>
+     {[["repo","Dépôt (ex. maxime/bot-ev)"],["token","Token GitHub (Actions : write)"]].map(([k,ph])=><input key={k} type={k==="token"?"password":"text"} placeholder={ph} value={ghCfg[k]||""} onChange={e=>saveGh({...ghCfg,[k]:e.target.value})} style={{height:40,borderRadius:10,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 10px",fontFamily:"Inter,sans-serif"}}/>)}
+     <div style={{fontSize:11,color:"#6b7280"}}>Gardé seulement sur cet appareil.</div></div>}
    </div>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet potentiel</div>}
