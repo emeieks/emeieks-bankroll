@@ -5957,7 +5957,7 @@ function AppMain(){
  const evLaunch=async()=>{if(!evGames.length)return;const codes={CS2:"cs2",LoL:"lol",Dota2:"dota",Valorant:"valo"};
   try{const r=await cloudDb("ev_runs",{method:"POST",body:{games:evGames.map(g=>codes[g]).join(","),status:"pending"},prefer:"return=representation"});
    setEvRun(Array.isArray(r)?r[0]:r);showToast("Run demandé · le bot le lance","#7C3AED");}
-  catch(e){showToast("Impossible de lancer : table ev_runs ?","#EF4444");}};
+  catch(e){const m=String(e.message||e);showToast("Run impossible : "+m.slice(0,140),"#EF4444");console.error("ev_runs",m);}};
  const evOpenAdd=a=>{const info=findPlayer(a.player)||null;const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
   const live=/3/.test(a.pp_maps||"")&&!/1/.test(a.pp_maps||"");
   evPrefillRef.current=true;evPendingRef.current=a;setEditingBet(null);
