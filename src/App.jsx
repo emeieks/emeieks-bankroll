@@ -6187,7 +6187,7 @@ function AppMain(){
   evSetStatus(a,"added");showToast("Pari ajouté · "+nb.player,"#22C55E");};
  // ── Bets potentiels (Suivi) : NEW, préremplissage de la page Ajouter, lancement d'un run ──
  const [evSeenAt]=useState(()=>{try{return Number(localStorage.getItem("ev_seen")||0);}catch(e){return 0;}});
- const [evRun,setEvRun]=useState(null);const [evPick,setEvPick]=useState(null);const [evGames,setEvGames]=useState(["CS2","LoL","Dota2"]);
+ const [evRun,setEvRun]=useState(null);const [evPick,setEvPick]=useState(null);const [evFilter,setEvFilter]=useState("all");const [evGames,setEvGames]=useState(["CS2","LoL","Dota2"]);
  const evPendingRef=useRef(null);
  const [botSt,setBotSt]=useState(null);
  const [ghCfg,setGhCfg]=useState(()=>{try{return JSON.parse(localStorage.getItem("gh_bot")||"{}");}catch(e){return {};}});const [ghOpen,setGhOpen]=useState(false);
@@ -6956,6 +6956,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  });
  return merged;
  },[players]);
+ const evLogoIdx=useMemo(()=>{const m={};Object.entries(teamLogos||{}).forEach(([kk,u])=>{if(u)m[teamKey(kk.split("__")[0])]=u;});Object.values(allPlayers||{}).forEach(p=>{if(p&&p.team&&p.team_logo_url){const k=teamKey(p.team);if(!m[k])m[k]=p.team_logo_url;}});return m;},[teamLogos,allPlayers]);
+ const evLogo=t=>{const n=teamKey(t);if(!n)return null;if(evLogoIdx[n])return evLogoIdx[n];const hit=Object.keys(evLogoIdx).find(x=>x.length>=3&&(x.includes(n)||n.includes(x)));return hit?evLogoIdx[hit]:null;};
 
  // Fréquence de bets par joueur — pour trier les suggestions PlayerAC
  const allBetsByPlayer=useMemo(function(){
@@ -11889,7 +11891,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <DayBar alerts={evAlerts} onDone={loadEv}/>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet potentiel</div>}
-   {evAlerts.map(a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
+   {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,overflowX:"auto"}}>
+    {[["all","Tous",null],["new","NEW",null],["CS2","CS2","CS2"],["Dota2","Dota","Dota2"],["LoL","LoL","LoL"],["Valorant","Valo","Valorant"]].map(([k,l,g])=>{const n=k==="all"?evAlerts.length:k==="new"?evAlerts.filter(isNew).length:evAlerts.filter(a=>(GL[a.game]||a.game)===k).length;if(g&&!n)return null;const on=evFilter===k;return(
+     <button key={k} onClick={()=>setEvFilter(k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:5,height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(on?"#22C55E":"rgba(255,255,255,.08)"),background:on?"rgba(34,197,94,.14)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+      {g&&<GameLogo game={g} size={14}/>}{l}<span style={{color:on?"#86efac":"#6b7280",fontWeight:700}}>{n}</span></button>);})}
+   </div>}
+   {evAlerts.filter(a=>evFilter==="all"||(evFilter==="new"?isNew(a):(GL[a.game]||a.game)===evFilter)).map(a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
     <div key={a.key} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid "+(nw?"#22C55E":"#60a5fa")}}>
      <div onClick={()=>setEvPick(x=>x===a.key?null:a.key)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
       <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}><GameLogo game={G} size={37}/></div>
@@ -11906,7 +11913,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
         <span>@{Number(a.book_odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
         <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,marginRight:3}}/><span>{a.pp_line} ({a.pp_maps})</span>
         <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"rgba(167,139,250,.9)"}}>+{a.edge}</span>
-        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"#5a6e84",overflow:"hidden",textOverflow:"ellipsis"}}>{a.match}{a.start?" · "+hhmm(a.start):""}</span>
+        <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>{(()=>{const [t1,t2]=String(a.match||"").split(/\s+vs\.?\s+/i);const T=t=>{const u=evLogo(t);return u?<img src={u} alt={t} title={t} style={{width:16,height:16,objectFit:"contain",borderRadius:3,flexShrink:0}} onError={e=>{e.target.replaceWith(document.createTextNode(teamAbbr(t)));}}/>:<span style={{color:"#9ca3af"}}>{teamAbbr(t)}</span>;};
+         return <span style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0}}>{T(t1)}<span style={{color:"#5a6e84",fontSize:10.5}}>vs</span>{t2?T(t2):null}{a.start?<span style={{color:"#5a6e84",marginLeft:3}}>{hhmm(a.start)}</span>:null}</span>;})()}
        </div>
       </div>
      </div>
