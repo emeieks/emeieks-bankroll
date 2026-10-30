@@ -4702,6 +4702,59 @@ function EvConsole({text,live}){
 
 // ── Recherche d'un joueur : ses cuts PrizePicks / Betby + compilation Map 1+2 → Map 3 ──
 const cutNorm=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+
+// ── Cartes « style fiche joueur » : maillot aux couleurs du club, abréviation, poste ──
+const TEAM_COLORS={vitality:["#F5D90A","#111111"],natusvincere:["#F2D02C","#1B1B1B"],navi:["#F2D02C","#1B1B1B"],faze:["#E2231A","#111"],g2:["#1A1A1A","#E31E24"],mouz:["#E2001A","#1a1a1a"],furia:["#141414","#B8B8B8"],spirit:["#E8E8E8","#1C1C1C"],teamspirit:["#E8E8E8","#1C1C1C"],liquid:["#0A1F44","#3EB1E6"],teamliquid:["#0A1F44","#3EB1E6"],fnatic:["#FF5900","#111"],heroic:["#1B1B1B","#E21B23"],astralis:["#E3242B","#fff"],mongolz:["#C8102E","#F2C230"],themongolz:["#C8102E","#F2C230"],virtuspro:["#F37021","#1a1a1a"],eternalfire:["#E51C23","#111"],complexity:["#1C2C5B","#E31E24"],nemiga:["#C8102E","#F4F4F4"],nemigagaming:["#C8102E","#F4F4F4"],parivision:["#6D28D9","#F4F4F4"],og:["#2C2C2C","#F4F4F4"],teamog:["#2C2C2C","#F4F4F4"],t1:["#E2012D","#111"],geng:["#AA8B56","#111"],hanwhalifeesports:["#F37321","#111"],hle:["#F37321","#111"],blg:["#00B4E6","#111"],bilibiligaming:["#00B4E6","#111"],jdg:["#C8102E","#111"],tes:["#E23D2A","#111"],kt:["#E30613","#111"],ktrolster:["#E30613","#111"],dk:["#00B2A9","#111"],sentinels:["#CE0037","#111"],fut:["#1C1C1C","#E8E8E8"],paperrex:["#1F1F1F","#F25C05"],tundra:["#1A1A1A","#E6E6E6"],tundraesports:["#1A1A1A","#E6E6E6"],aurora:["#5B2C83","#F4F4F4"],falcons:["#00A859","#111"],teamfalcons:["#00A859","#111"],gamerlegion:["#1E4FA8","#F4F4F4"],flyquest:["#00A859","#111"],nrg:["#111","#E5E5E5"],"100thieves":["#E2231A","#111"],c9:["#1E9FD8","#fff"],cloud9:["#1E9FD8","#fff"],teamheretics:["#1C1C1C","#F2C230"],heretics:["#1C1C1C","#F2C230"],karminecorp:["#0A1A3B","#2AA5E0"],losgrandes:["#F2C230","#111"],pain:["#E30613","#111"],imperial:["#1C1C1C","#E4002B"],mibr:["#1C1C1C","#F4F4F4"],betboom:["#E10600","#111"],betboomteam:["#E10600","#111"],xtreme:["#E4002B","#111"]};
+const TEAM_ABBR={natusvincere:"NAVI",navi:"NAVI",mouz:"MOUZ",themongolz:"MGLZ",mongolz:"MGLZ",virtuspro:"VP",teamspirit:"TS",spirit:"TS",teamliquid:"TL",liquid:"TL",teamog:"OG",og:"OG",teamfalcons:"FLC",falcons:"FLC",hanwhalifeesports:"HLE",geng:"GEN",t1:"T1",g2:"G2",g2esports:"G2",faze:"FAZE",fazeclan:"FAZE",bilibiligaming:"BLG",ktrolster:"KT",cloud9:"C9",nemigagaming:"NEM",nemiga:"NEM",furiaesports:"FUR",furia:"FUR",teamvitality:"VIT",vitality:"VIT",gamerlegion:"GL",eternalfire:"EF",parivision:"PARI",tundraesports:"TUN",losgrandes:"LG",karminecorp:"KC",teamheretics:"TH",betboomteam:"BB"};
+const teamKey=t=>cutNorm(String(t||"").replace(/\b(esports?|gaming|team|club)\b/gi," "));
+function teamAbbr(t){const n=cutNorm(t),k=teamKey(t);if(TEAM_ABBR[n])return TEAM_ABBR[n];if(TEAM_ABBR[k])return TEAM_ABBR[k];
+ const w=String(t||"").replace(/\b(esports?|gaming|team|club)\b/gi,"").trim().split(/\s+/).filter(Boolean);if(!w.length)return "?";
+ if(w.length>=2)return w.slice(0,3).map(x=>x[0]).join("").toUpperCase();return w[0].slice(0,3).toUpperCase();}
+function teamColors(t){const n=cutNorm(t),k=teamKey(t);const c=TEAM_COLORS[n]||TEAM_COLORS[k];if(c)return c;
+ let h=0;for(const ch of n)h=(h*31+ch.charCodeAt(0))%360;return ["hsl("+h+",62%,46%)","hsl("+((h+40)%360)+",30%,14%)"];}
+function Jersey({c1,c2,size=74}){return(<svg width={size} height={size*0.86} viewBox="0 0 100 86" style={{display:"block",filter:"drop-shadow(0 6px 10px rgba(0,0,0,.45))"}}>
+ <path d="M30 4 L14 10 L2 30 L16 40 L22 32 L22 84 L78 84 L78 32 L84 40 L98 30 L86 10 L70 4 Q50 18 30 4 Z" fill={c1} stroke="rgba(0,0,0,.35)" strokeWidth="1.2"/>
+ <path d="M30 4 Q50 18 70 4 L64 2 Q50 12 36 2 Z" fill={c2}/>
+ <path d="M2 30 L16 40 L18 37 L5 27 Z M98 30 L84 40 L82 37 L95 27 Z" fill={c2}/>
+ <path d="M22 84 L78 84 L78 78 L22 78 Z" fill={c2} opacity=".85"/>
+ <path d="M50 14 L50 84" stroke="rgba(255,255,255,.07)" strokeWidth="10"/></svg>);}
+function CutCard({player,team,role,opp,line,label,when,sub,hot}){const [c1,c2]=teamColors(team);const ab=teamAbbr(team);
+ return(<div style={{background:"linear-gradient(180deg,#151b26,#0f141d)",border:"1px solid "+(hot?"rgba(34,197,94,.7)":"rgba(255,255,255,.07)"),borderRadius:16,padding:"12px 10px 10px",display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,position:"relative",overflow:"hidden"}}>
+  <div style={{position:"absolute",inset:0,background:"radial-gradient(120% 60% at 50% 0%,"+c1+"22,transparent 60%)",pointerEvents:"none"}}/>
+  <Jersey c1={c1} c2={c2}/>
+  <span style={{marginTop:-10,position:"relative",fontSize:10.5,fontWeight:800,color:"#e5e7eb",background:"rgba(20,24,32,.92)",border:"1px solid rgba(255,255,255,.1)",borderRadius:20,padding:"3px 9px",letterSpacing:.4}}>{ab}{role?" · "+String(role).toUpperCase():""}</span>
+  <div style={{marginTop:8,fontSize:15.5,fontWeight:800,color:"#fff",textAlign:"center",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player}</div>
+  <div style={{fontSize:12,color:"#9ca3af",marginTop:1,whiteSpace:"nowrap"}}>vs <b style={{color:"#d1d5db"}}>{opp?teamAbbr(opp):"?"}</b> <span style={{color:"#eab308",fontWeight:700}}>{when}</span></div>
+  <div style={{display:"flex",alignItems:"baseline",gap:6,marginTop:8}}><span style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5}}>{line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{label}</span></div>
+  {sub&&<div style={{marginTop:8,width:"100%",borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:7,fontSize:11,color:"#8b93a7",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sub}</div>}
+ </div>);}
+
+// ── Lignes Betby « comme sur leur site » : Under par défaut, Over sur demande ──
+function BetbyLadder({rows,stat,player}){
+ const [showOver,setShowOver]=useState(false);
+ const L=rows.filter(r=>r.stat===stat);if(!L.length)return null;
+ const ev=L.reduce((a,r)=>(!a||String(r.start||"")>String(a.start||""))?r:a,null).event_id;   // match le plus récent
+ const cur=L.filter(r=>r.event_id===ev);
+ const maps=[...new Set(cur.map(r=>r.map))].sort();
+ const MN={"1":"First","2":"Second","3":"Third","4":"Fourth","5":"Fifth"};
+ const cell={display:"flex",justifyContent:"space-between",alignItems:"center",background:"#2a3d4a",borderRadius:8,padding:"11px 12px",fontSize:13.5,fontWeight:700,color:"#c7d2da"};
+ return(<div style={{marginTop:12}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"0 2px 8px"}}>
+   <span style={{fontSize:13,fontWeight:800,color:"#8b93a7"}}>Betby · {cur[0].match}</span>
+   <button onClick={()=>setShowOver(v=>!v)} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid rgba(255,255,255,.1)",background:showOver?"rgba(255,255,255,.08)":"transparent",color:"#cbd5e1",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{showOver?"Masquer Over":"Voir Over"}</button>
+  </div>
+  {maps.map(m=>{const ls=cur.filter(r=>r.map===m).sort((a,b)=>a.line-b.line);return(
+   <div key={m} style={{background:"#1d2b35",borderRadius:12,padding:"12px 10px 10px",marginBottom:8}}>
+    <div style={{fontSize:14,fontWeight:800,color:"#fff",margin:"0 2px 10px"}}>{(MN[m]||("Map "+m))} map - {player} total {stat==="headshots"?"headshots":"kills"}</div>
+    <div style={{display:"grid",gridTemplateColumns:showOver?"1fr 1fr":"1fr",gap:8}}>
+     {showOver&&<div style={{textAlign:"center",fontSize:12.5,fontWeight:700,color:"#9fb0bd"}}>Over</div>}
+     <div style={{textAlign:"center",fontSize:12.5,fontWeight:700,color:"#9fb0bd"}}>Under</div>
+     {ls.map(r=>[showOver&&<div key={"o"+r.key} style={cell}><span>over {r.line}</span><span style={{color:"#fff"}}>{r.odds_over}</span></div>,
+      <div key={"u"+r.key} style={cell}><span>under {r.line}</span><span style={{color:Number(r.odds_under)>=1.6?"#4ade80":"#fff"}}>{r.odds_under}</span></div>])}
+    </div>
+   </div>);})}
+ </div>);
+}
 function CutSearch({allPlayers={},teamLogos={}}){
  const GMAP={"CS2":"CS2","Dota 2":"Dota2","League of Legends":"LoL","Valorant":"Valorant"};
  const [q,setQ]=useState("");const [focus,setFocus]=useState(false);const [sel,setSel]=useState(null);const [rows,setRows]=useState(null);const [busy,setBusy]=useState(false);const [hist,setHist]=useState([]);
@@ -4709,11 +4762,13 @@ function CutSearch({allPlayers={},teamLogos={}}){
  useEffect(()=>{cloudDb("cut_history?select=player,pkey,game&order=at.desc&limit=3000").then(r=>{const m=new Map();(r||[]).forEach(x=>{if(!m.has(x.pkey))m.set(x.pkey,x);});setHist([...m.values()]);}).catch(()=>{});},[]);
  const cands=useMemo(()=>{const m=new Map();
   hist.forEach(x=>m.set(x.pkey,{name:x.player,pkey:x.pkey,game:GMAP[x.game]||x.game,bot:true}));
-  Object.values(allPlayers||{}).forEach(p=>{if(!p||!p.name)return;const k=cutNorm(p.name);const o=m.get(k)||{name:p.name,pkey:k,game:p.game};m.set(k,{...o,name:p.name,game:p.game||o.game,team:p.team,photo:p.photo_url||p.avatar_url});});
+  Object.values(allPlayers||{}).forEach(p=>{if(!p||!p.name)return;const k=cutNorm(p.name);const o=m.get(k)||{name:p.name,pkey:k,game:p.game};m.set(k,{...o,name:p.name,game:p.game||o.game,team:p.team,role:p.role,photo:p.photo_url||p.avatar_url});});
   return [...m.values()];},[hist,allPlayers]);
  const k=cutNorm(q);
  const sugg=k.length<1?[]:cands.filter(c=>c.pkey.includes(k)).sort((x,y)=>(y.pkey.startsWith(k)-x.pkey.startsWith(k))||((y.bot?1:0)-(x.bot?1:0))||x.name.length-y.name.length).slice(0,8);
- const open=c=>{setSel(c);setQ(c.name);setFocus(false);setBusy(true);
+ const [bRows,setBRows]=useState([]);
+ const open=c=>{setSel(c);setQ(c.name);setFocus(false);setBusy(true);setBRows([]);
+  cloudDb("betby_props?pkey=eq."+encodeURIComponent(c.pkey)+"&order=updated_at.desc&limit=200").then(r=>setBRows(Array.isArray(r)?r:[])).catch(()=>{});
   cloudDb("cut_history?pkey=eq."+encodeURIComponent(c.pkey)+"&order=at.desc&limit=300").then(r=>{setRows(Array.isArray(r)?r:[]);setBusy(false);}).catch(()=>{setRows([]);setBusy(false);});};
  // Logos d'équipes : par nom normalisé
  const logoIdx=useMemo(()=>{const m={};Object.entries(teamLogos||{}).forEach(([kk,u])=>{const t=kk.split("__")[0];if(u)m[cutNorm(t)]=u;});Object.values(allPlayers||{}).forEach(p=>{if(p&&p.team&&p.team_logo_url&&!m[cutNorm(p.team)])m[cutNorm(p.team)]=p.team_logo_url;});return m;},[teamLogos,allPlayers]);
@@ -4725,7 +4780,7 @@ function CutSearch({allPlayers={},teamLogos={}}){
  const box={background:"#0B1220",borderRadius:10,border:"1px solid rgba(255,255,255,.05)",overflow:"hidden",marginTop:8};
  const head={padding:"7px 10px",fontSize:11,fontWeight:800,color:"#A78BFA",borderBottom:"1px solid rgba(255,255,255,.05)"};
  const Opp=({name})=>{const u=logoOf(name);return <span style={{display:"inline-flex",alignItems:"center",gap:5,minWidth:0}}>{u?<img src={u} alt="" style={{width:16,height:16,objectFit:"contain",borderRadius:3,flexShrink:0}} onError={e=>e.target.style.display="none"}/>:<span style={{width:16,height:16,borderRadius:3,background:"rgba(255,255,255,.06)",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name||"—"}</span></span>;};
- const mine=rows||[];const stats=[...new Set(mine.map(r=>r.stat))];
+ const mine=rows||[];const stats=[...new Set([...mine.map(r=>r.stat),...bRows.map(r=>r.stat)])];
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line,position:"relative"}}>
   <div style={{position:"relative"}}>
    <span style={{position:"absolute",left:11,top:11,color:"#6b7280"}}><Ic n="search" s={16}/></span>
@@ -4739,7 +4794,7 @@ function CutSearch({allPlayers={},teamLogos={}}){
     </button>)}</div>}
   </div>
   {busy&&<div style={{fontSize:12,color:"#6b7280",marginTop:8}}>Chargement…</div>}
-  {sel&&!busy&&rows&&!rows.length&&<div style={{fontSize:12,color:"#6b7280",marginTop:8}}>Aucun cut enregistré pour {sel.name}. Il apparaîtra au prochain run Apify où il a une ligne PrizePicks.</div>}
+  {sel&&!busy&&rows&&!rows.length&&!bRows.length&&<div style={{fontSize:12,color:"#6b7280",marginTop:8}}>Aucun cut enregistré pour {sel.name}. Il apparaîtra au prochain run Apify où il a une ligne PrizePicks.</div>}
   {sel&&!busy&&stats.map(st=>{const L=mine.filter(r=>r.stat===st);const word=st==="headshots"?"HS":"kills";
    const pp=L.filter(r=>r.source==="pp").slice(0,10);
    const last=(src,m)=>L.find(r=>r.source===src&&r.maps===m);
@@ -4748,21 +4803,14 @@ function CutSearch({allPlayers={},teamLogos={}}){
    const pairs=Object.values(byStart).filter(o=>o.a!=null&&o.b!=null);const avg=pairs.length?pairs.reduce((t,o)=>t+o.b/o.a,0)/pairs.length:null;
    const tile=(t,r,sub)=><div style={{flex:1,minWidth:0,background:"#0B1220",borderRadius:10,padding:"8px 9px",border:"1px solid rgba(255,255,255,.05)"}}><div style={{fontSize:10.5,color:"#6b7280",fontWeight:700}}>{t}</div><div style={{fontSize:18,fontWeight:900,color:r?"#fff":"#374151"}}>{r?r.line:"—"}</div><div style={{fontSize:10,color:"#8b93a7",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r?sub(r):""}</div></div>;
    return(<div key={st} style={{marginTop:12}}>
-    <div style={{fontSize:14,fontWeight:800,color:"#fff"}}>{sel.name} · {word}</div>
-    <div style={{display:"flex",gap:6,marginTop:8}}>
-     {tile("PP Map 1+2",last("pp","1+2"),r=>fmtD(r.at)+" · "+(r.line/2).toFixed(2)+"/map")}
-     {tile("PP Map 3",last("pp","3"),r=>fmtD(r.at))}
-     {tile("Betby M1",last("betby","1"),r=>"U @"+r.odds_under)}
-     {tile("Betby M2",last("betby","2"),r=>"U @"+r.odds_under)}
-    </div>
-    <div style={box}><div style={head}>10 dernières lignes PrizePicks</div>
-     {pp.length?pp.map(r=>{const bb=betbyFor(r);const opp=oppOf((bb[0]&&bb[0].match)||r.match);return(
-      <div key={r.key} style={{display:"grid",gridTemplateColumns:"auto 1fr auto",gap:10,alignItems:"center",padding:"9px 10px",borderTop:"1px solid rgba(255,255,255,.03)"}}>
-       <div style={{fontSize:11.5,color:"#8b93a7",lineHeight:1.25}}>{fmtD(r.at).split(" ")[0]}<br/><span style={{color:"#5b6478"}}>{fmtD(r.at).split(" ")[1]}</span></div>
-       <div style={{minWidth:0,fontSize:13,color:"#e5e7eb",fontWeight:700}}><Opp name={opp}/>
-        {bb.length>0&&<div style={{fontSize:11,color:"#6b7280",fontWeight:600,marginTop:2}}>Betby {bb.slice(0,2).map(x=>"M"+x.maps+" "+x.line).join(" · ")}</div>}</div>
-       <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:900,color:"#fbbf24"}}>{r.line}</div><div style={{fontSize:10.5,color:"#A78BFA",fontWeight:700}}>Map {r.maps}</div></div>
-      </div>);}):<div style={{padding:"8px 10px",fontSize:12,color:"#6b7280"}}>Aucune ligne PrizePicks enregistrée.</div>}</div>
+    <div style={{fontSize:13,fontWeight:800,color:"#8b93a7",margin:"2px 2px 8px"}}>{st==="headshots"?"Headshots":"Kills"} · 10 derniers cuts</div>
+    {pp.length?<div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
+     {pp.map((r,i)=>{const bb=betbyFor(r);const opp=oppOf((bb[0]&&bb[0].match)||r.match);const mt=r.maps==="1+2"?"MAPS 1-2":r.maps==="1+2+3"?"MAPS 1-3":"MAP "+r.maps;
+      const bbm=bb.filter(x=>r.maps.split("+").includes(String(x.maps)));
+      return <CutCard key={r.key} player={sel.name} team={sel.team||""} role={sel.role} opp={String(opp||"").replace(/\s*MAPS?.*$/i,"")} line={r.line} label={mt+" "+(st==="headshots"?"HS":"Kills")}
+       when={fmtD(r.start||r.at)} hot={i===0} sub={bbm.length?"Betby "+bbm.slice(0,2).map(x=>"M"+x.maps+" "+x.line).join(" · ")+" · "+(r.line/r.maps.split("+").length).toFixed(2)+"/map":(r.line/r.maps.split("+").length).toFixed(2)+" / map"}/>;})}
+    </div>:<div style={{fontSize:12,color:"#6b7280",padding:"6px 2px"}}>Aucune ligne PrizePicks enregistrée.</div>}
+    <BetbyLadder rows={bRows} stat={st} player={sel.name}/>
     <div style={box}><div style={head}>Compilation Map 1+2 → Map 3 {avg!=null&&<span style={{color:"#22C55E",marginLeft:6}}>Map 3 ≈ {(avg*100).toFixed(0)}% du cut 1+2</span>}</div>
      {pairs.length?pairs.slice(0,10).map((o,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 10px",fontSize:12.5,color:"#cbd5e1",borderTop:"1px solid rgba(255,255,255,.03)"}}><span style={{color:"#8b93a7"}}>{fmtD(o.s)}</span><span>1+2 <b>{o.a}</b> → Map 3 <b>{o.b}</b></span><span style={{color:"#A78BFA",fontWeight:700}}>{(o.b/o.a*100).toFixed(0)}%</span></div>)
       :<div style={{padding:"8px 10px",fontSize:12,color:"#6b7280"}}>Pas encore de match avec un cut Map 1+2 et un cut Map 3.</div>}</div>
