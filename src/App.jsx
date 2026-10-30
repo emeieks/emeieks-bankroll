@@ -4795,7 +4795,7 @@ function CutSearch({allPlayers={},teamLogos={}}){
  const k=cutNorm(q);
  const sugg=k.length<1?[]:cands.filter(c=>c.pkey.includes(k)).sort((x,y)=>(y.pkey.startsWith(k)-x.pkey.startsWith(k))||((y.bot?1:0)-(x.bot?1:0))||x.name.length-y.name.length).slice(0,8);
  const [bRows,setBRows]=useState([]);
- const open=c=>{setSel(c);setQ(c.name);setFocus(false);setBusy(true);setBRows([]);
+ const open=c=>{const hn=hist.find(x=>x.pkey===c.pkey);if(hn&&hn.player)c={...c,name:hn.player};setSel(c);setQ(c.name);setFocus(false);setBusy(true);setBRows([]);
   cloudDb("betby_props?pkey=eq."+encodeURIComponent(c.pkey)+"&order=updated_at.desc&limit=200").then(r=>setBRows(Array.isArray(r)?r:[])).catch(()=>{});
   cloudDb("cut_history?pkey=eq."+encodeURIComponent(c.pkey)+"&order=at.desc&limit=300").then(r=>{setRows(Array.isArray(r)?r:[]);setBusy(false);}).catch(()=>{setRows([]);setBusy(false);});};
  // Logos d'équipes : par nom normalisé
@@ -4804,7 +4804,7 @@ function CutSearch({allPlayers={},teamLogos={}}){
  const myTeam=sel&&sel.team?cutNorm(sel.team):"";
  const oppOf=match=>{if(!match)return "";const parts=String(match).split(/\s+vs\.?\s+/i);if(parts.length<2)return match;
   if(myTeam){const i=parts.findIndex(t=>{const n=cutNorm(t);return n&&(n.includes(myTeam)||myTeam.includes(n));});if(i>=0)return parts[1-i];}return parts.join(" vs ");};
- const fmtD=t=>t?new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+ const fmtD=t=>{if(t==null||t==="")return "";let v=t;if(/^\d+$/.test(String(t))){v=Number(t);if(v<1e12)v*=1000;}const d=new Date(v);return isNaN(d)?"":d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});};
  const box={background:"#0B1220",borderRadius:10,border:"1px solid rgba(255,255,255,.05)",overflow:"hidden",marginTop:8};
  const head={padding:"7px 10px",fontSize:11,fontWeight:800,color:"#A78BFA",borderBottom:"1px solid rgba(255,255,255,.05)"};
  const Opp=({name})=>{const u=logoOf(name);return <span style={{display:"inline-flex",alignItems:"center",gap:5,minWidth:0}}>{u?<img src={u} alt="" style={{width:16,height:16,objectFit:"contain",borderRadius:3,flexShrink:0}} onError={e=>e.target.style.display="none"}/>:<span style={{width:16,height:16,borderRadius:3,background:"rgba(255,255,255,.06)",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{name||"—"}</span></span>;};
@@ -4842,9 +4842,17 @@ function CutSearch({allPlayers={},teamLogos={}}){
      const bbCard=ev&&<CutCard key="bb" player={sel.name} team={sel.team||""} role={sel.role} logo={myLogo} opp={oppOf(ev.match)} when={fmtD(ev.start)} tag="BETBY"
        foot={"MAJ "+fmtD(ev.updated_at)}>{bMain.map(r=><BigLine key={r.key} v={r.line} l={"MAP "+r.map} odds={r.odds_under}/>)}</CutCard>;
      return <>
-      {(pp[0]||ev)&&<div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>{pp[0]?ppCard(pp[0],0):<div/>}{bbCard||<div style={{border:"1px dashed rgba(255,255,255,.08)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#4b5563"}}>Pas de ligne Betby</div>}</div>}
-      {pp.length>1&&<><div style={{fontSize:12,fontWeight:800,color:"#6b7280",margin:"12px 2px 8px"}}>Cuts PrizePicks précédents</div>
-       <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>{pp.slice(1).map((r,i)=>ppCard(r,i+1))}</div></>}
+      {pp[0]&&<div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>{ppCard(pp[0],0)}
+       <div style={{background:"#1a1d24",border:"1.5px solid rgba(255,255,255,.06)",borderRadius:16,overflow:"hidden",display:"flex",flexDirection:"column",minWidth:0}}>
+        <div style={{padding:"10px 12px 8px",fontSize:12,fontWeight:800,color:"#cbd5e1",borderBottom:"1px solid rgba(255,255,255,.06)",display:"flex",justifyContent:"space-between"}}><span>Anciens cuts</span><span style={{color:"#6b7280",fontWeight:700}}>PP</span></div>
+        {pp.length>1?pp.slice(1).map(r=>{const opp=String(oppOf(r.match)||"").replace(/\s*MAPS?.*$/i,"");const u=logoOf(opp);return(
+         <div key={r.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.04)"}}>
+          <div style={{fontSize:10.5,color:"#8b93a7",lineHeight:1.2,width:38,flexShrink:0}}>{fmtD(r.start||r.at).split(" ")[0]}<br/><span style={{color:"#5b6478"}}>{fmtD(r.start||r.at).split(" ")[1]}</span></div>
+          <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:5}}>{u?<img src={u} alt="" style={{width:16,height:16,objectFit:"contain",flexShrink:0}}/>:null}<span style={{fontSize:12.5,fontWeight:700,color:"#e5e7eb",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{opp?teamAbbr(opp):"?"}</span></div>
+          <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:15,fontWeight:900,color:"#fff"}}>{r.line}</div><div style={{fontSize:9.5,color:"#9ca3af",fontWeight:700}}>{mt(r)}</div></div>
+         </div>);})
+         :<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontSize:12,color:"#4b5563",textAlign:"center"}}>Pas encore d'ancien cut. Ils s'ajoutent à chaque run Apify.</div>}
+       </div></div>}
       {!pp.length&&!ev&&<div style={{fontSize:12,color:"#6b7280",padding:"6px 2px"}}>Aucune ligne enregistrée.</div>}
      </>;})()}
     <BetbyLadder rows={bRows} stat={st} player={sel.name}/>
