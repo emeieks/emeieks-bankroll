@@ -6175,19 +6175,20 @@ function AppMain(){
  const loadEv=useCallback(async()=>{try{const r=await cloudDb("ev_alerts?status=eq.new&order=edge.desc&limit=100");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
  useEffect(()=>{loadEv();const i=setInterval(loadEv,60000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
- const evToBet=(a,bk,stake,odds,mapTag)=>{
+ const evToBet=(a,bk,stake,odds,mapTag,idx=0,silent=false)=>{
   const info=findPlayer(a.player)||{game:a.game,league:"?",role:"?",team:"?"};
   const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
   const g={"League of Legends":"LoL","Dota 2":"Dota2"}[a.game]||a.game;
   const st=parseFloat(stake),od=parseFloat(String(odds).replace(",","."));
-  const nb={id:Date.now(),updatedAt:Date.now(),player:info.name||a.player,description:"Under "+a.book_line+" "+word,overUnder:"Under",odds:od,stake:st,bookmaker:bk,status:"pending",
+  const nb={id:Date.now()+idx,updatedAt:Date.now(),player:info.name||a.player,description:(a.side==="over"?"Over ":"Under ")+a.book_line+" "+word,overUnder:a.side==="over"?"Over":"Under",odds:od,stake:st,bookmaker:bk,status:"pending",
    game:info.game&&info.game!=="?"?info.game:g,league:info.league,role:info.role,team:info.team,datetime:nowDT(),isHeadshot:hs,isLive:/3/.test(a.pp_maps||"")&&!/1/.test(a.pp_maps||""),
    mapTag:mapTag||"Map 1",profit:0,tournament:a.tournament||"",ppMapType:a.pp_maps||null,ppLine:a.pp_line!=null?(a.pp_line+" "+word):null,ppEdge:a.edge!=null?Number(a.edge):null};
   setBets(b=>[nb,...b]);lastPushRef.current=Date.now();supaPushBets([nb]).catch(()=>{});
-  evSetStatus(a,"added");showToast("Pari ajouté · "+nb.player,"#22C55E");};
+  evSetStatus(a,"added");if(!silent)showToast("Pari ajouté · "+nb.player,"#22C55E");};
  // ── Bets potentiels (Suivi) : NEW, préremplissage de la page Ajouter, lancement d'un run ──
  const [evSeenAt]=useState(()=>{try{return Number(localStorage.getItem("ev_seen")||0);}catch(e){return 0;}});
- const [evRun,setEvRun]=useState(null);const [evPick,setEvPick]=useState(null);const [evFilter,setEvFilter]=useState("all");const [evGames,setEvGames]=useState(["CS2","LoL","Dota2"]);
+ const isNewEv=a=>new Date(a.created_at).getTime()>evSeenAt;
+ const [evRun,setEvRun]=useState(null);const [evPick,setEvPick]=useState(null);const [evFilter,setEvFilter]=useState("all");const [evSort,setEvSort]=useState(()=>{try{return localStorage.getItem("ev_sort")||"time";}catch(e){return "time";}});const [evQuick,setEvQuick]=useState(null);const [evSel,setEvSel]=useState(null);const [evGames,setEvGames]=useState(["CS2","LoL","Dota2"]);
  const evPendingRef=useRef(null);
  const [botSt,setBotSt]=useState(null);
  const [ghCfg,setGhCfg]=useState(()=>{try{return JSON.parse(localStorage.getItem("gh_bot")||"{}");}catch(e){return {};}});const [ghOpen,setGhOpen]=useState(false);
@@ -11860,6 +11861,57 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  />
 
 
+ {evSel&&evSel.length>0&&!evQuick&&<div style={{position:"fixed",left:12,right:12,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:590,display:"flex",justifyContent:"center"}}>
+  <div style={{width:"100%",maxWidth:500,display:"flex",gap:8,padding:8,borderRadius:16,background:"#1F2937",border:"1px solid rgba(124,58,237,.5)",boxShadow:"0 12px 40px rgba(0,0,0,.6)"}}>
+   <button onClick={()=>setEvSel(evAlerts.filter(a=>evFilter==="all"||isNewEv(a)).map(a=>a.key))} style={{height:44,padding:"0 12px",borderRadius:11,border:"1px solid rgba(255,255,255,.12)",background:"transparent",color:"#cbd5e1",fontWeight:800,fontSize:13,cursor:"pointer"}}>Tout</button>
+   <button onClick={()=>setEvQuick({multi:evAlerts.filter(a=>evSel.includes(a.key)),bk:form.bookmaker||"",stake:String(Math.round(unitValue))})} style={{flex:1,height:44,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:900,fontSize:14.5,cursor:"pointer"}}>Ajouter {evSel.length} bet{evSel.length>1?"s":""}</button>
+  </div></div>}
+ {evQuick&&evQuick.multi&&(()=>{const M=evQuick.multi;const ok=evQuick.bk&&parseFloat(evQuick.stake)>0&&M.length;
+  return <div onClick={()=>setEvQuick(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#111827",borderRadius:"20px 20px 0 0",padding:"14px 16px calc(96px + env(safe-area-inset-bottom))",maxHeight:"88vh",overflowY:"auto",boxSizing:"border-box"}}>
+    <div style={{width:36,height:4,borderRadius:2,background:"#374151",margin:"0 auto 12px"}}/>
+    <div style={{fontSize:17,fontWeight:900,color:"#fff"}}>{M.length} bets · même bookmaker et mise</div>
+    <div style={{marginTop:10,borderRadius:12,background:"#0B1220",border:"1px solid rgba(255,255,255,.05)",maxHeight:220,overflowY:"auto"}}>
+     {M.map(a=><div key={a.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.04)",fontSize:12.5,color:"#cbd5e1"}}>
+      <GameLogo game={({"League of Legends":"LoL","Dota 2":"Dota2"})[a.game]||a.game} size={18}/>
+      <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><b style={{color:"#fff"}}>{a.player}</b> · Map {a.map} · {a.side==="over"?"O":"U"} {a.book_line}</span>
+      <b style={{color:"#fff"}}>@{a.book_odds}</b>
+      <button onClick={()=>setEvQuick(q=>({...q,multi:q.multi.filter(x=>x.key!==a.key)}))} style={{border:"none",background:"transparent",color:"#EF4444",fontSize:15,cursor:"pointer"}}>×</button></div>)}
+    </div>
+    <div style={{fontSize:12,fontWeight:800,color:"#9ca3af",margin:"12px 0 6px"}}>Bookmaker</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{bookmakers.filter(b=>!hiddenBKs.has(b)).map(b=>{const on=evQuick.bk===b;const lg=BK_LOGOS[b]||bkPhotos[b];return(
+     <button key={b} onClick={()=>setEvQuick(q=>({...q,bk:b}))} style={{display:"flex",alignItems:"center",gap:6,height:36,padding:"0 11px",borderRadius:10,border:"1px solid "+(on?"#7C3AED":"#1F2937"),background:on?"rgba(124,58,237,.2)":"transparent",color:on?"#fff":"#9CA3AF",fontWeight:800,fontSize:13,cursor:"pointer"}}>{lg&&<img src={lg} alt="" style={{width:16,height:16,objectFit:"contain",borderRadius:4}}/>}{b}</button>);})}</div>
+    <div style={{fontSize:12,fontWeight:800,color:"#9ca3af",margin:"12px 0 6px"}}>Mise par bet ($)</div>
+    <div style={{display:"flex",gap:6}}>
+     <input inputMode="decimal" value={evQuick.stake} onChange={e=>setEvQuick(q=>({...q,stake:e.target.value}))} style={{width:96,height:42,borderRadius:11,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:17,fontWeight:800,padding:"0 10px",boxSizing:"border-box"}}/>
+     {quickUnits.map(u=><button key={u} onClick={()=>setEvQuick(q=>({...q,stake:String(Math.round(unitValue*u*100)/100)}))} style={{flex:1,height:42,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#cbd5e1",fontWeight:800,fontSize:13,cursor:"pointer"}}>{u}u</button>)}
+    </div>
+    <button disabled={!ok} onClick={()=>{M.forEach((a,i)=>evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1),i,true));showToast(M.length+" paris ajoutés · "+evQuick.bk,"#22C55E");setEvQuick(null);setEvSel(null);}}
+     style={{width:"100%",marginTop:14,height:52,borderRadius:14,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#05231A":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default"}}>{ok?"Ajouter "+M.length+" bets · "+evQuick.stake+"$ chacun · total "+(Math.round(parseFloat(evQuick.stake)*M.length*100)/100)+"$":"Choisis bookmaker et mise"}</button>
+   </div></div>;})()}
+ {evQuick&&!evQuick.multi&&(()=>{const a=evQuick.a;const hs=a.stat==="headshots";const W=hs?"Headshots":"Kills";const ok=evQuick.bk&&parseFloat(evQuick.stake)>0;
+  const R=(l,v)=><div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:"1px solid rgba(255,255,255,.05)",fontSize:13}}><span style={{color:"#8b93a7"}}>{l}</span><b style={{color:"#fff"}}>{v}</b></div>;
+  return <div onClick={()=>setEvQuick(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#111827",borderRadius:"20px 20px 0 0",padding:"14px 16px calc(96px + env(safe-area-inset-bottom))",boxShadow:"0 -20px 50px rgba(0,0,0,.6)"}}>
+    <div style={{width:36,height:4,borderRadius:2,background:"#374151",margin:"0 auto 12px"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     <GameLogo game={({"League of Legends":"LoL","Dota 2":"Dota2"})[a.game]||a.game} size={30}/>
+     <div style={{flex:1,minWidth:0}}><div style={{fontSize:16.5,fontWeight:900,color:"#fff"}}>{a.player} · {a.side==="over"?"Over":"Under"} {a.book_line} {W}</div><div style={{fontSize:12,color:"#9ca3af"}}>{a.match}</div></div>
+     <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} style={{height:32,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.12)",background:"transparent",color:"#cbd5e1",fontSize:12.5,fontWeight:800,cursor:"pointer"}}>Éditer</button>
+    </div>
+    <div style={{marginTop:10,padding:"4px 12px",borderRadius:12,background:"#0B1220",border:"1px solid rgba(255,255,255,.05)"}}>
+     {R("Map","Map "+(a.map||"?"))}{R("Cote",String(a.book_odds))}{R("PrizePicks",a.pp_line+" ("+a.pp_maps+")")}{R("Écart","+"+a.edge)}
+    </div>
+    <div style={{fontSize:12,fontWeight:800,color:"#9ca3af",margin:"12px 0 6px"}}>Bookmaker</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{bookmakers.filter(b=>!hiddenBKs.has(b)).map(b=>{const on=evQuick.bk===b;const lg=BK_LOGOS[b]||bkPhotos[b];return(
+     <button key={b} onClick={()=>setEvQuick(q=>({...q,bk:b}))} style={{display:"flex",alignItems:"center",gap:6,height:36,padding:"0 11px",borderRadius:10,border:"1px solid "+(on?"#7C3AED":"#1F2937"),background:on?"rgba(124,58,237,.2)":"transparent",color:on?"#fff":"#9CA3AF",fontWeight:800,fontSize:13,cursor:"pointer"}}>{lg&&<img src={lg} alt="" style={{width:16,height:16,objectFit:"contain",borderRadius:4}}/>}{b}</button>);})}</div>
+    <div style={{fontSize:12,fontWeight:800,color:"#9ca3af",margin:"12px 0 6px"}}>Mise ($)</div>
+    <div style={{display:"flex",gap:6}}>
+     <input inputMode="decimal" value={evQuick.stake} onChange={e=>setEvQuick(q=>({...q,stake:e.target.value}))} style={{width:96,height:42,borderRadius:11,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:17,fontWeight:800,padding:"0 10px",boxSizing:"border-box"}}/>
+     {quickUnits.map(u=><button key={u} onClick={()=>setEvQuick(q=>({...q,stake:String(Math.round(unitValue*u*100)/100)}))} style={{flex:1,height:42,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#cbd5e1",fontWeight:800,fontSize:13,cursor:"pointer"}}>{u}u</button>)}
+    </div>
+    <button disabled={!ok} onClick={()=>{evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1));setEvQuick(null);}} style={{width:"100%",marginTop:14,height:52,borderRadius:14,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#05231A":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default"}}>{ok?"Ajouter · "+evQuick.stake+"$ chez "+evQuick.bk:"Choisis bookmaker et mise"}</button>
+   </div></div>;})()}
  <SuiviLabel>BOT</SuiviLabel>
  {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(isNew).length;
   const running=evRun&&(evRun.status==="pending"||evRun.status==="running");
@@ -11891,14 +11943,23 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <DayBar alerts={evAlerts} onDone={loadEv}/>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet potentiel</div>}
-   {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,overflowX:"auto"}}>
-    {[["all","Tous",null],["new","NEW",null],["CS2","CS2","CS2"],["Dota2","Dota","Dota2"],["LoL","LoL","LoL"],["Valorant","Valo","Valorant"]].map(([k,l,g])=>{const n=k==="all"?evAlerts.length:k==="new"?evAlerts.filter(isNew).length:evAlerts.filter(a=>(GL[a.game]||a.game)===k).length;if(g&&!n)return null;const on=evFilter===k;return(
-     <button key={k} onClick={()=>setEvFilter(k)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:5,height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(on?"#22C55E":"rgba(255,255,255,.08)"),background:on?"rgba(34,197,94,.14)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-      {g&&<GameLogo game={g} size={14}/>}{l}<span style={{color:on?"#86efac":"#6b7280",fontWeight:700}}>{n}</span></button>);})}
+   {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center"}}>
+    {[["all","Tous"],["new","NEW"]].map(([k,l])=>{const on=evFilter===k;const n=k==="all"?evAlerts.length:evAlerts.filter(isNew).length;return(
+     <button key={k} onClick={()=>setEvFilter(k)} style={{display:"flex",alignItems:"center",gap:5,height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(on?"#22C55E":"rgba(255,255,255,.08)"),background:on?"rgba(34,197,94,.14)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}<span style={{color:on?"#86efac":"#6b7280"}}>{n}</span></button>);})}
+    <button onClick={()=>setEvSel(x=>x?null:[])} style={{height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(evSel?"#7C3AED":"rgba(255,255,255,.08)"),background:evSel?"rgba(124,58,237,.2)":"transparent",color:evSel?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{evSel?"Annuler":"Sélection"}</button>
+    <div style={{flex:1}}/>
+    <div style={{display:"flex",padding:2,borderRadius:9,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
+     {[["time","Heure"],["edge","Écart"]].map(([k,l])=><button key={k} onClick={()=>{setEvSort(k);try{localStorage.setItem("ev_sort",k);}catch(e){}}} style={{height:28,padding:"0 10px",borderRadius:7,border:"none",background:evSort===k?"#7c3aed":"transparent",color:evSort===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
+    </div>
    </div>}
-   {evAlerts.filter(a=>evFilter==="all"||(evFilter==="new"?isNew(a):(GL[a.game]||a.game)===evFilter)).map(a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
+   {(()=>{const tms=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)?9e15:t;};
+    const list=evAlerts.filter(a=>evFilter==="all"||isNew(a)).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
+    const ORDER=["CS2","Dota2","LoL","Valorant"];const games=[...new Set(list.map(a=>GL[a.game]||a.game))].sort((x,y)=>ORDER.indexOf(x)-ORDER.indexOf(y));
+    const NAMES={CS2:"Counter-Strike 2",Dota2:"Dota 2",LoL:"League of Legends",Valorant:"Valorant"};
+    const renderEv=a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
     <div key={a.key} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid "+(nw?"#22C55E":"#60a5fa")}}>
-     <div onClick={()=>setEvPick(x=>x===a.key?null:a.key)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
+     <div onClick={()=>evSel?setEvSel(l=>l.includes(a.key)?l.filter(k=>k!==a.key):[...l,a.key]):setEvPick(x=>x===a.key?null:a.key)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11,background:evSel&&evSel.includes(a.key)?"rgba(124,58,237,.12)":"transparent"}}>
+      {evSel&&<span style={{width:22,height:22,borderRadius:7,flexShrink:0,border:"2px solid "+(evSel.includes(a.key)?"#7C3AED":"#374151"),background:evSel.includes(a.key)?"#7C3AED":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:900}}>{evSel.includes(a.key)?"✓":""}</span>}
       <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}><GameLogo game={G} size={37}/></div>
       <div style={{flex:1,minWidth:0}}>
        <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
@@ -11917,11 +11978,19 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
        </div>
       </div>
      </div>
-     {evPick===a.key&&<div style={{display:"flex",gap:8,padding:"0 13px 12px 60px"}}>
-      <button onClick={()=>{setEvPick(null);evOpenAdd(a);}} style={{flex:1,height:40,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
+     {!evSel&&evPick===a.key&&<div style={{display:"flex",gap:8,padding:"0 13px 12px 60px"}}>
+      <button onClick={()=>{setEvPick(null);setEvQuick({a,bk:form.bookmaker||"",stake:String(Math.round(unitValue))});}} style={{flex:1,height:40,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
       <button onClick={()=>{setEvPick(null);evSetStatus(a,"ignored");}} style={{height:40,padding:"0 14px",borderRadius:11,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ignorer</button>
      </div>}
-    </div>);})}
+    </div>);};
+    return games.map(g=>{const L=list.filter(a=>(GL[a.game]||a.game)===g);const maps=[...new Set(L.map(a=>String(a.map||"?")))].sort();return(
+     <div key={g}>
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px 8px",background:"rgba(255,255,255,.02)",borderBottom:"1px solid "+SV.line}}>
+       <GameLogo game={g} size={20}/><span style={{fontSize:14,fontWeight:900,color:"#fff",letterSpacing:-.2}}>{NAMES[g]||g}</span><span style={{fontSize:12,color:"#6b7280",fontWeight:700}}>{L.length}</span></div>
+      {maps.map(m=><div key={m}>
+       <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px"}}><span style={{fontSize:10.5,fontWeight:900,color:"#fbbf24",letterSpacing:.6}}>MAP {m}</span><span style={{flex:1,height:1,background:"rgba(251,191,36,.18)"}}/><span style={{fontSize:10.5,color:"#6b7280",fontWeight:700}}>{L.filter(a=>String(a.map||"?")===m).length}</span></div>
+       {L.filter(a=>String(a.map||"?")===m).map(renderEv)}</div>)}
+     </div>);});})()}
   </div>}
  </div>;})()}
  <SuiviLabel>ANALYSE</SuiviLabel>
