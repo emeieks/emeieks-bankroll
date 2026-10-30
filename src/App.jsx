@@ -4705,7 +4705,7 @@ const cutNorm=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerC
 function CutSearch(){
  const [q,setQ]=useState("");const [rows,setRows]=useState(null);const [busy,setBusy]=useState(false);const [pick,setPick]=useState(null);
  useEffect(()=>{const k=cutNorm(q);if(k.length<2){setRows(null);setPick(null);return;}
-  setBusy(true);const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?pkey=ilike.*"+encodeURIComponent(k)+"*&order=at.desc&limit=400");setRows(Array.isArray(r)?r:[]);}catch(e){setRows([]);}setBusy(false);},300);
+  setBusy(true);const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?or=(pkey.ilike.*"+encodeURIComponent(k)+"*,player.ilike.*"+encodeURIComponent(q.trim())+"*)&order=at.desc&limit=400");setRows(Array.isArray(r)?r:[]);}catch(e){setRows([]);}setBusy(false);},300);
   return()=>clearTimeout(t);},[q]);
  const players=rows?[...new Map(rows.map(r=>[r.pkey,r])).values()]:[];
  const cur=pick||(players.length===1?players[0].pkey:null);
@@ -4733,6 +4733,14 @@ function CutSearch(){
    const avg=pairs.length?pairs.reduce((t,o)=>t+o.b/o.a,0)/pairs.length:null;
    return(<div key={st} style={{marginTop:10}}>
     <div style={{fontSize:13.5,fontWeight:800,color:"#fff"}}>{L[0].player} · {L[0].game} · {word}</div>
+    {(()=>{const last=(src,m)=>L.find(r=>r.source===src&&r.maps===m);const a=last("pp","1+2"),b=last("pp","3"),b1=last("betby","1"),b2=last("betby","2");
+     const tile=(t,r,sub)=><div style={{flex:1,background:"#0B1220",borderRadius:10,padding:"8px 10px",border:"1px solid rgba(255,255,255,.05)"}}><div style={{fontSize:10.5,color:"#6b7280",fontWeight:700}}>{t}</div><div style={{fontSize:18,fontWeight:900,color:r?"#fff":"#374151"}}>{r?r.line:"—"}</div><div style={{fontSize:10.5,color:"#8b93a7"}}>{r?sub(r):""}</div></div>;
+     return <div style={{display:"flex",gap:6,marginTop:8}}>
+      {tile("PP Map 1+2",a,r=>"Apify "+fmtD(r.at)+" · "+(r.line/2).toFixed(2)+"/map")}
+      {tile("PP Map 3",b,r=>"Apify "+fmtD(r.at))}
+      {tile("Betby Map 1",b1,r=>"U @"+r.odds_under)}
+      {tile("Betby Map 2",b2,r=>"U @"+r.odds_under)}
+     </div>;})()}
     <div style={box}><div style={head}>Compilation Map 1+2 → Map 3 {avg!=null&&<span style={{color:"#22C55E",marginLeft:6}}>Map 3 ≈ {(avg*100).toFixed(0)}% du cut 1+2</span>}</div>
      {pairs.length?pairs.slice(0,10).map((o,i)=><div key={i} style={row}><span style={{color:"#8b93a7",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.m||fmtD(o.s)}</span><span>1+2 : <b>{o.a}</b></span><span>Map 3 : <b>{o.b}</b></span><span style={{color:"#A78BFA",fontWeight:700}}>{(o.b/o.a*100).toFixed(0)}% · {(o.a/2).toFixed(2)}/map</span></div>)
       :<div style={{padding:"8px 10px",fontSize:12,color:"#6b7280"}}>Pas encore de match avec un cut Map 1+2 et un cut Map 3 enregistrés.</div>}</div>
@@ -11689,7 +11697,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
      {botSt&&<div style={{color:"#cbd5e1",fontWeight:600,marginBottom:2}}>Betby {hhmm(botSt.betby_at)} · Apify {hhmm(botSt.apify_at)}</div>}
      {evRun?(evRun.status==="done"?"Dernier run "+hhmm(evRun.finished_at||evRun.created_at)+" · "+(evRun.games||"")+" · "+(evRun.n_alerts!=null?evRun.n_alerts+" bet(s)":""):evRun.status==="error"?"Erreur : "+(evRun.error||"").slice(0,80):"Demandé à "+hhmm(evRun.created_at)):""}
      <span onClick={()=>setGhOpen(v=>!v)} style={{marginLeft:6,color:"#A78BFA",cursor:"pointer",fontWeight:700}}>{ghCfg.repo&&ghCfg.token?"GitHub ✓":"Relier GitHub"}</span></div>
-    {evRun&&evRun.log&&(evRunning||Date.now()-new Date(evRun.finished_at||evRun.created_at).getTime()<15*60000)&&<EvConsole text={evRun.log} live={evRunning}/>}
+    {evRun&&evRun.log&&evRunning&&<EvConsole text={evRun.log} live={evRunning}/>}
     {ghOpen&&<div style={{marginTop:8,display:"grid",gap:6}}>
      {[["repo","Dépôt (ex. maxime/bot-ev)"],["token","Token GitHub (Actions : write)"]].map(([k,ph])=><input key={k} type={k==="token"?"password":"text"} placeholder={ph} value={ghCfg[k]||""} onChange={e=>saveGh({...ghCfg,[k]:e.target.value})} style={{height:40,borderRadius:10,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 10px",fontFamily:"Inter,sans-serif"}}/>)}
      <div style={{fontSize:11,color:"#6b7280"}}>Gardé seulement sur cet appareil.</div></div>}
