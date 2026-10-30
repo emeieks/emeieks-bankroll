@@ -5968,7 +5968,7 @@ function AppMain(){
  const evOpenAdd=a=>{const info=findPlayer(a.player)||null;const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
   const live=/3/.test(a.pp_maps||"")&&!/1/.test(a.pp_maps||"");
   evPrefillRef.current=true;evPendingRef.current=a;setEditingBet(null);
-  setForm(f=>({...EMPTY_FORM,datetime:nowDT(),player:(info&&info.name)||a.player,overUnder:"Under",description:a.book_line+" "+word,odds:String(a.book_odds),
+  setForm(f=>({...EMPTY_FORM,datetime:nowDT(),player:(info&&info.name)||a.player,overUnder:a.side==="over"?"Over":"Under",description:a.book_line+" "+word,odds:String(a.book_odds),
    stake:"",bookmaker:"",isHeadshot:hs,isLive:live,mapTag:"Map "+(a.map||(live?3:1)),tournament:a.tournament||"",autoInfo:info,
    ppMapType:a.pp_maps||"",ppDescription:Number(a.pp_line).toFixed(1)+" "+word}));
   setView("add");};
@@ -11568,7 +11568,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
         {hs&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7}}/>}
         <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {a.map||"?"}</span>
         <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
-        <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Under {a.book_line} {hs?"Headshots":"Kills"}</span>
+        <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.side==="over"?"Over":"Under"} {a.book_line} {hs?"Headshots":"Kills"}</span>
        </div>
        <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
         <span>@{Number(a.book_odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
