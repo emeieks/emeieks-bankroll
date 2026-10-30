@@ -4757,6 +4757,67 @@ function CutCard({player,team,role,opp,logo,when,hot,tag,children,foot}){const [
  </div>);}
 const BigLine=({v,l,odds})=><div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5}}>{v}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{l}</span>{odds&&<span style={{fontSize:11.5,fontWeight:800,color:Number(odds)>=1.6?"#4ade80":"#cbd5e1"}}>U {odds}</span>}</div>;
 
+
+// ── Pseudos à associer (PrizePicks ≠ Betby) ──
+function AliasManager(){
+ const [open,setOpen]=useState(false);const [rows,setRows]=useState([]);const [al,setAl]=useState([]);const [g,setG]=useState("");const [pp,setPp]=useState(null);const [bb,setBb]=useState(null);const [f,setF]=useState("");
+ const load=useCallback(async()=>{try{setRows(await cloudDb("name_unmatched?select=*&order=name.asc")||[]);setAl(await cloudDb("name_alias?select=*&order=created_at.desc")||[]);}catch(e){}},[]);
+ useEffect(()=>{if(open)load();},[open,load]);
+ const games=[...new Set(rows.map(r=>r.game))];const G=g||games[0]||"";
+ const flt=r=>r.game===G&&(!f||cutNorm(r.name).includes(cutNorm(f)));
+ const P=rows.filter(r=>r.side==="pp"&&flt(r)),B=rows.filter(r=>r.side==="betby"&&flt(r));
+ const link=async()=>{if(!pp||!bb)return;try{await cloudDb("name_alias?on_conflict=game,pp_key",{method:"POST",body:[{game:G,pp_key:pp.pkey,pp_name:pp.name,betby_key:bb.pkey,betby_name:bb.name}],prefer:"resolution=merge-duplicates"});
+  setRows(r=>r.filter(x=>x.key!==pp.key&&x.key!==bb.key));setPp(null);setBb(null);load();}catch(e){alert("Erreur : "+(e.message||e));}};
+ const unlink=async a=>{try{await cloudDb("name_alias?id=eq."+a.id,{method:"DELETE"});load();}catch(e){}};
+ const col=(t,list,selv,setv,c)=><div style={{flex:1,minWidth:0}}><div style={{fontSize:11,fontWeight:800,color:c,margin:"0 2px 6px"}}>{t} · {list.length}</div>
+  <div style={{maxHeight:260,overflowY:"auto",display:"grid",gap:4}}>{list.map(r=>{const on=selv&&selv.key===r.key;return(
+   <button key={r.key} onClick={()=>setv(on?null:r)} style={{textAlign:"left",padding:"7px 9px",borderRadius:9,border:"1px solid "+(on?c:"rgba(255,255,255,.06)"),background:on?c+"22":"#0B1220",color:"#e5e7eb",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+    <div style={{fontSize:13,fontWeight:800}}>{r.name}</div><div style={{fontSize:10.5,color:"#6b7280",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.info||""}</div></button>);})}</div></div>;
+ return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
+  <button onClick={()=>setOpen(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"transparent",border:"none",color:"#e5e7eb",cursor:"pointer",padding:0,fontFamily:"Inter,sans-serif"}}>
+   <span style={{fontSize:14,fontWeight:800}}>Pseudos à associer</span><span style={{fontSize:12,color:"#8b93a7"}}>{open?"▴":"▾"} {al.length?al.length+" associé(s)":""}</span></button>
+  {open&&<div style={{marginTop:10}}>
+   <div style={{fontSize:11.5,color:"#8b93a7",marginBottom:8}}>Joueurs présents sur un seul site (nom différent ?). Choisis le pseudo PrizePicks, puis le pseudo Betby, puis « Associer ».</div>
+   <div style={{display:"flex",gap:5,marginBottom:8}}>{games.map(x=><button key={x} onClick={()=>{setG(x);setPp(null);setBb(null);}} style={{flex:1,height:32,borderRadius:8,border:"1px solid "+(x===G?"#7C3AED":"rgba(255,255,255,.07)"),background:x===G?"rgba(124,58,237,.18)":"transparent",color:x===G?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer"}}>{x}</button>)}</div>
+   <input value={f} onChange={e=>setF(e.target.value)} placeholder="Filtrer un nom…" style={{width:"100%",boxSizing:"border-box",height:36,borderRadius:9,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:13,padding:"0 10px",marginBottom:8}}/>
+   <div style={{display:"flex",gap:8}}>{col("PrizePicks",P,pp,setPp,"#A78BFA")}{col("Betby",B,bb,setBb,"#38BDF8")}</div>
+   <button disabled={!pp||!bb} onClick={link} style={{width:"100%",marginTop:10,height:42,borderRadius:11,border:"none",background:pp&&bb?"linear-gradient(135deg,#7C3AED,#3B82F6)":"rgba(255,255,255,.06)",color:pp&&bb?"#fff":"#6b7280",fontWeight:800,cursor:pp&&bb?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{pp&&bb?"Associer "+pp.name+" ↔ "+bb.name:"Associer"}</button>
+   {al.length>0&&<div style={{marginTop:12}}><div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>Déjà associés</div>
+    {al.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 2px",fontSize:12.5,color:"#cbd5e1"}}><span style={{flex:1}}>{a.pp_name} <span style={{color:"#6b7280"}}>↔</span> {a.betby_name} <span style={{color:"#6b7280"}}>· {a.game}</span></span><button onClick={()=>unlink(a)} style={{border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:14}}>×</button></div>)}</div>}
+   <div style={{fontSize:10.5,color:"#6b7280",marginTop:8}}>La liste se met à jour à chaque passage du bot. Une association sert dès le passage suivant.</div>
+  </div>}
+ </div>);
+}
+
+// ── Journée de paris : clôturer et archiver ──
+function DayBar({alerts,onDone}){
+ const [days,setDays]=useState([]);const [view,setView]=useState(null);const [open,setOpen]=useState(false);
+ const load=useCallback(async()=>{try{setDays(await cloudDb("bet_days?select=day,closed_at,n&order=closed_at.desc&limit=60")||[]);}catch(e){}},[]);
+ useEffect(()=>{load();},[load]);
+ const today=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"2-digit"});
+ const close=async()=>{if(!window.confirm("Clôturer la journée ? Les bets affichés sont sauvegardés dans l'historique et la liste repart à zéro."))return;
+  try{const last=days[0]?days[0].closed_at:"1970-01-01T00:00:00Z";
+   const all=await cloudDb("ev_alerts?select=*&created_at=gt."+encodeURIComponent(last)+"&order=created_at.asc")||[];
+   const d=new Date();const day=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+(days.some(x=>x.day.startsWith(d.toISOString().slice(0,10)))?" "+d.toTimeString().slice(0,5):"");
+   await cloudDb("bet_days?on_conflict=day",{method:"POST",body:[{day,n:all.length,data:all}],prefer:"resolution=merge-duplicates"});
+   await cloudDb("ev_alerts?status=eq.new",{method:"PATCH",body:{status:"archived"}});
+   load();onDone&&onDone();alert("Journée sauvegardée · "+all.length+" bet(s)");}catch(e){alert("Erreur : "+(e.message||e));}};
+ const openDay=async d=>{try{const r=await cloudDb("bet_days?day=eq."+encodeURIComponent(d.day)+"&select=*");setView(r&&r[0]?r[0]:null);}catch(e){}};
+ return(<div style={{padding:"10px 14px",borderBottom:"1px solid "+SV.line}}>
+  <div style={{display:"flex",alignItems:"center",gap:8}}>
+   <div style={{flex:1,minWidth:0}}><div style={{fontSize:13.5,fontWeight:800,color:"#fff",textTransform:"capitalize"}}>{today}</div><div style={{fontSize:11,color:"#6b7280"}}>{alerts.length} bet(s) dans la journée en cours</div></div>
+   <button onClick={()=>setOpen(v=>!v)} style={{height:34,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",fontSize:12,fontWeight:700,cursor:"pointer"}}>Journées ({days.length})</button>
+   <button onClick={close} style={{height:34,padding:"0 10px",borderRadius:9,border:"1px solid rgba(251,191,36,.45)",background:"rgba(251,191,36,.1)",color:"#fbbf24",fontSize:12,fontWeight:800,cursor:"pointer"}}>Clôturer</button>
+  </div>
+  {open&&<div style={{marginTop:8,display:"grid",gap:4}}>{days.length?days.map(d=><button key={d.day} onClick={()=>openDay(d)} style={{display:"flex",justifyContent:"space-between",padding:"8px 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.06)",background:view&&view.day===d.day?"rgba(124,58,237,.15)":"#0B1220",color:"#e5e7eb",fontSize:13,fontWeight:700,cursor:"pointer"}}><span>{d.day.split(" ")[0].split("-").reverse().join("/")}{d.day.includes(" ")?" · "+d.day.split(" ")[1]:""}</span><span style={{color:"#8b93a7"}}>{d.n} bet(s)</span></button>):<div style={{fontSize:12,color:"#6b7280"}}>Aucune journée clôturée.</div>}</div>}
+  {open&&view&&<div style={{marginTop:8,borderRadius:10,background:"#0B1220",border:"1px solid rgba(255,255,255,.06)",maxHeight:320,overflowY:"auto"}}>
+   {(view.data||[]).map(a=><div key={a.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.04)",fontSize:12.5,color:"#cbd5e1"}}>
+    <GameLogo game={{"League of Legends":"LoL","Dota 2":"Dota2"}[a.game]||a.game} size={18}/>
+    <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><b style={{color:"#fff"}}>{a.player}</b> · Map {a.map} {a.side==="over"?"Over":"Under"} {a.book_line} @{a.book_odds}</span>
+    <span style={{color:"#A78BFA",fontWeight:800}}>PP {a.pp_line}</span><span style={{color:"#22C55E",fontWeight:800}}>+{a.edge}</span>
+    <span style={{fontSize:10,color:a.status==="added"?"#22C55E":"#6b7280"}}>{a.status==="added"?"joué":""}</span></div>)}</div>}
+ </div>);
+}
 // ── Lignes Betby « comme sur leur site » : Under par défaut, Over sur demande ──
 function BetbyLadder({rows,stat,player}){
  const [showOver,setShowOver]=useState(false);
@@ -11824,6 +11885,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
      <div style={{fontSize:11,color:"#6b7280"}}>Gardé seulement sur cet appareil.</div></div>}
    </div>
    <CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>
+   <AliasManager/>
+   <DayBar alerts={evAlerts} onDone={loadEv}/>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet potentiel</div>}
    {evAlerts.map(a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
