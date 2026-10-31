@@ -12045,39 +12045,46 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     <button disabled={!ok} onClick={()=>{M.forEach((a,i)=>evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1),i,true));showToast(M.length+" paris ajoutés · "+evQuick.bk,"#22C55E");setEvQuick(null);setEvSel(null);}}
      style={{width:"100%",marginTop:14,height:52,borderRadius:14,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#05231A":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default"}}>{ok?"Ajouter "+M.length+" bets · "+evQuick.stake+"$ chacun · total "+(Math.round(parseFloat(evQuick.stake)*M.length*100)/100)+"$":"Choisis bookmaker et mise"}</button>
    </div></div>;})()}
- {evQuick&&!evQuick.multi&&(()=>{const a=evQuick.a;const hs=a.stat==="headshots";const W=hs?"HS":"Kills";const st=parseFloat(evQuick.stake);const ok=evQuick.bk&&st>0;
+ {evQuick&&!evQuick.multi&&(()=>{const a=evQuick.a;const hs=a.stat==="headshots";const W=hs?"Headshots":"Kills";const st=parseFloat(evQuick.stake);const ok=evQuick.bk&&st>0;
   const G=({"League of Legends":"LoL","Dota 2":"Dota2"})[a.game]||a.game;const [t1,t2]=String(a.match||"").split(/\s+vs\.?\s+/i);
-  const Tile=({l,v,c})=><div style={{flex:1,padding:"10px 8px",borderRadius:12,background:"rgba(255,255,255,.035)",border:"1px solid rgba(255,255,255,.06)",textAlign:"center"}}><div style={{fontSize:10.5,fontWeight:800,color:"#6b7280",letterSpacing:.6}}>{l}</div><div style={{fontSize:19,fontWeight:900,color:c||"#fff",marginTop:2}}>{v}</div></div>;
+  const pl=findPlayer(a.player)||{};const photo=pl.photo_url||pl.avatar_url;const club=pl.team||a.team||"";const [c1]=teamColors(club||t1);const clubLogo=evLogo(club)||null;
   const units=st&&unitValue?Math.round(st/unitValue*100)/100:null;
+  const F={fontFamily:"Inter,system-ui,sans-serif",fontVariantNumeric:"tabular-nums"};
+  const lab={fontSize:11,fontWeight:600,color:"#7b8494",letterSpacing:.4,textTransform:"uppercase"};
+  const H=46;
   return <div onClick={()=>setEvQuick(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(3,5,10,.72)",backdropFilter:"blur(3px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:480,background:"linear-gradient(180deg,#141a26,#0d1119)",borderRadius:"24px 24px 0 0",border:"1px solid rgba(255,255,255,.07)",borderBottom:"none",padding:"10px 16px calc(96px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -24px 60px rgba(0,0,0,.6)",fontFamily:"Inter,sans-serif"}}>
-    <div style={{width:38,height:4,borderRadius:2,background:"rgba(255,255,255,.15)",margin:"0 auto 14px"}}/>
-    <div style={{display:"flex",alignItems:"center",gap:12}}>
-     <span style={{width:44,height:44,borderRadius:12,overflow:"hidden",flexShrink:0}}><GameLogo game={G} size={44}/></span>
-     <div style={{flex:1,minWidth:0}}>
-      <div style={{fontSize:20,fontWeight:900,color:"#fff",letterSpacing:-.4,lineHeight:1.1}}>{a.player}</div>
-      <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4,fontSize:12,color:"#8b93a7",fontWeight:700,minWidth:0}}>
-       {evLogo(t1)&&<img src={evLogo(t1)} alt="" style={{width:14,height:14,objectFit:"contain"}}/>}<span>{teamAbbr(t1)}</span><span style={{color:"#4b5563"}}>vs</span>
-       {t2&&evLogo(t2)&&<img src={evLogo(t2)} alt="" style={{width:14,height:14,objectFit:"contain"}}/>}<span>{t2?teamAbbr(t2):""}</span></div>
+   <div onClick={e=>e.stopPropagation()} style={{...F,width:"100%",maxWidth:460,background:"#0f141d",borderRadius:"24px 24px 0 0",border:"1px solid rgba(255,255,255,.07)",borderBottom:"none",padding:"10px 16px calc(96px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -24px 60px rgba(0,0,0,.6)",position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",left:0,right:0,top:0,height:170,background:"radial-gradient(70% 100% at 50% 0%,"+c1+"40,transparent 70%)",pointerEvents:"none"}}/>
+    <div style={{width:38,height:4,borderRadius:2,background:"rgba(255,255,255,.15)",margin:"0 auto 10px",position:"relative"}}/>
+    <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} aria-label="Éditer" style={{position:"absolute",right:14,top:16,width:38,height:38,borderRadius:11,border:"1px solid rgba(255,255,255,.1)",background:"rgba(15,20,29,.6)",color:"#cbd5e1",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center"}}>
+     <div style={{position:"relative",width:84,height:84}}>
+      <div style={{width:84,height:84,borderRadius:"50%",overflow:"hidden",background:"#1a2130",border:"2px solid "+c1,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+       {photo?<img src={photo} alt={a.player} style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:<GameLogo game={G} size={84}/>}</div>
+      {clubLogo&&<span style={{position:"absolute",right:-4,bottom:-2,width:28,height:28,borderRadius:9,background:"#0f141d",border:"1px solid rgba(255,255,255,.12)",display:"flex",alignItems:"center",justifyContent:"center"}}><img src={clubLogo} alt="" style={{width:20,height:20,objectFit:"contain"}}/></span>}
      </div>
-     <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} aria-label="Éditer" style={{width:38,height:38,borderRadius:11,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+     <div style={{marginTop:10,fontSize:20,fontWeight:700,color:"#fff"}}>{a.player}</div>
+     <div style={{marginTop:2,fontSize:13,fontWeight:500,color:"#8b93a7"}}>{teamAbbr(t1)} vs {t2?teamAbbr(t2):"?"}</div>
+     <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:8,height:34,padding:"0 14px",borderRadius:17,background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.08)",fontSize:14,fontWeight:600,color:"#fff"}}>
+      {a.side==="over"?"Over":"Under"} {a.book_line} {W}<span style={{width:1,height:14,background:"rgba(255,255,255,.15)"}}/><span style={{color:"#fbbf24"}}>Map {a.map||"?"}</span></div>
     </div>
-    <div style={{marginTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderRadius:14,background:"rgba(124,58,237,.10)",border:"1px solid rgba(124,58,237,.35)"}}>
-     <span style={{fontSize:17,fontWeight:900,color:"#fff"}}>{a.side==="over"?"Over":"Under"} {a.book_line} <span style={{color:"#a5adbb",fontWeight:700}}>{W}</span></span>
-     <span style={{fontSize:11.5,fontWeight:900,color:"#fbbf24",background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:7,padding:"3px 8px"}}>MAP {a.map||"?"}</span>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",marginTop:16,borderRadius:14,background:"rgba(255,255,255,.035)",border:"1px solid rgba(255,255,255,.07)"}}>
+     {[["Cote",Number(a.book_odds).toFixed(2),"#fff"],["PP "+String(a.pp_maps||"").replace("Map ","M"),String(a.pp_line),"#fff"],["Écart","+"+a.edge,"#c4b5fd"]].map(([l,v,c],i)=>
+      <div key={l} style={{padding:"11px 6px",textAlign:"center",borderLeft:i?"1px solid rgba(255,255,255,.07)":"none"}}><div style={lab}>{l}</div><div style={{fontSize:18,fontWeight:700,color:c,marginTop:3}}>{v}</div></div>)}
     </div>
-    <div style={{display:"flex",gap:8,marginTop:10}}><Tile l="COTE" v={Number(a.book_odds).toFixed(2)}/><Tile l={"PP · "+String(a.pp_maps||"").replace("Map ","M")} v={a.pp_line}/><Tile l="ÉCART" v={"+"+a.edge} c="#c4b5fd"/></div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:6,marginTop:16}}>{bookmakers.filter(b=>!hiddenBKs.has(b)).map(b=>{const on=evQuick.bk===b;const lg=BK_LOGOS[b]||bkPhotos[b];return(
-     <button key={b} onClick={()=>setEvQuick(q=>({...q,bk:b}))} aria-pressed={on} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,height:62,borderRadius:13,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.18)":"rgba(255,255,255,.025)",color:on?"#fff":"#9ca3af",fontWeight:800,fontSize:11.5,cursor:"pointer"}}>
-      {lg?<img src={lg} alt="" style={{width:24,height:24,objectFit:"contain",borderRadius:6}}/>:<span style={{width:24,height:24}}/>}{b}</button>);})}</div>
-    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}>
-     <div style={{flex:"0 0 120px",display:"flex",alignItems:"center",height:52,borderRadius:13,border:"1.5px solid rgba(255,255,255,.1)",background:"rgba(0,0,0,.25)",padding:"0 12px"}}>
-      <input inputMode="decimal" aria-label="Mise" value={evQuick.stake} onChange={e=>setEvQuick(q=>({...q,stake:e.target.value}))} placeholder="0" style={{width:"100%",border:"none",outline:"none",background:"transparent",color:"#fff",fontSize:22,fontWeight:900}}/><span style={{color:"#6b7280",fontWeight:800}}>$</span></div>
-     <div style={{flex:1,display:"flex",gap:5,overflowX:"auto"}}>{quickUnits.map(u=>{const v=String(Math.round(unitValue*u*100)/100);const on=evQuick.stake===v;return <button key={u} onClick={()=>setEvQuick(q=>({...q,stake:v}))} style={{flexShrink:0,height:40,padding:"0 11px",borderRadius:10,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#fff":"#cbd5e1",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>{u}u</button>;})}</div>
+    <div style={{...lab,margin:"16px 2px 8px"}}>Bookmaker</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:6}}>{bookmakers.filter(b=>!hiddenBKs.has(b)).map(b=>{const on=evQuick.bk===b;const lg=BK_LOGOS[b]||bkPhotos[b];return(
+     <button key={b} onClick={()=>setEvQuick(q=>({...q,bk:b}))} aria-pressed={on} style={{...F,display:"flex",alignItems:"center",justifyContent:"center",gap:6,height:H,borderRadius:12,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.16)":"rgba(255,255,255,.025)",color:on?"#fff":"#aab2bf",fontWeight:600,fontSize:12.5,cursor:"pointer",minWidth:0}}>
+      {lg&&<img src={lg} alt="" style={{width:18,height:18,objectFit:"contain",borderRadius:5,flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b}</span></button>);})}</div>
+    <div style={{...lab,margin:"16px 2px 8px"}}>Mise</div>
+    <div style={{display:"flex",gap:6}}>
+     <div style={{flex:"0 0 104px",display:"flex",alignItems:"center",height:H,borderRadius:12,border:"1.5px solid rgba(255,255,255,.1)",background:"rgba(0,0,0,.25)",padding:"0 12px",boxSizing:"border-box"}}>
+      <input inputMode="decimal" aria-label="Mise" value={evQuick.stake} onChange={e=>setEvQuick(q=>({...q,stake:e.target.value}))} placeholder="0" style={{...F,width:"100%",border:"none",outline:"none",background:"transparent",color:"#fff",fontSize:17,fontWeight:700}}/><span style={{color:"#6b7280",fontWeight:600}}>$</span></div>
+     <div style={{flex:1,display:"flex",gap:6,overflowX:"auto"}}>{quickUnits.map(u=>{const v=String(Math.round(unitValue*u*100)/100);const on=evQuick.stake===v;return <button key={u} onClick={()=>setEvQuick(q=>({...q,stake:v}))} style={{...F,flexShrink:0,height:H,minWidth:52,padding:"0 10px",borderRadius:12,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.16)":"rgba(255,255,255,.025)",color:on?"#fff":"#aab2bf",fontWeight:600,fontSize:13,cursor:"pointer"}}>{u}u</button>;})}</div>
     </div>
-    <button disabled={!ok} onClick={()=>{evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1));setEvQuick(null);}} style={{width:"100%",marginTop:16,height:56,borderRadius:16,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#04210f":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-     {ok?<>Ajouter · {evQuick.stake}${units?<span style={{opacity:.7,fontWeight:800}}>({units}u)</span>:null} · {evQuick.bk}</>:"Bookmaker et mise"}</button>
+    <button disabled={!ok} onClick={()=>{evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1));setEvQuick(null);}} style={{...F,width:"100%",marginTop:18,height:54,borderRadius:15,border:"none",background:ok?"#22C55E":"rgba(255,255,255,.06)",color:ok?"#04210f":"#6b7280",fontWeight:700,fontSize:16,cursor:ok?"pointer":"default"}}>
+     {ok?"Ajouter · "+evQuick.stake+"$"+(units?" ("+units+"u)":"")+" · "+evQuick.bk:"Choisis bookmaker et mise"}</button>
    </div></div>;})()}
  <SuiviLabel>BOT</SuiviLabel>
  {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(isNew).length;
