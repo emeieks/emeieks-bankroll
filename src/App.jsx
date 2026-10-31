@@ -4776,19 +4776,27 @@ function PPBoard({allPlayers={},teamLogos={}}){
   return Object.values(g).map(m=>{const opps=[...new Set(m.rows.map(r=>clean(r.match)).filter(Boolean))];
    const teamOf=r=>r.team?clean(r.team):(opps.length===2?opps.find(o=>o!==clean(r.match)):"?");
    const teams=[...new Set(m.rows.map(teamOf))].filter(Boolean).slice(0,2);
-   return {...m,teams,teamOf};}).filter(m=>m.teams.length>=1).sort((a,b)=>String(a.start).localeCompare(String(b.start)));},[rows]);
+   return {...m,teams,teamOf};}).filter(m=>m.teams.length>=1);},[rows]);
+ // Seulement les matchs où Betby propose des props joueurs (joueur présent sur Betby, même match à ±4 h)
+ const tsOf=v=>{if(v==null||v==="")return null;if(/^\d+(\.\d+)?$/.test(String(v))){const x=Number(v);return x>1e12?x:x*1000;}const t=new Date(v).getTime();return isNaN(t)?null:t;};
+ const bbIdx=useMemo(()=>{const m={};const fresh=Date.now()-3*3600e3;bb.forEach(x=>{if(new Date(x.updated_at).getTime()<fresh)return;(m[x.pkey]=m[x.pkey]||[]).push(tsOf(x.start));});return m;},[bb]);
+ const [ord,setOrd]=useState("asc");
+ const shown=useMemo(()=>matches.filter(m=>{const t=tsOf(m.start);if(t&&t<Date.now()-4*3600e3)return false;
+  return m.rows.some(r=>(bbIdx[r.pkey]||[]).some(tb=>!t||!tb||Math.abs(tb-t)<4*3600e3));})
+  .sort((a,b)=>((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,bbIdx,ord]);
  const G={"League of Legends":"LoL","Dota 2":"Dota2"};
- if(rows&&!matches.length)return null;
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
-  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:800,color:"#fff"}}>Board PrizePicks</span>
+  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:14,fontWeight:800,color:"#fff",flex:1}}>Board PrizePicks <span style={{color:"#6b7280",fontWeight:700,fontSize:12}}>{shown.length} match{shown.length>1?"s":""}</span></span>
+   <button onClick={()=>setOrd(o=>o==="asc"?"desc":"asc")} style={{height:32,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#cbd5e1",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Heure {ord==="asc"?"↑":"↓"}</button>
    <div style={{display:"flex",padding:2,borderRadius:9,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
     {[["kills","Kills"],["headshots","HS"]].map(([k,l])=><button key={k} onClick={()=>setStat(k)} style={{height:28,padding:"0 12px",borderRadius:7,border:"none",background:stat===k?"#7c3aed":"transparent",color:stat===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div></div>
   {!rows&&<div style={{fontSize:12,color:"#6b7280"}}>Chargement…</div>}
-  {matches.map(m=>{const open=openK===m.k;const [A,B]=m.teams;const L=m.rows.filter(r=>r.stat===stat);
+  {rows&&!shown.length&&<div style={{fontSize:12,color:"#6b7280",padding:"4px 2px"}}>Aucun match avec des props joueurs Betby pour l'instant.</div>}
+  {shown.map(m=>{const open=openK===m.k;const [A,B]=m.teams;const L=m.rows.filter(r=>r.stat===stat);
    const fmts=[...new Set(L.map(r=>r.maps))].sort((x,y)=>x.length===y.length?x.localeCompare(y):y.length-x.length);const F=fmtSel[m.k]&&fmts.includes(fmtSel[m.k])?fmtSel[m.k]:fmts[0];
    const latest={};L.filter(r=>r.maps===F).forEach(r=>{if(!latest[r.pkey])latest[r.pkey]=r;});
    const cards=Object.values(latest);const side=t=>cards.filter(r=>m.teamOf(r)===t).sort((x,y)=>y.line-x.line);
-   const ML=t=>{const u=logoOf(t);return u?<img src={u} alt="" style={{width:26,height:26,objectFit:"contain"}}/>:<span style={{width:26,height:26,borderRadius:7,background:teamColors(t)[0],display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#111"}}>{teamAbbr(t)}</span>;};
+   const ML=t=>{const u=logoOf(t);return u?<img src={u} alt="" style={{width:26,height:26,objectFit:"contain",flexShrink:0}}/>:<span style={{width:26,height:26,borderRadius:7,background:teamColors(t)[0],display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#111"}}>{teamAbbr(t)}</span>;};
    const mt=F==="1+2"?"MAPS 1-2":F==="1+2+3"?"MAPS 1-3":"MAP "+F;const W=stat==="headshots"?"HS":"Kills";
    const bbFor=r=>{const L2=bb.filter(x=>x.pkey===r.pkey&&x.stat===stat);if(!L2.length)return "";const by={};L2.forEach(x=>{const o=by[x.map];if(!o||Math.abs(x.odds_over-x.odds_under)<Math.abs(o.odds_over-o.odds_under))by[x.map]=x;});
     return "Betby "+Object.keys(by).sort().slice(0,2).map(k=>"M"+k+" "+by[k].line).join(" · ");};
@@ -4798,8 +4806,11 @@ function PPBoard({allPlayers={},teamLogos={}}){
    return(<div key={m.k} style={{marginBottom:8,borderRadius:14,border:"1px solid rgba(255,255,255,.07)",background:"#0f141d",overflow:"hidden"}}>
     <button onClick={()=>setOpenK(open?null:m.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
      <span style={{width:24,height:24,borderRadius:6,overflow:"hidden",flexShrink:0}}><GameLogo game={G[m.game]||m.game} size={24}/></span>
-     {ML(A)}<span style={{fontSize:11,color:"#6b7280",fontWeight:800}}>vs</span>{B?ML(B):null}
-     <span style={{flex:1,minWidth:0,fontSize:13.5,fontWeight:800,color:"#e5e7eb",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{A}{B?" vs "+B:""}</span>
+     <span style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:7,overflow:"hidden"}}>
+      {ML(A)}<span style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{A}</span>
+      <span style={{fontSize:11,color:"#6b7280",fontWeight:800,flexShrink:0}}>vs</span>
+      {B?<>{ML(B)}<span style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{B}</span></>:null}
+     </span>
      <span style={{fontSize:12,fontWeight:800,color:fmtT(m.start)==="LIVE"?"#f43f5e":"#eab308"}}>{fmtT(m.start)}</span>
      <span style={{color:"#6b7280",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span></button>
     {open&&<div style={{padding:"0 10px 12px"}}>
