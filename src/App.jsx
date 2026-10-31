@@ -4718,8 +4718,21 @@ const cutNorm=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerC
 
 // ── Cartes « style fiche joueur » : maillot aux couleurs du club, abréviation, poste ──
 const TEAM_COLORS={tspirit:["#E8E8E8","#1C1C1C"],yandex:["#1A1A1A","#FF4B2B"],teamyandex:["#1A1A1A","#FF4B2B"],vitality:["#F5D90A","#111111"],natusvincere:["#F2D02C","#1B1B1B"],navi:["#F2D02C","#1B1B1B"],faze:["#E2231A","#111"],g2:["#1A1A1A","#E31E24"],mouz:["#E2001A","#1a1a1a"],furia:["#141414","#B8B8B8"],spirit:["#E8E8E8","#1C1C1C"],teamspirit:["#E8E8E8","#1C1C1C"],liquid:["#0A1F44","#3EB1E6"],teamliquid:["#0A1F44","#3EB1E6"],fnatic:["#FF5900","#111"],heroic:["#1B1B1B","#E21B23"],astralis:["#E3242B","#fff"],mongolz:["#C8102E","#F2C230"],themongolz:["#C8102E","#F2C230"],virtuspro:["#F37021","#1a1a1a"],eternalfire:["#E51C23","#111"],complexity:["#1C2C5B","#E31E24"],nemiga:["#C8102E","#F4F4F4"],nemigagaming:["#C8102E","#F4F4F4"],parivision:["#6D28D9","#F4F4F4"],og:["#2C2C2C","#F4F4F4"],teamog:["#2C2C2C","#F4F4F4"],t1:["#E2012D","#111"],geng:["#AA8B56","#111"],hanwhalifeesports:["#F37321","#111"],hle:["#F37321","#111"],blg:["#00B4E6","#111"],bilibiligaming:["#00B4E6","#111"],jdg:["#C8102E","#111"],tes:["#E23D2A","#111"],kt:["#E30613","#111"],ktrolster:["#E30613","#111"],dk:["#00B2A9","#111"],sentinels:["#CE0037","#111"],fut:["#1C1C1C","#E8E8E8"],paperrex:["#1F1F1F","#F25C05"],tundra:["#1A1A1A","#E6E6E6"],tundraesports:["#1A1A1A","#E6E6E6"],aurora:["#5B2C83","#F4F4F4"],falcons:["#00A859","#111"],teamfalcons:["#00A859","#111"],gamerlegion:["#1E4FA8","#F4F4F4"],flyquest:["#00A859","#111"],nrg:["#111","#E5E5E5"],"100thieves":["#E2231A","#111"],c9:["#1E9FD8","#fff"],cloud9:["#1E9FD8","#fff"],teamheretics:["#1C1C1C","#F2C230"],heretics:["#1C1C1C","#F2C230"],karminecorp:["#0A1A3B","#2AA5E0"],losgrandes:["#F2C230","#111"],pain:["#E30613","#111"],imperial:["#1C1C1C","#E4002B"],mibr:["#1C1C1C","#F4F4F4"],betboom:["#E10600","#111"],betboomteam:["#E10600","#111"],xtreme:["#E4002B","#111"]};
-const TEAM_ABBR={natusvincere:"NAVI",navi:"NAVI",mouz:"MOUZ",themongolz:"MGLZ",mongolz:"MGLZ",virtuspro:"VP",teamspirit:"TS",spirit:"TS",teamliquid:"TL",liquid:"TL",teamog:"OG",og:"OG",teamfalcons:"FLC",falcons:"FLC",hanwhalifeesports:"HLE",geng:"GEN",t1:"T1",g2:"G2",g2esports:"G2",faze:"FAZE",fazeclan:"FAZE",bilibiligaming:"BLG",ktrolster:"KT",cloud9:"C9",nemigagaming:"NEM",nemiga:"NEM",furiaesports:"FUR",furia:"FUR",teamvitality:"VIT",vitality:"VIT",gamerlegion:"GL",eternalfire:"EF",parivision:"PARI",tundraesports:"TUN",losgrandes:"LG",karminecorp:"KC",teamheretics:"TH",betboomteam:"BB"};
+const TEAM_ABBR={giantx:"GX",fnatic:"FNC",movistarkoi:"KOI",koi:"KOI",teambds:"BDS",shifters:"SHFT",rogue:"RGE",skgaming:"SK",nongshimredforce:"NS",dpluskia:"DK",drx:"DRX",kwangdongfreecs:"KDF",dnfreecs:"DNF",oksavingsbankbrion:"BRO",topesports:"TES",jdgaming:"JDG",weibogaming:"WBG",anyoneslegend:"AL",ninjasinpyjamas:"NIP",invictusgaming:"IG",flyquest:"FLY",teamliquidhonda:"TL",shopifyrebellion:"SR",dignitas:"DIG",gamsesports:"GAM",cttbankflashwolves:"CFO",ctbcflyingoyster:"CFO",psgtalon:"PSG",natusvincere:"NAVI",navi:"NAVI",mouz:"MOUZ",themongolz:"MGLZ",mongolz:"MGLZ",virtuspro:"VP",teamspirit:"TS",spirit:"TS",teamliquid:"TL",liquid:"TL",teamog:"OG",og:"OG",teamfalcons:"FLC",falcons:"FLC",hanwhalifeesports:"HLE",geng:"GEN",t1:"T1",g2:"G2",g2esports:"G2",faze:"FAZE",fazeclan:"FAZE",bilibiligaming:"BLG",ktrolster:"KT",cloud9:"C9",nemigagaming:"NEM",nemiga:"NEM",furiaesports:"FUR",furia:"FUR",teamvitality:"VIT",vitality:"VIT",gamerlegion:"GL",eternalfire:"EF",parivision:"PARI",tundraesports:"TUN",losgrandes:"LG",karminecorp:"KC",teamheretics:"TH",betboomteam:"BB"};
 const teamKey=t=>cutNorm(String(t||"").replace(/\b(esports?|gaming|team|club)\b/gi," "));
+
+// Clés possibles d'un club : nom, abréviation (HLE, BLG, KC…), 3 premières lettres, initiales
+function teamLogoKeys(name){const k=teamKey(name);const out=new Set([k,cutNorm(name),cutNorm(teamAbbr(name))]);
+ const w=String(name||"").replace(/\b(esports?|gaming|team|club)\b/gi," ").trim().split(/\s+/).filter(Boolean);
+ if(w[0])out.add(cutNorm(w[0].slice(0,3)));const all=String(name||"").trim().split(/\s+/).filter(Boolean);if(all.length>=2)out.add(cutNorm(all.map(x=>x[0]).join("")));
+ out.delete("");return [...out];}
+function buildLogoIdx(teamLogos,allPlayers){const exact={},extra={};
+ const add=(t,u)=>{if(!t||!u)return;const ks=teamLogoKeys(t);if(!exact[ks[0]])exact[ks[0]]=u;ks.slice(1).forEach(k=>{if(!extra[k])extra[k]=u;});};
+ Object.entries(teamLogos||{}).forEach(([kk,u])=>add(kk.split("__")[0],u));Object.values(allPlayers||{}).forEach(p=>{if(p)add(p.team,p.team_logo_url);});
+ return {exact,extra};}
+function findLogo(idx,t){const n=teamKey(t),c=cutNorm(t);if(!n&&!c)return null;
+ if(idx.exact[n])return idx.exact[n];if(idx.extra[c])return idx.extra[c];if(idx.extra[n])return idx.extra[n];
+ const hit=Object.keys(idx.exact).find(x=>x.length>=3&&n.length>=3&&(x.includes(n)||n.includes(x)));return hit?idx.exact[hit]:null;}
 function teamAbbr(t){const n=cutNorm(t),k=teamKey(t);if(TEAM_ABBR[n])return TEAM_ABBR[n];if(TEAM_ABBR[k])return TEAM_ABBR[k];
  const w=String(t||"").replace(/\b(esports?|gaming|team|club)\b/gi,"").trim().split(/\s+/).filter(Boolean);if(!w.length)return "?";
  if(w.length>=2)return w.slice(0,3).map(x=>x[0]).join("").toUpperCase();return w[0].slice(0,3).toUpperCase();}
@@ -4745,31 +4758,45 @@ function Jersey({c1,c2,logo,size=118}){const id="j"+Math.random().toString(36).s
   <path d="M38 6 L16 14 L2 40 L19 50 L27 40 L27 104 L93 104 L93 40 L101 50 L118 40 L104 14 L82 6 Q60 22 38 6 Z" fill="none" stroke="rgba(0,0,0,.45)" strokeWidth="1.2"/>
   {logo&&<image href={logo} x="64" y="30" width="18" height="18" preserveAspectRatio="xMidYMid meet" style={{opacity:.95}}/>}
  </svg>);}
-function CutCard({player,team,role,opp,logo,when,hot,tag,children,foot}){const [c1,c2]=teamColors(team);const ab=teamAbbr(team);
- return(<div style={{background:"#1a1d24",border:"1.5px solid "+(hot?"#7CFC00":"rgba(255,255,255,.06)"),borderRadius:16,display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,position:"relative",overflow:"hidden"}}>
-  <span style={{position:"absolute",left:10,top:9,color:"#8b93a7"}}><svg width="14" height="12" viewBox="0 0 14 12"><rect x="0" y="6" width="2.6" height="6" rx="1" fill="currentColor"/><rect x="4.5" y="3" width="2.6" height="9" rx="1" fill="currentColor"/><rect x="9" y="0" width="2.6" height="12" rx="1" fill="currentColor"/></svg></span>
-  {tag&&<span style={{position:"absolute",right:9,top:8,fontSize:10,fontWeight:800,color:"#cbd5e1",opacity:.8}}>{tag}</span>}
-  <div style={{marginTop:8}}><Jersey c1={c1} c2={c2} logo={logo}/></div>
-  <span style={{marginTop:-14,position:"relative",fontSize:10.5,fontWeight:800,color:"#e5e7eb",background:"#2a2e37",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,padding:"3px 10px",letterSpacing:.5}}>{ab}{role?" · "+String(role).toUpperCase():""}</span>
-  <div style={{marginTop:8,fontSize:16,fontWeight:800,color:"#fff",textAlign:"center",maxWidth:"92%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player}</div>
-  <div style={{fontSize:12,color:"#9ca3af",marginTop:1,whiteSpace:"nowrap"}}>vs {opp?teamAbbr(opp):"?"} <span style={{color:"#eab308",fontWeight:700}}>{when}</span></div>
+function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foot,onDetails}){const [c1]=teamColors(team);const ab=teamAbbr(team);const [imgOk,setImgOk]=useState(true);
+ const live=when==="LIVE";
+ return(<div style={{background:"#10131A",border:"1.5px solid "+(hot?"#7CFC00":"rgba(255,255,255,.08)"),borderRadius:18,display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,position:"relative",overflow:"hidden"}}>
+  <div style={{width:"100%",height:150,position:"relative",overflow:"hidden",background:"radial-gradient(90% 90% at 50% 100%,"+c1+" 0%,"+c1+"66 45%,#10131A 100%)"}}>
+   <div style={{position:"absolute",top:6,left:0,right:0,textAlign:"center",fontFamily:"'Barlow Condensed',Inter,sans-serif",fontSize:66,fontWeight:800,lineHeight:1,color:"rgba(0,0,0,.18)",letterSpacing:2}}>{ab}</div>
+   {photo&&imgOk
+    ?<img src={photo} alt={player} onError={()=>setImgOk(false)} style={{position:"absolute",left:"50%",bottom:0,transform:"translateX(-50%)",height:138,maxWidth:"92%",objectFit:"contain",objectPosition:"bottom",filter:"drop-shadow(0 8px 14px rgba(0,0,0,.5))"}}/>
+    :<div style={{position:"absolute",left:"50%",bottom:-6,transform:"translateX(-50%)"}}><Jersey c1={c1} c2={teamColors(team)[1]} logo={logo} size={124}/></div>}
+   {onDetails&&<button onClick={onDetails} aria-label="Lignes Betby" style={{position:"absolute",left:8,top:8,width:30,height:30,borderRadius:9,border:"none",background:"rgba(0,0,0,.35)",color:"#e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><rect x="0" y="6" width="2.6" height="6" rx="1" fill="currentColor"/><rect x="4.5" y="3" width="2.6" height="9" rx="1" fill="currentColor"/><rect x="9" y="0" width="2.6" height="12" rx="1" fill="currentColor"/></svg></button>}
+   {tag&&<span style={{position:"absolute",right:9,top:9,fontSize:10,fontWeight:800,color:"#e5e7eb",background:"rgba(0,0,0,.35)",borderRadius:6,padding:"2px 6px"}}>{tag}</span>}
+   <span style={{position:"absolute",left:9,bottom:9,width:28,height:28,borderRadius:8,background:"rgba(16,19,26,.9)",border:"1px solid "+c1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{logo?<img src={logo} alt="" style={{width:20,height:20,objectFit:"contain"}}/>:<span style={{fontSize:9,fontWeight:900,color:c1}}>{ab}</span>}</span>
+   {role&&<span style={{position:"absolute",right:9,bottom:11,fontSize:10,fontWeight:900,color:"#0B0E14",background:c1,borderRadius:6,padding:"3px 7px",letterSpacing:.3}}>{String(role).toUpperCase()}</span>}
+  </div>
+  <div style={{marginTop:10,fontSize:17,fontWeight:900,color:"#fff",letterSpacing:-.3,textAlign:"center",maxWidth:"92%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player}</div>
+  <div style={{fontSize:11.5,color:"#9aa3b2",marginTop:2,whiteSpace:"nowrap",maxWidth:"94%",overflow:"hidden",textOverflow:"ellipsis"}}>{club||team} · vs <b style={{color:"#e5e7eb"}}>{opp?teamAbbr(opp):"?"}</b> <span style={{color:live?"#f43f5e":"#eab308",fontWeight:800}}>{when}</span></div>
   <div style={{padding:"8px 8px 12px",width:"100%",boxSizing:"border-box"}}>{children}</div>
-  {foot&&<div style={{width:"100%",borderTop:"1px solid rgba(255,255,255,.06)",padding:"8px 6px",fontSize:11,color:"#8b93a7",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",boxSizing:"border-box"}}>{foot}</div>}
+  {foot&&<button onClick={onDetails||undefined} style={{width:"100%",border:"none",borderTop:"1px solid rgba(255,255,255,.07)",background:"transparent",padding:"9px 6px",fontSize:11.5,color:"#9aa3b2",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:onDetails?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{foot}{onDetails?" ›":""}</button>}
  </div>);}
+// Fenêtre « lignes Betby » d'un joueur (ouverte depuis une carte)
+function BetbyModal({rows,stat,player,onClose}){return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:620,background:"rgba(0,0,0,.72)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+ <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"84vh",overflowY:"auto",background:"#111827",borderRadius:"20px 20px 0 0",padding:"12px 14px calc(96px + env(safe-area-inset-bottom))",boxSizing:"border-box"}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:16,fontWeight:900,color:"#fff"}}>{player} · lignes Betby</span><button onClick={onClose} aria-label="Fermer" style={{width:34,height:34,border:"none",background:"transparent",color:"#9ca3af",fontSize:20,cursor:"pointer"}}>×</button></div>
+  {rows.filter(r=>r.stat===stat).length?<BetbyLadder rows={rows} stat={stat} player={player}/>:<div style={{padding:"20px 4px",fontSize:13,color:"#6b7280"}}>Aucune ligne Betby pour ce joueur en ce moment.</div>}
+ </div></div>);}
 const BigLine=({v,l,odds})=><div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5}}>{v}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{l}</span>{odds&&<span style={{fontSize:11.5,fontWeight:800,color:Number(odds)>=1.6?"#4ade80":"#cbd5e1"}}>U {odds}</span>}</div>;
 
 
 
 // ── Board PrizePicks par match : logo vs logo → cartes des joueurs (équipe 1 en haut, équipe 2 en bas) ──
 function PPBoard({allPlayers={},teamLogos={}}){
- const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [openK,setOpenK]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
+ const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [openK,setOpenK]=useState(null);const [det,setDet]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
  const load=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString().slice(0,19)+"Z";
   const [r,b]=await Promise.all([cloudDb("cut_history?source=eq.pp&at=gte."+since+"&order=at.desc&limit=3000"),cloudDb("betby_props?order=updated_at.desc&limit=3000").catch(()=>[])]);
   setRows(Array.isArray(r)?r:[]);setBb(Array.isArray(b)?b:[]);}catch(e){setRows([]);}},[]);
  useEffect(()=>{load();const i=setInterval(load,120000);return()=>clearInterval(i);},[load]);
  const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
- const logoIdx=useMemo(()=>{const m={};Object.entries(teamLogos||{}).forEach(([kk,u])=>{if(u)m[teamKey(kk.split("__")[0])]=u;});Object.values(allPlayers||{}).forEach(p=>{if(p&&p.team&&p.team_logo_url){const k=teamKey(p.team);if(!m[k])m[k]=p.team_logo_url;}});return m;},[teamLogos,allPlayers]);
- const logoOf=t=>{const n=teamKey(t);if(!n)return null;if(logoIdx[n])return logoIdx[n];const hit=Object.keys(logoIdx).find(x=>x.length>=3&&(x.includes(n)||n.includes(x)));return hit?logoIdx[hit]:null;};
+ const logoIdx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
+ const logoOf=t=>findLogo(logoIdx,t);
  const fmtT=t=>{if(!t)return "";const d=new Date(t);if(isNaN(d))return "";const diff=d-Date.now();if(diff>0&&diff<3600e3){const m=Math.floor(diff/60000);return m+"m";}if(diff<=0&&diff>-4*3600e3)return "LIVE";return d.toLocaleString("fr-FR",{weekday:"short",hour:"2-digit",minute:"2-digit"});};
  const matches=useMemo(()=>{if(!rows)return [];const g={};
   rows.forEach(r=>{const k=(r.game||"")+"|"+String(r.start||"").slice(0,16);(g[k]=g[k]||{k,game:r.game,start:r.start,rows:[]}).rows.push(r);});
@@ -4801,7 +4828,7 @@ function PPBoard({allPlayers={},teamLogos={}}){
    const bbFor=r=>{const L2=bb.filter(x=>x.pkey===r.pkey&&x.stat===stat);if(!L2.length)return "";const by={};L2.forEach(x=>{const o=by[x.map];if(!o||Math.abs(x.odds_over-x.odds_under)<Math.abs(o.odds_over-o.odds_under))by[x.map]=x;});
     return "Betby "+Object.keys(by).sort().slice(0,2).map(k=>"M"+k+" "+by[k].line).join(" · ");};
    const grid=t=>{const P=side(t);if(!P.length)return null;return <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginTop:8}}>
-    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} role={pl&&pl.role} logo={logoOf(t)} opp={t===A?B:A} when={fmtT(r.start)} tag={null} foot={bbFor(r)||null}>
+    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t)} opp={t===A?B:A} when={fmtT(r.start)} tag={null} foot={bbFor(r)||"Betby"} onDetails={()=>setDet({pkey:r.pkey,player:r.player})}>
      <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div></CutCard>;})}</div>;};
    return(<div key={m.k} style={{marginBottom:8,borderRadius:14,border:"1px solid rgba(255,255,255,.07)",background:"#0f141d",overflow:"hidden"}}>
     <button onClick={()=>setOpenK(open?null:m.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
@@ -4819,6 +4846,7 @@ function PPBoard({allPlayers={},teamLogos={}}){
      {grid(A)}{B&&side(B).length>0&&<div style={{height:1,background:"rgba(255,255,255,.08)",margin:"12px 0 0"}}/>}{B&&grid(B)}
     </div>}
    </div>);})}
+  {det&&<BetbyModal rows={bb.filter(x=>x.pkey===det.pkey)} stat={stat} player={det.player} onClose={()=>setDet(null)}/>}
  </div>);
 }
 // ── Pseudos à associer (PrizePicks ≠ Betby) ──
@@ -4918,13 +4946,13 @@ function CutSearch({allPlayers={},teamLogos={}}){
   return [...m.values()];},[hist,allPlayers]);
  const k=cutNorm(q);
  const sugg=k.length<1?[]:cands.filter(c=>c.pkey.includes(k)).sort((x,y)=>(y.pkey.startsWith(k)-x.pkey.startsWith(k))||((y.bot?1:0)-(x.bot?1:0))||x.name.length-y.name.length).slice(0,8);
- const [bRows,setBRows]=useState([]);
+ const [bRows,setBRows]=useState([]);const [detS,setDetS]=useState(null);
  const open=c=>{const hn=hist.find(x=>x.pkey===c.pkey);if(hn&&hn.player)c={...c,name:hn.player};setSel(c);setQ(c.name);setFocus(false);setBusy(true);setBRows([]);
   cloudDb("betby_props?pkey=eq."+encodeURIComponent(c.pkey)+"&order=updated_at.desc&limit=200").then(r=>setBRows(Array.isArray(r)?r:[])).catch(()=>{});
   cloudDb("cut_history?pkey=eq."+encodeURIComponent(c.pkey)+"&order=at.desc&limit=300").then(r=>{setRows(Array.isArray(r)?r:[]);setBusy(false);}).catch(()=>{setRows([]);setBusy(false);});};
  // Logos d'équipes : par nom normalisé
- const logoIdx=useMemo(()=>{const m={};Object.entries(teamLogos||{}).forEach(([kk,u])=>{const t=kk.split("__")[0];if(u)m[cutNorm(t)]=u;});Object.values(allPlayers||{}).forEach(p=>{if(p&&p.team&&p.team_logo_url&&!m[cutNorm(p.team)])m[cutNorm(p.team)]=p.team_logo_url;});return m;},[teamLogos,allPlayers]);
- const logoOf=t=>{const n=cutNorm(t);if(!n)return null;if(logoIdx[n])return logoIdx[n];const hit=Object.keys(logoIdx).find(x=>x.length>=3&&(x.includes(n)||n.includes(x)));return hit?logoIdx[hit]:null;};
+ const logoIdx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
+ const logoOf=t=>findLogo(logoIdx,t);
  const myTeam=sel&&sel.team?cutNorm(sel.team):"";
  const oppOf=match=>{if(!match)return "";const parts=String(match).split(/\s+vs\.?\s+/i);if(parts.length<2)return match;
   if(myTeam){const i=parts.findIndex(t=>{const n=cutNorm(t);return n&&(n.includes(myTeam)||myTeam.includes(n));});if(i>=0)return parts[1-i];}return parts.join(" vs ");};
@@ -4961,8 +4989,8 @@ function CutSearch({allPlayers={},teamLogos={}}){
      const bS=bRows.filter(r=>r.stat===st);const ev=bS.reduce((a,r)=>(!a||String(r.start||"")>String(a.start||""))?r:a,null);
      const bMain=ev?[...new Set(bS.filter(r=>r.event_id===ev.event_id).map(r=>r.map))].sort().map(m=>bS.filter(r=>r.event_id===ev.event_id&&r.map===m).reduce((a,r)=>!a||Math.abs(r.odds_over-r.odds_under)<Math.abs(a.odds_over-a.odds_under)?r:a,null)):[];
      const mt=r=>r.maps==="1+2"?"MAPS 1-2":r.maps==="1+2+3"?"MAPS 1-3":"MAP "+r.maps;
-     const ppCard=(r,i)=>{const opp=String(oppOf(r.match)||"").replace(/\s*MAPS?.*$/i,"");return <CutCard key={r.key} player={sel.name} team={sel.team||""} role={sel.role} logo={myLogo} opp={opp} when={fmtD(r.start||r.at)} hot={i===0} tag="PP"
-       foot={(r.line/r.maps.split("+").length).toFixed(2)+" / map"}><BigLine v={r.line} l={mt(r)+" "+W}/></CutCard>;};
+     const ppCard=(r,i)=>{const opp=String(oppOf(r.match)||"").replace(/\s*MAPS?.*$/i,"");return <CutCard key={r.key} player={sel.name} team={sel.team||""} role={sel.role} photo={sel.photo} logo={myLogo} opp={opp} when={fmtD(r.start||r.at)} hot={i===0} tag="PP"
+       foot={(r.line/r.maps.split("+").length).toFixed(2)+" / map · Betby"} onDetails={()=>setDetS(st)}><BigLine v={r.line} l={mt(r)+" "+W}/></CutCard>;};
      const bbCard=ev&&<CutCard key="bb" player={sel.name} team={sel.team||""} role={sel.role} logo={myLogo} opp={oppOf(ev.match)} when={fmtD(ev.start)} tag="BETBY"
        foot={"MAJ "+fmtD(ev.updated_at)}>{bMain.map(r=><BigLine key={r.key} v={r.line} l={"MAP "+r.map} odds={r.odds_under}/>)}</CutCard>;
      return <>
@@ -4984,6 +5012,7 @@ function CutSearch({allPlayers={},teamLogos={}}){
      {pairs.length?pairs.slice(0,10).map((o,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 10px",fontSize:12.5,color:"#cbd5e1",borderTop:"1px solid rgba(255,255,255,.03)"}}><span style={{color:"#8b93a7"}}>{fmtD(o.s)}</span><span>1+2 <b>{o.a}</b> → Map 3 <b>{o.b}</b></span><span style={{color:"#A78BFA",fontWeight:700}}>{(o.b/o.a*100).toFixed(0)}%</span></div>)
       :<div style={{padding:"8px 10px",fontSize:12,color:"#6b7280"}}>Pas encore de match avec un cut Map 1+2 et un cut Map 3.</div>}</div>
    </div>);})}
+  {detS&&sel&&<BetbyModal rows={bRows} stat={detS} player={sel.name} onClose={()=>setDetS(null)}/>}
  </div>);
 }
 
@@ -7020,8 +7049,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  });
  return merged;
  },[players]);
- const evLogoIdx=useMemo(()=>{const m={};Object.entries(teamLogos||{}).forEach(([kk,u])=>{if(u)m[teamKey(kk.split("__")[0])]=u;});Object.values(allPlayers||{}).forEach(p=>{if(p&&p.team&&p.team_logo_url){const k=teamKey(p.team);if(!m[k])m[k]=p.team_logo_url;}});return m;},[teamLogos,allPlayers]);
- const evLogo=t=>{const n=teamKey(t);if(!n)return null;if(evLogoIdx[n])return evLogoIdx[n];const hit=Object.keys(evLogoIdx).find(x=>x.length>=3&&(x.includes(n)||n.includes(x)));return hit?evLogoIdx[hit]:null;};
+ const evLogoIdx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
+ const evLogo=t=>findLogo(evLogoIdx,t);
 
  // Fréquence de bets par joueur — pour trier les suggestions PlayerAC
  const allBetsByPlayer=useMemo(function(){
