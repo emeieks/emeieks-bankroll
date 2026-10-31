@@ -4717,13 +4717,14 @@ function EvConsole({text,live}){
 const cutNorm=s=>String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
 
 // ── Cartes « style fiche joueur » : maillot aux couleurs du club, abréviation, poste ──
-const TEAM_COLORS={vitality:["#F5D90A","#111111"],natusvincere:["#F2D02C","#1B1B1B"],navi:["#F2D02C","#1B1B1B"],faze:["#E2231A","#111"],g2:["#1A1A1A","#E31E24"],mouz:["#E2001A","#1a1a1a"],furia:["#141414","#B8B8B8"],spirit:["#E8E8E8","#1C1C1C"],teamspirit:["#E8E8E8","#1C1C1C"],liquid:["#0A1F44","#3EB1E6"],teamliquid:["#0A1F44","#3EB1E6"],fnatic:["#FF5900","#111"],heroic:["#1B1B1B","#E21B23"],astralis:["#E3242B","#fff"],mongolz:["#C8102E","#F2C230"],themongolz:["#C8102E","#F2C230"],virtuspro:["#F37021","#1a1a1a"],eternalfire:["#E51C23","#111"],complexity:["#1C2C5B","#E31E24"],nemiga:["#C8102E","#F4F4F4"],nemigagaming:["#C8102E","#F4F4F4"],parivision:["#6D28D9","#F4F4F4"],og:["#2C2C2C","#F4F4F4"],teamog:["#2C2C2C","#F4F4F4"],t1:["#E2012D","#111"],geng:["#AA8B56","#111"],hanwhalifeesports:["#F37321","#111"],hle:["#F37321","#111"],blg:["#00B4E6","#111"],bilibiligaming:["#00B4E6","#111"],jdg:["#C8102E","#111"],tes:["#E23D2A","#111"],kt:["#E30613","#111"],ktrolster:["#E30613","#111"],dk:["#00B2A9","#111"],sentinels:["#CE0037","#111"],fut:["#1C1C1C","#E8E8E8"],paperrex:["#1F1F1F","#F25C05"],tundra:["#1A1A1A","#E6E6E6"],tundraesports:["#1A1A1A","#E6E6E6"],aurora:["#5B2C83","#F4F4F4"],falcons:["#00A859","#111"],teamfalcons:["#00A859","#111"],gamerlegion:["#1E4FA8","#F4F4F4"],flyquest:["#00A859","#111"],nrg:["#111","#E5E5E5"],"100thieves":["#E2231A","#111"],c9:["#1E9FD8","#fff"],cloud9:["#1E9FD8","#fff"],teamheretics:["#1C1C1C","#F2C230"],heretics:["#1C1C1C","#F2C230"],karminecorp:["#0A1A3B","#2AA5E0"],losgrandes:["#F2C230","#111"],pain:["#E30613","#111"],imperial:["#1C1C1C","#E4002B"],mibr:["#1C1C1C","#F4F4F4"],betboom:["#E10600","#111"],betboomteam:["#E10600","#111"],xtreme:["#E4002B","#111"]};
+const TEAM_COLORS={tspirit:["#E8E8E8","#1C1C1C"],yandex:["#1A1A1A","#FF4B2B"],teamyandex:["#1A1A1A","#FF4B2B"],vitality:["#F5D90A","#111111"],natusvincere:["#F2D02C","#1B1B1B"],navi:["#F2D02C","#1B1B1B"],faze:["#E2231A","#111"],g2:["#1A1A1A","#E31E24"],mouz:["#E2001A","#1a1a1a"],furia:["#141414","#B8B8B8"],spirit:["#E8E8E8","#1C1C1C"],teamspirit:["#E8E8E8","#1C1C1C"],liquid:["#0A1F44","#3EB1E6"],teamliquid:["#0A1F44","#3EB1E6"],fnatic:["#FF5900","#111"],heroic:["#1B1B1B","#E21B23"],astralis:["#E3242B","#fff"],mongolz:["#C8102E","#F2C230"],themongolz:["#C8102E","#F2C230"],virtuspro:["#F37021","#1a1a1a"],eternalfire:["#E51C23","#111"],complexity:["#1C2C5B","#E31E24"],nemiga:["#C8102E","#F4F4F4"],nemigagaming:["#C8102E","#F4F4F4"],parivision:["#6D28D9","#F4F4F4"],og:["#2C2C2C","#F4F4F4"],teamog:["#2C2C2C","#F4F4F4"],t1:["#E2012D","#111"],geng:["#AA8B56","#111"],hanwhalifeesports:["#F37321","#111"],hle:["#F37321","#111"],blg:["#00B4E6","#111"],bilibiligaming:["#00B4E6","#111"],jdg:["#C8102E","#111"],tes:["#E23D2A","#111"],kt:["#E30613","#111"],ktrolster:["#E30613","#111"],dk:["#00B2A9","#111"],sentinels:["#CE0037","#111"],fut:["#1C1C1C","#E8E8E8"],paperrex:["#1F1F1F","#F25C05"],tundra:["#1A1A1A","#E6E6E6"],tundraesports:["#1A1A1A","#E6E6E6"],aurora:["#5B2C83","#F4F4F4"],falcons:["#00A859","#111"],teamfalcons:["#00A859","#111"],gamerlegion:["#1E4FA8","#F4F4F4"],flyquest:["#00A859","#111"],nrg:["#111","#E5E5E5"],"100thieves":["#E2231A","#111"],c9:["#1E9FD8","#fff"],cloud9:["#1E9FD8","#fff"],teamheretics:["#1C1C1C","#F2C230"],heretics:["#1C1C1C","#F2C230"],karminecorp:["#0A1A3B","#2AA5E0"],losgrandes:["#F2C230","#111"],pain:["#E30613","#111"],imperial:["#1C1C1C","#E4002B"],mibr:["#1C1C1C","#F4F4F4"],betboom:["#E10600","#111"],betboomteam:["#E10600","#111"],xtreme:["#E4002B","#111"]};
 const TEAM_ABBR={natusvincere:"NAVI",navi:"NAVI",mouz:"MOUZ",themongolz:"MGLZ",mongolz:"MGLZ",virtuspro:"VP",teamspirit:"TS",spirit:"TS",teamliquid:"TL",liquid:"TL",teamog:"OG",og:"OG",teamfalcons:"FLC",falcons:"FLC",hanwhalifeesports:"HLE",geng:"GEN",t1:"T1",g2:"G2",g2esports:"G2",faze:"FAZE",fazeclan:"FAZE",bilibiligaming:"BLG",ktrolster:"KT",cloud9:"C9",nemigagaming:"NEM",nemiga:"NEM",furiaesports:"FUR",furia:"FUR",teamvitality:"VIT",vitality:"VIT",gamerlegion:"GL",eternalfire:"EF",parivision:"PARI",tundraesports:"TUN",losgrandes:"LG",karminecorp:"KC",teamheretics:"TH",betboomteam:"BB"};
 const teamKey=t=>cutNorm(String(t||"").replace(/\b(esports?|gaming|team|club)\b/gi," "));
 function teamAbbr(t){const n=cutNorm(t),k=teamKey(t);if(TEAM_ABBR[n])return TEAM_ABBR[n];if(TEAM_ABBR[k])return TEAM_ABBR[k];
  const w=String(t||"").replace(/\b(esports?|gaming|team|club)\b/gi,"").trim().split(/\s+/).filter(Boolean);if(!w.length)return "?";
  if(w.length>=2)return w.slice(0,3).map(x=>x[0]).join("").toUpperCase();return w[0].slice(0,3).toUpperCase();}
-function teamColors(t){const n=cutNorm(t),k=teamKey(t);const c=TEAM_COLORS[n]||TEAM_COLORS[k];if(c)return c;
+function teamColors(t){const n=cutNorm(t),k=teamKey(t);let c=TEAM_COLORS[n]||TEAM_COLORS[k];
+ if(!c&&k.length>=3){const hit=Object.keys(TEAM_COLORS).find(x=>x.length>=3&&(k.includes(x)||x.includes(k)));if(hit)c=TEAM_COLORS[hit];}if(c)return c;
  let h=0;for(const ch of n)h=(h*31+ch.charCodeAt(0))%360;return ["hsl("+h+",62%,46%)","hsl("+((h+40)%360)+",30%,14%)"];}
 function Jersey({c1,c2,logo,size=118}){const id="j"+Math.random().toString(36).slice(2,8);
  return(<svg width={size} height={size*0.9} viewBox="0 0 120 108" style={{display:"block",filter:"drop-shadow(0 10px 14px rgba(0,0,0,.55))"}}>
@@ -4758,6 +4759,57 @@ function CutCard({player,team,role,opp,logo,when,hot,tag,children,foot}){const [
 const BigLine=({v,l,odds})=><div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5}}>{v}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{l}</span>{odds&&<span style={{fontSize:11.5,fontWeight:800,color:Number(odds)>=1.6?"#4ade80":"#cbd5e1"}}>U {odds}</span>}</div>;
 
 
+
+// ── Board PrizePicks par match : logo vs logo → cartes des joueurs (équipe 1 en haut, équipe 2 en bas) ──
+function PPBoard({allPlayers={},teamLogos={}}){
+ const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [openK,setOpenK]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
+ const load=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString().slice(0,19)+"Z";
+  const [r,b]=await Promise.all([cloudDb("cut_history?source=eq.pp&at=gte."+since+"&order=at.desc&limit=3000"),cloudDb("betby_props?order=updated_at.desc&limit=3000").catch(()=>[])]);
+  setRows(Array.isArray(r)?r:[]);setBb(Array.isArray(b)?b:[]);}catch(e){setRows([]);}},[]);
+ useEffect(()=>{load();const i=setInterval(load,120000);return()=>clearInterval(i);},[load]);
+ const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
+ const logoIdx=useMemo(()=>{const m={};Object.entries(teamLogos||{}).forEach(([kk,u])=>{if(u)m[teamKey(kk.split("__")[0])]=u;});Object.values(allPlayers||{}).forEach(p=>{if(p&&p.team&&p.team_logo_url){const k=teamKey(p.team);if(!m[k])m[k]=p.team_logo_url;}});return m;},[teamLogos,allPlayers]);
+ const logoOf=t=>{const n=teamKey(t);if(!n)return null;if(logoIdx[n])return logoIdx[n];const hit=Object.keys(logoIdx).find(x=>x.length>=3&&(x.includes(n)||n.includes(x)));return hit?logoIdx[hit]:null;};
+ const fmtT=t=>{if(!t)return "";const d=new Date(t);if(isNaN(d))return "";const diff=d-Date.now();if(diff>0&&diff<3600e3){const m=Math.floor(diff/60000);return m+"m";}if(diff<=0&&diff>-4*3600e3)return "LIVE";return d.toLocaleString("fr-FR",{weekday:"short",hour:"2-digit",minute:"2-digit"});};
+ const matches=useMemo(()=>{if(!rows)return [];const g={};
+  rows.forEach(r=>{const k=(r.game||"")+"|"+String(r.start||"").slice(0,16);(g[k]=g[k]||{k,game:r.game,start:r.start,rows:[]}).rows.push(r);});
+  return Object.values(g).map(m=>{const opps=[...new Set(m.rows.map(r=>clean(r.match)).filter(Boolean))];
+   const teamOf=r=>r.team?clean(r.team):(opps.length===2?opps.find(o=>o!==clean(r.match)):"?");
+   const teams=[...new Set(m.rows.map(teamOf))].filter(Boolean).slice(0,2);
+   return {...m,teams,teamOf};}).filter(m=>m.teams.length>=1).sort((a,b)=>String(a.start).localeCompare(String(b.start)));},[rows]);
+ const G={"League of Legends":"LoL","Dota 2":"Dota2"};
+ if(rows&&!matches.length)return null;
+ return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:800,color:"#fff"}}>Board PrizePicks</span>
+   <div style={{display:"flex",padding:2,borderRadius:9,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
+    {[["kills","Kills"],["headshots","HS"]].map(([k,l])=><button key={k} onClick={()=>setStat(k)} style={{height:28,padding:"0 12px",borderRadius:7,border:"none",background:stat===k?"#7c3aed":"transparent",color:stat===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div></div>
+  {!rows&&<div style={{fontSize:12,color:"#6b7280"}}>Chargement…</div>}
+  {matches.map(m=>{const open=openK===m.k;const [A,B]=m.teams;const L=m.rows.filter(r=>r.stat===stat);
+   const fmts=[...new Set(L.map(r=>r.maps))].sort((x,y)=>x.length===y.length?x.localeCompare(y):y.length-x.length);const F=fmtSel[m.k]&&fmts.includes(fmtSel[m.k])?fmtSel[m.k]:fmts[0];
+   const latest={};L.filter(r=>r.maps===F).forEach(r=>{if(!latest[r.pkey])latest[r.pkey]=r;});
+   const cards=Object.values(latest);const side=t=>cards.filter(r=>m.teamOf(r)===t).sort((x,y)=>y.line-x.line);
+   const ML=t=>{const u=logoOf(t);return u?<img src={u} alt="" style={{width:26,height:26,objectFit:"contain"}}/>:<span style={{width:26,height:26,borderRadius:7,background:teamColors(t)[0],display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:"#111"}}>{teamAbbr(t)}</span>;};
+   const mt=F==="1+2"?"MAPS 1-2":F==="1+2+3"?"MAPS 1-3":"MAP "+F;const W=stat==="headshots"?"HS":"Kills";
+   const bbFor=r=>{const L2=bb.filter(x=>x.pkey===r.pkey&&x.stat===stat);if(!L2.length)return "";const by={};L2.forEach(x=>{const o=by[x.map];if(!o||Math.abs(x.odds_over-x.odds_under)<Math.abs(o.odds_over-o.odds_under))by[x.map]=x;});
+    return "Betby "+Object.keys(by).sort().slice(0,2).map(k=>"M"+k+" "+by[k].line).join(" · ");};
+   const grid=t=>{const P=side(t);if(!P.length)return null;return <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginTop:8}}>
+    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} role={pl&&pl.role} logo={logoOf(t)} opp={t===A?B:A} when={fmtT(r.start)} tag={null} foot={bbFor(r)||null}>
+     <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div></CutCard>;})}</div>;};
+   return(<div key={m.k} style={{marginBottom:8,borderRadius:14,border:"1px solid rgba(255,255,255,.07)",background:"#0f141d",overflow:"hidden"}}>
+    <button onClick={()=>setOpenK(open?null:m.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
+     <span style={{width:24,height:24,borderRadius:6,overflow:"hidden",flexShrink:0}}><GameLogo game={G[m.game]||m.game} size={24}/></span>
+     {ML(A)}<span style={{fontSize:11,color:"#6b7280",fontWeight:800}}>vs</span>{B?ML(B):null}
+     <span style={{flex:1,minWidth:0,fontSize:13.5,fontWeight:800,color:"#e5e7eb",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{A}{B?" vs "+B:""}</span>
+     <span style={{fontSize:12,fontWeight:800,color:fmtT(m.start)==="LIVE"?"#f43f5e":"#eab308"}}>{fmtT(m.start)}</span>
+     <span style={{color:"#6b7280",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span></button>
+    {open&&<div style={{padding:"0 10px 12px"}}>
+     {fmts.length>1&&<div style={{display:"flex",gap:5,marginBottom:4}}>{fmts.map(f=><button key={f} onClick={()=>setFmtSel(s=>({...s,[m.k]:f}))} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(f===F?"#7C3AED":"rgba(255,255,255,.08)"),background:f===F?"rgba(124,58,237,.18)":"transparent",color:f===F?"#fff":"#9ca3af",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>{f==="1+2"?"MAPS 1-2":f==="1+2+3"?"MAPS 1-3":"MAP "+f}</button>)}</div>}
+     {!cards.length&&<div style={{fontSize:12,color:"#6b7280",padding:8}}>Pas de ligne {W} pour ce match.</div>}
+     {grid(A)}{B&&side(B).length>0&&<div style={{height:1,background:"rgba(255,255,255,.08)",margin:"12px 0 0"}}/>}{B&&grid(B)}
+    </div>}
+   </div>);})}
+ </div>);
+}
 // ── Pseudos à associer (PrizePicks ≠ Betby) ──
 function AliasManager(){
  const [open,setOpen]=useState(false);const [rows,setRows]=useState([]);const [al,setAl]=useState([]);const [g,setG]=useState("");const [pp,setPp]=useState(null);const [bb,setBb]=useState(null);const [f,setF]=useState("");
@@ -11938,6 +11990,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
      {[["repo","Dépôt (ex. maxime/bot-ev)"],["token","Token GitHub (Actions : write)"]].map(([k,ph])=><input key={k} type={k==="token"?"password":"text"} placeholder={ph} value={ghCfg[k]||""} onChange={e=>saveGh({...ghCfg,[k]:e.target.value})} style={{height:40,borderRadius:10,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 10px",fontFamily:"Inter,sans-serif"}}/>)}
      <div style={{fontSize:11,color:"#6b7280"}}>Gardé seulement sur cet appareil.</div></div>}
    </div>
+   <PPBoard allPlayers={allPlayers} teamLogos={teamLogos}/>
    <CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>
    <AliasManager/>
    <DayBar alerts={evAlerts} onDone={loadEv}/>
