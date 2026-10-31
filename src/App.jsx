@@ -4758,16 +4758,18 @@ function Jersey({c1,c2,logo,size=118}){const id="j"+Math.random().toString(36).s
   <path d="M38 6 L16 14 L2 40 L19 50 L27 40 L27 104 L93 104 L93 40 L101 50 L118 40 L104 14 L82 6 Q60 22 38 6 Z" fill="none" stroke="rgba(0,0,0,.45)" strokeWidth="1.2"/>
   {logo&&<image href={logo} x="64" y="30" width="18" height="18" preserveAspectRatio="xMidYMid meet" style={{opacity:.95}}/>}
  </svg>);}
-function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foot,onDetails}){const [c1]=teamColors(team);const ab=teamAbbr(team);const [imgOk,setImgOk]=useState(true);
+function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foot,onDetails,back}){const [flip,setFlip]=useState(false);const act=back?()=>setFlip(f=>!f):onDetails;const [c1]=teamColors(team);const ab=teamAbbr(team);const [imgOk,setImgOk]=useState(true);
  const live=when==="LIVE";
- return(<div style={{background:"#10131A",border:"1.5px solid "+(hot?"#7CFC00":"rgba(255,255,255,.08)"),borderRadius:18,display:"flex",flexDirection:"column",alignItems:"center",minWidth:0,position:"relative",overflow:"hidden"}}>
+ const face={position:"absolute",inset:0,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",background:"#10131A",border:"1.5px solid "+(hot?"#7CFC00":"rgba(255,255,255,.08)"),borderRadius:18,overflow:"hidden"};
+ return(<div style={{perspective:1100,height:336,minWidth:0}}><div style={{position:"relative",height:"100%",transition:"transform .55s cubic-bezier(.2,.8,.2,1)",transformStyle:"preserve-3d",transform:flip?"rotateY(180deg)":"none"}}>
+ <div style={{...face,display:"flex",flexDirection:"column",alignItems:"center"}}>
   <div style={{width:"100%",height:150,position:"relative",overflow:"hidden",background:"radial-gradient(90% 90% at 50% 100%,"+c1+" 0%,"+c1+"66 45%,#10131A 100%)"}}>
-   {logo?<img src={logo} alt="" aria-hidden="true" style={{position:"absolute",top:"50%",left:"50%",width:150,height:150,objectFit:"contain",transform:"translate(-50%,-58%)",opacity:.16,filter:"grayscale(.2)"}}/>
+   {logo?<img src={logo} alt="" aria-hidden="true" style={{position:"absolute",top:"50%",left:"50%",width:92,height:92,objectFit:"contain",transform:"translate(-50%,-62%)",opacity:.13,imageRendering:"auto"}}/>
     :<div style={{position:"absolute",top:6,left:0,right:0,textAlign:"center",fontFamily:"'Barlow Condensed',Inter,sans-serif",fontSize:66,fontWeight:800,lineHeight:1,color:"rgba(0,0,0,.18)",letterSpacing:2}}>{ab}</div>}
    {photo&&imgOk
     ?<img src={photo} alt={player} onError={()=>setImgOk(false)} style={{position:"absolute",left:"50%",bottom:0,transform:"translateX(-50%)",height:138,maxWidth:"92%",objectFit:"contain",objectPosition:"bottom",filter:"drop-shadow(0 8px 14px rgba(0,0,0,.5))"}}/>
     :<div style={{position:"absolute",left:"50%",bottom:-6,transform:"translateX(-50%)"}}><Jersey c1={c1} c2={teamColors(team)[1]} logo={logo} size={124}/></div>}
-   {onDetails&&<button onClick={onDetails} aria-label="Lignes Betby" style={{position:"absolute",left:8,top:8,width:30,height:30,borderRadius:9,border:"none",background:"rgba(0,0,0,.35)",color:"#e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+   {act&&<button onClick={act} aria-label="Lignes Betby" style={{position:"absolute",left:8,top:8,width:30,height:30,borderRadius:9,border:"none",background:"rgba(0,0,0,.35)",color:"#e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><rect x="0" y="6" width="2.6" height="6" rx="1" fill="currentColor"/><rect x="4.5" y="3" width="2.6" height="9" rx="1" fill="currentColor"/><rect x="9" y="0" width="2.6" height="12" rx="1" fill="currentColor"/></svg></button>}
    {tag&&<span style={{position:"absolute",right:9,top:9,fontSize:10,fontWeight:800,color:"#e5e7eb",background:"rgba(0,0,0,.35)",borderRadius:6,padding:"2px 6px"}}>{tag}</span>}
    <span style={{position:"absolute",left:9,bottom:9,width:28,height:28,borderRadius:8,background:"rgba(16,19,26,.9)",border:"1px solid "+c1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{logo?<img src={logo} alt="" style={{width:20,height:20,objectFit:"contain"}}/>:<span style={{fontSize:9,fontWeight:900,color:c1}}>{ab}</span>}</span>
@@ -4776,8 +4778,26 @@ function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foo
   <div style={{marginTop:10,fontSize:17,fontWeight:900,color:"#fff",letterSpacing:-.3,textAlign:"center",maxWidth:"92%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player}</div>
   <div style={{fontSize:11.5,color:"#9aa3b2",marginTop:2,whiteSpace:"nowrap",maxWidth:"94%",overflow:"hidden",textOverflow:"ellipsis"}}>{club||team} · vs <b style={{color:"#e5e7eb"}}>{opp?teamAbbr(opp):"?"}</b> <span style={{color:live?"#f43f5e":"#eab308",fontWeight:800}}>{when}</span></div>
   <div style={{padding:"8px 8px 12px",width:"100%",boxSizing:"border-box"}}>{children}</div>
-  {foot&&<button onClick={onDetails||undefined} style={{width:"100%",border:"none",borderTop:"1px solid rgba(255,255,255,.07)",background:"transparent",padding:"9px 6px",fontSize:11.5,color:"#9aa3b2",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:onDetails?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{foot}{onDetails?" ›":""}</button>}
- </div>);}
+  {foot&&<button onClick={act||undefined} style={{marginTop:"auto",width:"100%",border:"none",borderTop:"1px solid rgba(255,255,255,.07)",background:"transparent",padding:"9px 6px",fontSize:11.5,color:"#9aa3b2",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:act?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{foot}{act?" ›":""}</button>}
+ </div>
+ {back&&<div style={{...face,transform:"rotateY(180deg)",display:"flex",flexDirection:"column"}}>
+  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 10px 8px",borderBottom:"1px solid rgba(255,255,255,.07)"}}>
+   {logo&&<img src={logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/>}<span style={{flex:1,fontSize:13.5,fontWeight:900,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player}</span>
+   <button onClick={act} aria-label="Retourner la carte" style={{width:30,height:30,borderRadius:9,border:"none",background:"rgba(255,255,255,.06)",color:"#cbd5e1",cursor:"pointer",fontSize:15}}>↺</button></div>
+  <div style={{flex:1,overflowY:"auto",padding:"10px 10px 4px"}}>{flip?back:null}</div>
+ </div>}
+ </div></div>);}
+
+// Dos de carte : lignes Betby compactes, map par map (Under), écart vs PrizePicks
+function BetbyMini({rows,stat,per}){const L=rows.filter(r=>r.stat===stat);if(!L.length)return <div style={{padding:16,fontSize:12,color:"#6b7280",textAlign:"center"}}>Pas de ligne Betby</div>;
+ const ev=L.reduce((a,r)=>(!a||String(r.start||"")>String(a.start||""))?r:a,null).event_id;const cur=L.filter(r=>r.event_id===ev);
+ const maps=[...new Set(cur.map(r=>r.map))].sort();
+ return <div>{maps.map(m=><div key={m} style={{marginBottom:10}}>
+  <div style={{fontSize:10.5,fontWeight:900,color:"#9aa3b2",letterSpacing:.6,margin:"0 2px 5px"}}>MAP {m}</div>
+  {cur.filter(r=>r.map===m).sort((a,b)=>a.line-b.line).map(r=>{const v=per==null?null:Math.round((r.line-per)*100)/100;const bad=v!=null&&v<=0;return(
+   <div key={r.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 9px",marginBottom:4,borderRadius:8,background:"#1d2733",fontSize:12.5,fontWeight:700,color:"#e5e7eb",opacity:bad?.4:1,textDecoration:bad?"line-through":"none"}}>
+    <span>U {r.line}{v!=null&&<span style={{color:"#9aa3b2",marginLeft:5}}>({v>0?"+":""}{v})</span>}</span><span>{r.odds_under}</span></div>);})}
+ </div>)}</div>;}
 // Fenêtre « lignes Betby » d'un joueur (ouverte depuis une carte)
 function BetbyModal({rows,stat,player,per,onClose}){return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:620,background:"rgba(0,0,0,.72)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
  <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"84vh",overflowY:"auto",background:"#111827",borderRadius:"20px 20px 0 0",padding:"12px 14px calc(96px + env(safe-area-inset-bottom))",boxSizing:"border-box"}}>
@@ -4832,7 +4852,7 @@ function PPBoard({allPlayers={},teamLogos={}}){
    const bbFor=r=>{const L2=bb.filter(x=>x.pkey===r.pkey&&x.stat===stat);if(!L2.length)return "";const by={};L2.forEach(x=>{const o=by[x.map];if(!o||Math.abs(x.odds_over-x.odds_under)<Math.abs(o.odds_over-o.odds_under))by[x.map]=x;});
     return "Betby "+Object.keys(by).sort().slice(0,2).map(k=>"M"+k+" "+by[k].line).join(" · ");};
    const grid=t=>{const P=side(t);if(!P.length)return null;return <><div style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 0"}}>{ML(t)}<span style={{fontSize:15,fontWeight:900,color:"#fff"}}>{teamAbbr(t)}</span><span style={{flex:1,height:1,background:"rgba(255,255,255,.08)"}}/></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginTop:8}}>
-    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t)} opp={t===A?B:A} when={fmtT(r.start)} tag={null} foot={bbFor(r)||"Betby"} onDetails={()=>setDet({pkey:r.pkey,player:r.player,per:r.line/r.maps.split("+").length})}>
+    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t)} opp={t===A?B:A} when={fmtT(r.start)} tag={null} foot={bbFor(r)||"Betby"} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length}/>}>
      <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div></CutCard>;})}</div></>;};
    return(<div key={m.k} style={{marginBottom:8,borderRadius:14,border:"1px solid rgba(255,255,255,.07)",background:"#0f141d",overflow:"hidden"}}>
     <button onClick={()=>setOpenK(open?null:m.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
@@ -4913,7 +4933,9 @@ function DayBar({alerts,onDone}){
 }
 // ── Lignes Betby « comme sur leur site » : Under par défaut, Over sur demande ──
 function BetbyLadder({rows,stat,player,per}){
- const hc=(line,side)=>{if(per==null||isNaN(per))return null;const v=Math.round((side==="u"?line-per:per-line)*100)/100;return <span style={{color:v>=1.25?"#4ade80":v>0?"#cbd5e1":"#6b7280",fontWeight:800,marginLeft:6}}>({v>0?"+":""}{v})</span>;};
+ const hv=(line,side)=>per==null||isNaN(per)?null:Math.round((side==="u"?line-per:per-line)*100)/100;
+ const hc=(line,side)=>{const v=hv(line,side);if(v==null)return null;return <span style={{fontWeight:700,marginLeft:6}}>({v>0?"+":""}{v})</span>;};
+ const neg=(line,side)=>{const v=hv(line,side);return v!=null&&v<=0;};
  const [showOver,setShowOver]=useState(false);
  const L=rows.filter(r=>r.stat===stat);if(!L.length)return null;
  const ev=L.reduce((a,r)=>(!a||String(r.start||"")>String(a.start||""))?r:a,null).event_id;   // match le plus récent
@@ -4932,8 +4954,8 @@ function BetbyLadder({rows,stat,player,per}){
     <div style={{display:"grid",gridTemplateColumns:showOver?"1fr 1fr":"1fr",gap:8}}>
      {showOver&&<div style={{textAlign:"center",fontSize:12.5,fontWeight:700,color:"#9fb0bd"}}>Over</div>}
      <div style={{textAlign:"center",fontSize:12.5,fontWeight:700,color:"#9fb0bd"}}>Under</div>
-     {ls.map(r=>[showOver&&<div key={"o"+r.key} style={cell}><span>over {r.line}{hc(r.line,"o")}</span><span style={{color:"#fff"}}>{r.odds_over}</span></div>,
-      <div key={"u"+r.key} style={cell}><span>under {r.line}{hc(r.line,"u")}</span><span style={{color:Number(r.odds_under)>=1.6?"#4ade80":"#fff"}}>{r.odds_under}</span></div>])}
+     {ls.map(r=>{const no=neg(r.line,"o"),nu=neg(r.line,"u");const X=n=>n?{textDecoration:"line-through",opacity:.4}:{};return [showOver&&<div key={"o"+r.key} style={cell}><span style={X(no)}>over {r.line}{hc(r.line,"o")}</span><span style={{color:"#fff",...X(no)}}>{r.odds_over}</span></div>,
+      <div key={"u"+r.key} style={cell}><span style={X(nu)}>under {r.line}{hc(r.line,"u")}</span><span style={{color:"#fff",...X(nu)}}>{r.odds_under}</span></div>];})}
     </div>
    </div>);})}
  </div>);
@@ -4993,7 +5015,7 @@ function CutSearch({allPlayers={},teamLogos={}}){
      const bMain=ev?[...new Set(bS.filter(r=>r.event_id===ev.event_id).map(r=>r.map))].sort().map(m=>bS.filter(r=>r.event_id===ev.event_id&&r.map===m).reduce((a,r)=>!a||Math.abs(r.odds_over-r.odds_under)<Math.abs(a.odds_over-a.odds_under)?r:a,null)):[];
      const mt=r=>r.maps==="1+2"?"MAPS 1-2":r.maps==="1+2+3"?"MAPS 1-3":"MAP "+r.maps;
      const ppCard=(r,i)=>{const opp=String(oppOf(r.match)||"").replace(/\s*MAPS?.*$/i,"");return <CutCard key={r.key} player={sel.name} team={sel.team||""} role={sel.role} photo={sel.photo} logo={myLogo} opp={opp} when={fmtD(r.start||r.at)} hot={i===0} tag="PP"
-       foot={(r.line/r.maps.split("+").length).toFixed(2)+" / map · Betby"} onDetails={()=>setDetS({st,per:r.line/r.maps.split("+").length})}><BigLine v={r.line} l={mt(r)+" "+W}/></CutCard>;};
+       foot={(r.line/r.maps.split("+").length).toFixed(2)+" / map · Betby"} back={<BetbyMini rows={bRows} stat={st} per={r.line/r.maps.split("+").length}/>}><BigLine v={r.line} l={mt(r)+" "+W}/></CutCard>;};
      const bbCard=ev&&<CutCard key="bb" player={sel.name} team={sel.team||""} role={sel.role} logo={myLogo} opp={oppOf(ev.match)} when={fmtD(ev.start)} tag="BETBY"
        foot={"MAJ "+fmtD(ev.updated_at)}>{bMain.map(r=><BigLine key={r.key} v={r.line} l={"MAP "+r.map} odds={r.odds_under}/>)}</CutCard>;
      return <>
