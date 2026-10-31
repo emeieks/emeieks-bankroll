@@ -4808,6 +4808,37 @@ const BigLine=({v,l,odds})=><div style={{display:"flex",alignItems:"baseline",ju
 
 
 
+
+// ── Historique des cuts PrizePicks d'un joueur (depuis « Ajouter un pari ») ──
+function PPHistModal({player,onClose}){
+ const [rows,setRows]=useState(null);const [st,setSt]=useState("kills");
+ useEffect(()=>{const k=cutNorm(player);cloudDb("cut_history?source=eq.pp&pkey=eq."+encodeURIComponent(k)+"&order=at.desc&limit=300").then(r=>setRows(Array.isArray(r)?r:[])).catch(()=>setRows([]));},[player]);
+ const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
+ const fmtD=t=>{if(!t)return "";const d=new Date(/^\d+$/.test(String(t))?Number(t)*(Number(t)<1e12?1000:1):t);return isNaN(d)?"":d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});};
+ const L=(rows||[]).filter(r=>r.stat===st);
+ const G=[["Map 1+2",r=>r.maps==="1+2"],["Map 3 · 4 · 5",r=>["3","4","5","4+5"].includes(r.maps)],["Map 1+2+3",r=>r.maps==="1+2+3"],["Map 1",r=>r.maps==="1"]];
+ const hasHS=(rows||[]).some(r=>r.stat==="headshots");
+ return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:640,background:"rgba(0,0,0,.72)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+  <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"84vh",overflowY:"auto",background:"#111827",borderRadius:"20px 20px 0 0",padding:"12px 14px calc(96px + env(safe-area-inset-bottom))",boxSizing:"border-box",fontFamily:"Inter,sans-serif"}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}>
+    <span style={{flex:1,fontSize:16.5,fontWeight:900,color:"#fff"}}>{player} · cuts PrizePicks</span>
+    {hasHS&&<div style={{display:"flex",padding:2,borderRadius:8,background:"rgba(255,255,255,.05)"}}>{[["kills","Kills"],["headshots","HS"]].map(([k,l])=><button key={k} onClick={()=>setSt(k)} style={{height:26,padding:"0 10px",borderRadius:6,border:"none",background:st===k?"#7c3aed":"transparent",color:st===k?"#fff":"#9ca3af",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>{l}</button>)}</div>}
+    <button onClick={onClose} aria-label="Fermer" style={{width:32,height:32,border:"none",background:"transparent",color:"#9ca3af",fontSize:20,cursor:"pointer"}}>×</button>
+   </div>
+   {!rows&&<div style={{padding:16,fontSize:13,color:"#6b7280"}}>Chargement…</div>}
+   {rows&&!L.length&&<div style={{padding:16,fontSize:13,color:"#6b7280"}}>Aucun cut enregistré.</div>}
+   {G.map(([t,f])=>{const R=L.filter(f).slice(0,15);if(!R.length)return null;return(
+    <div key={t} style={{marginTop:12}}>
+     <div style={{fontSize:11,fontWeight:900,color:"#a78bfa",letterSpacing:.5,margin:"0 2px 6px"}}>{t.toUpperCase()}</div>
+     <div style={{borderRadius:12,background:"#0B1220",border:"1px solid rgba(255,255,255,.05)",overflow:"hidden"}}>
+      {R.map((r,i)=><div key={r.key} style={{display:"grid",gridTemplateColumns:"70px 1fr auto",gap:10,alignItems:"center",padding:"9px 12px",borderTop:i?"1px solid rgba(255,255,255,.04)":"none"}}>
+       <span style={{fontSize:11.5,color:"#8b93a7"}}>{fmtD(r.start||r.at)}</span>
+       <span style={{fontSize:13,fontWeight:700,color:"#e5e7eb",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.team?clean(r.team)+" vs ":"vs "}{clean(r.match)||"?"}</span>
+       <span style={{textAlign:"right"}}><b style={{fontSize:16,color:"#fff"}}>{r.line}</b><span style={{fontSize:10.5,color:"#8b93a7",marginLeft:5}}>{r.maps.includes("+")&&r.maps!=="4+5"?"":"Map "+r.maps}</span></span>
+      </div>)}
+     </div></div>);})}
+  </div></div>);
+}
 // ── Board PrizePicks par match : logo vs logo → cartes des joueurs (équipe 1 en haut, équipe 2 en bas) ──
 function PPBoard({allPlayers={},teamLogos={}}){
  const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [openK,setOpenK]=useState(null);const [det,setDet]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
@@ -4820,7 +4851,10 @@ function PPBoard({allPlayers={},teamLogos={}}){
  const logoOf=t=>findLogo(logoIdx,t);
  const fmtT=t=>{if(!t)return "";const d=new Date(t);if(isNaN(d))return "";const diff=d-Date.now();if(diff>0&&diff<3600e3){const m=Math.floor(diff/60000);return m+"m";}if(diff<=0&&diff>-4*3600e3)return "LIVE";return d.toLocaleString("fr-FR",{weekday:"short",hour:"2-digit",minute:"2-digit"});};
  const matches=useMemo(()=>{if(!rows)return [];const g={};
-  rows.forEach(r=>{const k=(r.game||"")+"|"+String(r.start||"").slice(0,16);(g[k]=g[k]||{k,game:r.game,start:r.start,rows:[]}).rows.push(r);});
+  const LIVEF=["3","4","5","4+5"];
+  rows.forEach(r=>{const live=LIVEF.includes(r.maps);const pair=r.team&&r.match?[clean(r.team),clean(r.match)].map(teamKey).sort().join("~"):String(r.start||"").slice(0,16);
+   const k=(r.game||"")+"|"+String(r.start||"").slice(0,10)+"|"+pair+"|"+(live?"live":"pre");
+   const o=(g[k]=g[k]||{k,game:r.game,start:r.start,live,rows:[]});o.rows.push(r);if(String(r.start||"")<String(o.start||""))o.start=r.start;});
   return Object.values(g).map(m=>{const opps=[...new Set(m.rows.map(r=>clean(r.match)).filter(Boolean))];
    const teamOf=r=>r.team?clean(r.team):(opps.length===2?opps.find(o=>o!==clean(r.match)):"?");
    const teams=[...new Set(m.rows.map(teamOf))].filter(Boolean).slice(0,2);
@@ -4829,10 +4863,10 @@ function PPBoard({allPlayers={},teamLogos={}}){
  const tsOf=v=>{if(v==null||v==="")return null;if(/^\d+(\.\d+)?$/.test(String(v))){const x=Number(v);return x>1e12?x:x*1000;}const t=new Date(v).getTime();return isNaN(t)?null:t;};
  const bbIdx=useMemo(()=>{const m={};const fresh=Date.now()-3*3600e3;bb.forEach(x=>{if(new Date(x.updated_at).getTime()<fresh)return;(m[x.pkey]=m[x.pkey]||[]).push(tsOf(x.start));});return m;},[bb]);
  const [ord,setOrd]=useState("asc");
- const shown=useMemo(()=>matches.filter(m=>{const t=tsOf(m.start);if(t&&t<Date.now()-4*3600e3)return false;
+ const shown=useMemo(()=>matches.filter(m=>{const t=tsOf(m.start);if(t&&t<Date.now()-6*3600e3)return false;
   if(stat==="headshots"&&m.game!=="CS2")return false;
-  return m.rows.some(r=>(bbIdx[r.pkey]||[]).some(tb=>!t||!tb||Math.abs(tb-t)<4*3600e3));})
-  .sort((a,b)=>((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,bbIdx,ord,stat]);
+  return m.rows.some(r=>(bbIdx[r.pkey]||[]).some(tb=>!t||!tb||Math.abs(tb-t)<6*3600e3));})
+  .sort((a,b)=>(b.live-a.live)||((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,bbIdx,ord,stat]);
  const G={"League of Legends":"LoL","Dota 2":"Dota2"};
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:14,fontWeight:800,color:"#fff",flex:1}}>Matchs <span style={{color:"#6b7280",fontWeight:700,fontSize:12}}>{shown.length} match{shown.length>1?"s":""}</span></span>
@@ -4852,7 +4886,7 @@ function PPBoard({allPlayers={},teamLogos={}}){
    const bbFor=r=>{const L2=bb.filter(x=>x.pkey===r.pkey&&x.stat===stat);if(!L2.length)return "";const by={};L2.forEach(x=>{const o=by[x.map];if(!o||Math.abs(x.odds_over-x.odds_under)<Math.abs(o.odds_over-o.odds_under))by[x.map]=x;});
     return "Betby "+Object.keys(by).sort().slice(0,2).map(k=>"M"+k+" "+by[k].line).join(" · ");};
    const grid=t=>{const P=side(t);if(!P.length)return null;return <><div style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 0"}}>{ML(t)}<span style={{fontSize:15,fontWeight:900,color:"#fff"}}>{teamAbbr(t)}</span><span style={{flex:1,height:1,background:"rgba(255,255,255,.08)"}}/></div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginTop:8}}>
-    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t)} opp={t===A?B:A} when={fmtT(r.start)} tag={null} foot={bbFor(r)||"Betby"} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length}/>}>
+    {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return <CutCard key={r.key} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t)} opp={t===A?B:A} when={m.live?"LIVE":(tsOf(m.start)&&tsOf(m.start)<=Date.now()?"Terminé":fmtT(r.start))} tag={null} foot={bbFor(r)||"Betby"} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length}/>}>
      <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div></CutCard>;})}</div></>;};
    return(<div key={m.k} style={{marginBottom:8,borderRadius:14,border:"1px solid rgba(255,255,255,.07)",background:"#0f141d",overflow:"hidden"}}>
     <button onClick={()=>setOpenK(open?null:m.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
@@ -4862,7 +4896,7 @@ function PPBoard({allPlayers={},teamLogos={}}){
       <span style={{fontSize:11,color:"#6b7280",fontWeight:800,flexShrink:0}}>vs</span>
       {B?<>{ML(B)}<span style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{B}</span></>:null}
      </span>
-     <span style={{fontSize:12,fontWeight:800,color:fmtT(m.start)==="LIVE"?"#f43f5e":"#eab308"}}>{fmtT(m.start)}</span>
+     {(()=>{const t=tsOf(m.start);const started=t&&t<=Date.now();const lab=m.live?"LIVE":started?"Terminé":fmtT(m.start);return <span style={{fontSize:11.5,fontWeight:800,color:m.live?"#f43f5e":started?"#6b7280":"#eab308",padding:m.live||started?"2px 7px":0,borderRadius:6,background:m.live?"rgba(244,63,94,.12)":started?"rgba(255,255,255,.05)":"transparent"}}>{lab}</span>;})()}
      <span style={{color:"#6b7280",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span></button>
     {open&&<div style={{padding:"0 10px 12px"}}>
      {fmts.length>1&&<div style={{display:"flex",gap:5,marginBottom:4}}>{fmts.map(f=><button key={f} onClick={()=>setFmtSel(s=>({...s,[m.k]:f}))} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(f===F?"#7C3AED":"rgba(255,255,255,.08)"),background:f===F?"rgba(124,58,237,.18)":"transparent",color:f===F?"#fff":"#9ca3af",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>{f==="1+2"?"MAPS 1-2":f==="1+2+3"?"MAPS 1-3":"MAP "+f}</button>)}</div>}
@@ -6065,7 +6099,7 @@ function AppMain(){
  const [players,setPlayers]=useState(()=>(()=>{try{const v=JSON.parse(localStorage.getItem("emeieks_cache_players")||"null");return v||{};}catch(e){return {};}})()); // { name_lowercase: {id,name,game,league,role,team,avatar_url,avatar_file} }
 
  const [bookmakers,setBookmakers]=useState(()=>(()=>{try{const v=JSON.parse(localStorage.getItem("emeieks_cache_bk")||"null");return v||DEFAULT_BK;}catch(e){return DEFAULT_BK;}})());
- const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});
+ const [form,setForm]=useState({...EMPTY_FORM,datetime:nowDT()});const [ppHist,setPpHist]=useState(null);
  // Map 2 et plus → PrizePicks « Map 3 » automatiquement
  const evPrefillRef=useRef(false);
  useEffect(()=>{const t=form.mapTag;if(evPrefillRef.current){evPrefillRef.current=false;return;}if(!t||form.ppMapType==="HIDE")return;const n=parseInt(String(t).replace(/\D/g,""));
@@ -6298,7 +6332,7 @@ function AppMain(){
   const g={"League of Legends":"LoL","Dota 2":"Dota2"}[a.game]||a.game;
   const st=parseFloat(stake),od=parseFloat(String(odds).replace(",","."));
   const nb={id:Date.now()+idx,updatedAt:Date.now(),player:info.name||a.player,description:(a.side==="over"?"Over ":"Under ")+a.book_line+" "+word,overUnder:a.side==="over"?"Over":"Under",odds:od,stake:st,bookmaker:bk,status:"pending",
-   game:info.game&&info.game!=="?"?info.game:g,league:info.league,role:info.role,team:info.team,datetime:nowDT(),isHeadshot:hs,isLive:/3/.test(a.pp_maps||"")&&!/1/.test(a.pp_maps||""),
+   game:info.game&&info.game!=="?"?info.game:g,league:info.league,role:info.role,team:info.team,datetime:nowDT(),isHeadshot:hs,isLive:false,
    mapTag:mapTag||"Map 1",profit:0,tournament:a.tournament||"",ppMapType:a.pp_maps||null,ppLine:a.pp_line!=null?(a.pp_line+" "+word):null,ppEdge:a.edge!=null?Number(a.edge):null};
   setBets(b=>[nb,...b]);lastPushRef.current=Date.now();supaPushBets([nb]).catch(()=>{});
   evSetStatus(a,"added");if(!silent)showToast("Pari ajouté · "+nb.player,"#22C55E");};
@@ -6324,7 +6358,7 @@ function AppMain(){
    else showToast(betbyOnly===true?"Betby…":"Apify…","#7C3AED");}
   catch(e){const m=String(e.message||e);showToast("Run impossible : "+m.slice(0,140),"#EF4444");console.error("ev_runs",m);}};
  const evOpenAdd=a=>{const info=findPlayer(a.player)||null;const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
-  const live=/3/.test(a.pp_maps||"")&&!/1/.test(a.pp_maps||"");
+  const live=false;
   evPrefillRef.current=true;evPendingRef.current=a;setEditingBet(null);
   setForm(f=>({...EMPTY_FORM,datetime:nowDT(),player:(info&&info.name)||a.player,overUnder:a.side==="over"?"Over":"Under",description:a.book_line+" "+word,odds:String(a.book_odds),
    stake:"",bookmaker:"",isHeadshot:hs,isLive:live,mapTag:"Map "+(a.map||(live?3:1)),tournament:a.tournament||"",autoInfo:info,
@@ -9012,6 +9046,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
  {/* ADD BET */}
+ {ppHist&&<PPHistModal player={ppHist} onClose={()=>setPpHist(null)}/>}
  {view==="add"&&(
  <div className="view-enter" style={{margin:"-16px -14px",padding:"0",minHeight:"calc(100vh - 84px)",background:"radial-gradient(circle at 50% -12%,rgba(42,73,145,.35),transparent 35%),linear-gradient(180deg,#080e1c,#050916 72%)"}}>
 
@@ -9568,6 +9603,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <button onClick={()=>setForm(f=>({...f,ppMapType:f.ppMapType==="HIDE"?"":"HIDE"}))}
  style={{marginLeft:4,padding:"2px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.04)",color:"#4a5a6e",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
  Ignorer
+ </button>
+ <button onClick={()=>form.player&&setPpHist(form.player)} disabled={!form.player}
+ style={{padding:"2px 9px",borderRadius:7,border:"1px solid rgba(167,139,250,.35)",background:"rgba(167,139,250,.08)",color:form.player?"#c4b5fd":"#4a5a6e",fontSize:10,fontWeight:700,cursor:form.player?"pointer":"default",fontFamily:"Inter,sans-serif"}}>
+ Historique
  </button>
  {/* Quick PP button */}
  {baseKills&&form.overUnder&&form.ppMapType&&(
@@ -12006,28 +12045,39 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     <button disabled={!ok} onClick={()=>{M.forEach((a,i)=>evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1),i,true));showToast(M.length+" paris ajoutés · "+evQuick.bk,"#22C55E");setEvQuick(null);setEvSel(null);}}
      style={{width:"100%",marginTop:14,height:52,borderRadius:14,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#05231A":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default"}}>{ok?"Ajouter "+M.length+" bets · "+evQuick.stake+"$ chacun · total "+(Math.round(parseFloat(evQuick.stake)*M.length*100)/100)+"$":"Choisis bookmaker et mise"}</button>
    </div></div>;})()}
- {evQuick&&!evQuick.multi&&(()=>{const a=evQuick.a;const hs=a.stat==="headshots";const W=hs?"Headshots":"Kills";const ok=evQuick.bk&&parseFloat(evQuick.stake)>0;
-  const R=(l,v)=><div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:"1px solid rgba(255,255,255,.05)",fontSize:13}}><span style={{color:"#8b93a7"}}>{l}</span><b style={{color:"#fff"}}>{v}</b></div>;
-  return <div onClick={()=>setEvQuick(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#111827",borderRadius:"20px 20px 0 0",padding:"14px 16px calc(96px + env(safe-area-inset-bottom))",boxShadow:"0 -20px 50px rgba(0,0,0,.6)"}}>
-    <div style={{width:36,height:4,borderRadius:2,background:"#374151",margin:"0 auto 12px"}}/>
-    <div style={{display:"flex",alignItems:"center",gap:10}}>
-     <GameLogo game={({"League of Legends":"LoL","Dota 2":"Dota2"})[a.game]||a.game} size={30}/>
-     <div style={{flex:1,minWidth:0}}><div style={{fontSize:16.5,fontWeight:900,color:"#fff"}}>{a.player} · {a.side==="over"?"Over":"Under"} {a.book_line} {W}</div><div style={{fontSize:12,color:"#9ca3af"}}>{a.match}</div></div>
-     <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} style={{height:32,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.12)",background:"transparent",color:"#cbd5e1",fontSize:12.5,fontWeight:800,cursor:"pointer"}}>Éditer</button>
+ {evQuick&&!evQuick.multi&&(()=>{const a=evQuick.a;const hs=a.stat==="headshots";const W=hs?"HS":"Kills";const st=parseFloat(evQuick.stake);const ok=evQuick.bk&&st>0;
+  const G=({"League of Legends":"LoL","Dota 2":"Dota2"})[a.game]||a.game;const [t1,t2]=String(a.match||"").split(/\s+vs\.?\s+/i);
+  const Tile=({l,v,c})=><div style={{flex:1,padding:"10px 8px",borderRadius:12,background:"rgba(255,255,255,.035)",border:"1px solid rgba(255,255,255,.06)",textAlign:"center"}}><div style={{fontSize:10.5,fontWeight:800,color:"#6b7280",letterSpacing:.6}}>{l}</div><div style={{fontSize:19,fontWeight:900,color:c||"#fff",marginTop:2}}>{v}</div></div>;
+  const units=st&&unitValue?Math.round(st/unitValue*100)/100:null;
+  return <div onClick={()=>setEvQuick(null)} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(3,5,10,.72)",backdropFilter:"blur(3px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:480,background:"linear-gradient(180deg,#141a26,#0d1119)",borderRadius:"24px 24px 0 0",border:"1px solid rgba(255,255,255,.07)",borderBottom:"none",padding:"10px 16px calc(96px + env(safe-area-inset-bottom))",boxSizing:"border-box",boxShadow:"0 -24px 60px rgba(0,0,0,.6)",fontFamily:"Inter,sans-serif"}}>
+    <div style={{width:38,height:4,borderRadius:2,background:"rgba(255,255,255,.15)",margin:"0 auto 14px"}}/>
+    <div style={{display:"flex",alignItems:"center",gap:12}}>
+     <span style={{width:44,height:44,borderRadius:12,overflow:"hidden",flexShrink:0}}><GameLogo game={G} size={44}/></span>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:20,fontWeight:900,color:"#fff",letterSpacing:-.4,lineHeight:1.1}}>{a.player}</div>
+      <div style={{display:"flex",alignItems:"center",gap:5,marginTop:4,fontSize:12,color:"#8b93a7",fontWeight:700,minWidth:0}}>
+       {evLogo(t1)&&<img src={evLogo(t1)} alt="" style={{width:14,height:14,objectFit:"contain"}}/>}<span>{teamAbbr(t1)}</span><span style={{color:"#4b5563"}}>vs</span>
+       {t2&&evLogo(t2)&&<img src={evLogo(t2)} alt="" style={{width:14,height:14,objectFit:"contain"}}/>}<span>{t2?teamAbbr(t2):""}</span></div>
+     </div>
+     <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} aria-label="Éditer" style={{width:38,height:38,borderRadius:11,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
     </div>
-    <div style={{marginTop:10,padding:"4px 12px",borderRadius:12,background:"#0B1220",border:"1px solid rgba(255,255,255,.05)"}}>
-     {R("Map","Map "+(a.map||"?"))}{R("Cote",String(a.book_odds))}{R("PrizePicks",a.pp_line+" ("+a.pp_maps+")")}{R("Écart","+"+a.edge)}
+    <div style={{marginTop:14,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",borderRadius:14,background:"rgba(124,58,237,.10)",border:"1px solid rgba(124,58,237,.35)"}}>
+     <span style={{fontSize:17,fontWeight:900,color:"#fff"}}>{a.side==="over"?"Over":"Under"} {a.book_line} <span style={{color:"#a5adbb",fontWeight:700}}>{W}</span></span>
+     <span style={{fontSize:11.5,fontWeight:900,color:"#fbbf24",background:"rgba(251,191,36,.12)",border:"1px solid rgba(251,191,36,.3)",borderRadius:7,padding:"3px 8px"}}>MAP {a.map||"?"}</span>
     </div>
-    <div style={{fontSize:12,fontWeight:800,color:"#9ca3af",margin:"12px 0 6px"}}>Bookmaker</div>
-    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{bookmakers.filter(b=>!hiddenBKs.has(b)).map(b=>{const on=evQuick.bk===b;const lg=BK_LOGOS[b]||bkPhotos[b];return(
-     <button key={b} onClick={()=>setEvQuick(q=>({...q,bk:b}))} style={{display:"flex",alignItems:"center",gap:6,height:36,padding:"0 11px",borderRadius:10,border:"1px solid "+(on?"#7C3AED":"#1F2937"),background:on?"rgba(124,58,237,.2)":"transparent",color:on?"#fff":"#9CA3AF",fontWeight:800,fontSize:13,cursor:"pointer"}}>{lg&&<img src={lg} alt="" style={{width:16,height:16,objectFit:"contain",borderRadius:4}}/>}{b}</button>);})}</div>
-    <div style={{fontSize:12,fontWeight:800,color:"#9ca3af",margin:"12px 0 6px"}}>Mise ($)</div>
-    <div style={{display:"flex",gap:6}}>
-     <input inputMode="decimal" value={evQuick.stake} onChange={e=>setEvQuick(q=>({...q,stake:e.target.value}))} style={{width:96,height:42,borderRadius:11,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:17,fontWeight:800,padding:"0 10px",boxSizing:"border-box"}}/>
-     {quickUnits.map(u=><button key={u} onClick={()=>setEvQuick(q=>({...q,stake:String(Math.round(unitValue*u*100)/100)}))} style={{flex:1,height:42,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#cbd5e1",fontWeight:800,fontSize:13,cursor:"pointer"}}>{u}u</button>)}
+    <div style={{display:"flex",gap:8,marginTop:10}}><Tile l="COTE" v={Number(a.book_odds).toFixed(2)}/><Tile l={"PP · "+String(a.pp_maps||"").replace("Map ","M")} v={a.pp_line}/><Tile l="ÉCART" v={"+"+a.edge} c="#c4b5fd"/></div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:6,marginTop:16}}>{bookmakers.filter(b=>!hiddenBKs.has(b)).map(b=>{const on=evQuick.bk===b;const lg=BK_LOGOS[b]||bkPhotos[b];return(
+     <button key={b} onClick={()=>setEvQuick(q=>({...q,bk:b}))} aria-pressed={on} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,height:62,borderRadius:13,border:"1.5px solid "+(on?"#7C3AED":"rgba(255,255,255,.07)"),background:on?"rgba(124,58,237,.18)":"rgba(255,255,255,.025)",color:on?"#fff":"#9ca3af",fontWeight:800,fontSize:11.5,cursor:"pointer"}}>
+      {lg?<img src={lg} alt="" style={{width:24,height:24,objectFit:"contain",borderRadius:6}}/>:<span style={{width:24,height:24}}/>}{b}</button>);})}</div>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:14}}>
+     <div style={{flex:"0 0 120px",display:"flex",alignItems:"center",height:52,borderRadius:13,border:"1.5px solid rgba(255,255,255,.1)",background:"rgba(0,0,0,.25)",padding:"0 12px"}}>
+      <input inputMode="decimal" aria-label="Mise" value={evQuick.stake} onChange={e=>setEvQuick(q=>({...q,stake:e.target.value}))} placeholder="0" style={{width:"100%",border:"none",outline:"none",background:"transparent",color:"#fff",fontSize:22,fontWeight:900}}/><span style={{color:"#6b7280",fontWeight:800}}>$</span></div>
+     <div style={{flex:1,display:"flex",gap:5,overflowX:"auto"}}>{quickUnits.map(u=>{const v=String(Math.round(unitValue*u*100)/100);const on=evQuick.stake===v;return <button key={u} onClick={()=>setEvQuick(q=>({...q,stake:v}))} style={{flexShrink:0,height:40,padding:"0 11px",borderRadius:10,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#fff":"#cbd5e1",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>{u}u</button>;})}</div>
     </div>
-    <button disabled={!ok} onClick={()=>{evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1));setEvQuick(null);}} style={{width:"100%",marginTop:14,height:52,borderRadius:14,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#05231A":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default"}}>{ok?"Ajouter · "+evQuick.stake+"$ chez "+evQuick.bk:"Choisis bookmaker et mise"}</button>
+    <button disabled={!ok} onClick={()=>{evToBet(a,evQuick.bk,evQuick.stake,a.book_odds,"Map "+(a.map||1));setEvQuick(null);}} style={{width:"100%",marginTop:16,height:56,borderRadius:16,border:"none",background:ok?"linear-gradient(135deg,#22C55E,#16a34a)":"rgba(255,255,255,.06)",color:ok?"#04210f":"#6b7280",fontWeight:900,fontSize:16,cursor:ok?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+     {ok?<>Ajouter · {evQuick.stake}${units?<span style={{opacity:.7,fontWeight:800}}>({units}u)</span>:null} · {evQuick.bk}</>:"Bookmaker et mise"}</button>
    </div></div>;})()}
  <SuiviLabel>BOT</SuiviLabel>
  {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(isNew).length;
