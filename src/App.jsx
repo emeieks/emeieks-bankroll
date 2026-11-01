@@ -10934,6 +10934,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* PAR JEU — accordéons regroupés */}
  {ALL_GAMES.map(game=>{
  const gs=perGameStats[game];
+ const fOn=statFilt[game]&&Object.values(sfOf(game)).some(v=>!v);
+ if(!gs&&fOn&&settledFiltered.some(b=>b.game===game))return(
+  <div key={game} style={{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",marginBottom:10,borderRadius:16,background:"#111827",border:"1px solid #1F2937"}}>
+   <GameLogo game={game} size={22}/><span style={{flex:1,fontSize:14,fontWeight:700,color:"#e5e7eb"}}>{game} <span style={{color:"#6b7280",fontWeight:500}}>· aucun pari avec ces filtres</span></span>
+   <button onClick={()=>setStatFilt(o=>{const r={...o};delete r[game];try{localStorage.setItem("stat_filt",JSON.stringify(r));}catch(e){}return r;})} style={{height:32,padding:"0 12px",borderRadius:9,border:"1px solid rgba(124,58,237,.5)",background:"rgba(124,58,237,.15)",color:"#ddd6fe",fontSize:12.5,fontWeight:700,cursor:"pointer"}}>Réinitialiser</button>
+  </div>);
  if(!gs)return null;
  const cfg=GAME_CFG[game]||{accent:"#9CA3AF"};
  const isOpen=!!statsGameOpen[game];
