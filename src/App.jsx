@@ -7100,7 +7100,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  bookmakers:()=>cloudDb("bookmakers?select=*").then(r=>{if(r){good("bookmakers");cloudSkip.current.bookmakers=true;applyRemote.current.applyBk(r);}}).catch(e=>fail("Relecture bookmakers",e)),
  tournaments:()=>cloudDb("tournaments?select=*").then(r=>{if(r){good("tournaments");cloudSkip.current.tournaments=true;applyRemote.current.applyTour(r);}}),
  settings:()=>cloudDb("settings?select=key,value").then(r=>{if(r){good("settings");const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}).catch(e=>fail("Relecture settings",e)),
- media_store:()=>cloudDb("media_store?select=key,value&key=not.like.backup:*").then(r=>{if(r){good("media_store");const o={};r.forEach(x=>{try{o[x.key]=JSON.parse(x.value);}catch(e){}});cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
+ media_store:()=>cloudDb("media_store?select=key,value&key=not.like.backup:*").then(r=>{if(r){good("media_store");const o=parseMediaRows(r);cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
  teams:()=>cloudDb("teams?select=name,game,logo_url").then(r=>{if(r){good("teams");cloudSkip.current.teams=true;setTeamLogos(prev=>{const m={...prev};r.forEach(t=>{if(t.logo_url)m[t.name+"__"+t.game]=t.logo_url;});return m;});}}).catch(e=>fail("Relecture teams",e)),
  players:()=>applyRemote.current.loadPlayers(),
  };
