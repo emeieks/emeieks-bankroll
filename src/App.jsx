@@ -2980,6 +2980,24 @@ function blobToSmallDataUrl(blob,max=128){return new Promise((res,rej)=>{const u
 async function uploadOrInline(blob,folder,name){
  try{return await supaUploadPhoto(new File([blob],name||("image."+((blob.type||"image/png").split("/")[1]||"png").replace(/\+.*/,"")),{type:blob.type||"image/png"}),folder);}
  catch(e){console.warn("Upload Storage KO → image gardée en local",e);return await blobToSmallDataUrl(blob);}}
+
+// ── Logos sombres sur fond sombre : passés automatiquement en blanc ──
+// Un logo (fond transparent) dont les pixels visibles sont presque tous foncés reçoit un filtre « blanc ».
+// Les photos (sans transparence) ne sont jamais touchées. Résultat mémorisé par image.
+(function(){
+ if(typeof window==="undefined"||window.__darkLogoFix)return;window.__darkLogoFix=true;
+ let cache={};try{cache=JSON.parse(localStorage.getItem("dark_logos_v1")||"{}");}catch(e){}
+ const save=()=>{try{localStorage.setItem("dark_logos_v1",JSON.stringify(cache));}catch(e){}};
+ const apply=(img,dark)=>{if(dark&&!img.dataset.noInvert){img.style.filter="brightness(0) invert(1)";img.dataset.whitened="1";}};
+ const analyse=src=>new Promise(res=>{const im=new Image();if(!src.startsWith("data:"))im.crossOrigin="anonymous";
+  im.onload=()=>{try{const W=48,H=Math.max(1,Math.round(48*im.naturalHeight/Math.max(1,im.naturalWidth)));const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(im,0,0,W,H);
+   const d=x.getImageData(0,0,W,H).data;let tr=0,vis=0,dark=0;for(let i=0;i<d.length;i+=4){const a=d[i+3];if(a<40){tr++;continue;}vis++;const l=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];if(l<70)dark++;}
+   const n=W*H;res(tr/n>0.15&&vis>0&&dark/vis>0.82);}catch(e){res(null);}};im.onerror=()=>res(null);im.src=src;});
+ document.addEventListener("load",async e=>{const img=e.target;if(!img||img.tagName!=="IMG")return;const src=img.currentSrc||img.src;if(!src||img.dataset.whitened)return;
+  if(img.naturalWidth<8||img.naturalWidth>1200)return;
+  if(src in cache){apply(img,cache[src]);return;}
+  const r=await analyse(src);if(r===null)return;cache[src]=r;save();apply(img,r);},true);
+})();
 // Vérifie qu'une image s'affiche vraiment (lien valide, fichier accessible)
 if(typeof document!=="undefined"&&!document.getElementById("kf-spin")){const st=document.createElement("style");st.id="kf-spin";st.textContent="@keyframes spin{to{transform:rotate(360deg)}}";document.head.appendChild(st);}
 function checkImage(url){return new Promise(res=>{if(!url)return res(false);const im=new Image();const t=setTimeout(()=>res(false),8000);im.onload=()=>{clearTimeout(t);res(im.naturalWidth>0);};im.onerror=()=>{clearTimeout(t);res(false);};im.src=url;});}
