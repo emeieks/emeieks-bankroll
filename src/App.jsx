@@ -2764,6 +2764,8 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
 
  const remove=(game,name)=>{
   const key=getKey(game,name);_MEDIA_TOUCH[key]=Date.now();
+  if(!window.confirm("Retirer le logo de « "+name+" » ?"))return;
+  cloudDb("media_store?key=eq."+encodeURIComponent("logo:"+key),{method:"DELETE"}).catch(()=>{});
   const s={...mediaStore};delete s[key];_GLOBAL_MEDIA_STORE=s;
   setMediaStore(s);
   
@@ -2998,6 +3000,8 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
    if(saved){setPhase("saved");setMsg("Enregistré et synchronisé ✓");}else{setPhase("local");setMsg("Affiché ici, mais pas encore confirmé dans la base. Garde l'app ouverte quelques secondes.");}}
   else{setPhase(u.startsWith("data:")?"local":"ok");setMsg(u.startsWith("data:")?"Gardé en petit format (stockage en ligne indisponible).":"Envoyé sur Supabase ✓");}
   if(showToast)showToast(u.startsWith("data:")?"Image gardée (petit format)":"✓ Image enregistrée","#22C55E");};
+ const [pending,setPending]=useState(null);
+ const askBlob=blob=>{if(!blob)return;if(!/^image\//.test(blob.type||""))return showToast&&showToast("Ce n'est pas une image","#EF4444");setPending({blob,src:URL.createObjectURL(blob)});};
  const fromBlob=async blob=>{if(!blob)return;if(!/^image\//.test(blob.type||""))return showToast&&showToast("Ce n'est pas une image","#EF4444");
   setPhase("upload");setMsg("Envoi en cours…");
   try{let u;try{u=await supaUploadPhoto(new File([blob],"image."+((blob.type||"image/png").split("/")[1]||"png").replace(/\+.*/,""),{type:blob.type||"image/png"}),folder);}
@@ -3007,12 +3011,12 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
   if(t.startsWith("data:")||t.includes("/storage/v1/object/public/"))return finish(t);
   setPhase("upload");setMsg("Copie de l'image sur Supabase…");let u=t;try{u=await supaUploadPhotoFromUrl(t,folder);}catch(e){}
   await finish(u);};
- const onPasteBtn=async()=>{try{const r=await readClipboardImage();if(r&&r.blob)return fromBlob(r.blob);if(r&&r.url)return fromUrl(r.url);setPhase("error");setMsg("Rien à coller : copie d'abord une image.");}catch(e){setPhase("error");setMsg("Le navigateur bloque le presse-papiers : clique dans la zone puis Ctrl+V.");}};
+ const onPasteBtn=async()=>{try{const r=await readClipboardImage();if(r&&r.blob)return askBlob(r.blob);if(r&&r.url)return fromUrl(r.url);setPhase("error");setMsg("Rien à coller : copie d'abord une image.");}catch(e){setPhase("error");setMsg("Le navigateur bloque le presse-papiers : clique dans la zone puis Ctrl+V.");}};
  const C={upload:"#60A5FA",check:"#60A5FA",saved:"#22C55E",ok:"#22C55E",local:"#F59E0B",error:"#EF4444"}[phase];
  const busy=phase==="upload"||phase==="check";
  return(<div style={{display:"flex",flexDirection:"column",gap:6}}>
   <div tabIndex={0} onClick={()=>!busy&&inputRef.current&&inputRef.current.click()}
-   onPaste={e=>{const it=[...((e.clipboardData&&e.clipboardData.items)||[])].find(x=>x.type&&x.type.startsWith("image/"));if(it){e.preventDefault();fromBlob(it.getAsFile());return;}const tx=e.clipboardData&&e.clipboardData.getData("text");if(tx&&/^https?:|^data:image/.test(tx.trim())){e.preventDefault();fromUrl(tx);}}}
+   onPaste={e=>{const it=[...((e.clipboardData&&e.clipboardData.items)||[])].find(x=>x.type&&x.type.startsWith("image/"));if(it){e.preventDefault();askBlob(it.getAsFile());return;}const tx=e.clipboardData&&e.clipboardData.getData("text");if(tx&&/^https?:|^data:image/.test(tx.trim())){e.preventDefault();fromUrl(tx);}}}
    onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}
    onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)return fromBlob(f);const u=e.dataTransfer.getData("text/uri-list")||e.dataTransfer.getData("text");if(u)fromUrl(u);}}
    style={{display:"flex",alignItems:"center",gap:12,padding:10,borderRadius:12,border:"1.5px dashed "+(drag?"#A78BFA":C||"rgba(255,255,255,.14)"),background:drag?"rgba(167,139,250,.08)":"rgba(255,255,255,.02)",cursor:busy?"progress":"pointer",outline:"none",transition:"border-color .15s"}}>
@@ -3026,6 +3030,12 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
    </div>
    {displayUrl&&!busy&&<button onClick={e=>{e.stopPropagation();onChange("");setPhase("idle");setMsg("");}} aria-label="Retirer l'image" style={{width:30,height:30,borderRadius:8,border:"1px solid rgba(239,68,68,.3)",background:"rgba(239,68,68,.08)",color:"#EF4444",cursor:"pointer",flexShrink:0}}>✕</button>}
   </div>
+  {pending&&<div style={{display:"flex",alignItems:"center",gap:10,padding:10,borderRadius:12,background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.35)"}}>
+   <img src={pending.src} alt="" style={{width:52,height:52,objectFit:"contain",borderRadius:8,background:"#0b1120"}}/>
+   <span style={{flex:1,fontSize:12.5,fontWeight:600,color:"#cbd5e1"}}>Utiliser cette image ?</span>
+   <button onClick={()=>{const b=pending.blob;URL.revokeObjectURL(pending.src);setPending(null);fromBlob(b);}} style={{height:34,padding:"0 12px",borderRadius:9,border:"none",background:"#22C55E",color:"#04210f",fontWeight:800,cursor:"pointer"}}>Oui</button>
+   <button onClick={()=>{URL.revokeObjectURL(pending.src);setPending(null);}} style={{height:34,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.12)",background:"transparent",color:"#cbd5e1",fontWeight:700,cursor:"pointer"}}>Non</button>
+  </div>}
   <input ref={inputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(f)fromBlob(f);}}/>
   <div style={{display:"flex",gap:6}}>
    <button onClick={onPasteBtn} disabled={busy} style={{flex:1,height:34,borderRadius:9,border:"1px solid rgba(96,165,250,.3)",background:"rgba(96,165,250,.06)",color:"#60A5FA",fontSize:12,fontWeight:700,cursor:busy?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Ic n="clip" s={13}/>Coller</button>
@@ -6619,10 +6629,7 @@ function AppMain(){
  const up=Object.entries(cur).filter(([k,v])=>v&&(!before||before[k]!==v)).map(([k,v])=>({key:"logo:"+k,value:JSON.stringify(v),updated_at:Date.now()}));
  if(!prev||JSON.stringify(prev.customClubs)!==JSON.stringify(obj.customClubs))up.push({key:"customClubs",value:JSON.stringify(obj.customClubs||{}),updated_at:Date.now()});
  for(let i=0;i<up.length;i+=40)await cloudDb("media_store?on_conflict=key",{method:"POST",body:up.slice(i,i+40),prefer:"resolution=merge-duplicates"});
- // Protection : jamais plus de 3 logos supprimés d'un coup (un appareil avec de vieilles données ne peut plus tout effacer)
- if(before){const del=Object.keys(before).filter(k=>!(k in cur));
-  if(del.length>3){console.warn("Synchro logos : "+del.length+" suppressions bloquées");try{window.dispatchEvent(new CustomEvent("emeieks-toast",{detail:del.length+" suppressions de logos bloquées (protection)"}));}catch(e){}}
-  else for(const k of del)await cloudDb("media_store?key=eq."+encodeURIComponent("logo:"+k),{method:"DELETE"});}
+ // Les logos ne sont JAMAIS supprimés du cloud par la synchro : seulement par un clic « retirer » (voir remove())
  },
  teams:async(map,prev)=>{
  const changed=Object.entries(map).filter(([k,v])=>v&&(!prev||prev[k]!==v));
