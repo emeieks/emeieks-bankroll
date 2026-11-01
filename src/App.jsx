@@ -4907,6 +4907,31 @@ function PPBoard({allPlayers={},teamLogos={}}){
   {det&&<BetbyModal rows={bb.filter(x=>x.pkey===det.pkey)} stat={stat} player={det.player} per={det.per} onClose={()=>setDet(null)}/>}
  </div>);
 }
+
+// ── Performance selon la cote ML (vainqueur du match) de l'équipe du joueur ──
+function MLStats({bets=[]}){
+ const [ml,setMl]=useState(null);const [g,setG]=useState("all");
+ useEffect(()=>{cloudDb("bet_ml?select=id,team_ml,opp_ml&limit=5000").then(r=>{const m={};(r||[]).forEach(x=>m[String(x.id)]=x);setMl(m);}).catch(()=>setMl({}));},[]);
+ if(!ml)return <div style={{padding:"12px 14px",fontSize:12,color:"#6b7280"}}>Chargement…</div>;
+ const B=[["≤ 1.30",0,1.30],["1.31 – 1.60",1.30,1.60],["1.61 – 2.00",1.60,2.00],["2.01 – 2.60",2.00,2.60],["> 2.60",2.60,99]];
+ const pool=bets.filter(b=>ml[String(b.id)]&&(b.status==="won"||b.status==="lost")&&(g==="all"||b.game===g));
+ const games=[...new Set(bets.filter(b=>ml[String(b.id)]).map(b=>b.game))];
+ const rows=B.map(([l,lo,hi])=>{const L=pool.filter(b=>{const v=Number(ml[String(b.id)].team_ml);return v>lo&&v<=hi;});const w=L.filter(b=>b.status==="won").length;const pr=L.reduce((t,b)=>t+(b.profit||0),0);const st=L.reduce((t,b)=>t+(b.stake||0),0);return {l,n:L.length,w,pr,roi:st?pr/st*100:0};});
+ const pc=v=>v>0?"#22C55E":v<0?"#EF4444":"#9ca3af";const G="1.25fr .7fr .8fr 1fr .8fr";
+ return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
+  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{flex:1,fontSize:14,fontWeight:800,color:"#fff"}}>Selon la cote ML de l'équipe</span>
+   <select value={g} onChange={e=>setG(e.target.value)} style={{height:30,borderRadius:8,border:"1px solid #1F2937",background:"#0B1220",color:"#e5e7eb",fontSize:12,fontWeight:700,padding:"0 6px"}}><option value="all">Tous</option>{games.map(x=><option key={x} value={x}>{x}</option>)}</select></div>
+  <div style={{borderRadius:12,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
+   <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.35)",fontSize:10.5,fontWeight:700,color:"#8b93a7"}}>{["Cote ML","Paris","V-D","Profit","ROI"].map(h=><div key={h} style={{padding:"7px 6px",textAlign:"center"}}>{h}</div>)}</div>
+   {rows.map(r=><div key={r.l} style={{display:"grid",gridTemplateColumns:G,borderTop:"1px solid rgba(255,255,255,.04)",fontSize:12.5,color:"#e5e7eb",opacity:r.n?1:.4}}>
+    <div style={{padding:"9px 6px",textAlign:"center",fontWeight:700}}>{r.l}</div><div style={{padding:"9px 6px",textAlign:"center"}}>{r.n||"—"}</div>
+    <div style={{padding:"9px 6px",textAlign:"center",color:"#9ca3af"}}>{r.n?r.w+"-"+(r.n-r.w):"—"}</div>
+    <div style={{padding:"9px 6px",textAlign:"center",fontWeight:800,color:pc(r.pr)}}>{r.n?(r.pr>=0?"+":"")+r.pr.toFixed(0)+"$":"—"}</div>
+    <div style={{padding:"9px 6px",textAlign:"center",fontWeight:800,color:pc(r.roi)}}>{r.n?(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%":"—"}</div></div>)}
+  </div>
+  <div style={{fontSize:10.5,color:"#6b7280",marginTop:6}}>Paris ajoutés depuis le bot, réglés. {pool.length} au total.</div>
+ </div>);
+}
 // ── Pseudos à associer (PrizePicks ≠ Betby) ──
 function AliasManager(){
  const [open,setOpen]=useState(false);const [rows,setRows]=useState([]);const [al,setAl]=useState([]);const [g,setG]=useState("");const [pp,setPp]=useState(null);const [bb,setBb]=useState(null);const [f,setF]=useState("");
@@ -6335,6 +6360,7 @@ function AppMain(){
    game:info.game&&info.game!=="?"?info.game:g,league:info.league,role:info.role,team:info.team,datetime:nowDT(),isHeadshot:hs,isLive:false,
    mapTag:mapTag||"Map 1",profit:0,tournament:a.tournament||"",ppMapType:a.pp_maps||null,ppLine:a.pp_line!=null?(a.pp_line+" "+word):null,ppEdge:a.edge!=null?Number(a.edge):null};
   setBets(b=>[nb,...b]);lastPushRef.current=Date.now();supaPushBets([nb]).catch(()=>{});
+  if(a.team_ml!=null)cloudDb("bet_ml",{method:"POST",body:[{id:nb.id,team_ml:a.team_ml,opp_ml:a.opp_ml,game:nb.game,player:nb.player}],prefer:"resolution=merge-duplicates"}).catch(()=>{});
   evSetStatus(a,"added");if(!silent)showToast("Pari ajouté · "+nb.player,"#22C55E");};
  // ── Bets potentiels (Suivi) : NEW, préremplissage de la page Ajouter, lancement d'un run ──
  const [evSeenAt]=useState(()=>{try{return Number(localStorage.getItem("ev_seen")||0);}catch(e){return 0;}});
@@ -12064,7 +12090,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
       <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
        {[t1,t2].filter(Boolean).map((t,i)=>{const u=evLogo(t);return <React.Fragment key={i}>{i?<span style={{fontSize:12,fontWeight:600,color:"#6b7280"}}>vs</span>:null}{u?<img src={u} alt={t} title={t} style={{width:26,height:26,objectFit:"contain"}}/>:<span style={{fontSize:13,fontWeight:700,color:"#cbd5e1"}}>{teamAbbr(t)}</span>}</React.Fragment>;})}</div>
       <div style={{marginTop:10,fontSize:16,fontWeight:700,color:"#fff"}}>{a.side==="over"?"Over":"Under"} {a.book_line} <span style={{color:"#9aa3b2",fontWeight:600}}>{W}</span></div>
-      <div style={{marginTop:2,fontSize:13,fontWeight:600,color:"#fbbf24"}}>Map {a.map||"?"}</div>
+      <div style={{marginTop:2,fontSize:13,fontWeight:600,color:"#fbbf24"}}>Map {a.map||"?"}{a.team_ml?<span style={{color:"#8b93a7",fontWeight:600,marginLeft:8}}>ML {Number(a.team_ml).toFixed(2)}</span>:null}</div>
      </div>
      <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} aria-label="Éditer" style={{position:"absolute",right:10,top:10,width:34,height:34,borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"rgba(15,20,29,.6)",color:"#cbd5e1",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
@@ -12110,7 +12136,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    </div>
    {evTab==="board"&&<PPBoard allPlayers={allPlayers} teamLogos={teamLogos}/>}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
-   {evTab==="outils"&&<><DayBar alerts={evAlerts} onDone={loadEv}/><AliasManager/></>}
+   {evTab==="outils"&&<><MLStats bets={bets}/><DayBar alerts={evAlerts} onDone={loadEv}/><AliasManager/></>}
    {evTab==="bets"&&<>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
