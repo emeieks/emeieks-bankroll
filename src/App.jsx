@@ -2751,6 +2751,7 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
   if(finalUrl.startsWith('http')&&!finalUrl.includes('/storage/v1/object/public/')){
    try{finalUrl=await supaUploadPhotoFromUrl(finalUrl,'tourneys');}catch(e){}
   }
+  _MEDIA_TOUCH[getKey(game,name)]=Date.now();
   const s={..._GLOBAL_MEDIA_STORE,...mediaStore,[getKey(game,name)]:finalUrl};
   _GLOBAL_MEDIA_STORE=s;
   setMediaStore(s);
@@ -2762,8 +2763,8 @@ const TourneyLogos=memo(function TourneyLogos({mediaStore,setMediaStore,showToas
  };
 
  const remove=(game,name)=>{
-  const key=getKey(game,name);
-  const s={...mediaStore};delete s[key];
+  const key=getKey(game,name);_MEDIA_TOUCH[key]=Date.now();
+  const s={...mediaStore};delete s[key];_GLOBAL_MEDIA_STORE=s;
   setMediaStore(s);
   
   showToast("Logo supprimé","#EF4444");
@@ -3885,6 +3886,7 @@ const MesParisView=memo(function MesParisView({
 
 
 // Apply media store to module-level vars
+var _MEDIA_TOUCH={};
 function applyMediaStore(store){
  if(!store)return;
  if(store._B64_PP_LOGO_B64)_B64_PP_LOGO_B64=store._B64_PP_LOGO_B64;
@@ -6583,7 +6585,10 @@ function AppMain(){
  };
  const mediaPayload=()=>({mediaStore,customClubs});
  const applyMedia=m=>{
- if(m.mediaStore&&typeof m.mediaStore==="object"){setMediaStore(m.mediaStore);applyMediaStore(m.mediaStore);_GLOBAL_MEDIA_STORE=m.mediaStore;}
+ if(m.mediaStore&&typeof m.mediaStore==="object"){
+  // Les logos modifiés ici dans les 3 dernières minutes gagnent sur une lecture cloud plus ancienne (évite qu'un logo tout juste ajouté disparaisse)
+  const ms={...m.mediaStore};const now=Date.now();Object.entries(_MEDIA_TOUCH).forEach(([k,t])=>{if(now-t<180000){const v=(_GLOBAL_MEDIA_STORE||{})[k];if(v)ms[k]=v;else delete ms[k];}});
+  setMediaStore(ms);applyMediaStore(ms);_GLOBAL_MEDIA_STORE=ms;}
  if(m.customClubs&&typeof m.customClubs==="object")setCustomClubs(m.customClubs);
  };
  const teamPayload=()=>teamLogos;
