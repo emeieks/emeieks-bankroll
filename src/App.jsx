@@ -5005,19 +5005,29 @@ function AliasManager(){
  </div>);
 }
 
+
+// Journées : un seul bet par (joueur · stat · côté · map · ligne · cote · cut PP), champs utiles seulement
+const DAY_FIELDS=["key","player","game","stat","side","map","book_line","book_odds","pp_line","pp_maps","edge","match","status","team_ml","created_at"];
+function slimDay(list){const seen=new Map();(list||[]).forEach(a=>{const k=[a.player,a.stat,a.side,a.map,a.book_line,a.book_odds,a.pp_line].join("|").toLowerCase();const o={};DAY_FIELDS.forEach(f=>{if(a[f]!=null)o[f]=a[f];});
+ const prev=seen.get(k);if(!prev||(a.status==="added"&&prev.status!=="added"))seen.set(k,o);});return [...seen.values()];}
 // ── Journée de paris : clôturer et archiver ──
 function DayBar({alerts,onDone}){
  const [days,setDays]=useState([]);const [view,setView]=useState(null);const [open,setOpen]=useState(false);
- const load=useCallback(async()=>{try{setDays(await cloudDb("bet_days?select=day,closed_at,n&order=closed_at.desc&limit=60")||[]);}catch(e){}},[]);
+ const load=useCallback(async()=>{try{setDays(await cloudDb("bet_days?select=day,closed_at,n&order=closed_at.desc&limit=60")||[]);}catch(e){}
+  // Compactage des anciennes journées (doublons + champs inutiles), une seule fois par appareil
+  try{if(localStorage.getItem("days_compact_v1")!=="1"){const all=await cloudDb("bet_days?select=day,data")||[];
+   for(const d of all){const sl=slimDay(d.data);if(JSON.stringify(sl).length<JSON.stringify(d.data||[]).length)await cloudDb("bet_days?day=eq."+encodeURIComponent(d.day),{method:"PATCH",body:{data:sl,n:sl.length}});}
+   localStorage.setItem("days_compact_v1","1");setDays(await cloudDb("bet_days?select=day,closed_at,n&order=closed_at.desc&limit=60")||[]);}}catch(e){}},[]);
  useEffect(()=>{load();},[load]);
  const today=new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"2-digit"});
  const close=async()=>{if(!window.confirm("Clôturer la journée ? Les bets affichés sont sauvegardés dans l'historique et la liste repart à zéro."))return;
   try{const last=days[0]?days[0].closed_at:"1970-01-01T00:00:00Z";
    const all=await cloudDb("ev_alerts?select=*&created_at=gt."+encodeURIComponent(last)+"&order=created_at.asc")||[];
    const d=new Date();const day=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+(days.some(x=>x.day.startsWith(d.toISOString().slice(0,10)))?" "+d.toTimeString().slice(0,5):"");
-   await cloudDb("bet_days?on_conflict=day",{method:"POST",body:[{day,n:all.length,data:all}],prefer:"resolution=merge-duplicates"});
+   const slim=slimDay(all);
+   await cloudDb("bet_days?on_conflict=day",{method:"POST",body:[{day,n:slim.length,data:slim}],prefer:"resolution=merge-duplicates"});
    await cloudDb("ev_alerts?status=eq.new",{method:"PATCH",body:{status:"archived"}});
-   load();onDone&&onDone();alert("Journée sauvegardée · "+all.length+" bet(s)");}catch(e){alert("Erreur : "+(e.message||e));}};
+   load();onDone&&onDone();alert("Journée sauvegardée · "+slim.length+" bet(s)");}catch(e){alert("Erreur : "+(e.message||e));}};
  const openDay=async d=>{try{const r=await cloudDb("bet_days?day=eq."+encodeURIComponent(d.day)+"&select=*");setView(r&&r[0]?r[0]:null);}catch(e){}};
  return(<div style={{padding:"10px 14px",borderBottom:"1px solid "+SV.line}}>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -5027,7 +5037,7 @@ function DayBar({alerts,onDone}){
   </div>
   {open&&<div style={{marginTop:8,display:"grid",gap:4}}>{days.length?days.map(d=><button key={d.day} onClick={()=>openDay(d)} style={{display:"flex",justifyContent:"space-between",padding:"8px 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.06)",background:view&&view.day===d.day?"rgba(124,58,237,.15)":"#0B1220",color:"#e5e7eb",fontSize:13,fontWeight:700,cursor:"pointer"}}><span>{d.day.split(" ")[0].split("-").reverse().join("/")}{d.day.includes(" ")?" · "+d.day.split(" ")[1]:""}</span><span style={{color:"#8b93a7"}}>{d.n} bet(s)</span></button>):<div style={{fontSize:12,color:"#6b7280"}}>Aucune journée clôturée.</div>}</div>}
   {open&&view&&<div style={{marginTop:8,borderRadius:10,background:"#0B1220",border:"1px solid rgba(255,255,255,.06)",maxHeight:320,overflowY:"auto"}}>
-   {(view.data||[]).map(a=><div key={a.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.04)",fontSize:12.5,color:"#cbd5e1"}}>
+   {slimDay(view.data).map(a=><div key={a.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:"1px solid rgba(255,255,255,.04)",fontSize:12.5,color:"#cbd5e1"}}>
     <GameLogo game={{"League of Legends":"LoL","Dota 2":"Dota2"}[a.game]||a.game} size={18}/>
     <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><b style={{color:"#fff"}}>{a.player}</b> · Map {a.map} {a.side==="over"?"Over":"Under"} {a.book_line} @{a.book_odds}</span>
     <span style={{color:"#A78BFA",fontWeight:800}}>PP {a.pp_line}</span><span style={{color:"#22C55E",fontWeight:800}}>+{a.edge}</span>
