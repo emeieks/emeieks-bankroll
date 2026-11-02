@@ -1314,7 +1314,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  <div style={{display:"flex",alignItems:"center",gap:11}}>
 
  {/* Logo sport — légèrement plus grand */}
- <div title="Voir le profil du joueur" onClick={e=>{e.stopPropagation();openPlayerSheet(bet.player);}} style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",cursor:"pointer"}}>
+ <div title="Voir sur le board" onClick={e=>{e.stopPropagation();try{window.dispatchEvent(new CustomEvent("emeieks-goto-board",{detail:{player:bet.player,team:bet.team,hs:!!bet.isHeadshot}}));}catch(err){}}} style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",cursor:"pointer"}}>
  <GameLogo game={bet.game} size={37}/>
  </div>
 
@@ -4780,21 +4780,29 @@ function Jersey({c1,c2,logo,size=118}){const id="j"+Math.random().toString(36).s
   <path d="M38 6 L16 14 L2 40 L19 50 L27 40 L27 104 L93 104 L93 40 L101 50 L118 40 L104 14 L82 6 Q60 22 38 6 Z" fill="none" stroke="rgba(0,0,0,.45)" strokeWidth="1.2"/>
   {logo&&<image href={logo} x="64" y="30" width="18" height="18" preserveAspectRatio="xMidYMid meet" style={{opacity:.95}}/>}
  </svg>);}
-function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foot,onDetails,back,warn}){const [flip,setFlip]=useState(false);const act=back?()=>setFlip(f=>!f):onDetails;const [c1]=teamColors(team);const ab=teamAbbr(team);const [imgOk,setImgOk]=useState(true);
+function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foot,onDetails,back,warn,game}){const [flip,setFlip]=useState(false);const [gear,setGear]=useState(false);const act=back?()=>setFlip(f=>!f):onDetails;const [c1]=teamColors(team);const ab=teamAbbr(team);const [imgOk,setImgOk]=useState(true);
  const live=when==="LIVE";
- const face={position:"absolute",inset:0,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",background:"#10131A",border:"1.5px solid "+(hot?"#7CFC00":"rgba(255,255,255,.08)"),borderRadius:18,overflow:"hidden"};
- return(<div style={{perspective:1100,height:336,minWidth:0}}><div style={{position:"relative",height:"100%",transition:"transform .55s cubic-bezier(.2,.8,.2,1)",transformStyle:"preserve-3d",transform:flip?"rotateY(180deg)":"none"}}>
+ const face={position:"absolute",inset:0,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",background:"linear-gradient(180deg,"+c1+"14 0%,#0D1017 55%,#0A0C12 100%)",border:"1px solid "+(hot?"#7CFC00":c1+"55"),borderRadius:18,overflow:"hidden",boxShadow:"0 14px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)"};
+ const gi=(t,fn)=><button key={t} onClick={e=>{e.stopPropagation();setGear(false);fn();}} style={{display:"block",width:"100%",textAlign:"left",padding:"9px 12px",border:"none",background:"transparent",color:"#e5e7eb",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>{t}</button>;
+ return(<div style={{perspective:1100,height:300,minWidth:0}}><div style={{position:"relative",height:"100%",transition:"transform .55s cubic-bezier(.2,.8,.2,1)",transformStyle:"preserve-3d",transform:flip?"rotateY(180deg)":"none"}}>
  <div style={{...face,display:"flex",flexDirection:"column",alignItems:"center"}}>
-  <div style={{width:"100%",height:150,position:"relative",overflow:"hidden",background:"radial-gradient(90% 90% at 50% 100%,"+c1+" 0%,"+c1+"66 45%,#10131A 100%)"}}>
-   {logo?<img src={logo} alt="" aria-hidden="true" style={{position:"absolute",top:"50%",left:"50%",width:92,height:92,objectFit:"contain",transform:"translate(-50%,-62%)",opacity:.13,imageRendering:"auto"}}/>
+  <div style={{width:"100%",height:158,position:"relative",overflow:"hidden",background:"radial-gradient(80% 85% at 50% 105%,"+c1+"cc 0%,"+c1+"40 42%,transparent 75%),linear-gradient(160deg,#1a1f2b,#0b0e14)"}}>
+   {logo?<div aria-hidden="true" style={{position:"absolute",inset:0,perspective:400}}>
+     <img src={logo} alt="" style={{position:"absolute",top:"46%",left:"50%",width:170,height:170,objectFit:"contain",transform:"translate(-50%,-50%) rotateY(-18deg) rotateX(8deg) scale(1.1)",opacity:.22,filter:"blur(1.5px) saturate(1.3)"}}/>
+     <img src={logo} alt="" style={{position:"absolute",top:"42%",left:"50%",width:120,height:120,objectFit:"contain",transform:"translate(-50%,-50%) rotateY(-18deg) rotateX(8deg)",opacity:.28,filter:"drop-shadow(0 10px 18px rgba(0,0,0,.6))"}}/></div>
     :<div style={{position:"absolute",top:6,left:0,right:0,textAlign:"center",fontFamily:"'Barlow Condensed',Inter,sans-serif",fontSize:66,fontWeight:800,lineHeight:1,color:"rgba(0,0,0,.18)",letterSpacing:2}}>{ab}</div>}
    {photo&&imgOk
-    ?<img src={photo} alt={player} onError={()=>setImgOk(false)} style={{position:"absolute",left:"50%",bottom:0,transform:"translateX(-50%)",height:138,maxWidth:"92%",objectFit:"contain",objectPosition:"bottom",filter:"drop-shadow(0 8px 14px rgba(0,0,0,.5))"}}/>
+    ?<img src={photo} alt={player} onError={()=>setImgOk(false)} style={{position:"absolute",left:"50%",bottom:0,transform:"translateX(-50%)",height:146,maxWidth:"92%",objectFit:"contain",objectPosition:"bottom",filter:"drop-shadow(0 10px 18px rgba(0,0,0,.65))",WebkitMaskImage:"linear-gradient(180deg,#000 80%,transparent)",maskImage:"linear-gradient(180deg,#000 80%,transparent)"}}/>
     :<div style={{position:"absolute",left:"50%",bottom:-6,transform:"translateX(-50%)"}}><Jersey c1={c1} c2={teamColors(team)[1]} logo={logo} size={124}/></div>}
+   <div aria-hidden="true" style={{position:"absolute",inset:0,background:"linear-gradient(115deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.07) 48%,rgba(255,255,255,0) 60%),linear-gradient(0deg,#0D1017 0%,transparent 28%)",pointerEvents:"none"}}/>
+   <button onClick={e=>{e.stopPropagation();setGear(g=>!g);}} aria-label="Modifier" style={{position:"absolute",right:8,top:8,width:30,height:30,borderRadius:9,border:"none",background:"rgba(0,0,0,.4)",color:"#e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3}}>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+   {gear&&<div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:8,top:42,zIndex:4,minWidth:150,borderRadius:10,background:"#151a24",border:"1px solid rgba(255,255,255,.1)",boxShadow:"0 10px 24px rgba(0,0,0,.55)",overflow:"hidden"}}>
+    {gi("Photo / infos joueur",()=>openPlayerEditor(player))}{gi("Changer de club",()=>openPlayerSheet(player))}{gi("Logo / infos club",()=>openClubSheet(club||team,game))}{gi("Fiche joueur",()=>openPlayerSheet(player))}</div>}
    {act&&<button onClick={act} aria-label="Lignes Betby" style={{position:"absolute",left:8,top:8,width:30,height:30,borderRadius:9,border:"none",background:"rgba(0,0,0,.35)",color:"#e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
     <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><rect x="0" y="6" width="2.6" height="6" rx="1" fill="currentColor"/><rect x="4.5" y="3" width="2.6" height="9" rx="1" fill="currentColor"/><rect x="9" y="0" width="2.6" height="12" rx="1" fill="currentColor"/></svg></button>}
    {tag&&<span style={{position:"absolute",right:9,top:9,fontSize:10,fontWeight:800,color:"#e5e7eb",background:"rgba(0,0,0,.35)",borderRadius:6,padding:"2px 6px"}}>{tag}</span>}
-   {warn&&<button onClick={e=>{e.stopPropagation();warn.onClick();}} title={"Club différent : ton site dit « "+warn.site+" », PrizePicks/Betby disent « "+warn.pp+" ». Toucher pour corriger."} aria-label="Club à vérifier" style={{position:"absolute",right:8,top:8,width:28,height:28,borderRadius:14,border:"none",background:"#f59e0b",color:"#1a1205",fontWeight:900,fontSize:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>!</button>}
+   {warn&&<button onClick={e=>{e.stopPropagation();warn.onClick();}} title={"Club différent : ton site dit « "+warn.site+" », PrizePicks/Betby disent « "+warn.pp+" ». Toucher pour corriger."} aria-label="Club à vérifier" style={{position:"absolute",right:42,top:9,width:28,height:28,borderRadius:14,border:"none",background:"#f59e0b",color:"#1a1205",fontWeight:900,fontSize:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>!</button>}
    <span style={{position:"absolute",left:9,bottom:9,width:28,height:28,borderRadius:8,background:"rgba(16,19,26,.9)",border:"1px solid "+c1,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>{logo?<img src={logo} alt="" style={{width:20,height:20,objectFit:"contain"}}/>:<span style={{fontSize:9,fontWeight:900,color:c1}}>{ab}</span>}</span>
    {role&&<span style={{position:"absolute",right:9,bottom:11,fontSize:10,fontWeight:900,color:"#0B0E14",background:c1,borderRadius:6,padding:"3px 7px",letterSpacing:.3}}>{String(role).toUpperCase()}</span>}
   </div>
@@ -4884,8 +4892,8 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
  const matches=useMemo(()=>{if(!rows)return [];const g={};
   const LIVEF=["3","4","5","4+5"];
   rows.forEach(r=>{const live=LIVEF.includes(r.maps);const pair=r.team&&r.match?[clean(r.team),clean(r.match)].map(teamKey).sort().join("~"):String(r.start||"").slice(0,16);
-   const k=(r.game||"")+"|"+String(r.start||"").slice(0,10)+"|"+pair+"|"+(live?"live":"pre");
-   const o=(g[k]=g[k]||{k,game:r.game,start:r.start,live,rows:[]});o.rows.push(r);if(String(r.start||"")<String(o.start||""))o.start=r.start;});
+   const k=(r.game||"")+"|"+pair;
+   const o=(g[k]=g[k]||{k,game:r.game,start:r.start,live:false,rows:[]});o.rows.push(r);if(live)o.live=true;if(String(r.start||"")<String(o.start||""))o.start=r.start;});
   return Object.values(g).map(m=>{const opps=[...new Set(m.rows.map(r=>clean(r.match)).filter(Boolean))];
    const teamOf=r=>r.team?clean(r.team):(opps.length===2?opps.find(o=>o!==clean(r.match)):"?");
    const teams=[...new Set(m.rows.map(teamOf))].filter(Boolean).slice(0,2);
@@ -4893,25 +4901,27 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
  // Seulement les matchs où Betby propose des props joueurs (joueur présent sur Betby, même match à ±4 h)
  const tsOf=v=>{if(v==null||v==="")return null;if(/^\d+(\.\d+)?$/.test(String(v))){const x=Number(v);return x>1e12?x:x*1000;}const t=new Date(v).getTime();return isNaN(t)?null:t;};
  const bbIdx=useMemo(()=>{const m={};const fresh=Date.now()-3*3600e3;bb.forEach(x=>{if(new Date(x.updated_at).getTime()<fresh)return;(m[x.pkey]=m[x.pkey]||[]).push(tsOf(x.start));});return m;},[bb]);
- const [ord,setOrd]=useState("asc");
+ const [ord,setOrd]=useState("asc");const statDef=stat;
  const usedFocus=useRef(0);
  const shown=useMemo(()=>matches.filter(m=>{const t=tsOf(m.start);if(t&&t<Date.now()-6*3600e3)return false;
-  if(stat==="headshots"&&m.game!=="CS2")return false;
+  if(!m.rows.some(r=>Date.now()-new Date(r.at).getTime()<90*60e3))return false;
   return m.rows.some(r=>(bbIdx[r.pkey]||[]).some(tb=>!t||!tb||Math.abs(tb-t)<6*3600e3));})
-  .sort((a,b)=>(b.live-a.live)||((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,bbIdx,ord,stat]);
+  .sort((a,b)=>(b.live-a.live)||((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,bbIdx,ord]);
  const G={"League of Legends":"LoL","Dota 2":"Dota2"};
  useEffect(()=>{if(!focus||usedFocus.current===focus.t||!shown.length)return;usedFocus.current=focus.t;
-  const ks=focus.teams.map(teamKey);const ok=m=>m.teams.some(t=>ks.some(k=>{const n=teamKey(t);return n&&k&&(n.includes(k)||k.includes(n));}));
-  const m=shown.find(x=>ok(x)&&x.live===focus.live)||shown.find(ok);if(m){setOpenK(m.k);if(focus.stat)setStat(focus.stat);setTimeout(()=>{const el=document.getElementById("ppb-"+m.k.replace(/[^a-z0-9]/gi,""));el&&el.scrollIntoView({behavior:"smooth",block:"start"});},120);}},[focus,shown]);
+  const ks=(focus.teams||[]).map(teamKey);const fp=focus.player?cutNorm(focus.player):"";const ok=m=>(fp&&m.rows.some(r=>r.pkey===fp))||m.teams.some(t=>ks.some(k=>{const n=teamKey(t);return n&&k&&(n.includes(k)||k.includes(n));}));
+  const m=shown.find(x=>ok(x)&&x.live===focus.live)||shown.find(ok);if(m){setOpenK(m.k);if(focus.stat)setStat(focus.stat);setFmtSel(x=>{const y={...x};delete y[m.k];return y;});setTimeout(()=>{const el=document.getElementById("ppb-"+m.k.replace(/[^a-z0-9]/gi,""));el&&el.scrollIntoView({behavior:"smooth",block:"start"});},120);}},[focus,shown]);
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:14,fontWeight:800,color:"#fff",flex:1}}>Matchs <span style={{color:"#6b7280",fontWeight:700,fontSize:12}}>{shown.length} match{shown.length>1?"s":""}</span></span>
    <button onClick={()=>setOrd(o=>o==="asc"?"desc":"asc")} style={{height:32,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#cbd5e1",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Heure {ord==="asc"?"↑":"↓"}</button>
-   <div style={{display:"flex",padding:2,borderRadius:9,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
-    {[["kills","Kills"],["headshots","HS"]].map(([k,l])=><button key={k} onClick={()=>setStat(k)} style={{height:28,padding:"0 12px",borderRadius:7,border:"none",background:stat===k?"#7c3aed":"transparent",color:stat===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div></div>
+</div>
   {!rows&&<div style={{fontSize:12,color:"#6b7280"}}>Chargement…</div>}
   {rows&&!shown.length&&<div style={{fontSize:12,color:"#6b7280",padding:"4px 2px"}}>Aucun match avec des props joueurs Betby pour l'instant.</div>}
-  {shown.map(m=>{const open=openK===m.k;const [A,B]=m.teams;const L=m.rows.filter(r=>r.stat===stat);
-   const fmts=[...new Set(L.map(r=>r.maps))].sort((x,y)=>x.length===y.length?x.localeCompare(y):y.length-x.length);const F=fmtSel[m.k]&&fmts.includes(fmtSel[m.k])?fmtSel[m.k]:fmts[0];
+  {shown.map(m=>{const open=openK===m.k;const [A,B]=m.teams;
+   const fo=x=>({"1+2":0,"1+2+3":1,"1":2,"2":3,"3":4,"4":5,"5":6,"4+5":7}[x]??9);
+   const combos=[...new Set(m.rows.map(r=>r.maps+"|"+r.stat))].sort((x,y)=>{const [a1,s1]=x.split("|"),[a2,s2]=y.split("|");return fo(a1)-fo(a2)||(s1==="kills"?-1:1)-(s2==="kills"?-1:1);});
+   const def=combos.find(c=>c.endsWith("|"+statDef))||combos[0];const CB=fmtSel[m.k]&&combos.includes(fmtSel[m.k])?fmtSel[m.k]:def;const [F,stat]=String(CB||"|kills").split("|");
+   const has3=m.rows.some(r=>r.maps==="3");const L=m.rows.filter(r=>r.stat===stat);
    const latest={};L.filter(r=>r.maps===F).forEach(r=>{if(!latest[r.pkey])latest[r.pkey]=r;});
    const cards=Object.values(latest);const RO=["top","jungle","jgl","mid","adc","bot","support","sup"];const roleOf=r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);return String((pl&&pl.role)||"").toLowerCase();};
    const rk=r=>{const i=RO.findIndex(x=>roleOf(r).startsWith(x));return i<0?99:i;};
@@ -4923,12 +4933,12 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
    const GG=GNORM(m.game);const same=(x,y)=>{const a1=teamKey(x),b1=teamKey(y);return !!(a1&&b1&&(a1.includes(b1)||b1.includes(a1)||cutNorm(teamAbbr(x))===cutNorm(y)||cutNorm(teamAbbr(y))===cutNorm(x)));};
    const fullName=t=>{const p=Object.values(allPlayers||{}).find(p=>p&&p.team&&GNORM(p.game)===GG&&same(p.team,t));return p?p.team:t;};
    // Cote ML (vainqueur) de l'équipe : dernière cote Betby enregistrée avant le début du match
-   const mlOf=t=>{const pk=new Set(m.rows.map(r=>r.pkey));const r=bb.find(x=>pk.has(x.pkey)&&x.ml1&&x.ml2&&x.match);if(!r)return null;const [h,aw]=String(r.match).split(/\s+vs\.?\s+/i);return same(h,t)?r.ml1:same(aw,t)?r.ml2:null;};
+   const mlOf=t=>{const pk=new Set(m.rows.map(r=>r.pkey));const r=bb.find(x=>pk.has(x.pkey)&&x.ml1&&x.ml2&&x.match)||{};const [h,aw]=String(r.match).split(/\s+vs\.?\s+/i);const v=same(h,t)?r.ml1:same(aw,t)?r.ml2:null;if(v)return v;const c=m.rows.find(x=>x.team_ml&&m.teamOf(x)===t);return c?c.team_ml:null;};
    const grid=t=>{const P=side(t);if(!P.length)return null;const ml=mlOf(t);return <><div style={{display:"flex",alignItems:"center",gap:8,margin:"14px 2px 0"}}>{ML(t)}<span style={{fontSize:15,fontWeight:800,color:"#fff"}}>{fullName(t)}</span><span style={{flex:1,height:1,background:"rgba(255,255,255,.08)"}}/>{ml?<span title="Cote vainqueur Betby (avant le match)" style={{fontSize:13,fontWeight:700,color:"#e5e7eb",padding:"3px 8px",borderRadius:7,background:"rgba(255,255,255,.06)"}}>{Number(ml).toFixed(2)}</span>:null}</div><div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginTop:8}}>
     {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);
      const bm=(bb.find(x=>x.pkey===r.pkey&&x.match)||{}).match;const sides=bm?String(bm).split(/\s+vs\.?\s+/i):[];
      const wrong=pl&&pl.team&&(!same(pl.team,t)||(sides.length===2&&!sides.some(x=>same(x,pl.team))));
-     return <CutCard key={r.key} warn={wrong?{site:pl.team,pp:t,onClick:()=>openPlayerSheet(r.player)}:null} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t,m.game)} opp={t===A?B:A} when={m.live?"LIVE":(tsOf(m.start)&&tsOf(m.start)<=Date.now()?"Terminé":fmtT(r.start))} tag={null} foot={bbFor(r)||"Betby"} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length}/>}>
+     return <CutCard key={r.key} warn={wrong?{site:pl.team,pp:t,onClick:()=>openPlayerSheet(r.player)}:null} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t,m.game)} opp={t===A?B:A} when={m.live?"LIVE":(tsOf(m.start)&&tsOf(m.start)<=Date.now()?"Terminé":fmtT(r.start))} tag={null} game={m.game} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length}/>}>
      <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div></CutCard>;})}</div></>;};
    return(<div key={m.k} id={"ppb-"+m.k.replace(/[^a-z0-9]/gi,"")} style={{scrollMarginTop:80,marginBottom:8,borderRadius:14,border:"1px solid rgba(255,255,255,.07)",background:"#0f141d",overflow:"hidden"}}>
     <button onClick={()=>setOpenK(open?null:m.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
@@ -4937,11 +4947,12 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
       {ML(A)}<span style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{A}</span>
       <span style={{fontSize:11,color:"#6b7280",fontWeight:800,flexShrink:0}}>vs</span>
       {B?<>{ML(B)}<span style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{B}</span></>:null}
+      {has3&&<span title="Cuts Map 3 disponibles" style={{flexShrink:0,width:18,height:18,borderRadius:9,background:"#3b82f6",color:"#fff",fontSize:12,fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
      </span>
      {(()=>{const t=tsOf(m.start);const started=t&&t<=Date.now();const lab=m.live?"LIVE":started?"Terminé":fmtT(m.start);return <span style={{fontSize:11.5,fontWeight:800,color:m.live?"#f43f5e":started?"#6b7280":"#eab308",padding:m.live||started?"2px 7px":0,borderRadius:6,background:m.live?"rgba(244,63,94,.12)":started?"rgba(255,255,255,.05)":"transparent"}}>{lab}</span>;})()}
      <span style={{color:"#6b7280",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span></button>
     {open&&<div style={{padding:"0 10px 12px"}}>
-     {fmts.length>1&&<div style={{display:"flex",gap:5,marginBottom:4}}>{fmts.map(f=><button key={f} onClick={()=>setFmtSel(s=>({...s,[m.k]:f}))} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(f===F?"#7C3AED":"rgba(255,255,255,.08)"),background:f===F?"rgba(124,58,237,.18)":"transparent",color:f===F?"#fff":"#9ca3af",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>{f==="1+2"?"MAPS 1-2":f==="1+2+3"?"MAPS 1-3":"MAP "+f}</button>)}</div>}
+     {combos.length>1&&<div style={{display:"flex",gap:5,marginBottom:4,flexWrap:"wrap"}}>{combos.map(c=>{const [f,st]=c.split("|");const on=c===CB;return <button key={c} onClick={()=>setFmtSel(s=>({...s,[m.k]:c}))} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?(f==="3"?"#3b82f6":"#7C3AED"):"rgba(255,255,255,.08)"),background:on?(f==="3"?"rgba(59,130,246,.18)":"rgba(124,58,237,.18)"):"transparent",color:on?"#fff":"#9ca3af",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>{(f==="1+2"?"MAPS 1-2":f==="1+2+3"?"MAPS 1-3":"MAP "+f)+" "+(st==="headshots"?"HS":"Kills")}</button>;})}</div>}
      {!cards.length&&<div style={{fontSize:12,color:"#6b7280",padding:8}}>Pas de ligne {W} pour ce match.</div>}
      {grid(A)}{B&&grid(B)}
     </div>}
@@ -4963,8 +4974,7 @@ function MLStats({bets=[]}){
  const tot=agg(pool);const pc=v=>v>0?"#22C55E":v<0?"#EF4444":"#9ca3af";const G="1.5fr .6fr .8fr .9fr .8fr";
  const chip=(on,txt,fn)=><button onClick={fn} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer"}}>{txt}</button>;
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
-  <div style={{fontSize:14,fontWeight:800,color:"#fff"}}>ROI selon la cote vainqueur de l'équipe</div>
-  <div style={{fontSize:11.5,color:"#8b93a7",marginTop:2}}>Équipe du joueur parié : favorite ou outsider ?</div>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontSize:14,fontWeight:800,color:"#fff"}}>ROI selon la cote de l'équipe</span><span style={{fontSize:12,color:"#8b93a7",fontWeight:700}}>{tot.n}</span></div>
   <div style={{display:"flex",gap:6,flexWrap:"wrap",margin:"10px 0"}}>{chip(side==="Under","Under",()=>setSide("Under"))}{chip(side==="Over","Over",()=>setSide("Over"))}{chip(side==="all","Les deux",()=>setSide("all"))}<span style={{width:8}}/>{chip(g==="all","Tous",()=>setG("all"))}{games.map(x=>chip(g===x,x,()=>setG(x)))}</div>
   <div style={{borderRadius:12,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
    <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.35)",fontSize:10.5,fontWeight:700,color:"#8b93a7"}}>{["Équipe","Paris","V-D","Profit","ROI"].map(h=><div key={h} style={{padding:"7px 8px",textAlign:h==="Équipe"?"left":"center"}}>{h}</div>)}</div>
@@ -4974,76 +4984,87 @@ function MLStats({bets=[]}){
     <div style={{textAlign:"center",fontWeight:800,color:pc(r.pr)}}>{r.n?(r.pr>=0?"+":"")+r.pr.toFixed(0)+"$":"—"}</div>
     <div style={{textAlign:"center",fontWeight:800,color:pc(r.roi)}}>{r.n?(r.roi>=0?"+":"")+r.roi.toFixed(0)+"%":"—"}</div></div>)}
   </div>
-  <div style={{fontSize:10.5,color:"#6b7280",marginTop:6}}>{tot.n} paris réglés avec cote enregistrée. Tous tes nouveaux paris (bot ou manuels) la reçoivent automatiquement quand Betby a le match.</div>
  </div>);
 }
 
 
-// ── Combien PrizePicks met en Map 3 quand le cut Map 1+2 vaut X, selon la cote de l'équipe ──
-function CutMLStats(){
- const [rows,setRows]=useState(null);const [g,setG]=useState("CS2");const [st,setSt]=useState("kills");
- useEffect(()=>{const since=new Date(Date.now()-60*864e5).toISOString().slice(0,19)+"Z";cloudDb("cut_history?source=eq.pp&at=gte."+since+"&select=pkey,player,game,stat,maps,line,start,match,team_ml&limit=20000").then(r=>setRows(Array.isArray(r)?r:[])).catch(()=>setRows([]));},[]);
- if(!rows)return <div style={{padding:"12px 14px",fontSize:12,color:"#6b7280"}}>Chargement…</div>;
- const GN={"CS2":"CS2","Dota 2":"Dota 2","League of Legends":"League of Legends","Valorant":"Valorant"};const games=[...new Set(rows.map(r=>r.game))];
- const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim().toLowerCase();
- const M={};rows.filter(r=>r.game===g&&r.stat===st&&(r.maps==="1+2"||r.maps==="3")).forEach(r=>{const k=r.pkey+"|"+String(r.start||"").slice(0,10)+"|"+clean(r.match);const o=M[k]||(M[k]={});if(r.maps==="1+2"){o.a=+r.line;if(r.team_ml)o.ml=+r.team_ml;}else o.b=+r.line;});
- const pairs=Object.values(M).filter(o=>o.a&&o.b);
- const B=[["≤ 1.50 (favori)",0,1.5],["1.51 – 2.20",1.5,2.2],["> 2.20 (outsider)",2.2,99],["ML inconnue",null,null]];
- const rowsB=B.map(([l,lo,hi])=>{const L=pairs.filter(o=>lo==null?!o.ml:(o.ml&&o.ml>lo&&o.ml<=hi));const r=L.length?L.reduce((t,o)=>t+o.b/(o.a/2),0)/L.length:null;return {l,n:L.length,r};});
- const all=pairs.length?pairs.reduce((t,o)=>t+o.b/(o.a/2),0)/pairs.length:null;
- const chip=(on,txt,fn)=><button key={txt} onClick={fn} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer"}}>{txt}</button>;
+// ── Vérifier un cut : je tape 33 → tous les matchs où PrizePicks a mis ce cut, et la Map 3 qui a suivi ──
+function CutCheck({allPlayers={},teamLogos={}}){
+ const [rows,setRows]=useState(null);const [g,setG]=useState("CS2");const [st,setSt]=useState("kills");const [fm,setFm]=useState("1+2");const [v,setV]=useState("");
+ const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
+ useEffect(()=>{const since=new Date(Date.now()-60*864e5).toISOString().slice(0,19)+"Z";cloudDb("cut_history?source=eq.pp&at=gte."+since+"&select=pkey,player,game,stat,maps,line,start,match,team,team_ml&limit=20000").then(r=>setRows(Array.isArray(r)?r:[])).catch(()=>setRows([]));},[]);
+ const GS=[["CS2","CS2"],["League of Legends","LoL"],["Dota 2","Dota 2"],["Valorant","Valo"]];
+ const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
+ const val=parseFloat(String(v).replace(",","."));
+ const list=useMemo(()=>{if(!rows||isNaN(val))return [];const R=rows.filter(r=>r.game===g&&r.stat===st);
+  const m3={};R.filter(r=>r.maps==="3").forEach(r=>{m3[r.pkey+"|"+String(r.start||"").slice(0,10)+"|"+clean(r.match).toLowerCase()]=+r.line;});
+  return R.filter(r=>r.maps===fm&&Math.abs(+r.line-val)<0.01).map(r=>({...r,m3:m3[r.pkey+"|"+String(r.start||"").slice(0,10)+"|"+clean(r.match).toLowerCase()]})).sort((a,b)=>String(b.start).localeCompare(String(a.start)));},[rows,g,st,fm,val]);
+ const with3=list.filter(x=>x.m3!=null);const avg3=with3.length?with3.reduce((t,x)=>t+x.m3,0)/with3.length:null;
+ const day=t=>{const d=new Date(t);return isNaN(d)?"":d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});};
+ const L=t=>{const u=findLogo(idx,clean(t),g);return u?<img src={u} alt="" style={{width:16,height:16,objectFit:"contain",flexShrink:0}}/>:null;};
+ const chip=(on,txt,fn)=><button key={txt} onClick={fn} style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer"}}>{txt}</button>;
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
-  <div style={{fontSize:14,fontWeight:800,color:"#fff"}}>Cut Map 3 vs cut Map 1+2</div>
-  <div style={{fontSize:11.5,color:"#8b93a7",marginTop:2}}>Pour un cut Map 1+2 de 35 (17.5/map), combien PrizePicks met en Map 3 ?</div>
-  <div style={{display:"flex",gap:6,flexWrap:"wrap",margin:"10px 0"}}>{games.map(x=>chip(g===x,x==="League of Legends"?"LoL":x,()=>setG(x)))}<span style={{width:8}}/>{chip(st==="kills","Kills",()=>setSt("kills"))}{chip(st==="headshots","HS",()=>setSt("headshots"))}</div>
-  {all!=null&&<div style={{padding:"10px 12px",borderRadius:12,background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.3)",fontSize:13,color:"#e5e7eb",marginBottom:8}}>En moyenne, Map 3 = <b>{(all*100).toFixed(0)}%</b> du cut par map · ex. 35 → <b>{(17.5*all).toFixed(1)}</b> <span style={{color:"#8b93a7"}}>({pairs.length} matchs)</span></div>}
-  <div style={{borderRadius:12,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
-   {rowsB.map((r,i)=><div key={r.l} style={{display:"grid",gridTemplateColumns:"1.4fr .5fr .7fr 1fr",alignItems:"center",padding:"9px 10px",borderTop:i?"1px solid rgba(255,255,255,.04)":"none",fontSize:12.5,color:"#e5e7eb",opacity:r.n?1:.4}}>
-    <span style={{fontWeight:700}}>Équipe {r.l}</span><span style={{textAlign:"center",color:"#9ca3af"}}>{r.n||"—"}</span>
-    <span style={{textAlign:"center",fontWeight:800}}>{r.r!=null?(r.r*100).toFixed(0)+"%":"—"}</span><span style={{textAlign:"right",color:"#c4b5fd"}}>{r.r!=null?"35 → "+(17.5*r.r).toFixed(1):""}</span></div>)}
+  <div style={{fontSize:14,fontWeight:800,color:"#fff",marginBottom:10}}>Vérifier un cut</div>
+  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+   <input inputMode="decimal" value={v} onChange={e=>setV(e.target.value)} placeholder="33.0" aria-label="Cut PrizePicks" style={{width:96,height:42,borderRadius:10,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:18,fontWeight:700,padding:"0 12px",boxSizing:"border-box"}}/>
+   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{[["1+2","Map 1+2"],["1+2+3","Map 1-3"],["3","Map 3"]].map(([k,l])=>chip(fm===k,l,()=>setFm(k)))}</div>
   </div>
-  <div style={{fontSize:10.5,color:"#6b7280",marginTop:6}}>Un seul cut gardé par match (le plus récent). Il faut un run Apify pendant le live pour avoir la Map 3.</div>
+  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:8}}>{GS.map(([k,l])=>chip(g===k,l,()=>setG(k)))}<span style={{width:6}}/>{chip(st==="kills","Kills",()=>setSt("kills"))}{chip(st==="headshots","HS",()=>setSt("headshots"))}</div>
+  {!rows&&<div style={{fontSize:12,color:"#6b7280",marginTop:10}}>…</div>}
+  {rows&&!isNaN(val)&&<>
+   <div style={{display:"flex",gap:8,marginTop:10}}>
+    {[["Matchs",list.length],[fm==="3"?"—":"Map 3 moy.",fm==="3"||avg3==null?"—":avg3.toFixed(1)],["Avec Map 3",fm==="3"?"—":with3.length]].map(([l,x])=><div key={l} style={{flex:1,padding:"8px 10px",borderRadius:10,background:"#0B1220",border:"1px solid rgba(255,255,255,.06)"}}><div style={{fontSize:11,color:"#8b93a7"}}>{l}</div><div style={{fontSize:17,fontWeight:800,color:"#fff"}}>{x}</div></div>)}
+   </div>
+   <div style={{marginTop:8,borderRadius:12,background:"#0B1220",border:"1px solid rgba(255,255,255,.06)",overflow:"hidden",maxHeight:360,overflowY:"auto"}}>
+    {list.map((x,i)=><div key={x.pkey+x.start+i} style={{display:"grid",gridTemplateColumns:"44px 1fr auto",gap:8,alignItems:"center",padding:"9px 10px",borderTop:i?"1px solid rgba(255,255,255,.04)":"none",fontSize:12.5,color:"#e5e7eb"}}>
+     <span style={{color:"#8b93a7"}}>{day(x.start)}</span>
+     <span style={{minWidth:0,display:"flex",alignItems:"center",gap:6,overflow:"hidden"}}><b style={{whiteSpace:"nowrap"}}>{x.player}</b>{L(x.team)}<span style={{color:"#4b5563"}}>vs</span>{L(x.match)}<span style={{color:"#8b93a7",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{clean(x.match)}</span></span>
+     <span style={{textAlign:"right",whiteSpace:"nowrap"}}>{fm!=="3"&&<span style={{color:x.m3!=null?"#c4b5fd":"#4b5563",fontWeight:700}}>{x.m3!=null?"M3 "+x.m3:"M3 —"}</span>}{x.team_ml?<span style={{color:"#8b93a7",marginLeft:8}}>{Number(x.team_ml).toFixed(2)}</span>:null}</span>
+    </div>)}
+    {!list.length&&<div style={{padding:12,fontSize:12,color:"#6b7280"}}>Aucun match avec ce cut.</div>}
+   </div></>}
  </div>);
 }
 // ── Pseudos à associer (PrizePicks ≠ Betby) ──
 function AliasManager({allPlayers={},teamLogos={}}){
- const [open,setOpen]=useState(false);const [rows,setRows]=useState([]);const [al,setAl]=useState([]);const [g,setG]=useState("");const [bb,setBb]=useState(null);const [f,setF]=useState("");const [ppm,setPpm]=useState(null);
+ const [rows,setRows]=useState(null);const [sel,setSel]=useState(null);const [cand,setCand]=useState(null);const [f,setF]=useState("");const [note,setNote]=useState(null);
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
- const load=useCallback(async()=>{try{setRows(await cloudDb("name_unmatched?select=*&order=name.asc")||[]);setAl(await cloudDb("name_alias?select=*&order=created_at.desc")||[]);}catch(e){}},[]);
- useEffect(()=>{if(open)load();},[open,load]);
- const games=[...new Set(rows.map(r=>r.game))];const G=g||games[0]||"";
- const B=rows.filter(r=>r.side==="betby"&&r.game===G&&(!f||cutNorm(r.name).includes(cutNorm(f))));
- const Teams=({m,size=16})=>{const [x,y]=String(m||"").split(/\s+vs\.?\s+/i);const L=t=>{const u=findLogo(idx,t,G);return <span style={{display:"inline-flex",alignItems:"center",gap:4,minWidth:0}}>{u?<img src={u} alt="" style={{width:size,height:size,objectFit:"contain",flexShrink:0}}/>:null}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{teamAbbr(t)}</span></span>;};
-  return <span style={{display:"inline-flex",alignItems:"center",gap:6,minWidth:0}}>{L(x)}{y?<><span style={{color:"#4b5563"}}>vs</span>{L(y)}</>:null}</span>;};
- // Board PrizePicks du match du joueur Betby choisi → on touche le bon joueur PP
- const pick=async r=>{setBb(r);setPpm(null);try{const since=new Date(Date.now()-48*3600e3).toISOString().slice(0,19)+"Z";
-  const pp=(await cloudDb("cut_history?source=eq.pp&game=eq."+encodeURIComponent(G)+"&at=gte."+since+"&select=player,pkey,team,match&limit=3000"))||[];
-  const [x,y]=String(r.info||"").split(/\s+vs\.?\s+/i);const ks=[x,y].filter(Boolean).map(teamKey);const near=t=>{const n=teamKey(String(t||"").replace(/\s*MAPS?\s*\d.*$/i,""));return n&&ks.some(k=>k&&(n.includes(k)||k.includes(n)||cutNorm(teamAbbr(k))===n));};
-  const m=new Map();pp.forEach(p=>{if(near(p.team)||near(p.match))m.set(p.pkey,p);});setPpm([...m.values()].sort((a,b)=>String(a.team).localeCompare(String(b.team))));}catch(e){setPpm([]);}};
- const link=async p=>{if(!bb)return;try{await cloudDb("name_alias?on_conflict=game,pp_key",{method:"POST",body:[{game:G,pp_key:p.pkey,pp_name:p.player,betby_key:bb.pkey,betby_name:bb.name}],prefer:"resolution=merge-duplicates"});
-  setRows(rs=>rs.filter(x=>x.key!==bb.key));setBb(null);setPpm(null);load();}catch(e){alert("Erreur : "+(e.message||e));}};
- const unlink=async a=>{try{await cloudDb("name_alias?id=eq."+a.id,{method:"DELETE"});load();}catch(e){}};
+ const load=useCallback(async()=>{try{setRows(await cloudDb("name_unmatched?select=*&order=game.asc,name.asc")||[]);}catch(e){setRows([]);}},[]);
+ useEffect(()=>{load();},[load]);
+ const flash=(ok,txt)=>{setNote({ok,txt});setTimeout(()=>setNote(null),3000);};
+ const split=m=>String(m||"").replace(/\s*MAPS?\s*\d.*$/i,"").split(/\s+vs\.?\s+/i);
+ const Teams=({m,game})=>{const [x,y]=split(m);const L=t=>{const u=findLogo(idx,t,game);return <span style={{display:"inline-flex",alignItems:"center",gap:4,minWidth:0}}>{u?<img src={u} alt="" style={{width:14,height:14,objectFit:"contain",flexShrink:0}}/>:null}<span style={{whiteSpace:"nowrap"}}>{teamAbbr(t)}</span></span>;};
+  return <span style={{display:"inline-flex",alignItems:"center",gap:6,minWidth:0}}>{x?L(x):null}{y?<><span style={{color:"#4b5563"}}>vs</span>{L(y)}</>:null}</span>;};
+ const G2={"League of Legends":"LoL","Dota 2":"Dota2"};
+ const near=(t,ks)=>{const n=teamKey(String(t||"").replace(/\s*MAPS?\s*\d.*$/i,""));return n&&ks.some(k=>k&&(n.includes(k)||k.includes(n)||cutNorm(teamAbbr(k))===n));};
+ const pick=async r=>{setSel(r);setCand(null);const ks=split(r.info).filter(Boolean).map(teamKey);const since=new Date(Date.now()-48*3600e3).toISOString().slice(0,19)+"Z";
+  try{if(r.side==="betby"){const pp=(await cloudDb("cut_history?source=eq.pp&game=eq."+encodeURIComponent(r.game)+"&at=gte."+since+"&select=player,pkey,team,match&limit=3000"))||[];
+    const m=new Map();pp.forEach(p=>{if(near(p.team,ks)||near(p.match,ks))m.set(p.pkey,{key:p.pkey,name:p.player,team:p.team});});setCand([...m.values()]);}
+   else{const bb=(await cloudDb("betby_props?select=player,pkey,match&game=eq."+encodeURIComponent(r.game)+"&limit=3000"))||[];
+    const m=new Map();bb.forEach(b=>{const [x,y]=split(b.match);if(near(x,ks)||near(y,ks))m.set(b.pkey,{key:b.pkey,name:b.player,team:b.match});});setCand([...m.values()]);}}catch(e){setCand([]);}};
+ const link=async c=>{const pp=sel.side==="pp"?{k:sel.pkey,n:sel.name}:{k:c.key,n:c.name};const bt=sel.side==="betby"?{k:sel.pkey,n:sel.name}:{k:c.key,n:c.name};
+  try{await cloudDb("name_alias?on_conflict=game,pp_key",{method:"POST",body:[{game:sel.game,pp_key:pp.k,pp_name:pp.n,betby_key:bt.k,betby_name:bt.n}],prefer:"resolution=merge-duplicates"});
+   const chk=await cloudDb("name_alias?select=id&game=eq."+encodeURIComponent(sel.game)+"&pp_key=eq."+encodeURIComponent(pp.k));
+   if(chk&&chk.length){setRows(rs=>(rs||[]).filter(x=>x.key!==sel.key));flash(true,pp.n+" ↔ "+bt.n+" · enregistré dans Supabase");}else flash(false,"Non confirmé par Supabase");
+   setSel(null);setCand(null);}catch(e){flash(false,"Erreur Supabase : "+String(e.message||e).slice(0,80));}};
+ const list=(rows||[]).filter(r=>!f||cutNorm(r.name).includes(cutNorm(f)));
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
-  <button onClick={()=>setOpen(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"transparent",border:"none",color:"#e5e7eb",cursor:"pointer",padding:0,fontFamily:"Inter,sans-serif"}}>
-   <span style={{fontSize:14,fontWeight:800}}>Pseudos</span><span style={{fontSize:12,color:"#8b93a7"}}>{open?"▴":"▾"} {al.length?al.length+" associé(s)":""}</span></button>
-  {open&&<div style={{marginTop:10}}>
-   <div style={{display:"flex",gap:5,marginBottom:8}}>{games.map(x=><button key={x} onClick={()=>{setG(x);setBb(null);setPpm(null);}} style={{flex:1,height:32,borderRadius:8,border:"1px solid "+(x===G?"#7C3AED":"rgba(255,255,255,.07)"),background:x===G?"rgba(124,58,237,.18)":"transparent",color:x===G?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer"}}>{x}</button>)}</div>
-   {!bb&&<><input value={f} onChange={e=>setF(e.target.value)} placeholder="Filtrer un nom…" style={{width:"100%",boxSizing:"border-box",height:36,borderRadius:9,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:13,padding:"0 10px",marginBottom:8}}/>
-    <div style={{fontSize:11,fontWeight:800,color:"#38BDF8",margin:"0 2px 6px"}}>Joueurs Betby sans équivalent PrizePicks · {B.length}</div>
-    <div style={{display:"grid",gap:4,maxHeight:320,overflowY:"auto"}}>{B.map(r=><button key={r.key} onClick={()=>pick(r)} style={{display:"flex",alignItems:"center",gap:10,textAlign:"left",padding:"8px 10px",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",background:"#0B1220",color:"#e5e7eb",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-     <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:13.5,fontWeight:800}}>{r.name}</span><span style={{display:"block",fontSize:11.5,color:"#8b93a7",marginTop:2}}><Teams m={r.info} size={14}/></span></span><span style={{color:"#6b7280"}}>›</span></button>)}
-     {!B.length&&<div style={{fontSize:12,color:"#6b7280",padding:8}}>Rien à associer.</div>}</div></>}
-   {bb&&<div style={{borderRadius:12,border:"1px solid rgba(56,189,248,.35)",background:"rgba(56,189,248,.05)",padding:10}}>
-    <div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>{setBb(null);setPpm(null);}} aria-label="Retour" style={{width:30,height:30,borderRadius:8,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",cursor:"pointer"}}>‹</button>
-     <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:800,color:"#fff"}}>Betby : {bb.name}</div><div style={{fontSize:12,color:"#8b93a7",marginTop:2}}><Teams m={bb.info}/></div></div></div>
-    <div style={{fontSize:12,fontWeight:700,color:"#cbd5e1",margin:"10px 2px 6px"}}>Quel joueur PrizePicks est-ce ?</div>
-    {!ppm&&<div style={{fontSize:12,color:"#6b7280"}}>Chargement du board…</div>}
-    {ppm&&!ppm.length&&<div style={{fontSize:12,color:"#6b7280"}}>Aucun joueur PrizePicks pour ce match (lance un run Apify).</div>}
-    {ppm&&ppm.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:6}}>{ppm.map(p=>{const u=findLogo(idx,p.team,G);return <button key={p.pkey} onClick={()=>link(p)} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",background:"#0B1220",color:"#e5e7eb",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
-     {u?<img src={u} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null}<span style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.player}</span></button>;})}</div>}
-   </div>}
-   {al.length>0&&<div style={{marginTop:12}}><div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>Déjà associés</div>
-    {al.map(a=><div key={a.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 2px",fontSize:12.5,color:"#cbd5e1"}}><span style={{flex:1}}>{a.pp_name} <span style={{color:"#6b7280"}}>↔</span> {a.betby_name} <span style={{color:"#6b7280"}}>· {a.game}</span></span><button onClick={()=>unlink(a)} aria-label="Défaire" style={{border:"none",background:"transparent",color:"#EF4444",cursor:"pointer",fontSize:14}}>×</button></div>)}</div>}
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:14,fontWeight:800,color:"#fff"}}>Pseudos à corriger</span><span style={{fontSize:12,color:"#8b93a7",fontWeight:700}}>{rows?rows.length:""}</span></div>
+  {note&&<div role="status" style={{marginBottom:8,padding:"9px 12px",borderRadius:10,fontSize:12.5,fontWeight:700,background:note.ok?"rgba(34,197,94,.12)":"rgba(239,68,68,.12)",border:"1px solid "+(note.ok?"rgba(34,197,94,.4)":"rgba(239,68,68,.4)"),color:note.ok?"#86efac":"#fca5a5"}}>{note.ok?"✓ ":"⚠ "}{note.txt}</div>}
+  {!sel&&<><input value={f} onChange={e=>setF(e.target.value)} placeholder="Filtrer" style={{width:"100%",boxSizing:"border-box",height:36,borderRadius:9,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:13,padding:"0 10px",marginBottom:8}}/>
+   <div style={{display:"grid",gap:4,maxHeight:380,overflowY:"auto"}}>{list.map(r=><button key={r.key} onClick={()=>pick(r)} style={{display:"flex",alignItems:"center",gap:10,textAlign:"left",padding:"8px 10px",borderRadius:10,border:"1px solid rgba(255,255,255,.06)",background:"#0B1220",color:"#e5e7eb",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+    <span style={{width:20,height:20,borderRadius:5,overflow:"hidden",flexShrink:0}}><GameLogo game={G2[r.game]||r.game} size={20}/></span>
+    <span style={{flex:1,minWidth:0}}><span style={{display:"flex",alignItems:"center",gap:6}}><b style={{fontSize:13.5}}>{r.name}</b><span style={{fontSize:9.5,fontWeight:800,padding:"1px 5px",borderRadius:4,color:r.side==="pp"?"#c4b5fd":"#7dd3fc",background:r.side==="pp"?"rgba(167,139,250,.12)":"rgba(56,189,248,.12)"}}>{r.side==="pp"?"PP":"BETBY"}</span></span>
+     <span style={{display:"block",fontSize:11.5,color:"#8b93a7",marginTop:2}}><Teams m={r.info} game={r.game}/></span></span><span style={{color:"#6b7280"}}>›</span></button>)}
+    {rows&&!list.length&&<div style={{fontSize:12,color:"#6b7280",padding:8}}>✓</div>}</div></>}
+  {sel&&<div style={{borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.02)",padding:10}}>
+   <div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>{setSel(null);setCand(null);}} aria-label="Retour" style={{width:30,height:30,borderRadius:8,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#cbd5e1",cursor:"pointer"}}>‹</button>
+    <div style={{flex:1,minWidth:0}}><div style={{fontSize:14,fontWeight:800,color:"#fff"}}>{sel.name} <span style={{fontSize:11,color:"#8b93a7"}}>· {sel.side==="pp"?"PrizePicks":"Betby"}</span></div><div style={{fontSize:12,color:"#8b93a7",marginTop:2}}><Teams m={sel.info} game={sel.game}/></div></div></div>
+   <div style={{fontSize:12,fontWeight:700,color:"#cbd5e1",margin:"10px 2px 6px"}}>{sel.side==="pp"?"Joueur Betby":"Joueur PrizePicks"}</div>
+   {!cand&&<div style={{fontSize:12,color:"#6b7280"}}>…</div>}
+   {cand&&!cand.length&&<div style={{fontSize:12,color:"#6b7280"}}>Aucun joueur trouvé pour ce match.</div>}
+   {cand&&cand.length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:6}}>{cand.map(c=>{const u=sel.side==="betby"?findLogo(idx,c.team,sel.game):null;return <button key={c.key} onClick={()=>link(c)} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:10,border:"1px solid rgba(255,255,255,.08)",background:"#0B1220",color:"#e5e7eb",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
+    {u?<img src={u} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null}<span style={{fontSize:13,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span></button>;})}</div>}
   </div>}
  </div>);
 }
@@ -7249,6 +7270,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   const k=teamKey(mine);const hit=t=>{const n=teamKey(t);return k&&n&&(n.includes(k)||k.includes(n)||cutNorm(teamAbbr(t))===cutNorm(mine));};
   return t2&&hit(t2)&&!hit(t1)?[t2,t1]:[t1,t2];};
  const [evFocus,setEvFocus]=useState(null);
+ useEffect(()=>{const h=e=>{const d=e.detail||{};setView("players");setSuiviTab("suivi");setSuiviOpen(s=>({...s,ev:true}));setEvFocus({player:d.player,teams:d.team?[d.team]:[],live:false,stat:d.hs?"headshots":"kills",t:Date.now()});setEvTab("board");};
+  window.addEventListener("emeieks-goto-board",h);return()=>window.removeEventListener("emeieks-goto-board",h);},[setView]);
  const goBoard=a=>{const [x,y]=evTeams(a);setEvFocus({teams:[x,y].filter(Boolean),live:Number(a.map)>=2,stat:a.stat,t:Date.now()});setEvTab("board");};
 
  // Fréquence de bets par joueur — pour trier les suggestions PlayerAC
@@ -12085,7 +12108,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    </div>
    {evTab==="board"&&<PPBoard allPlayers={allPlayers} teamLogos={teamLogos} focus={evFocus}/>}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
-   {evTab==="outils"&&<><MLStats bets={bets}/><CutMLStats/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
+   {evTab==="outils"&&<><MLStats bets={bets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
    {evTab==="bets"&&<>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
