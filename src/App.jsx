@@ -4784,12 +4784,12 @@ function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foo
  const live=when==="LIVE";
  const face={position:"absolute",inset:0,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden",background:"linear-gradient(180deg,"+c1+"14 0%,#0D1017 55%,#0A0C12 100%)",border:"1px solid "+(hot?"#7CFC00":c1+"55"),borderRadius:18,overflow:"hidden",boxShadow:"0 14px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)"};
  const gi=(t,fn)=><button key={t} onClick={e=>{e.stopPropagation();setGear(false);fn();}} style={{display:"block",width:"100%",textAlign:"left",padding:"9px 12px",border:"none",background:"transparent",color:"#e5e7eb",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>{t}</button>;
- return(<div style={{perspective:1100,height:300,minWidth:0}}><div style={{position:"relative",height:"100%",transition:"transform .55s cubic-bezier(.2,.8,.2,1)",transformStyle:"preserve-3d",transform:flip?"rotateY(180deg)":"none"}}>
+ return(<div style={{perspective:1100,height:262,minWidth:0}}><div style={{position:"relative",height:"100%",transition:"transform .55s cubic-bezier(.2,.8,.2,1)",transformStyle:"preserve-3d",transform:flip?"rotateY(180deg)":"none"}}>
  <div style={{...face,display:"flex",flexDirection:"column",alignItems:"center"}}>
   <div style={{width:"100%",height:158,position:"relative",overflow:"hidden",background:"radial-gradient(80% 85% at 50% 105%,"+c1+"cc 0%,"+c1+"40 42%,transparent 75%),linear-gradient(160deg,#1a1f2b,#0b0e14)"}}>
    {logo?<div aria-hidden="true" style={{position:"absolute",inset:0,perspective:400}}>
-     <img src={logo} alt="" style={{position:"absolute",top:"46%",left:"50%",width:170,height:170,objectFit:"contain",transform:"translate(-50%,-50%) rotateY(-18deg) rotateX(8deg) scale(1.1)",opacity:.22,filter:"blur(1.5px) saturate(1.3)"}}/>
-     <img src={logo} alt="" style={{position:"absolute",top:"42%",left:"50%",width:120,height:120,objectFit:"contain",transform:"translate(-50%,-50%) rotateY(-18deg) rotateX(8deg)",opacity:.28,filter:"drop-shadow(0 10px 18px rgba(0,0,0,.6))"}}/></div>
+     <img src={logo} alt="" style={{position:"absolute",top:"46%",left:"50%",width:170,height:170,objectFit:"contain",transform:"translate(-50%,-50%) rotateY(-18deg) rotateX(8deg) scale(1.1)",opacity:.10,filter:"blur(2px) saturate(1.3)"}}/>
+     <img src={logo} alt="" style={{position:"absolute",top:"42%",left:"50%",width:120,height:120,objectFit:"contain",transform:"translate(-50%,-50%) rotateY(-18deg) rotateX(8deg)",opacity:.16,filter:"drop-shadow(0 10px 18px rgba(0,0,0,.6))"}}/></div>
     :<div style={{position:"absolute",top:6,left:0,right:0,textAlign:"center",fontFamily:"'Barlow Condensed',Inter,sans-serif",fontSize:66,fontWeight:800,lineHeight:1,color:"rgba(0,0,0,.18)",letterSpacing:2}}>{ab}</div>}
    {photo&&imgOk
     ?<img src={photo} alt={player} onError={()=>setImgOk(false)} style={{position:"absolute",left:"50%",bottom:0,transform:"translateX(-50%)",height:146,maxWidth:"92%",objectFit:"contain",objectPosition:"bottom",filter:"drop-shadow(0 10px 18px rgba(0,0,0,.65))",WebkitMaskImage:"linear-gradient(180deg,#000 80%,transparent)",maskImage:"linear-gradient(180deg,#000 80%,transparent)"}}/>
@@ -4808,7 +4808,7 @@ function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foo
   </div>
   <div style={{marginTop:10,fontSize:17,fontWeight:900,color:"#fff",letterSpacing:-.3,textAlign:"center",maxWidth:"92%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player}</div>
   <div style={{fontSize:11.5,color:"#9aa3b2",marginTop:2,whiteSpace:"nowrap",maxWidth:"94%",overflow:"hidden",textOverflow:"ellipsis"}}>{club||team} · vs <b style={{color:"#e5e7eb"}}>{opp?teamAbbr(opp):"?"}</b> <span style={{color:live?"#f43f5e":"#eab308",fontWeight:800}}>{when}</span></div>
-  <div style={{padding:"8px 8px 12px",width:"100%",boxSizing:"border-box"}}>{children}</div>
+  <div style={{padding:"6px 8px 0",width:"100%",boxSizing:"border-box"}}>{children}</div>
   {foot&&<button onClick={act||undefined} style={{marginTop:"auto",width:"100%",border:"none",borderTop:"1px solid rgba(255,255,255,.07)",background:"transparent",padding:"9px 6px",fontSize:11.5,color:"#9aa3b2",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:act?"pointer":"default",fontFamily:"Inter,sans-serif"}}>{foot}{act?" ›":""}</button>}
  </div>
  {back&&<div style={{...face,transform:"rotateY(180deg)",display:"flex",flexDirection:"column"}}>
