@@ -2986,8 +2986,8 @@ async function uploadOrInline(blob,folder,name){
 // Les photos (sans transparence) ne sont jamais touchées. Résultat mémorisé par image.
 (function(){
  if(typeof window==="undefined"||window.__darkLogoFix)return;window.__darkLogoFix=true;
- let cache={};try{cache=JSON.parse(localStorage.getItem("dark_logos_v1")||"{}");}catch(e){}
- const save=()=>{try{localStorage.setItem("dark_logos_v1",JSON.stringify(cache));}catch(e){}};
+ let cache={};try{cache=JSON.parse(localStorage.getItem("dark_logos_v2")||"{}");}catch(e){}
+ const save=()=>{try{localStorage.setItem("dark_logos_v2",JSON.stringify(cache));}catch(e){}};
  const apply=(img,dark)=>{if(dark&&!img.dataset.noInvert){img.style.filter="brightness(0) invert(1)";img.dataset.whitened="1";}};
  const analyse=src=>new Promise(res=>{const im=new Image();if(!src.startsWith("data:"))im.crossOrigin="anonymous";
   im.onload=()=>{try{const W=48,H=Math.max(1,Math.round(48*im.naturalHeight/Math.max(1,im.naturalWidth)));const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(im,0,0,W,H);
@@ -2995,6 +2995,7 @@ async function uploadOrInline(blob,folder,name){
    const n=W*H;res(tr/n>0.15&&vis>0&&dark/vis>0.82);}catch(e){res(null);}};im.onerror=()=>res(null);im.src=src;});
  document.addEventListener("load",async e=>{const img=e.target;if(!img||img.tagName!=="IMG")return;const src=img.currentSrc||img.src;if(!src||img.dataset.whitened)return;
   if(img.naturalWidth<8||img.naturalWidth>1200)return;
+  if(/\/players\/|\/avatars?\//i.test(src)||img.closest("[data-photo]"))return;
   if(src in cache){apply(img,cache[src]);return;}
   const r=await analyse(src);if(r===null)return;cache[src]=r;save();apply(img,r);},true);
 })();
