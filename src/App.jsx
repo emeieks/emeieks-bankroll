@@ -4883,7 +4883,7 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
  const load=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString().slice(0,19)+"Z";
   const [r,b]=await Promise.all([cloudDb("cut_history?source=eq.pp&at=gte."+since+"&order=at.desc&limit=3000"),cloudDb("betby_props?order=updated_at.desc&limit=3000").catch(()=>[])]);
   setRows(Array.isArray(r)?r:[]);setBb(Array.isArray(b)?b:[]);}catch(e){setRows([]);}},[]);
- useEffect(()=>{load();const i=setInterval(load,120000);return()=>clearInterval(i);},[load]);
+ useEffect(()=>{load();const i=setInterval(()=>{if(!document.hidden)load();},300000);return()=>clearInterval(i);},[load]);
  const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
  const logoIdx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
  const logoOf=(t,g)=>findLogo(logoIdx,t,g);
