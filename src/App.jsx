@@ -6247,7 +6247,7 @@ function AppMain(){
   const n=parseInt(String(form.mapTag||"Map 1").replace(/\D/g,""))||1;const fmts=n>=2?["3","4","5"]:["1+2","1+2+3"];const stat=form.isHeadshot?"headshots":"kills";let stop=false;
   const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?source=eq.pp&pkey=eq."+encodeURIComponent(cutNorm(nm))+"&stat=eq."+stat+"&maps=in.("+fmts.join(",")+")&select=maps,line,match,team,at&order=at.desc&limit=1");
    if(stop)return;const x=r&&r[0];if(!x){setPpOpp(null);return;}
-   const opp=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();setPpOpp(opp?{name:opp}:null);
+   const opp=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();setPpOpp(opp?{name:opp,cut:Number(x.line).toFixed(1)+" "+(x.maps==="1+2"?"Map 1+2":x.maps==="1+2+3"?"Map 1+2+3":"Map "+x.maps)}:null);
    const mt=x.maps==="1+2"?"Map 1+2":x.maps==="1+2+3"?"Map 1+2+3":"Map 3";const val=Number(x.line).toFixed(1)+(form.isHeadshot?" Headshots":" Kills");
    setForm(f=>{if(f.ppDescription&&f.ppDescription!==ppAutoRef.current)return f;ppAutoRef.current=val;return {...f,ppMapType:mt,ppDescription:val};});}catch(e){}},400);
   return()=>{stop=true;clearTimeout(t);};},[form.player,form.autoInfo,form.mapTag,form.isHeadshot]);
@@ -9974,12 +9974,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* Contenu */}
  <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:5}}>
  {/* Ligne 1 : nom joueur + ligne stats (une seule ligne) */}
- {(()=>{const nm=capName((form.autoInfo&&form.autoInfo.name)||form.player);const ln=form.overUnder&&form.description?form.overUnder+" "+form.description.replace(/^(Over|Under)\s/,""):(form.description||"");const fs=nm.length>14?18:21;return(
+ {(()=>{const nm=capName((form.autoInfo&&form.autoInfo.name)||form.player);const ln=form.overUnder&&form.description?form.overUnder+" "+form.description.replace(/^(Over|Under)\s/,""):(form.description||"");const fs=nm.length>14?15:17;return(
  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
  <div style={{display:"flex",flexDirection:"column",gap:2,minWidth:0,flex:1}}>
- <span style={{fontSize:fs,fontWeight:800,color:"#f0f4ff",letterSpacing:-.4,lineHeight:1.15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nm}</span>
- <span style={{fontSize:13.5,fontWeight:600,color:"#8fa6c8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ln}</span>
- {ppOpp&&(()=>{const u=findLogo(buildLogoIdx(teamLogos,allPlayers),ppOpp.name,form.autoInfo&&form.autoInfo.game);return <span style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:"#cbd5e1",marginTop:2,minWidth:0}}><span style={{color:"#6b7280",fontWeight:600}}>vs</span>{u?<img src={u} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null}<span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ppOpp.name}</span></span>;})()}
+ <span style={{display:"flex",alignItems:"baseline",gap:7,minWidth:0}}><span style={{fontSize:fs,fontWeight:800,color:"#f0f4ff",letterSpacing:-.3,lineHeight:1.2,whiteSpace:"nowrap",flexShrink:0}}>{nm}</span>
+ <span style={{fontSize:13,fontWeight:600,color:"#8fa6c8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{ln}</span></span>
+ {ppOpp&&(()=>{const u=findLogo(buildLogoIdx(teamLogos,allPlayers),ppOpp.name,form.autoInfo&&form.autoInfo.game);return <span style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:"#cbd5e1",marginTop:2,minWidth:0}}><span style={{color:"#6b7280",fontWeight:600}}>vs</span>{u?<img src={u} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null}<span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ppOpp.name}{ppOpp.cut?<span style={{color:"#a78bfa",fontWeight:600}}> ({ppOpp.cut})</span>:null}</span></span>;})()}
  </div>
  {(()=>{
  const bk=parseFloat(form.description);
