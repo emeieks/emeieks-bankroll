@@ -3685,7 +3685,7 @@ const MesParisView=memo(function MesParisView({
  const filtered=useMemo(()=>bets.filter(b=>{
  if(fStatus&&fStatus!=="All"&&b.status!==fStatus)return false;
  if(fGames&&fGames.length>0&&!fGames.includes(b.game))return false;
- if(fBKs&&fBKs.length>0&&!fBKs.includes(b.bookmaker||"")&&!(b.splits||[]).some(sp=>fBKs.includes(sp.bookmaker)))return false;
+ if(fBKs&&fBKs.length>0){const has=[b.bookmaker||"",...(b.splits||[]).map(sp=>sp.bookmaker)];if(!fBKs.every(k=>has.includes(k)))return false;}
  if(fOverUnder&&fOverUnder!=="All"&&b.overUnder!==fOverUnder)return false;
  if(fRole&&fRole!=="All"&&normalizeRole(b.role||"",b.game)!==normalizeRole(fRole,b.game))return false;
  if(fLeague&&fLeague!=="All"&&b.league!==fLeague)return false;
@@ -6357,6 +6357,8 @@ function AppMain(){
  const FILTRES_PER_PAGE=30;
  const [modalBK,setModalBK]=useState(false);
  const [splitModal,setSplitModal]=useState(null); // bet to split
+ const [legEdit,setLegEdit]=useState(null);
+ useEffect(()=>{setLegEdit(null);},[splitModal&&splitModal.id]);
  const [splitForm,setSplitForm]=useState({bookmaker:"",stake:"",odds:""});
  const [newBK,setNewBK]=useState("");
  const [newBKPhoto,setNewBKPhoto]=useState("");
@@ -12656,16 +12658,28 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <span style={{fontSize:12,color:"#6B7280"}}>{splitModal.description}</span>
  </div>
  <div style={{display:"flex",flexDirection:"column",gap:4}}>
- <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
- <span style={{color:"#9CA3AF"}}>{splitModal.bookmaker}</span>
- <span style={{color:"#E5E7EB",fontWeight:600}}>{(splitModal.stake-(splitModal.splits||[]).reduce((s,x)=>s+x.stake,0)).toFixed(0)}$ <span style={{color:"#6B7280"}}>@{splitModal.odds}</span></span>
- </div>
- {(splitModal.splits||[]).map((sp,i)=>(
- <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12}}>
- <span style={{color:"#9CA3AF"}}>{sp.bookmaker}</span>
- <span style={{color:"#E5E7EB",fontWeight:600}}>{sp.stake}$ <span style={{color:"#6B7280"}}>@{sp.odds}</span></span>
- </div>
- ))}
+ {(()=>{const sp0=splitModal.splits||[];const mainSt=splitModal.stake-sp0.reduce((s,x)=>s+x.stake,0);
+  const legs=[{i:-1,bookmaker:splitModal.bookmaker,stake:mainSt,odds:splitModal.odds},...sp0.map((x,i)=>({i,...x}))];
+  const save=()=>{const e=legEdit;const st=parseFloat(e.stake),od=parseFloat(e.odds);if(!e.bookmaker||isNaN(st)||st<=0||isNaN(od)||od<=1){showToast("Mise ou cote invalide","#EF4444");return;}
+   let bk=splitModal.bookmaker,bo=splitModal.odds,sps=sp0.map(x=>({...x})),main=mainSt;
+   if(e.i===-1){bk=e.bookmaker;bo=od;main=st;}else sps[e.i]={bookmaker:e.bookmaker,stake:st,odds:od};
+   const tot=main+sps.reduce((t,x)=>t+x.stake,0);const nb={...splitModal,bookmaker:bk,odds:bo,stake:tot,splits:sps};
+   nb.profit=nb.status==="void"?0:betProfit(nb);nb.updatedAt=Date.now();
+   setBets(b=>b.map(x=>String(x.id)===String(nb.id)?nb:x));setSplitModal(nb);setLegEdit(null);showToast(e.bookmaker+" modifié · Total "+tot.toFixed(0)+"$","#A78BFA");};
+  const del=i=>{const sps=sp0.filter((_,k)=>k!==i);const nb={...splitModal,splits:sps,stake:mainSt+sps.reduce((t,x)=>t+x.stake,0)};nb.profit=nb.status==="void"?0:betProfit(nb);nb.updatedAt=Date.now();
+   setBets(b=>b.map(x=>String(x.id)===String(nb.id)?nb:x));setSplitModal(nb);setLegEdit(null);showToast(sp0[i].bookmaker+" retiré","#A78BFA");};
+  const inp={height:36,borderRadius:8,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:13,padding:"0 8px",boxSizing:"border-box",width:"100%",fontFamily:"Inter,sans-serif"};
+  return legs.map(l=>legEdit&&legEdit.i===l.i?
+   <div key={l.i} style={{display:"flex",flexDirection:"column",gap:6,padding:8,borderRadius:10,background:"rgba(124,58,237,.08)",border:"1px solid rgba(124,58,237,.35)"}}>
+    <select value={legEdit.bookmaker} onChange={e=>setLegEdit(x=>({...x,bookmaker:e.target.value}))} style={inp}>{[...new Set([l.bookmaker,...visibleBKs])].filter(bk=>bk===l.bookmaker||!legs.some(o=>o.bookmaker===bk)).map(bk=><option key={bk} value={bk}>{bk}</option>)}</select>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}><input type="number" step="1" value={legEdit.stake} onChange={e=>setLegEdit(x=>({...x,stake:e.target.value}))} placeholder="Mise" aria-label="Mise" style={inp}/><input type="number" step="0.01" value={legEdit.odds} onChange={e=>setLegEdit(x=>({...x,odds:e.target.value}))} placeholder="Cote" aria-label="Cote" style={inp}/></div>
+    <div style={{display:"flex",gap:6}}>{l.i>=0&&<button onClick={()=>del(l.i)} style={{flex:1,height:34,borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"transparent",color:"#f87171",fontWeight:700,fontSize:12,cursor:"pointer"}}>Retirer</button>}
+     <button onClick={()=>setLegEdit(null)} style={{flex:1,height:34,borderRadius:8,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,fontSize:12,cursor:"pointer"}}>Annuler</button>
+     <button onClick={save} style={{flex:1.4,height:34,borderRadius:8,border:"none",background:"#7C3AED",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}}>Enregistrer</button></div>
+   </div>
+   :<button key={l.i} onClick={()=>setLegEdit({i:l.i,bookmaker:l.bookmaker,stake:String(Math.round(l.stake*100)/100),odds:String(l.odds)})} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,padding:"6px 8px",margin:"0 -8px",borderRadius:8,border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+    <span style={{color:"#9CA3AF"}}>{l.bookmaker} <span style={{color:"#6B7280",fontSize:11}}>✎</span></span>
+    <span style={{color:"#E5E7EB",fontWeight:600}}>{Number(l.stake).toFixed(0)}$ <span style={{color:"#6B7280"}}>@{l.odds}</span></span></button>);})()}
  <div style={{borderTop:"1px solid #1F2937",paddingTop:6,marginTop:2,display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700}}>
  <span style={{color:"#6B7280"}}>Total</span>
  <span style={{color:"#A78BFA"}}>{splitModal.stake}$</span>
