@@ -4903,9 +4903,8 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
  const [ord,setOrd]=useState("asc");const statDef=stat;
  const usedFocus=useRef(0);
  const shown=useMemo(()=>matches.filter(m=>{const t=tsOf(m.start);if(t&&t<Date.now()-6*3600e3)return false;
-  if(!m.rows.some(r=>Date.now()-new Date(r.at).getTime()<90*60e3))return false;
-  return m.rows.some(r=>(bbIdx[r.pkey]||[]).some(tb=>!t||!tb||Math.abs(tb-t)<6*3600e3));})
-  .sort((a,b)=>(b.live-a.live)||((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,bbIdx,ord]);
+  return m.rows.some(r=>Date.now()-new Date(r.at).getTime()<90*60e3);})
+  .sort((a,b)=>(b.live-a.live)||((tsOf(a.start)||0)-(tsOf(b.start)||0))*(ord==="asc"?1:-1)),[matches,ord]);
  const G={"League of Legends":"LoL","Dota 2":"Dota2"};
  useEffect(()=>{if(!focus||usedFocus.current===focus.t||!shown.length)return;usedFocus.current=focus.t;
   const ks=(focus.teams||[]).map(teamKey);const fp=focus.player?cutNorm(focus.player):"";const ok=m=>(fp&&m.rows.some(r=>r.pkey===fp))||m.teams.some(t=>ks.some(k=>{const n=teamKey(t);return n&&k&&(n.includes(k)||k.includes(n));}));
@@ -4915,7 +4914,7 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
    <button onClick={()=>setOrd(o=>o==="asc"?"desc":"asc")} style={{height:32,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#cbd5e1",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Heure {ord==="asc"?"↑":"↓"}</button>
 </div>
   {!rows&&<div style={{fontSize:12,color:"#6b7280"}}>Chargement…</div>}
-  {rows&&!shown.length&&<div style={{fontSize:12,color:"#6b7280",padding:"4px 2px"}}>Aucun match avec des props joueurs Betby pour l'instant.</div>}
+  {rows&&!shown.length&&<div style={{fontSize:12,color:"#6b7280",padding:"4px 2px"}}>Aucun match PrizePicks pour l'instant.</div>}
   {shown.map(m=>{const open=openK===m.k;const [A,B]=m.teams;
    const fo=x=>({"1+2":0,"1+2+3":1,"1":2,"2":3,"3":4,"4":5,"5":6,"4+5":7}[x]??9);
    const combos=[...new Set(m.rows.map(r=>r.maps+"|"+r.stat))].sort((x,y)=>{const [a1,s1]=x.split("|"),[a2,s2]=y.split("|");return fo(a1)-fo(a2)||(s1==="kills"?-1:1)-(s2==="kills"?-1:1);});
@@ -6242,6 +6241,16 @@ function AppMain(){
  useEffect(()=>{const t=form.mapTag;if(evPrefillRef.current){evPrefillRef.current=false;return;}if(!t||form.ppMapType==="HIDE")return;const n=parseInt(String(t).replace(/\D/g,""));
   if(n>=2&&form.ppMapType!=="Map 3")setForm(f=>({...f,ppMapType:"Map 3",ppDescription:""}));
   else if(n===1&&form.ppMapType==="Map 3")setForm(f=>({...f,ppMapType:"Map 1+2",ppDescription:""}));},[form.mapTag]);
+ // Dernier cut PrizePicks du joueur : Map 1 → Map 1+2 / 1+2+3 · Map 2+ → Map 3 / 4 / 5 (le plus récent)
+ const [ppOpp,setPpOpp]=useState(null);const ppAutoRef=useRef("");
+ useEffect(()=>{const nm=(form.autoInfo&&form.autoInfo.name)||form.player;if(!nm||nm.length<2||form.ppMapType==="HIDE"){setPpOpp(null);return;}
+  const n=parseInt(String(form.mapTag||"Map 1").replace(/\D/g,""))||1;const fmts=n>=2?["3","4","5"]:["1+2","1+2+3"];const stat=form.isHeadshot?"headshots":"kills";let stop=false;
+  const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?source=eq.pp&pkey=eq."+encodeURIComponent(cutNorm(nm))+"&stat=eq."+stat+"&maps=in.("+fmts.join(",")+")&select=maps,line,match,team,at&order=at.desc&limit=1");
+   if(stop)return;const x=r&&r[0];if(!x){setPpOpp(null);return;}
+   const opp=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();setPpOpp(opp?{name:opp}:null);
+   const mt=x.maps==="1+2"?"Map 1+2":x.maps==="1+2+3"?"Map 1+2+3":"Map 3";const val=Number(x.line).toFixed(1)+(form.isHeadshot?" Headshots":" Kills");
+   setForm(f=>{if(f.ppDescription&&f.ppDescription!==ppAutoRef.current)return f;ppAutoRef.current=val;return {...f,ppMapType:mt,ppDescription:val};});}catch(e){}},400);
+  return()=>{stop=true;clearTimeout(t);};},[form.player,form.autoInfo,form.mapTag,form.isHeadshot]);
  const [stickyBK,setStickyBK]=useState(false);
  const [lockedStatus,setLockedStatus]=useState(null);
  const [view,setViewRaw]=useState("home");
@@ -9970,6 +9979,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"flex",flexDirection:"column",gap:2,minWidth:0,flex:1}}>
  <span style={{fontSize:fs,fontWeight:800,color:"#f0f4ff",letterSpacing:-.4,lineHeight:1.15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nm}</span>
  <span style={{fontSize:13.5,fontWeight:600,color:"#8fa6c8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ln}</span>
+ {ppOpp&&(()=>{const u=findLogo(buildLogoIdx(teamLogos,allPlayers),ppOpp.name,form.autoInfo&&form.autoInfo.game);return <span style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:700,color:"#cbd5e1",marginTop:2,minWidth:0}}><span style={{color:"#6b7280",fontWeight:600}}>vs</span>{u?<img src={u} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null}<span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ppOpp.name}</span></span>;})()}
  </div>
  {(()=>{
  const bk=parseFloat(form.description);
