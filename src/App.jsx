@@ -3701,10 +3701,21 @@ const MesParisView=memo(function MesParisView({
  if(fMinPP!==""&&(b.ppEdge==null||b.ppEdge<parseFloat(fMinPP)))return false;
  if(fMaxPP!==""&&(b.ppEdge==null||b.ppEdge>parseFloat(fMaxPP)))return false;
  return true;
+ }).map(b=>{
+  // Filtre bookmaker : un pari réparti sur plusieurs books n'affiche que la mise et le profit des books choisis
+  if(!fBKs||!fBKs.length||!(b.splits||[]).length)return b;
+  const sp=b.splits;const spSt=sp.reduce((t,x)=>t+(Number(x.stake)||0),0);
+  const legs=[{bookmaker:b.bookmaker||"",stake:Math.max(0,(Number(b.stake)||0)-spSt),odds:Number(b.odds)||0},...sp.map(x=>({bookmaker:x.bookmaker,stake:Number(x.stake)||0,odds:Number(x.odds)||Number(b.odds)||0}))].filter(l=>fBKs.includes(l.bookmaker)&&l.stake>0);
+  if(!legs.length)return b;
+  const st=legs.reduce((t,l)=>t+l.stake,0);const od=legs.reduce((t,l)=>t+l.stake*l.odds,0)/st;
+  const pr=b.status==="void"?0:legs.reduce((t,l)=>t+calcProfit(b.status,l.stake,l.odds),0);
+  return {...b,stake:st,odds:Math.round(od*100)/100,profit:Math.round(pr*100)/100,bookmaker:legs[0].bookmaker,splits:[],_orig:b};
  }),[bets,fStatus,fGames,fBKs,fOverUnder,fRole,fLeague,fMinOdds,fMaxOdds,fMinStake,fMaxStake,fDuel,fLive,fHeadshot,fTourneys,fPlayer,fMinPP,fMaxPP]);
 
  const allTourneys=useMemo(()=>[...new Set(bets.map(b=>b.tournament).filter(Boolean))].sort(),[bets]);
  const onSave=useCallback(function(b){
+ if(b&&b._orig){const o=b._orig;const nb={...b,stake:o.stake,odds:o.odds,bookmaker:o.bookmaker,splits:o.splits};delete nb._orig;
+  nb.profit=nb.status==="void"?0:Math.round(betProfit(nb)*100)/100;b=nb;}
  setBets(function(prev){return prev.map(function(p){return p.id===b.id?b:p;});});
  if(supaPushBets)supaPushBets([b]).catch(function(){});
  try{const ov=JSON.parse(localStorage.getItem("v7_overrides")||"{}");ov[b.id]={tournament:b.tournament};localStorage.setItem("v7_overrides",JSON.stringify(ov));}catch(e){}
@@ -3818,7 +3829,7 @@ const MesParisView=memo(function MesParisView({
  </div>
  <div style={{display:"flex",flexDirection:"column",gap:2}}>
  {pending.map(b=>(
- <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
+ <BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={x=>duplicateBet(x&&x._orig?x._orig:x)} onEdit={x=>openEdit(x&&x._orig?x._orig:x)} onSplit={x=>splitBet(x&&x._orig?x._orig:x)} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
  ))}
  </div>
  </div>
@@ -3872,7 +3883,7 @@ const MesParisView=memo(function MesParisView({
  <span style={{fontSize:13,fontWeight:700,color:"#b8c8de"}}>{fmtDay(dk)}</span>
  <span style={{fontSize:13,fontWeight:700,color:dayProfit>=0?"#22C55E":"#EF4444"}}>{fmtM(dayProfit)}</span>
  </div>
-   <VirtualizedDayBets bets={dayBets||[]} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
+   <VirtualizedDayBets bets={dayBets||[]} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={x=>duplicateBet(x&&x._orig?x._orig:x)} onEdit={x=>openEdit(x&&x._orig?x._orig:x)} onSplit={x=>splitBet(x&&x._orig?x._orig:x)} bkPhotos={bkPhotos} onSave={onSave} allTourneys={allTourneys} savedTourneys={savedTourneys}/>
  </div>
  );
  })}
@@ -6245,7 +6256,7 @@ function AppMain(){
  const [ppOpp,setPpOpp]=useState(null);const ppAutoRef=useRef("");
  useEffect(()=>{const nm=(form.autoInfo&&form.autoInfo.name)||form.player;if(!nm||nm.length<2||form.ppMapType==="HIDE"){setPpOpp(null);return;}
   const n=parseInt(String(form.mapTag||"Map 1").replace(/\D/g,""))||1;const fmts=n>=2?["3","4","5"]:["1+2","1+2+3"];const stat=form.isHeadshot?"headshots":"kills";let stop=false;
-  const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?source=eq.pp&pkey=eq."+encodeURIComponent(cutNorm(nm))+"&stat=eq."+stat+"&maps=in.("+fmts.join(",")+")&select=maps,line,match,team,at&order=at.desc&limit=1");
+  const t=setTimeout(async()=>{try{const r=await cloudDb("cut_history?source=eq.pp&pkey=eq."+encodeURIComponent(cutNorm(nm))+"&stat=eq."+stat+"&maps=in.("+fmts.map(encodeURIComponent).join(",")+")&select=maps,line,match,team,at&order=at.desc&limit=1");
    if(stop)return;const x=r&&r[0];if(!x){setPpOpp(null);return;}
    const opp=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();setPpOpp(opp?{name:opp,cut:Number(x.line).toFixed(1)+" "+(x.maps==="1+2"?"Map 1+2":x.maps==="1+2+3"?"Map 1+2+3":"Map "+x.maps)}:null);
    const mt=x.maps==="1+2"?"Map 1+2":x.maps==="1+2+3"?"Map 1+2+3":"Map 3";const val=Number(x.line).toFixed(1)+(form.isHeadshot?" Headshots":" Kills");
