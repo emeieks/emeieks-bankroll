@@ -4923,7 +4923,22 @@ function PPHistModal({player,onClose,allPlayers={},teamLogos={}}){
 }
 
 // ── Board PrizePicks par match : logo vs logo → cartes des joueurs (équipe 1 en haut, équipe 2 en bas) ──
+// Notifs coupées : « A vs B » (équipes PrizePicks) correspond-il au match Betby ? (mêmes équipes, ordre libre)
+function muteMatch(mt,bm){const sp=x=>String(x||"").replace(/\s*MAPS?\s*\d.*$/i,"").split(/\s+vs\.?\s+/i).map(t=>teamKey(t)).filter(Boolean);
+ const A=sp(mt),B=sp(bm);if(!A.length||!B.length)return false;const eq=(x,y)=>x===y||(x.length>=3&&y.length>=3&&(x.includes(y)||y.includes(x)));
+ return A.every(x=>B.some(y=>eq(x,y)));}
+const BellIc=({off,s=16})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+ <path d="M18 8a6 6 0 0 0-9.33-5"/><path d="M6 8c0 7-3 9-3 9h13"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>{off?<path d="M2 2l20 20"/>:<path d="M18 8c0 3 .5 5 1.2 6.5"/>}{off?null:<path d="M6 8a6 6 0 0 1 3-5.2"/>}</svg>;
 function PPBoard({allPlayers={},teamLogos={},focus=null}){
+ const [mutes,setMutes]=useState([]);const [bellK,setBellK]=useState(null);
+ const loadM=useCallback(async()=>{try{const since=new Date(Date.now()-12*3600e3).toISOString().slice(0,19)+"Z";const r=await cloudDb("ev_mute?select=key,match,map&created_at=gte."+since);setMutes(Array.isArray(r)?r:[]);}catch(e){}},[]);
+ useEffect(()=>{loadM();},[loadM]);
+ const [mNote,setMNote]=useState(null);
+ const toggleMap=async(A,B,mp)=>{const mt=A+" vs "+(B||"");const k=[A,B].map(teamKey).sort().join("~")+"|"+mp;const on=mutes.some(x=>x.key===k);
+  try{if(on){await cloudDb("ev_mute?key=eq."+encodeURIComponent(k),{method:"DELETE"});setMutes(l=>l.filter(x=>x.key!==k));}
+   else{await cloudDb("ev_mute?on_conflict=key",{method:"POST",body:[{key:k,match:mt,map:String(mp),created_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});setMutes(l=>[...l,{key:k,match:mt,map:String(mp)}]);}
+   try{window.dispatchEvent(new Event("emeieks-mute"));}catch(e){}setMNote(null);}
+  catch(e){setMNote("Erreur Supabase · lance ev_mute.sql");}};
  const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [openK,setOpenK]=useState(null);const [det,setDet]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
  const load=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString().slice(0,19)+"Z";
   const [r,b]=await Promise.all([cloudDb("cut_history?source=eq.pp&at=gte."+since+"&order=at.desc&limit=3000"),cloudDb("betby_props?order=updated_at.desc&limit=3000").catch(()=>[])]);
@@ -4992,8 +5007,14 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
       {B?<>{ML(B)}<span style={{fontSize:13.5,fontWeight:800,color:"#e5e7eb",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",minWidth:0}}>{B}</span></>:null}
       {has3&&<span title="Cuts Map 3 disponibles" style={{flexShrink:0,width:18,height:18,borderRadius:9,background:"#3b82f6",color:"#fff",fontSize:12,fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
      </span>
+     {(()=>{const pk=[A,B].map(teamKey).sort().join("~");const n=mutes.filter(x=>x.key.startsWith(pk+"|")).length;return <span role="button" tabIndex={0} aria-label="Couper les notifs" title="Couper les notifs d'une map" onClick={e=>{e.stopPropagation();setBellK(k=>k===m.k?null:m.k);}}
+       style={{display:"inline-flex",alignItems:"center",gap:3,height:26,padding:"0 7px",borderRadius:8,flexShrink:0,cursor:"pointer",color:n?"#c4b5fd":"#6b7280",background:n?"rgba(124,58,237,.16)":"transparent",border:"1px solid "+(n?"rgba(167,139,250,.45)":"rgba(255,255,255,.08)")}}><BellIc off={!!n} s={14}/>{n?<span style={{fontSize:11,fontWeight:800}}>{n}</span>:null}</span>;})()}
      {(()=>{const t=tsOf(m.start);const started=t&&t<=Date.now();const lab=m.live?"LIVE":started?"Terminé":fmtT(m.start);return <span style={{fontSize:11.5,fontWeight:800,color:m.live?"#f43f5e":started?"#6b7280":"#eab308",padding:m.live||started?"2px 7px":0,borderRadius:6,background:m.live?"rgba(244,63,94,.12)":started?"rgba(255,255,255,.05)":"transparent"}}>{lab}</span>;})()}
      <span style={{color:"#6b7280",transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span></button>
+    {bellK===m.k&&(()=>{const pk=[A,B].map(teamKey).sort().join("~");return <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",padding:"0 12px 10px"}}>
+     <span style={{fontSize:12,fontWeight:700,color:"#9ca3af",marginRight:2}}>Couper les notifs</span>
+     {[1,2,3,4,5].map(mp=>{const on=mutes.some(x=>x.key===pk+"|"+mp);return <button key={mp} onClick={()=>toggleMap(A,B,mp)} aria-pressed={on} style={{display:"inline-flex",alignItems:"center",gap:5,height:30,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?"#8b5cf6":"rgba(255,255,255,.1)"),background:on?"rgba(124,58,237,.22)":"transparent",color:on?"#fff":"#cbd5e1",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}><BellIc off={on} s={13}/>Map {mp}</button>;})}
+     {mNote&&<span style={{fontSize:11.5,color:"#fca5a5"}}>{mNote}</span>}</div>;})()}
     {open&&<div style={{padding:"0 10px 12px"}}>
      {combos.length>1&&<div style={{display:"flex",gap:5,marginBottom:4,flexWrap:"wrap"}}>{combos.map(c=>{const [f,st]=c.split("|");const on=c===CB;return <button key={c} onClick={()=>setFmtSel(s=>({...s,[m.k]:c}))} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?(f==="3"?"#3b82f6":"#7C3AED"):"rgba(255,255,255,.08)"),background:on?(f==="3"?"rgba(59,130,246,.18)":"rgba(124,58,237,.18)"):"transparent",color:on?"#fff":"#9ca3af",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>{(f==="1+2"?"MAPS 1-2":f==="1+2+3"?"MAPS 1-3":"MAP "+f)+" "+(st==="headshots"?"HS":"Kills")}</button>;})}</div>}
      {!cards.length&&<div style={{fontSize:12,color:"#6b7280",padding:8}}>Pas de ligne {W} pour ce match.</div>}
@@ -6524,12 +6545,8 @@ function AppMain(){
  const [evMute,setEvMute]=useState([]);
  const loadMute=useCallback(async()=>{try{const since=new Date(Date.now()-12*3600e3).toISOString().slice(0,19)+"Z";const r=await cloudDb("ev_mute?select=key,match,map&created_at=gte."+since);setEvMute(Array.isArray(r)?r:[]);}catch(e){}},[]);
  useEffect(()=>{loadMute();},[loadMute]);
- const muteKey=a=>String(a.match||"")+"|"+String(a.map||"");
- const isMuted=a=>evMute.some(m=>m.key===muteKey(a));
- const toggleMute=async a=>{const k=muteKey(a);try{
-  if(isMuted(a)){await cloudDb("ev_mute?key=eq."+encodeURIComponent(k),{method:"DELETE"});setEvMute(l=>l.filter(m=>m.key!==k));showToast("Notifs réactivées · Map "+a.map,"#22C55E");}
-  else{await cloudDb("ev_mute?on_conflict=key",{method:"POST",body:[{key:k,match:a.match,map:String(a.map),created_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});setEvMute(l=>[...l.filter(m=>m.key!==k),{key:k,match:a.match,map:String(a.map)}]);showToast("Notifs coupées · Map "+a.map+" de ce match (12 h)","#A78BFA");}
- }catch(e){showToast("Erreur : "+String(e.message||e).slice(0,80)+" · lance ev_mute.sql","#EF4444");}};
+ const isMuted=a=>evMute.some(m=>String(m.map)===String(a.map)&&muteMatch(m.match,a.match));
+ useEffect(()=>{const h=()=>loadMute();window.addEventListener("emeieks-mute",h);return()=>window.removeEventListener("emeieks-mute",h);},[loadMute]);
  const loadEv=useCallback(async()=>{try{const r=await cloudDb("ev_alerts?status=eq.new&order=edge.desc&limit=100");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
  useEffect(()=>{loadEv();const i=setInterval(loadEv,60000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
@@ -12199,7 +12216,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
        <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
         <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{a.player}</span>
         {nw&&<span style={{fontSize:8,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 5px",borderRadius:4,letterSpacing:.4,flexShrink:0}}>NEW</span>}
-        {isMuted(a)&&<span title="Notifs coupées pour cette map" style={{fontSize:11,flexShrink:0}}>🔕</span>}
+        {isMuted(a)&&<span title="Notifs coupées pour cette map" style={{display:"inline-flex",color:"#a78bfa",flexShrink:0}}><BellIc off s={12}/></span>}
         {hs&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7}}/>}
         <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {a.map||"?"}</span>
         <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
@@ -12209,13 +12226,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
         <span>@{Number(a.book_odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
         <img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,marginRight:4}}/><span style={{color:"rgba(167,139,250,.95)"}}>+{a.edge}</span>
         <span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>{(()=>{const [t1,t2]=evTeams(a);const T=t=>{const u=evLogo(t,a.game);return u?<img src={u} alt={t} title={t} style={{width:16,height:16,objectFit:"contain",borderRadius:3,flexShrink:0}} onError={e=>{e.target.replaceWith(document.createTextNode(teamAbbr(t)));}}/>:<span style={{color:"#9ca3af"}}>{teamAbbr(t)}</span>;};
-         return <span onClick={e=>{e.stopPropagation();goBoard(a);}} title="Voir le board du match" style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0,cursor:"pointer",padding:"1px 4px",margin:"-1px -4px",borderRadius:6}}>{T(t1)}<span style={{color:"#5a6e84",fontSize:10.5}}>vs</span>{t2?T(t2):null}{a.start?(()=>{const t=new Date(/^\d+$/.test(String(a.start))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();const lv=!isNaN(t)&&t<=Date.now()&&Date.now()-t<5*3600e3;return lv?<span style={{marginLeft:4,fontSize:9.5,fontWeight:900,color:"#fff",background:"#ef4444",padding:"2px 5px",borderRadius:4,letterSpacing:.4}}>LIVE</span>:<span style={{color:"#5a6e84",marginLeft:3}}>{hhmm(a.start)}</span>;})():null}</span>;})()}
+         return <span onClick={e=>{e.stopPropagation();goBoard(a);}} title="Voir le board du match" style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0,cursor:"pointer",padding:"1px 4px",margin:"-1px -4px",borderRadius:6}}>{T(t1)}<span style={{color:"#5a6e84",fontSize:10.5}}>vs</span>{t2?T(t2):null}{a.start?(()=>{const t=new Date(/^\d+$/.test(String(a.start))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();const lv=/^Map (3|4|5|4\+5)$/.test(String(a.pp_maps||""));return lv?<span style={{marginLeft:4,fontSize:9.5,fontWeight:900,color:"#fff",background:"#ef4444",padding:"2px 5px",borderRadius:4,letterSpacing:.4}}>LIVE</span>:<span style={{color:"#5a6e84",marginLeft:3}}>{hhmm(a.start)}</span>;})():null}</span>;})()}
        </div>
       </div>
      </div>
      {!evSel&&evPick===a.key&&<div style={{display:"flex",gap:8,padding:"0 13px 12px 60px"}}>
       <button onClick={()=>{setEvPick(null);setEvQuick({a,bk:form.bookmaker||"",stake:String(Math.round(unitValue))});}} style={{flex:1,height:40,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
-      <button onClick={()=>toggleMute(a)} title={isMuted(a)?"Réactiver les notifs":"Couper les notifs de cette map"} style={{height:40,padding:"0 12px",borderRadius:11,border:"1px solid "+(isMuted(a)?"rgba(167,139,250,.5)":"#1F2937"),background:isMuted(a)?"rgba(124,58,237,.15)":"transparent",color:isMuted(a)?"#c4b5fd":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>{isMuted(a)?"🔔 Map "+a.map:"🔕 Map "+a.map}</button>
       <button onClick={()=>{setEvPick(null);evSetStatus(a,"ignored");}} style={{height:40,padding:"0 14px",borderRadius:11,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ignorer</button>
      </div>}
     </div>);};
