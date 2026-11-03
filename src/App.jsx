@@ -12168,7 +12168,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     <button onClick={()=>{const x=evQuick.a;setEvQuick(null);evOpenAdd(x);}} style={{...F,width:"100%",marginTop:8,height:40,border:"none",background:"transparent",color:muted,fontSize:13,fontWeight:500,cursor:"pointer"}}>Modifier les détails</button>
    </div></div>;})()}
  <SuiviLabel>BOT</SuiviLabel>
- {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(isNew).length;
+ {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=a=>new Date(a.created_at).getTime()>evSeenAt;const nNew=evAlerts.filter(a=>isNew(a)&&!isMuted(a)).length;
   const running=evRun&&(evRun.status==="pending"||evRun.status==="running");
   const hhmm=t=>t?new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
   return <div style={{marginBottom:8}}>
@@ -12204,7 +12204,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     </div>
    </div>}
    {(()=>{const tms=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)?9e15:t;};
-    const list=evAlerts.filter(a=>evFilter==="all"||isNew(a)).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
+    const list=evAlerts.filter(a=>!isMuted(a)&&(evFilter==="all"||isNew(a))).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
     const ORDER=["CS2","Dota2","LoL","Valorant"];const games=[...new Set(list.map(a=>GL[a.game]||a.game))].sort((x,y)=>ORDER.indexOf(x)-ORDER.indexOf(y));
     const NAMES={CS2:"Counter-Strike 2",Dota2:"Dota 2",LoL:"League of Legends",Valorant:"Valorant"};
     const renderEv=a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
