@@ -6521,6 +6521,15 @@ function AppMain(){
  const [explore,setExplore]=useState(null);
  // ── Bets EV (alertes du comparateur Betby ↔ PrizePicks, table Supabase ev_alerts) ──
  const [evAlerts,setEvAlerts]=useState([]);const [evErr,setEvErr]=useState("");const [evAdd,setEvAdd]=useState(null);
+ const [evMute,setEvMute]=useState([]);
+ const loadMute=useCallback(async()=>{try{const since=new Date(Date.now()-12*3600e3).toISOString().slice(0,19)+"Z";const r=await cloudDb("ev_mute?select=key,match,map&created_at=gte."+since);setEvMute(Array.isArray(r)?r:[]);}catch(e){}},[]);
+ useEffect(()=>{loadMute();},[loadMute]);
+ const muteKey=a=>String(a.match||"")+"|"+String(a.map||"");
+ const isMuted=a=>evMute.some(m=>m.key===muteKey(a));
+ const toggleMute=async a=>{const k=muteKey(a);try{
+  if(isMuted(a)){await cloudDb("ev_mute?key=eq."+encodeURIComponent(k),{method:"DELETE"});setEvMute(l=>l.filter(m=>m.key!==k));showToast("Notifs réactivées · Map "+a.map,"#22C55E");}
+  else{await cloudDb("ev_mute?on_conflict=key",{method:"POST",body:[{key:k,match:a.match,map:String(a.map),created_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});setEvMute(l=>[...l.filter(m=>m.key!==k),{key:k,match:a.match,map:String(a.map)}]);showToast("Notifs coupées · Map "+a.map+" de ce match (12 h)","#A78BFA");}
+ }catch(e){showToast("Erreur : "+String(e.message||e).slice(0,80)+" · lance ev_mute.sql","#EF4444");}};
  const loadEv=useCallback(async()=>{try{const r=await cloudDb("ev_alerts?status=eq.new&order=edge.desc&limit=100");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
  useEffect(()=>{loadEv();const i=setInterval(loadEv,60000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
@@ -12190,6 +12199,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
        <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
         <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{a.player}</span>
         {nw&&<span style={{fontSize:8,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 5px",borderRadius:4,letterSpacing:.4,flexShrink:0}}>NEW</span>}
+        {isMuted(a)&&<span title="Notifs coupées pour cette map" style={{fontSize:11,flexShrink:0}}>🔕</span>}
         {hs&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7}}/>}
         <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {a.map||"?"}</span>
         <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
@@ -12205,6 +12215,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
      </div>
      {!evSel&&evPick===a.key&&<div style={{display:"flex",gap:8,padding:"0 13px 12px 60px"}}>
       <button onClick={()=>{setEvPick(null);setEvQuick({a,bk:form.bookmaker||"",stake:String(Math.round(unitValue))});}} style={{flex:1,height:40,borderRadius:11,border:"none",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ajouter</button>
+      <button onClick={()=>toggleMute(a)} title={isMuted(a)?"Réactiver les notifs":"Couper les notifs de cette map"} style={{height:40,padding:"0 12px",borderRadius:11,border:"1px solid "+(isMuted(a)?"rgba(167,139,250,.5)":"#1F2937"),background:isMuted(a)?"rgba(124,58,237,.15)":"transparent",color:isMuted(a)?"#c4b5fd":"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>{isMuted(a)?"🔔 Map "+a.map:"🔕 Map "+a.map}</button>
       <button onClick={()=>{setEvPick(null);evSetStatus(a,"ignored");}} style={{height:40,padding:"0 14px",borderRadius:11,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Ignorer</button>
      </div>}
     </div>);};
