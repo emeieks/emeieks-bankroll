@@ -6512,7 +6512,7 @@ function AppMain(){
  const loadEvRun=useCallback(async()=>{try{const r=await cloudDb("ev_runs?order=id.desc&limit=1");setEvRun(Array.isArray(r)&&r[0]?r[0]:null);}catch(e){}
   try{const b=await cloudDb("bot_status?id=eq.1");setBotSt(Array.isArray(b)&&b[0]?b[0]:null);}catch(e){}},[]);
  useEffect(()=>{loadEvRun();const i=setInterval(()=>{loadEvRun();},20000);return()=>clearInterval(i);},[loadEvRun]);
- const evRunning=!!(evRun&&(evRun.status==="pending"||evRun.status==="running"));
+ const evRunning=!!(evRun&&(evRun.status==="pending"||evRun.status==="running")&&!(evRun.created_at&&Date.now()-new Date(evRun.created_at).getTime()>15*60e3));
  useEffect(()=>{if(!evRunning)return;const i=setInterval(loadEvRun,2000);return()=>clearInterval(i);},[evRunning,loadEvRun]);
  useEffect(()=>{if(evRun&&evRun.status==="done")loadEv();},[evRun&&evRun.status,evRun&&evRun.id]);
  const evLaunch=async(betbyOnly)=>{if(!evGames.length)return;const codes={CS2:"cs2",LoL:"lol",Dota2:"dota",Valorant:"valo"};
