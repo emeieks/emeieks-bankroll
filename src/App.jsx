@@ -3378,6 +3378,20 @@ function SelectionModal({bets,scopeIds=null,scopeLabel="",onClose,setBets,supaPu
  const [searchMap,setSearchMap]=useState("");
  const [newStatus,setNewStatus]=useState("");
  const [editOpen,setEditOpen]=useState(false);
+ // Ajouter un bookmaker (part de mise) à plusieurs paris : même mise pour tous, ou mise / cote propre à chacun
+ const [addBkOpen,setAddBkOpen]=useState(false);const [abBk,setAbBk]=useState("");const [abMode,setAbMode]=useState("same");const [abStake,setAbStake]=useState("");const [abOdds,setAbOdds]=useState("");const [abEach,setAbEach]=useState({});
+ const applyAddBk=()=>{const selS=new Set([...selected].map(String));let n=0;
+  const tf=b=>{const e=abMode==="same"?{stake:abStake,odds:abOdds}:(abEach[String(b.id)]||{});const st=parseFloat(e.stake);if(!abBk||isNaN(st)||st<=0)return b;
+   const od=parseFloat(e.odds)||Number(b.odds);let nb;
+   if(abBk===b.bookmaker){const sp=b.splits||[];const main=Number(b.stake)-sp.reduce((t,x)=>t+(Number(x.stake)||0),0);nb={...b,stake:Number(b.stake)+st,odds:main+st>0?Math.round(((main*Number(b.odds)+st*od)/(main+st))*100)/100:od};}
+   else{const sp=(b.splits||[]).map(x=>({...x}));const i=sp.findIndex(x=>x.bookmaker===abBk);
+    if(i>=0){const o=sp[i];const tot=o.stake+st;sp[i]={bookmaker:abBk,stake:tot,odds:Math.round(((o.stake*o.odds+st*od)/tot)*100)/100};}else sp.push({bookmaker:abBk,stake:st,odds:od});
+    nb={...b,splits:sp,stake:Number(b.stake)+st};}
+   nb.profit=nb.status==="void"?0:betProfit(nb);nb.updatedAt=Date.now();n++;return nb;};
+  const out=[];bets.forEach(b=>{if(selS.has(String(b.id))){const nb=tf(b);if(nb!==b)out.push(nb);}});
+  setBets(prev=>prev.map(b=>{const x=out.find(o=>String(o.id)===String(b.id));return x||b;}));
+  if(supaPushBets&&out.length)supaPushBets(out).catch(()=>{});
+  showToast(abBk+" ajouté à "+out.length+" pari"+(out.length>1?"s":""),"#A78BFA");setAddBkOpen(false);setAbEach({});setAbStake("");setAbOdds("");};
  const [filtOpen,setFiltOpen]=useState(false);
 
  const allGames=useMemo(function(){
@@ -3630,10 +3644,30 @@ function SelectionModal({bets,scopeIds=null,scopeLabel="",onClose,setBets,supaPu
     {tourOptions.map(o=>chip(newTournament===o.t,o.t,()=>setNewTournament(newTournament===o.t?"":o.t),<GameLogo game={o.game} size={15}/>))}
    </div></SelSec>
    <SelSec t="Autres actions"><div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <button onClick={()=>{setEditOpen(false);setAddBkOpen(true);}} style={{height:46,borderRadius:12,border:"1px solid "+LINE,background:CARD,color:"#c4b5fd",fontSize:14,fontWeight:700,cursor:"pointer"}}>+ Ajouter un bookmaker aux paris</button>
     <button onClick={()=>{setEditOpen(false);removePP();}} style={{height:46,borderRadius:12,border:"1px solid "+LINE,background:CARD,color:"#fb7185",fontSize:14,fontWeight:700,cursor:"pointer"}}>Retirer le PP edge de la sélection</button>
     {bets.some(b=>b.isLive&&(b.ppEdge!=null||b.ppMapType))&&<button onClick={()=>{setEditOpen(false);removeAllLivePP();}} style={{height:46,borderRadius:12,border:"1px solid "+LINE,background:CARD,color:"#fb7185",fontSize:14,fontWeight:700,cursor:"pointer"}}>Retirer le PP edge de tous les paris live</button>}
    </div></SelSec>
   </SelSheet>}
+  {addBkOpen&&(()=>{const sel=bets.filter(b=>selected.has(b.id));const inp={height:44,boxSizing:"border-box",background:CARD,border:"1px solid "+LINE,borderRadius:12,color:"#fff",fontSize:15,padding:"0 12px",fontFamily:"Inter,sans-serif",width:"100%"};
+   const ok=abBk&&(abMode==="same"?parseFloat(abStake)>0:sel.some(b=>parseFloat((abEach[String(b.id)]||{}).stake)>0));
+   return <SelSheet title={"Ajouter un bookmaker · "+sel.length+" pari"+(sel.length>1?"s":"")} onClose={()=>setAddBkOpen(false)}
+    footer={<button onClick={applyAddBk} disabled={!ok} style={{width:"100%",marginTop:10,height:54,borderRadius:16,border:"none",background:ok?V:"#262B35",color:ok?"#fff":"#6b7280",fontSize:16,fontWeight:800,cursor:ok?"pointer":"default"}}>{ok?"Ajouter":"Choisis un bookmaker et une mise"}</button>}>
+    <SelSec t="Bookmaker"><div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+     {bookmakers.filter(bk=>!(hiddenBKs instanceof Set?hiddenBKs.has(bk):false)).map(bk=>{const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;return chip(abBk===bk,logo?"":bk,()=>setAbBk(abBk===bk?"":bk),logo?<img src={logo} alt={bk} style={{width:24,height:24,borderRadius:6,objectFit:"cover"}}/>:null);})}
+    </div></SelSec>
+    <SelSec t="Mise"><div style={{display:"flex",gap:8,marginBottom:10}}>{chip(abMode==="same","Même mise pour tous",()=>setAbMode("same"))}{chip(abMode==="each","Mise par pari",()=>setAbMode("each"))}</div>
+     {abMode==="same"?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+       <input type="number" inputMode="decimal" value={abStake} onChange={e=>setAbStake(e.target.value)} placeholder="Mise $" aria-label="Mise" style={inp}/>
+       <input type="number" inputMode="decimal" step="0.01" value={abOdds} onChange={e=>setAbOdds(e.target.value)} placeholder="Cote (vide = même)" aria-label="Cote" style={inp}/></div>
+      :<div style={{display:"flex",flexDirection:"column",gap:8}}>{sel.map(b=>{const e=abEach[String(b.id)]||{};const set=(k,v)=>setAbEach(x=>({...x,[String(b.id)]:{...(x[String(b.id)]||{}),[k]:v}}));
+       return <div key={b.id} style={{display:"grid",gridTemplateColumns:"1fr 78px 78px",gap:6,alignItems:"center"}}>
+        <span style={{minWidth:0}}><span style={{display:"block",fontSize:13.5,fontWeight:700,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(b.player)}</span><span style={{display:"block",fontSize:11.5,color:"#8b93a7",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.description} · @{b.odds}</span></span>
+        <input type="number" inputMode="decimal" value={e.stake||""} onChange={ev=>set("stake",ev.target.value)} placeholder="Mise" aria-label={"Mise "+b.player} style={{...inp,height:40,fontSize:14,padding:"0 8px"}}/>
+        <input type="number" inputMode="decimal" step="0.01" value={e.odds||""} onChange={ev=>set("odds",ev.target.value)} placeholder={String(b.odds)} aria-label={"Cote "+b.player} style={{...inp,height:40,fontSize:14,padding:"0 8px"}}/></div>;})}
+       <span style={{fontSize:12,color:"#6b7280"}}>Mise vide = pari pas modifié.</span></div>}
+    </SelSec>
+   </SelSheet>;})()}
  </div>
  );
 }
