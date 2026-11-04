@@ -5270,7 +5270,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
  const others=(bets||[]).filter(b=>GNORM(b.game)===G&&keysT[cutNorm(b.player)]&&!mineB.some(x=>x.b.id===b.id)).filter(b=>{const bt=new Date(String(b.datetime||"")).getTime();return !isNaN(bt)&&Math.abs(bt-(isNaN(mStart)?d0:mStart))<5*864e5;})
   .sort((a,b)=>String(b.datetime).localeCompare(String(a.datetime)));
  const wrong=mineB.filter(x=>x.b.status!=="pending"&&x.res&&x.res!==x.b.status);
- const shown=mineB.filter(x=>x.b.status==="pending"||(x.res&&x.res!==x.b.status));   // paris en cours + paris réglés en erreur
+ const shown=mineB.slice().sort((x,y)=>(x.b.status==="pending"?0:1)-(y.b.status==="pending"?0:1)||x.n-y.n);   // paris en cours + paris réglés en erreur
  const delMatch=async()=>{try{const pair=m.key.split("|")[0];const vs=[-1,0,1].map(n=>pair+"|"+rsDay(new Date(new Date(m.day+"T12:00:00").getTime()+n*864e5)));if(!vs.includes(mk))vs.push(mk);
   const L="("+vs.map(encodeURIComponent).join(",")+")";
   await cloudDb("player_results?match_key=in."+L,{method:"DELETE",prefer:"return=minimal"});await cloudDb("map_results?match_key=in."+L,{method:"DELETE",prefer:"return=minimal"});
@@ -5332,7 +5332,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
    <b style={{color:"#fff"}}>{wrong.length} pari{wrong.length>1?"s":""} ne correspond{wrong.length>1?"ent":""} pas au résultat saisi</b>
    {wrong.map(x=><div key={x.b.id}>· {capName(x.b.player)} Map {x.n} {x.b.overUnder==="Over"?"Over":"Under"} {x.line}{x.b.isHeadshot?" HS":""} : enregistré <b>{LB[x.b.status]||x.b.status}</b>, le résultat ({x.v}) dit <b>{LB[x.res]}</b></div>)}
    <div style={{marginTop:4,color:"#D7DEE6"}}>Vérifie ta saisie ou le pari. « Régler » corrige le pari selon le résultat saisi.</div></div>}
-  <section className="bx"><div className="bx-h">Paris en cours sur ce match<span style={{color:"var(--dm)",fontWeight:600}}>{shown.length}</span>
+  <section className="bx"><div className="bx-h">Paris sur ce match<span style={{color:"var(--dm)",fontWeight:600}}>{shown.length}</span>
    <button onClick={()=>setAddOpen(v=>!v)} style={{marginLeft:"auto",border:"1px solid var(--ln)",borderRadius:2,background:"transparent",color:"var(--lk)",fontWeight:700,fontSize:12,padding:"4px 8px",cursor:"pointer"}}>{addOpen?"Fermer":"+ Ajouter"}</button>
    {mineB.some(x=>!(bm[String(x.b.id)]&&bm[String(x.b.id)].team1&&bm[String(x.b.id)].team1!=="__exclu__"))&&<button onClick={()=>shown.forEach(x=>link(x.b,true))} title="Confirme que ces paris sont bien sur ce match : ils y restent attachés pour de bon" style={{marginLeft:6,border:"1px solid var(--wn)",borderRadius:2,background:"transparent",color:"var(--wn)",fontWeight:700,fontSize:12,padding:"4px 8px",cursor:"pointer"}}>Valider</button>}
    {todo.length>0&&<button className="go" style={{marginLeft:6}} onClick={settle}>Régler {todo.length}</button>}</div>
@@ -5342,7 +5342,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
      <b>{capName(b.player)}</b><span style={{color:"#FBBF24",fontSize:11.5,fontWeight:700}}>{b.mapTag}</span><span style={{color:"var(--sf)"}}>{b.description}</span><span style={{marginLeft:"auto",color:"var(--dm)",fontSize:12}}>{String(b.datetime||"").slice(5,16).replace("T"," ")}</span></button>)
      :<div style={{fontSize:12.5,color:"var(--dm)"}}>Aucun autre pari trouvé.</div>}</div>}
    {wrong.length>0&&<div role="alert" style={{margin:8,padding:"8px 10px",borderRadius:4,background:"rgba(239,68,68,.15)",border:"1px solid #EF4444",color:"#FCA5A5",fontSize:12.5,fontWeight:700}}><PI n="alert" s={13}/> {wrong.length} erreur{wrong.length>1?"s":""} : {wrong.map(x=>capName(x.b.player)+" "+(x.b.overUnder==="Over"?"O":"U")+x.line+" (enregistré "+x.b.status+", réel "+x.res+")").join(" · ")}</div>}
-   {shown.length===0&&<div style={{padding:"10px 12px",fontSize:12.5,color:"var(--dm)"}}>Aucun pari en cours</div>}
+   {shown.length===0&&<div style={{padding:"10px 12px",fontSize:12.5,color:"var(--dm)"}}>Aucun pari</div>}
    {shown.length>0&&<>
    <div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>Map</th><th>Pari</th><th>Cote</th><th>Réel</th><th></th></tr></thead><tbody>
     {shown.map(x=>{const lk=bm[String(x.b.id)];const sure=lk&&lk.team1&&lk.team1!=="__exclu__";return <tr key={x.b.id}><td>{capName(x.b.player)} {sure?<span title="Rattaché" style={{color:"#22C55E"}}><PI n="lock" s={11}/></span>:<span style={{fontSize:10,fontWeight:700,color:"#E8A93A"}}>auto</span>}</td><td>{x.n}{x.ot?<span className="pill" style={{background:"var(--ot)",color:"#2A1C05",marginLeft:4}}>OT</span>:null}</td>
