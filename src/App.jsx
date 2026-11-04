@@ -5224,7 +5224,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
    if(hsOn)[A,B].forEach(t=>Object.keys(roster[t]).forEach(k=>{const kk=val(i,k,"k"),h=val(i,k,"h");if(kk!=null&&h!=null&&h>kk)w.push(roster[t][k]+" : plus de HS que de kills");}));}
   if(lol){[["a",A],["b",B]].forEach(([f,t])=>{const tk=parseInt(x[f]);const sm=tot(i,t,"k");if(!isNaN(tk)&&n===all&&sm!==tk)w.push(teamAbbr(t)+" : "+sm+" kills joueurs ≠ "+tk+" kills équipe");});if(!x.win)w.push("Gagnant de la game non choisi");}
   return w;};
- const save=async()=>{const _pl=maps.filter(x=>x.a!==""||x.b!=="");if(!_pl.length||_pl.some(x=>!String(x.name||"").trim())){setMsg("Carte manquante");return;}setBusy(true);setMsg(null);const now=new Date().toISOString();
+ const save=async()=>{const _pl=maps.filter(x=>x.a!==""||x.b!=="");if(["CS2","Valorant"].includes(GNORM(m.game))&&(!_pl.length||_pl.some(x=>!String(x.name||"").trim()))){setMsg("Carte manquante");return;}setBusy(true);setMsg(null);const now=new Date().toISOString();
   try{const keys=[...new Set([...Object.keys(roster[A]),...Object.keys(roster[B])])];const d0=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()-864e5)),d2=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()+2*864e5));
    const ch=keys.length?await cloudDb("cut_history?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&at=gte."+d0+"&at=lt."+d2+"&select=source,pkey,stat,maps,line,odds_over,odds_under,match,at&order=at.desc&limit=2000").catch(()=>[]):[];
    const mine=c=>c.source==="pp"?true:(!c.match||String(c.match).split(/\s+vs\.?\s+/i).some(t=>same(t,A)||same(t,B)));
@@ -5401,8 +5401,8 @@ function StatsPM({bets=[],allPlayers={},teamLogos={},tours={}}){
  const isRounds=g==="CS2"||g==="Valorant";
  // matchs du jour (cuts PrizePicks), groupés par tournoi
  useEffect(()=>{const d=new Date();const day=rsDay(d);const pv=rsDay(new Date(d.getTime()-864e5)),nx=rsDay(new Date(d.getTime()+2*864e5));
-  cloudDb("cut_history?source=eq.pp&start=gte."+pv+"&start=lt."+nx+"&select=player,pkey,game,team,match,start,tournament,stat,maps,line&limit=6000").then(r=>{const cl=[];(r||[]).forEach(x=>{const A=rsClean(x.team),B=rsClean(x.match);if(!A||!B)return;const pr=rsPair(A,B),t=rsTs(x.start);if(isNaN(t))return;
-   let o=cl.find(c=>c.pair===pr&&Math.abs(c.t-t)<8*3600e3);if(!o){o={pair:pr,t,game:x.game,teams:{},players:{},tour:""};cl.push(o);}if(t>o.t)o.t=t;o.teams[teamKey(A)]=o.teams[teamKey(A)]||A;o.teams[teamKey(B)]=o.teams[teamKey(B)]||B;if(x.tournament)o.tour=x.tournament;
+  cloudDb("cut_history?source=eq.pp&start=gte."+pv+"&start=lt."+nx+"&select=player,pkey,game,team,match,start,tournament,stat,maps,line,team_ml&limit=6000").catch(()=>cloudDb("cut_history?source=eq.pp&start=gte."+pv+"&start=lt."+nx+"&select=player,pkey,game,team,match,start,tournament,stat,maps,line&limit=6000")).then(r=>{const cl=[];(r||[]).forEach(x=>{const A=rsClean(x.team),B=rsClean(x.match);if(!A||!B)return;const pr=rsPair(A,B),t=rsTs(x.start);if(isNaN(t))return;
+   let o=cl.find(c=>c.pair===pr&&Math.abs(c.t-t)<8*3600e3);if(!o){o={pair:pr,t,game:x.game,teams:{},players:{},tour:""};cl.push(o);}if(t>o.t)o.t=t;o.teams[teamKey(A)]=o.teams[teamKey(A)]||A;o.teams[teamKey(B)]=o.teams[teamKey(B)]||B;if(x.tournament)o.tour=x.tournament;if(x.team_ml){o.ml=o.ml||{};o.ml[teamKey(A)]=Number(x.team_ml);}
    const pl=(o.players[x.pkey]=o.players[x.pkey]||{name:x.player,pkey:x.pkey,team:A,cuts:{}});if(x.stat==="kills")pl.cuts[x.maps]=x.line;});setToday(cl.filter(o=>rsDay(new Date(o.t))===day));}).catch(()=>setToday([]));},[]);
  // lignes enrichies : adversaire, tournoi, pick, départ CT, OT
  const rows=useMemo(()=>{if(!D||D.err)return [];const MR={},MP={};D.mr.forEach(x=>MR[x.key]=x);D.mp.forEach(x=>MP[x.match_key+"|"+x.map_no]=x);
@@ -5486,7 +5486,9 @@ function StatsPM({bets=[],allPlayers={},teamLogos={},tours={}}){
  const todayP=(today||[]).flatMap(m=>Object.values(m.players));const tp=scope==="joueur"?todayP.find(p=>p.pkey===ent):null;
  const curName=scope==="global"?"Tous les tournois":scope==="joueur"?((L[0]||base[0]||{}).player||(tp||{}).name||ent||"–"):ent||"–";
  const curTeam=scope==="joueur"?((tp||{}).team||(L[0]||base[0]||{}).team||""):"";
- const ppToday=tp?(tp.cuts["1+2"]!=null?[tp.cuts["1+2"],"Map 1+2"]:tp.cuts["1+2+3"]!=null?[tp.cuts["1+2+3"],"Map 1+2+3"]:tp.cuts["3"]!=null?[tp.cuts["3"],"Map 3"]:null):null;
+ const ppList=c=>[["1+2","Map 1+2"],["3","Map 3"],["1+2+3","Map 1-3"]].filter(([k])=>c&&c[k]!=null).map(([k,l])=>[c[k],l]);const ppToday=tp?ppList(tp.cuts):[];
+ const mlOf=t=>{const m=(today||[]).find(m=>Object.values(m.teams).some(x=>teamKey(x)===teamKey(t)));return m&&m.ml?m.ml[teamKey(t)]:null;};
+ const ML=(t,sz=11.5)=>{const v=mlOf(t);return v?<span style={{marginLeft:6,padding:"1px 6px",borderRadius:4,background:"rgba(201,165,92,.14)",color:C.au,fontSize:sz,fontWeight:700,letterSpacing:0}}>{fr(v,2)}</span>:null;};
  const nd=withLine.length,nw=withLine.filter(x=>side==="under"?val(x)<lineOf(x):val(x)>lineOf(x)).length;
  const med=(()=>{const a=L.map(val).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:null;})();
  const SU=side==="under"?"Under":"Over";
@@ -5527,7 +5529,7 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
    {fTab==="no"&&[1,2,3].map(n=>chipC(F.no===n,"Map "+n,()=>setFx("no",n),"no"+n,hit(base.filter(x=>x.map_no===n&&pass(x,"no")))))}
   </div></aside>;
  const rowBtn=(on,onClick,kids,k)=><button key={k} onClick={onClick} aria-current={on} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"9px 12px",border:"none",borderTop:"1px solid "+C.ln,background:on?"#1C1F26":"transparent",boxShadow:on?"inset 3px 0 0 "+C.au:"none",color:C.fg,cursor:"pointer",textAlign:"left"}}>{kids}</button>;
- const teamHead=(t,extra,k)=><div key={k||t} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",...lab,color:"#C8CBD0",borderTop:"1px solid "+C.ln,background:"#101115"}}>{LG(t,15)}{t}{extra&&<span style={{marginLeft:"auto",color:C.dm}}>{extra}</span>}</div>;
+ const teamHead=(t,extra,k)=><div key={k||t} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",...lab,color:"#C8CBD0",borderTop:"1px solid "+C.ln,background:"#101115"}}>{LG(t,15)}{t}{ML(t,10.5)}{extra&&<span style={{marginLeft:"auto",color:C.dm}}>{extra}</span>}</div>;
  const byTeam=(arr,tf)=>{const o={};arr.forEach(x=>{const t=tf(x)||"?";(o[t]=o[t]||[]).push(x);});return Object.entries(o);};
  const ico=(n)=><span style={{width:28,height:28,borderRadius:7,background:C.pn2,border:"1px solid "+C.ln,display:"inline-flex",alignItems:"center",justifyContent:"center",color:C.au,flexShrink:0}}><PI n={n} s={14}/></span>;
  // stats cartes (1 map jouée = 1)
@@ -5538,7 +5540,7 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
  const ctW=a=>{const b=a.filter(x=>x.first_ct&&x.winner);return b.length?b.filter(x=>teamKey(x.first_ct)===teamKey(x.winner)).length/b.length*100:null;};
  const wl=a=>{const b=a.filter(x=>lineOf(x)!=null&&val(x)!==lineOf(x));return [b.filter(x=>side==="under"?val(x)<lineOf(x):val(x)>lineOf(x)).length,b.length];};
  return(<div className="spm-root" style={{display:"flex",flexDirection:"column",gap:10,color:C.fg,fontFamily:"Inter,system-ui,-apple-system,sans-serif",fontVariantNumeric:"tabular-nums",background:C.bg,borderRadius:14,padding:10}}>
-  <style>{`.spm3{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}.spm-c{display:flex;flex-direction:column;gap:10px;min-width:0;scroll-margin-top:10px}.spm-filt{display:none}.spm-filt.open{display:block}
+  <style>{`.spm3{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}.spm-c{display:flex;flex-direction:column;gap:10px;min-width:0;scroll-margin-top:10px}.spm-filt{display:none}.spm-filt.open{display:block}@media (max-width:1099px){.spm-filt.open{position:fixed;left:0;right:0;bottom:0;max-height:78vh;overflow:auto;z-index:400;border-radius:16px 16px 0 0!important;box-shadow:0 -20px 60px rgba(0,0,0,.7)}.spm-dim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:399}}
    .spm-ex .lst{max-height:420px;overflow:auto}.spm-root button{font-family:inherit}.spm-root tr:hover td{background:rgba(255,255,255,.015)}
    @media (min-width:1100px){.spm3{grid-template-columns:270px minmax(0,1fr) 280px}.spm-filt{display:block!important;position:sticky;top:10px}.spm-fbtn,.spm-fclose{display:none!important}.spm-ex{position:sticky;top:10px}.spm-ex .lst{max-height:calc(100vh - 190px)}}
    @media (min-width:800px) and (max-width:1099px){.spm3{grid-template-columns:260px minmax(0,1fr)}}`}</style>
@@ -5559,9 +5561,9 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
      if(ex==="matchs"){if(!today)return <div style={{padding:12,color:C.dm,fontSize:12.5}}>…</div>;const M=today.filter(m=>GNORM(m.game)===g);if(!M.length)return <div style={{padding:12,color:C.dm,fontSize:12.5}}>Aucun match</div>;
       return M.sort((a,b)=>a.t-b.t).map(m=>{const [A,B]=Object.values(m.teams);const ps=Object.values(m.players).filter(p=>!q||cutNorm(p.name).includes(q)||cutNorm(p.team).includes(q));if(!ps.length)return null;const hh=new Date(m.t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});const op=q?true:!closed[m.pair];
        return <div key={m.pair}><button onClick={()=>togM(m.pair)} aria-expanded={op} style={{display:"grid",gridTemplateColumns:"1fr auto",width:"100%",alignItems:"center",gap:6,padding:"10px 12px",fontSize:12.5,color:"#fff",border:"none",borderTop:"1px solid "+C.ln,background:"#101115",cursor:"pointer",textAlign:"left"}}>
-         <span style={{display:"flex",alignItems:"center",gap:6,fontWeight:700,minWidth:0}}>{LG(A,16)}{teamAbbr(A)}<span style={{color:C.dm,fontWeight:500}}>vs</span>{teamAbbr(B)}{LG(B,16)}</span><span style={{color:C.mu,fontWeight:600}}>{hh} <span style={{display:"inline-block",width:10,transform:op?"rotate(90deg)":"none",transition:"transform .15s"}}>›</span></span></button>
+         <span style={{display:"flex",alignItems:"center",gap:6,fontWeight:700,minWidth:0}}>{LG(A,16)}{teamAbbr(A)}{ML(A,10.5)}<span style={{color:C.dm,fontWeight:500,margin:"0 2px"}}>vs</span>{LG(B,16)}{teamAbbr(B)}{ML(B,10.5)}</span><span style={{color:C.mu,fontWeight:600}}>{hh} <span style={{display:"inline-block",width:10,transform:op?"rotate(90deg)":"none",transition:"transform .15s"}}>›</span></span></button>
         {op&&byTeam(ps,p=>p.team).sort((a,b)=>a[0]===A?-1:b[0]===A?1:0).map(([t,arr])=><React.Fragment key={t}>{teamHead(t)}
-         {arr.map(p=>{const cut=p.cuts["1+2"]??p.cuts["1+2+3"]??p.cuts["3"];return rowBtn(scope==="joueur"&&ent===p.pkey,()=>goPlayer(p.pkey),<><Av k={p.pkey} name={p.name}/><b style={{flex:1,minWidth:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</b>{cut!=null&&<span style={{display:"flex",alignItems:"center",gap:5,fontSize:12.5,fontWeight:700}}><PP sz={13}/>{fr(cut)}</span>}</>,p.pkey);})}</React.Fragment>)}</div>;});}
+         {arr.map(p=>{const cl=ppList(p.cuts);return rowBtn(scope==="joueur"&&ent===p.pkey,()=>goPlayer(p.pkey),<><Av k={p.pkey} name={p.name}/><b style={{flex:1,minWidth:0,fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</b>{cl.length>0&&<span style={{display:"grid",gridTemplateColumns:"auto auto",columnGap:5,alignItems:"center",fontSize:12.5,fontWeight:700,textAlign:"right"}}><PP sz={13}/><span>{fr(cl[0][0])}</span>{cl[1]&&<><span style={{...lab,fontSize:9}}>M3</span><span style={{color:C.mu}}>{fr(cl[1][0])}</span></>}</span>}</>,p.pkey);})}</React.Fragment>)}</div>;});}
      const Lx=(ex==="joueurs"?lists.joueur:ex==="equipes"?lists.equipe:lists.tournoi)||[];const sc=ex==="joueurs"?"joueur":ex==="equipes"?"equipe":"tournoi";const tm={};rows.forEach(x=>{tm[x.pkey]=tm[x.pkey]||x.team;});
      const F2=Lx.filter(([k,l])=>!q||cutNorm(l).includes(q)||cutNorm(tm[k]).includes(q));
      const item=([k,l])=>{const nm=l.replace(/ \(\d+\)$/,""),n=(l.match(/\((\d+)\)$/)||[])[1];return rowBtn(scope===sc&&ent===k,()=>sc==="joueur"?goPlayer(k):(setScope(sc),setEnt(k)),<>
@@ -5578,18 +5580,12 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
     <div style={{display:"flex",alignItems:"center",gap:14,padding:16}}>
      {scope==="joueur"?<Av k={ent} name={curName} sz={58}/>:scope==="equipe"?LG(ent,50):<span style={{width:50,height:50,borderRadius:12,background:C.pn2,border:"1px solid "+C.ln,display:"inline-flex",alignItems:"center",justifyContent:"center",color:C.au}}><PI n={scope==="global"?"globe":"trophy"} s={24}/></span>}
      <div style={{minWidth:0,flex:1}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><b style={{fontSize:21,color:"#fff",letterSpacing:-.3}}>{curName}</b>{curTeam&&<span style={{display:"inline-flex",alignItems:"center",gap:6,...lab,fontSize:11.5}}>{LG(curTeam,18)}{curTeam}</span>}</div>
-      {scope==="joueur"&&ppToday&&<div style={{display:"flex",alignItems:"center",gap:7,marginTop:7}}><PP sz={18}/><b style={{color:"#fff",fontSize:16}}>{fr(ppToday[0])}</b><span style={{...lab,fontSize:11}}>{ppToday[1]}</span></div>}
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><b style={{fontSize:21,color:"#fff",letterSpacing:-.3}}>{curName}</b>{curTeam&&<span style={{display:"inline-flex",alignItems:"center",gap:6,...lab,fontSize:11.5}}>{LG(curTeam,18)}{curTeam}{ML(curTeam)}</span>}</div>
+      {scope==="joueur"&&ppToday.length>0&&<div style={{display:"flex",alignItems:"center",gap:14,marginTop:8,flexWrap:"wrap"}}><PP sz={18}/>{ppToday.map(([v,l])=><span key={l} style={{display:"inline-flex",alignItems:"baseline",gap:6}}><b style={{color:"#fff",fontSize:16}}>{fr(v)}</b><span style={{...lab,fontSize:10.5}}>{l}</span></span>)}</div>}
      </div></div>
     <div style={{display:"flex",gap:18,padding:"0 16px",borderTop:"1px solid "+C.ln,alignItems:"center"}}>{[["kills","Kills"],...(g==="CS2"?[["hs","Headshots"]]:[])].map(([k,l])=><button key={k} onClick={()=>setStat(k)} style={{border:"none",background:"none",color:stat===k?"#fff":C.mu,fontWeight:700,fontSize:12.5,letterSpacing:.5,textTransform:"uppercase",padding:"12px 0",cursor:"pointer",boxShadow:stat===k?"inset 0 -2px 0 "+C.au:"none"}}>{l}</button>)}
      <span style={{flex:1}}/>{segC([["under","Under"],["over","Over"]],side,v=>{setSide(v);setCell(null);})}</div>
    </section>
-   {scope==="joueur"&&<section style={panel}>{T("Mes paris")}
-    {Kp([["Paris",String(myB.length),"#fff",myB.filter(b=>b.status==="pending").length?myB.filter(b=>b.status==="pending").length+" en cours":""],["Profit",myB.length?money(myP):"–",myP>0?C.gr:myP<0?C.rd:"#fff"],["Réussite",pct(myWR),hcol(myWR),myS.length?myS.filter(b=>b.status==="won").length+" / "+myS.length:""]])}
-    {myB.length>0&&<>{Tb([["Date","66px","left"],["Map","70px","left"],["Pari","auto","left"],["Cote","66px"],["Résultat","104px"]],(showAll?myB:myB.slice(0,10)).map(b=>{const st=b.status;const p=["won","lost","void"].includes(st)?Number(betProfit(b))||0:null;
-      return {c:[<span style={{color:C.mu}}>{String(b.datetime||"").slice(8,10)+"/"+String(b.datetime||"").slice(5,7)}</span>,<span style={{color:C.au,fontWeight:700,fontSize:12}}>{b.mapTag||"–"}</span>,<b>{(b.overUnder==="Over"?"O ":"U ")+String((String(b.description||"").match(/\d+(?:[.,]\d+)?/)||[""])[0]).replace(".",",")}</b>,fr(Number(b.odds),2),<b style={{color:st==="won"?C.gr:st==="lost"?C.rd:C.mu}}>{st==="pending"?"En cours":st==="void"?"Remb.":money(p)}</b>]};}))}
-     {myB.length>10&&<button onClick={()=>setF(f=>({...f,allBets:!f.allBets}))} style={{width:"100%",padding:11,border:"none",background:"none",color:C.au,fontWeight:700,fontSize:12,letterSpacing:.5,textTransform:"uppercase",cursor:"pointer"}}>{showAll?"Moins":"Tous les paris · "+myB.length}</button>}</>}
-   </section>}
    {scope==="joueur"&&<section style={panel}>{T("Dernières maps",L.length?mapNm(L[0].map)+" · "+val(L[0])+(hs?" HS":" K"):"")}
     {Kp([[SU,pct(h),hcol(h),nd?nw+" / "+nd:""],["Moy.",fr(avg),"#fff"],["Méd.",fl(med),"#fff"],...(g==="CS2"&&!hs?[["HS %",(()=>{const k=L.reduce((t,x)=>t+(x.kills||0),0);return k?fr(L.reduce((t,x)=>t+(x.hs||0),0)/k*100,0):"–";})(),"#fff"]]:[])])}
     <div style={{padding:"8px 8px 0"}}>{bigChart||<div style={{padding:30,textAlign:"center",color:C.dm,fontSize:13}}>Aucune map</div>}</div>
@@ -5606,12 +5602,6 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
      return Tb([["Carte","auto","left"],["Maps","66px"],[SU,"74px"],...(isRounds?[["Rds","62px"],["CT win","80px"],["OT","64px"]]:[])],list.map(([m,a])=>{const hh=hit(base.filter(x=>mapNm(x.map)===m&&pass(x,"map")));const op=otP(a);
       return {on:()=>setFx("map",m==="—"?"?":m),act:F.map===m,c:[<b style={{color:"#fff"}}>{m}</b>,a.length,<b style={{color:hcol(hh)}}>{pct(hh)}</b>,...(isRounds?[fr(avgR(a)),pct(ctW(a)),<span style={{color:op?C.yl:C.mu}}>{pct(op)}</span>]:[])]};}),isRounds?520:0);})()}
    </section>
-   <section style={panel}>{T("Backtest Betby",SU+" · "+unit+" $")}
-    {BT.n?<>{Kp([["Lignes",String(BT.n)],["Gagnées",String(BT.w),C.gr,pct(BT.wr)],["Résultat",money(BT.p),BT.p>=0?C.gr:C.rd]])}
-     {Tb([["Cote","auto","left"],["Lignes","74px"],["Gagnées","90px"],["%","66px"],["Résultat","104px"]],OBk.map(o=>{const c=sumOf(EI.filter(x=>x.o>=o[0]&&x.o<o[1]));return c.n?{c:[o[2],c.n,c.w,<span style={{color:hcol(c.wr)}}>{pct(c.wr)}</span>,<b style={{color:c.p>=0?C.gr:C.rd}}>{money(c.p)}</b>]}:null;}).filter(Boolean),480)}
-     <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6,padding:"10px 16px",...lab}}>Mise<input type="number" inputMode="decimal" value={unit} onChange={e=>setUnit(Number(e.target.value)||0)} aria-label="Mise" style={{width:60,height:26,borderRadius:6,border:"1px solid "+C.ln,background:C.pn2,color:"#fff",padding:"0 6px"}}/>$</div></>
-     :<div style={{padding:16,color:C.dm,fontSize:13}}>Aucune ligne</div>}
-   </section>
    {scope!=="joueur"&&<section style={panel}>{T("Joueurs",SU+" · ROI")}
     {(()=>{const o={};all.forEach(x=>{(o[x.pkey]=o[x.pkey]||[]).push(x);});return byTeam(Object.values(o),a=>a[0].team).sort((a,b)=>a[0].localeCompare(b[0])).map(([t,arr])=><React.Fragment key={t}>{teamHead(t)}
      {Tb([["Joueur","auto","left"],["Maps","66px"],[SU,"74px"],["ROI","80px"]],arr.sort((a,b)=>b.length-a.length).map(a=>{const hh=hit(a),rr=roi(a);return {on:()=>goPlayer(a[0].pkey),c:[<span style={{display:"inline-flex",alignItems:"center",gap:8}}><Av k={a[0].pkey} name={a[0].player} sz={24}/><b>{a[0].player}</b></span>,a.length,<b style={{color:hcol(hh)}}>{pct(hh)}</b>,<b style={{color:rr>0?C.gr:rr<0?C.rd:C.mu}}>{rr==null?"–":(rr>0?"+":"")+fr(rr,0)+" %"}</b>]};}))}</React.Fragment>);})()}</section>}
@@ -5623,7 +5613,7 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
       return {c:[<span style={{color:C.mu}}>{x.day.slice(8)+"/"+x.day.slice(5,7)}</span>,<span style={{display:"inline-flex",alignItems:"center",gap:5}}>{LG(mm.team1,14)}{teamAbbr(mm.team1||"")}<span style={{color:C.dm}}>–</span>{teamAbbr(mm.team2||"")}{LG(mm.team2,14)}</span>,mapNm(x.map),x.map_no,...(isRounds?[<span>{mp.rounds||x.rounds||"–"}{(mp.ot||x.ot)&&<b style={{color:C.yl,marginLeft:3,fontSize:10}}>OT</b>}</span>]:[]),n?<b style={{color:hcol(w/n*100)}}>{w} / {n}</b>:"–"]};}),isRounds?600:500)}
    </section>
   </div>
-  {fOpen?React.cloneElement(filtersPanel,{className:"spm-filt open"}):filtersPanel}
+  {fOpen&&<div className="spm-dim" onClick={()=>setFOpen(false)}/>}{fOpen?React.cloneElement(filtersPanel,{className:"spm-filt open"}):filtersPanel}
   </div>
  </div>);
 }
