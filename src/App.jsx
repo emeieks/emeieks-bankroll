@@ -5003,7 +5003,7 @@ function ResultsTab({allPlayers={},teamLogos={},bets=[],setBets}){
  return(<div style={{padding:"12px 14px",borderBottom:"1px solid "+SV.line}}>
   <div style={{display:"flex",padding:2,borderRadius:10,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)",marginBottom:10}}>
    {[["saisie","Saisie"],["stats","Statistiques"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} style={{flex:1,height:32,borderRadius:8,border:"none",background:view===k?"#7c3aed":"transparent",color:view===k?"#fff":"#9ca3af",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>
-  {view==="saisie"?<ResultsEntry allPlayers={allPlayers} teamLogos={teamLogos} bets={bets} setBets={setBets}/>:<ResultStats bets={bets}/>}
+  {view==="saisie"?<ResultsEntry allPlayers={allPlayers} teamLogos={teamLogos} bets={bets} setBets={setBets}/>:<StatsPM bets={bets} allPlayers={allPlayers} teamLogos={teamLogos}/>}
  </div>);
 }
 // Style « site de résultats » (CS2 / Valorant) et « scoreboard broadcast » (LoL) — classes rs-*
@@ -5136,13 +5136,14 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets}){
    <button aria-label="Jour précédent" onClick={()=>setDay(d=>rsDay(new Date(new Date(d+"T12:00:00Z").getTime()-864e5)))} style={{flex:"0 0 40px"}}>‹</button></div>
   {!days.includes(day)&&<div style={{fontSize:12.5,color:"var(--sf)",textAlign:"center"}}>{new Date(day+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>}
   {!rows&&<div style={{fontSize:12,color:"var(--dm)"}}>…</div>}
-  {(()=>{const by={};matches.forEach(m=>{(by[m.tour||"Autres"]=by[m.tour||"Autres"]||[]).push(m);});return Object.entries(by).sort((a,b)=>(a[0]==="Autres")-(b[0]==="Autres")||a[0].localeCompare(b[0])).map(([t,l])=>
-   <section className="evt" key={t}><div className="evt-h"><span style={{width:18,height:18,borderRadius:4,overflow:"hidden",flexShrink:0}}><GameLogo game={GNORM(l[0].game)} size={18}/></span>{t}<span className="c">{l.filter(m=>done[m.key]).length}/{l.length}</span></div>
+  {(()=>{const GO={CS2:0,Valorant:1,LoL:2,Dota2:3};const by={};matches.forEach(m=>{const k=GNORM(m.game)+"|"+(m.tour||"Autres");(by[k]=by[k]||[]).push(m);});
+   return Object.entries(by).sort((a,b)=>{const [ga,ta]=a[0].split("|"),[gb,tb]=b[0].split("|");return (GO[ga]??9)-(GO[gb]??9)||(ta==="Autres")-(tb==="Autres")||ta.localeCompare(tb);}).map(([k,l])=>{const t=k.split("|").slice(1).join("|");return(
+   <section className="evt" key={k}><div className="evt-h"><span style={{width:18,height:18,borderRadius:4,overflow:"hidden",flexShrink:0}}><GameLogo game={GNORM(l[0].game)} size={18}/></span>{t}<span className="c">{l.filter(m=>done[m.key]).length}/{l.length}</span></div>
     {l.map(m=>{const [A,B]=Object.values(m.teams);const r=done[m.key];const s1=r?(teamKey(r.team1)===teamKey(A)?r.score1:r.score2):null,s2=r?(teamKey(r.team1)===teamKey(A)?r.score2:r.score1):null;
      const tt=new Date(m.start);const hh=isNaN(tt)?"":tt.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
      return <button key={m.key} className="res" onClick={()=>setSel(m)}><span className="tm">{hh}</span><span className="t1">{L(A,m.game)}<span>{A}</span></span>
       <span className="sc">{r?<><span className={s1>s2?"w":"l"}>{s1}</span><span className="p"> - </span><span className={s2>s1?"w":"l"}>{s2}</span></>:<span className="p">vs</span>}</span>
-      <span className="t2"><span>{B}</span>{L(B,m.game)}</span>{r?<span className="ok" aria-label="Saisi">✓</span>:<span/>}</button>;})}</section>);})()}
+      <span className="t2"><span>{B}</span>{L(B,m.game)}</span>{r?<span className="ok" aria-label="Saisi">✓</span>:<span/>}</button>;})}</section>);});})()}
   {rows&&!matches.length&&<div style={{fontSize:12.5,color:"var(--dm)",textAlign:"center",padding:12}}>Aucun match ce jour-là.</div>}</>}
  </div>);
 }
@@ -5166,7 +5167,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
   const o={};(pr||[]).forEach(x=>{o[x.map_no+"|"+x.pkey]={k:x.kills==null?"":String(x.kills),h:x.hs==null?"":String(x.hs),c:x.champion||""};});setPk(o);}catch(e){setMsg("Lance resultats.sql dans Supabase");}})();},[m.key]);
  const [mk,setMk]=useState(m.key);const [bm,setBm]=useState({});const [potRows,setPotRows]=useState([]);const [pots,setPots]=useState([]);
  useEffect(()=>{const keys=[...new Set(Object.values(m.players).map(p=>p.pkey))];if(!keys.length)return;const d0=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()-864e5)),d2=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()+864e5));
-  cloudDb("pot_bets?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&day=gte."+d0+"&day=lte."+d2+"&select=pkey,player,stat,side,map,line,odds,edge,day,match&limit=2000").then(r=>setPots(Array.isArray(r)?r:[])).catch(()=>{});},[m.key]);
+  cloudDb("pot_bets?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&day=gte."+d0+"&day=lte."+d2+"&select=pkey,player,stat,side,map,line,odds,edge,day,match,start,at&limit=2000").then(r=>setPots(Array.isArray(r)?r:[])).catch(()=>{});},[m.key]);
  useEffect(()=>{const ids=(bets||[]).filter(b=>GNORM(b.game)===G).map(b=>String(b.id)).slice(0,400);if(!ids.length)return;
   cloudDb("bet_match?id=in.("+ids.join(",")+")&select=id,team1,team2,day").then(r=>{const o={};(r||[]).forEach(x=>o[x.id]=x);setBm(o);}).catch(()=>{});},[m.key]);
  const nMaps=s.s1==null?0:s.s1+s.s2;
@@ -5194,9 +5195,10 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
   try{const keys=[...new Set([...Object.keys(roster[A]),...Object.keys(roster[B])])];const d0=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()-864e5)),d2=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()+2*864e5));
    const ch=keys.length?await cloudDb("cut_history?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&at=gte."+d0+"&at=lt."+d2+"&select=source,pkey,stat,maps,line,odds_over,odds_under,match,at&order=at.desc&limit=2000").catch(()=>[]):[];
    const mine=c=>c.source==="pp"?true:(!c.match||String(c.match).split(/\s+vs\.?\s+/i).some(t=>same(t,A)||same(t,B)));
-   const pick=(k,st,mapNo)=>{const C=(ch||[]).filter(c=>c.pkey===k&&c.stat===st&&mine(c));const fmt=mapNo<=2?"1+2":String(mapNo);
+   const t0=rsTs(m.start);const pre=c=>c.source==="pp"||isNaN(t0)||new Date(c.at).getTime()<=t0+5*60e3;   // Betby : avant le début du match seulement
+   const pick=(k,st,mapNo)=>{const C=(ch||[]).filter(c=>c.pkey===k&&c.stat===st&&mine(c)&&pre(c));const fmt=mapNo<=2?"1+2":String(mapNo);
     const pp=C.find(c=>c.source==="pp"&&c.maps===fmt)||(mapNo<=3?C.find(c=>c.source==="pp"&&c.maps==="1+2+3"):null);const bb=C.find(c=>c.source==="betby"&&String(c.maps)===String(mapNo));return {pp,bb};};
-   await cloudDb("match_results?on_conflict=key",{method:"POST",body:[{key:mk,game:m.game,day:m.day,team1:A,team2:B,score1:s.s1,score2:s.s2,updated_at:now}],prefer:"resolution=merge-duplicates"});
+   await cloudDb("match_results?on_conflict=key",{method:"POST",body:[{key:mk,game:m.game,day:m.day,team1:A,team2:B,score1:s.s1,score2:s.s2,tournament:m.tour||null,updated_at:now}],prefer:"resolution=merge-duplicates"});
    const mr=maps.map((x,i)=>{const a=parseInt(x.a),b=parseInt(x.b);const win=rounds?(a>b?A:b>a?B:null):(x.win||null);
     return {key:mk+"|"+(i+1),match_key:mk,map_no:i+1,map_name:x.name||null,picked_by:x.pick||null,first_ct:x.ct||null,score1:isNaN(a)?null:a,score2:isNaN(b)?null:b,rounds:rounds&&rnd(x)?rnd(x):null,ot:isOT(x),winner:win,updated_at:now};});
    if(mr.length)await cloudDb("map_results?on_conflict=key",{method:"POST",body:mr,prefer:"resolution=merge-duplicates"});
@@ -5322,7 +5324,9 @@ const potOf=(x,hs)=>{const G=GNORM(x.game);const T=POT_MIN[G];if(!T)return [];co
  if(line==null||ppl==null||!ppm||v==null)return [];const per=Number(ppl)/String(ppm).split("+").length;const L=Number(line);const out=[];
  [["under",L-per,Number(hs?x.bb_hs_under:x.bb_under)],["over",per-L,Number(hs?x.bb_hs_over:x.bb_over)]].forEach(([side,e,o])=>{if(e>=T[side]-1e-9&&o>1)out.push({side,e:Math.round(e*100)/100,o,L,v,per,res:v===L?"void":(side==="under"?v<L:v>L)?"won":"lost"});});return out;};
 // relie une ligne pot_bets au résultat saisi du joueur sur cette map (même joueur, même n° de map, jour ±1, mêmes équipes)
-function potJoin(pots,pr){const idx={};pr.forEach(x=>{(idx[x.pkey+"|"+x.map_no]=idx[x.pkey+"|"+x.map_no]||[]).push(x);});const out=[];const seen=new Set();
+// pré-match seulement : une ligne mise à jour après le début du match (cote live) est écartée
+const potPre=x=>{const t=rsTs(x.start),a=x.at?new Date(x.at).getTime():NaN;return isNaN(t)||isNaN(a)||a<=t+5*60e3;};
+function potJoin(pots,pr){pots=pots.filter(potPre);const idx={};pr.forEach(x=>{(idx[x.pkey+"|"+x.map_no]=idx[x.pkey+"|"+x.map_no]||[]).push(x);});const out=[];const seen=new Set();
  pots.forEach(x=>{const C=idx[x.pkey+"|"+x.map]||[];const d=new Date(String(x.day)+"T12:00:00Z").getTime();
   // mêmes DEUX équipes (la clé du match = équipes triées | jour) : évite le match du lendemain de la même équipe
   const pairOk=c=>{const P=String(c.match_key||"").split("|")[0].split("~").filter(Boolean);if(!x.match||P.length<2)return true;const T=String(x.match).replace(/\s*MAPS?\s*\d.*$/i,"").split(/\s+vs\.?\s+/i).map(teamKey);
@@ -5330,168 +5334,186 @@ function potJoin(pots,pr){const idx={};pr.forEach(x=>{(idx[x.pkey+"|"+x.map_no]=
   const r=C.find(c=>Math.abs(new Date(c.day+"T12:00:00Z")-d)<=864e5&&pairOk(c));
   if(!r)return;const v=x.stat==="headshots"?r.hs:r.kills;if(v==null)return;const k=x.pkey+"|"+x.stat+"|"+x.side+"|"+x.map+"|"+x.line+"|"+r.match_key;if(seen.has(k))return;seen.add(k);
   const L=Number(x.line);out.push({...x,v,L,o:Number(x.odds),e:Number(x.edge),r,res:v===L?"void":(x.side==="under"?v<L:v>L)?"won":"lost"});});return out;}
-let POTS_P=null;const loadPots=()=>POTS_P||(POTS_P=cloudDb("pot_bets?select=pkey,player,game,stat,side,map,line,odds,edge,day,match&limit=40000").then(r=>Array.isArray(r)?r:[]).catch(e=>{POTS_P=null;return {err:String(e.message||e)};}));
+let POTS_P=null;const loadPots=()=>POTS_P||(POTS_P=cloudDb("pot_bets?select=pkey,player,game,stat,side,map,line,odds,edge,day,match,start,at&limit=40000").then(r=>Array.isArray(r)?r:[]).catch(e=>{POTS_P=null;return {err:String(e.message||e)};}));
 // toutes les lignes (pot_bets) + ligne principale figée pour les matchs sans pot_bets
 function potItems(pots,pr,g,st,side){const hs=st==="hs";const J=potJoin(pots.filter(x=>GNORM(x.game)===g&&x.side===side&&hs===(x.stat==="headshots")),pr);const done=new Set(J.map(x=>x.r.match_key+"|"+x.r.map_no+"|"+x.r.pkey));
- const snap=[];pr.forEach(x=>{if(GNORM(x.game)!==g||done.has(x.match_key+"|"+x.map_no+"|"+x.pkey))return;potOf(x,hs).forEach(p=>{if(p.side===side)snap.push({e:p.e,o:p.o,res:p.res,day:x.day,n:x.player,map:x.map_no,L:p.L,v:p.v});});});
- return J.map(x=>({e:x.e,o:x.o,res:x.res,day:x.r.day,n:x.player,map:x.map,L:x.L,v:x.v})).concat(snap).filter(x=>x.res!=="void");}
-// Bankroll 2.0 : simule des prises de position sur toutes les lignes qui respectent tes critères
-function BankSim({pr=[],g,st}){
- const [pots,setPots]=useState(null);const [side,setSide]=useState("under");const [emin,setEmin]=useState(null);const [omin,setOmin]=useState(1);const [unit,setUnit]=useState(()=>{try{return Number(localStorage.getItem("sim_unit")||50);}catch(e){return 50;}});
- useEffect(()=>{loadPots().then(setPots);},[]);
- const base=(POT_MIN[g]||{})[side]||1;const E=emin==null?base:emin;
- const R=useMemo(()=>{if(!Array.isArray(pots))return null;const L=potItems(pots,pr,g,st,side).filter(x=>x.e>=E-1e-9&&x.o>=omin).sort((a,b)=>String(a.day).localeCompare(String(b.day)));
-  let bk=0,peak=0,dd=0;const pts=[0];L.forEach(x=>{bk+=x.res==="won"?(x.o-1)*unit:-unit;pts.push(bk);peak=Math.max(peak,bk);dd=Math.max(dd,peak-bk);});const w=L.filter(x=>x.res==="won").length;
-  return {L,n:L.length,w,p:bk,roi:L.length?bk/(L.length*unit)*100:0,dd,pts,od:L.length?L.reduce((t,x)=>t+x.o,0)/L.length:0};},[pots,pr,g,st,side,E,omin,unit]);
- if(!pots)return <div style={{fontSize:12,color:"#6b7280",padding:12}}>…</div>;
- if(pots.err)return <div style={{fontSize:12,color:"#fca5a5",padding:12}}>Lance pot_bets.sql dans Supabase</div>;
- const c=(on,t,fn,k)=><button key={k||t} onClick={fn} aria-pressed={on} style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.2)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:700,cursor:"pointer"}}>{t}</button>;
- const steps=[0,.5,1,1.5,2,2.5,3].filter(v=>v>=base-1e-9);const pc=v=>v>0?"#22C55E":v<0?"#EF4444":"#9ca3af";
- const W=320,H=110,P=R.pts,mx=Math.max(1,...P.map(Math.abs));const X=i=>P.length>1?i/(P.length-1)*W:0,Y=v=>H/2-v/mx*(H/2-6);
- return(<div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:12,color:"#8b93a7",width:56}}>Côté</span>{c(side==="under","Under",()=>{setSide("under");setEmin(null);})}{c(side==="over","Over",()=>{setSide("over");setEmin(null);})}</div>
-  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:12,color:"#8b93a7",width:56}}>Écart ≥</span>{steps.map(v=>c(Math.abs(E-v)<1e-9,String(v),()=>setEmin(v),"e"+v))}</div>
-  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:12,color:"#8b93a7",width:56}}>Cote ≥</span>{[1,1.6,1.7,1.8,1.9,2].map(v=>c(omin===v,v===1?"Toutes":String(v),()=>setOmin(v),"o"+v))}</div>
-  <div style={{display:"flex",gap:5,alignItems:"center"}}><span style={{fontSize:12,color:"#8b93a7",width:56}}>Mise</span><input type="number" inputMode="decimal" value={unit} onChange={e=>{const v=Number(e.target.value)||0;setUnit(v);try{localStorage.setItem("sim_unit",String(v));}catch(er){}}} aria-label="Mise par bet" style={{width:80,height:32,borderRadius:8,border:"1px solid #1F2937",background:"#0B1220",color:"#fff",fontSize:14,padding:"0 8px"}}/><span style={{fontSize:12,color:"#8b93a7"}}>$ par bet</span></div>
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8}}>
-   {[["Profit simulé",(R.p>0?"+":"")+Math.round(R.p)+" $",pc(R.p)],["ROI",(R.roi>0?"+":"")+R.roi.toFixed(1)+" %",pc(R.roi)],["Bets",R.n+" · "+(R.n?Math.round(R.w/R.n*100):0)+" %"],["Cote moyenne",R.od?R.od.toFixed(2):"–"],["Pire chute",R.dd?"-"+Math.round(R.dd)+" $":"–","#F59E0B"]].map(([t,v,col])=>
-    <div key={t} style={{padding:"10px 12px",borderRadius:12,background:"#0B1220",border:"1px solid rgba(255,255,255,.06)"}}><div style={{fontSize:11.5,color:"#8b93a7"}}>{t}</div><div style={{fontSize:20,fontWeight:800,color:col||"#fff",marginTop:2}}>{v}</div></div>)}</div>
-  {R.n>1&&<svg viewBox={"0 0 "+W+" "+H} style={{width:"100%",height:"auto",background:"#0B1220",borderRadius:12,border:"1px solid rgba(255,255,255,.06)"}} role="img" aria-label="Courbe de la bankroll simulée">
-   <line x1="0" x2={W} y1={H/2} y2={H/2} stroke="rgba(255,255,255,.12)" strokeDasharray="3 3"/>
-   <polyline fill="none" stroke={R.p>=0?"#22C55E":"#EF4444"} strokeWidth="2" points={P.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" ")}/>
-   <circle cx={X(P.length-1)} cy={Y(P[P.length-1])} r="3.5" fill={R.p>=0?"#22C55E":"#EF4444"}/></svg>}
-  {R.n>0&&R.n<100&&<div style={{fontSize:12,color:"#F59E0B"}}>{R.n} bets seulement : la courbe peut encore beaucoup changer.</div>}
-  {R.n>0&&<div style={{borderRadius:12,border:"1px solid rgba(255,255,255,.06)",overflow:"hidden"}}>{R.L.slice(-15).reverse().map((x,i)=><div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",borderTop:i?"1px solid rgba(255,255,255,.05)":"none",fontSize:12.5,color:"#e5e7eb"}}>
-   <span style={{color:"#8b93a7",width:42}}>{String(x.day).slice(5)}</span><b style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.n}</b><span style={{color:"#fbbf24",fontSize:11}}>M{x.map}</span><span style={{color:"#9ca3af"}}>{side==="under"?"U":"O"} {x.L} @{x.o.toFixed(2)}</span>
-   <span style={{marginLeft:"auto",color:"#9ca3af"}}>+{Number(x.e.toFixed(2))}</span><b style={{width:28,textAlign:"right"}}>{x.v}</b><span style={{width:44,textAlign:"right",fontWeight:800,color:x.res==="won"?"#22C55E":"#EF4444"}}>{x.res==="won"?"+"+Math.round((x.o-1)*unit):"-"+Math.round(unit)}</span></div>)}</div>}
- </div>);
-}
-function PotGrid({pr=[],g,st}){
- const [pots,setPots]=useState(null);
- useEffect(()=>{loadPots().then(setPots);},[]);
- const [side,setSide]=useState("under");
- const res=useMemo(()=>{if(!Array.isArray(pots))return null;
-  const out=potItems(pots,pr,g,st,side).map(x=>({e:x.e,o:x.o,w:x.res==="won"}));
-  const lo=POT_MIN[g]?POT_MIN[g][side]:1;const EB=[[lo,lo+.5],[lo+.5,lo+1],[lo+1,lo+1.5],[lo+1.5,lo+2],[lo+2,99]];
-  const OB=[["< 1.60",0,1.6],["1.60–1.74",1.6,1.75],["1.75–1.89",1.75,1.9],["1.90–2.09",1.9,2.1],["2.10 +",2.1,99]];
-  const cell=a=>{const n=a.length,w=a.filter(x=>x.w).length,p=a.reduce((t,x)=>t+(x.w?x.o-1:-1),0);return {n,wr:n?w/n*100:0,roi:n?p/n*100:0,ci:n?196*0.95/Math.sqrt(n):0};};
-  const inE=(x,[a,b])=>x.e>=a-1e-9&&x.e<b-1e-9;
-  return {n:out.length,EB,OB,grid:EB.map(r=>OB.map(([,c,d])=>cell(out.filter(x=>inE(x,r)&&x.o>=c&&x.o<d)))),row:EB.map(r=>cell(out.filter(x=>inE(x,r)))),col:OB.map(([,c,d])=>cell(out.filter(x=>x.o>=c&&x.o<d))),all:cell(out)};},[pots,pr,g,st,side]);
- if(!pots)return <div style={{fontSize:12,color:"#8b93a7",marginTop:8}}>…</div>;
- if(pots.err)return <div style={{fontSize:12,color:"#fca5a5",marginTop:8}}>Lance pot_bets.sql dans Supabase</div>;
- const C=c=>{if(!c.n)return <span style={{color:"#4b5563"}}>–</span>;const weak=c.n<30;const col=weak?"#8b93a7":c.roi>0?"#22C55E":"#EF4444";
-  return <span title={c.n+" bets · réussite "+c.wr.toFixed(0)+" % · marge ±"+c.ci.toFixed(0)+" pts"} style={{display:"flex",flexDirection:"column",alignItems:"flex-end",lineHeight:1.15}}><b style={{color:col,fontSize:13}}>{(c.roi>0?"+":"")+c.roi.toFixed(0)}%</b><small style={{color:"#8b93a7",fontSize:10}}>{c.n} · {c.wr.toFixed(0)}%</small></span>;};
- const b=(on,t,fn)=><button key={t} onClick={fn} aria-pressed={on} style={{height:28,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.07)"),background:on?"#151c28":"#0d121a",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:600,cursor:"pointer"}}>{t}</button>;
- const T=POT_MIN[g]||{};
- return(<div style={{marginTop:8,display:"flex",flexDirection:"column",gap:8}}>
-  <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>{b(side==="under","Under",()=>setSide("under"))}{b(side==="over","Over",()=>setSide("over"))}<span style={{fontSize:11.5,color:"#8b93a7",marginLeft:6}}>seuil : écart ≥ {T[side]}</span></div>
-  <div style={{overflowX:"auto",borderRadius:12,background:"#0f141d",border:"1px solid rgba(255,255,255,.07)"}}><table style={{width:"100%",borderCollapse:"collapse",fontVariantNumeric:"tabular-nums",fontFamily:"Inter,sans-serif"}}>
-   <thead><tr style={{background:"#0B1220"}}><th style={{textAlign:"left",padding:"7px 8px",fontSize:11,color:"#9ca3af",whiteSpace:"nowrap"}}>Écart / Cote</th>{res.OB.map(o=><th key={o[0]} style={{textAlign:"right",padding:"7px 8px",fontSize:11,color:"#9ca3af",whiteSpace:"nowrap"}}>{o[0]}</th>)}<th style={{textAlign:"right",padding:"7px 8px",fontSize:11,color:"#fff"}}>Total</th></tr></thead>
-   <tbody>{res.EB.map((e,i)=><tr key={i} style={{borderTop:"1px solid rgba(255,255,255,.07)"}}><td style={{padding:"7px 8px",fontSize:12.5,fontWeight:700,color:"#e5e7eb",whiteSpace:"nowrap"}}>{e[1]>50?"+"+e[0]+" et +":"+"+e[0]+" à "+e[1]}</td>{res.grid[i].map((c,j)=><td key={j} style={{padding:"6px 8px",textAlign:"right"}}>{C(c)}</td>)}<td style={{padding:"6px 8px",textAlign:"right",background:"#151c28"}}>{C(res.row[i])}</td></tr>)}
-    <tr style={{borderTop:"1px solid rgba(255,255,255,.07)",background:"#151c28"}}><td style={{padding:"7px 8px",fontSize:12.5,fontWeight:700,color:"#fff"}}>Total</td>{res.col.map((c,j)=><td key={j} style={{padding:"6px 8px",textAlign:"right"}}>{C(c)}</td>)}<td style={{padding:"6px 8px",textAlign:"right"}}>{C(res.all)}</td></tr></tbody></table></div>
-  <div style={{fontSize:11.5,color:"#8b93a7"}}>{res.n} lignes Betby au-dessus du seuil avec résultat · ROI à mise fixe · gris = moins de 30 bets</div>
- </div>);
-}
-// ── Statistiques : tout est calculé dans l'app à partir de 3 petites tables ──
-function ResultStats({bets=[]}){
- const [D,setD]=useState(null);const [g,setG]=useState("CS2");const [st,setSt]=useState("kills");const [oMin,setOMin]=useState(1);const [sec,setSec]=useState("resume");useEffect(()=>{setSec("resume");if(g!=="CS2")setSt("kills");},[g]);
- useEffect(()=>{(async()=>{try{const [pr,mp,mr]=await Promise.all([cloudDb("player_results?select=*&limit=20000"),cloudDb("map_results?select=*&limit=10000"),cloudDb("match_results?select=*&limit=5000")]);setD({pr:pr||[],mp:mp||[],mr:mr||[]});}catch(e){setD({err:String(e.message||e)});}})();},[]);
- const S=useMemo(()=>{if(!D||D.err)return null;const GG=x=>GNORM(x);
-  const MR={};D.mr.forEach(x=>MR[x.key]=x);const maps=D.mp.filter(x=>MR[x.match_key]&&GG(MR[x.match_key].game)===g);
-  const pr=D.pr.filter(x=>GG(x.game)===g);const hs=st==="hs";
-  // lignes « bettables » : résultat + ligne Betby + cut PP de la stat
-  const L=pr.map(x=>{const v=hs?x.hs:x.kills;const line=hs?x.bb_hs_line:x.bb_line;const ov=hs?x.bb_hs_over:x.bb_over,un=hs?x.bb_hs_under:x.bb_under;const ppl=hs?x.pp_hs_line:x.pp_line,ppm=hs?x.pp_hs_maps:x.pp_maps;
-   const per=ppl!=null&&ppm?Number(ppl)/String(ppm).split("+").length:null;return {...x,v,line:line!=null?Number(line):null,ov:Number(ov)||null,un:Number(un)||null,per};}).filter(x=>x.v!=null);
-  const B=L.filter(x=>x.line!=null);
-  const flat=(arr,side)=>{const a=arr.filter(x=>(side==="u"?x.un:x.ov)>=oMin&&x.v!==x.line);const w=a.filter(x=>side==="u"?x.v<x.line:x.v>x.line).length;const p=a.reduce((t,x)=>t+((side==="u"?x.v<x.line:x.v>x.line)?(side==="u"?x.un:x.ov)-1:-1),0);return {n:a.length,w,wr:a.length?w/a.length*100:0,p,roi:a.length?p/a.length*100:0};};
-  const rb=x=>x.rounds==null?"?":x.ot?"OT":x.rounds<=20?"≤ 20":"21 – 24";
-  // tes paris réglés reliés aux maps saisies (joueur + jour ±1 + n° de map)
-  const near=(d1,d2)=>Math.abs(new Date(d1+"T12:00:00Z")-new Date(d2+"T12:00:00Z"))<=864e5;
-  const myB=(bets||[]).filter(b=>(b.status==="won"||b.status==="lost")&&GG(b.game)===g&&!!b.isHeadshot===hs).map(b=>{const n=parseInt(String(b.mapTag||"").replace(/\D/g,""));const d=String(b.datetime||"").slice(0,10);
-   const r=pr.find(x=>x.pkey===cutNorm(b.player)&&x.map_no===n&&near(x.day,d));return r?{b,r}:null;}).filter(Boolean);
-  const grp=(arr,f)=>{const o={};arr.forEach(x=>{const k=f(x);if(k==null)return;(o[k]=o[k]||[]).push(x);});return o;};
-  const nOT=maps.filter(x=>x.ot).length;const rr=maps.filter(x=>x.rounds);
-  const kpr=(arr)=>{const byMap=grp(arr,x=>x.match_key+"|"+x.map_no);let k=0,r=0;Object.values(byMap).forEach(l=>{if(l[0].rounds){k+=l.reduce((t,x)=>t+(x.kills||0),0);r+=l[0].rounds;}});return r?k/r:null;};
-  // par map (carte)
-  const byName=grp(maps.filter(x=>x.map_name),x=>x.map_name);
-  const mapRows=Object.entries(byName).map(([n,l])=>{const P=B.filter(x=>x.map_name===n);const my=myB.filter(x=>x.r.map_name===n);const k=pr.filter(x=>x.map_name===n);
-   return {n,c:l.length,rd:l.filter(x=>x.rounds).reduce((t,x)=>t+x.rounds,0)/(l.filter(x=>x.rounds).length||1),ot:l.filter(x=>x.ot).length/l.length*100,kpr:kpr(k),u:flat(P,"u"),my:my.reduce((t,x)=>t+(x.b.profit||0),0),myN:my.length};}).sort((a,b)=>b.c-a.c);
-  // équipes : rounds joués par map
-  const teamR={};maps.forEach(x=>{const m=MR[x.match_key];if(!x.rounds)return;[m.team1,m.team2].forEach(t=>{const o=(teamR[t]=teamR[t]||{t,n:0,r:0,ot:0});o.n++;o.r+=x.rounds;if(x.ot)o.ot++;});});
-  const teams=Object.values(teamR).filter(x=>x.n>=1).map(x=>({...x,avg:x.r/x.n})).sort((a,b)=>b.avg-a.avg);
-  // joueurs : moyenne, réussite Under vs Betby
-  const byP=grp(L,x=>x.pkey);const players=Object.values(byP).map(l=>{const b=l.filter(x=>x.line!=null);const u=flat(b,"u");return {n:l[0].player,c:l.length,avg:l.reduce((t,x)=>t+x.v,0)/l.length,kpr:kpr(l),u,diff:b.length?b.reduce((t,x)=>t+(x.v-x.line),0)/b.length:null};}).sort((a,b)=>b.c-a.c);
-  // cut PP : le joueur a-t-il fini sous le cut par map ?
-  const ppA=L.filter(x=>x.per!=null);const ppUnder=ppA.filter(x=>x.v<x.per).length;
-  // écart PP ↔ Betby
-  const EB=[["< 0",-99,0],["0 – 0.5",0,0.5],["0.5 – 1",0.5,1],["1 – 1.5",1,1.5],["1.5 – 2",1.5,2],["2 – 2.5",2,2.5],["2.5 +",2.5,99]];
-  const edgeRows=side=>EB.map(([l,lo,hi])=>{const a=B.filter(x=>x.per!=null&&(side==="u"?x.line-x.per:x.per-x.line)>=lo&&(side==="u"?x.line-x.per:x.per-x.line)<hi);return {l,...flat(a,side)};});
-  // pick / 1re défense
-  const winOf=x=>{const m=MR[x.match_key];return x.winner||(x.score1==null?null:x.score1>x.score2?m.team1:m.team2);};
-  const pk=maps.filter(x=>x.picked_by&&x.picked_by!=="Decider"&&winOf(x));const pkW=pk.filter(x=>teamKey(winOf(x))===teamKey(x.picked_by)).length;
-  const ct=maps.filter(x=>x.first_ct&&winOf(x));const ctW=ct.filter(x=>teamKey(winOf(x))===teamKey(x.first_ct)).length;
-  const byC=grp(L.filter(x=>x.champion),x=>x.champion);const champs=Object.entries(byC).map(([n,l])=>({n,c:l.length,avg:l.reduce((t,x)=>t+x.v,0)/l.length,u:flat(l.filter(x=>x.line!=null),"u"),diff:(()=>{const b=l.filter(x=>x.line!=null);return b.length?b.reduce((t,x)=>t+(x.v-x.line),0)/b.length:null;})()})).sort((a,b)=>b.c-a.c);
-  const myRB=grp(myB,x=>rb(x.r));
-  return {maps:maps.length,matches:Object.keys(grp(maps,x=>x.match_key)).length,nOT,otp:maps.length?nOT/maps.length*100:0,avgR:rr.length?rr.reduce((t,x)=>t+x.rounds,0)/rr.length:null,kpr:kpr(pr),
-   fu:flat(B,"u"),fo:flat(B,"o"),rbRows:["≤ 20","21 – 24","OT"].map(k=>{const a=B.filter(x=>rb(x)===k);const my=myRB[k]||[];return {k,u:flat(a,"u"),o:flat(a,"o"),my:my.reduce((t,x)=>t+(x.b.profit||0),0),myN:my.length,c:maps.filter(x=>rb(x)===k).length};}),
-   mapRows,teams,players,champs,ppA:ppA.length,ppUnder,edgeU:edgeRows("u"),edgeO:edgeRows("o"),pkN:pk.length,pkW,ctN:ct.length,ctW,myN:myB.length,myP:myB.reduce((t,x)=>t+(x.b.profit||0),0),nB:B.length};},[D,g,st,oMin,bets]);
- if(!D)return <div style={{fontSize:12,color:"#6b7280"}}>…</div>;
- if(D.err)return <div style={{fontSize:12,color:"#fca5a5"}}>Lance resultats.sql dans Supabase · {D.err.slice(0,80)}</div>;
- const pc=v=>v>0?"#22C55E":v<0?"#EF4444":"#9ca3af";const sg=v=>(v>0?"+":"")+v.toFixed(1);const pct=v=>v.toFixed(0)+" %";
- const F="Inter,sans-serif",FC="Inter,sans-serif";
- // Une section = un titre, une phrase qui dit ce qu'on regarde, puis le contenu
- const Sec=({t,d,children})=><section style={{background:"#0f141d",borderRadius:12,overflow:"hidden",fontFamily:F}}>
-  <div style={{padding:"10px 12px",background:"#0B1220"}}><div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{t}</div>{d&&<div style={{fontSize:12.5,color:"#9ca3af",marginTop:2,lineHeight:1.35}}>{d}</div>}</div>{children}</section>;
- const Big=({t,v,s,c,hint})=><div style={{padding:"12px 12px",background:"#0f141d",minWidth:0}}><div style={{fontSize:11.5,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",color:"#8b93a7",fontFamily:FC}}>{t}</div>
-  <div style={{fontSize:30,fontWeight:800,lineHeight:1.05,color:c||"#fff",fontFamily:FC,marginTop:2}}>{v}</div>{s&&<div style={{fontSize:12,color:"#9ca3af"}}>{s}</div>}{hint&&<div style={{fontSize:11.5,color:"#8b93a7",marginTop:4,lineHeight:1.3}}>{hint}</div>}</div>;
- // Chaque ligne = une fiche : le nom en gros, puis les chiffres avec leur libellé au-dessus (lisible sur téléphone)
- const Tab=({cols,head,rows})=><div>
-  {rows.map((r,j)=><div key={j} style={{padding:"10px 12px",borderTop:"1px solid rgba(255,255,255,.07)",background:j%2?"#0f141d":"#0d121a"}}>
-   <div style={{fontSize:15,fontWeight:700,color:"#fff",marginBottom:6,...(r[0]&&r[0].s?r[0].s:{})}}>{r[0]&&r[0].v!==undefined?r[0].v:r[0]}</div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat("+Math.min(4,r.length-1)+",minmax(0,1fr))",gap:"6px 10px"}}>
-    {r.slice(1).map((c,i)=><div key={i} style={{minWidth:0}}><div style={{fontSize:10.5,fontWeight:700,letterSpacing:.4,textTransform:"uppercase",color:"#8b93a7",fontFamily:FC,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{head[i+1]}</div>
-     <div style={{fontSize:17,fontWeight:700,fontFamily:FC,color:"#f3f4f6",fontVariantNumeric:"tabular-nums",...(c&&c.s?c.s:{})}}>{c&&c.v!==undefined?c.v:c}</div></div>)}</div></div>)}
-  {!rows.length&&<div style={{padding:12,fontSize:13,color:"#8b93a7"}}>Pas encore de données : saisis des matchs dans l'onglet Saisie.</div>}</div>;
- const R=f=>f.n?{v:sg(f.roi)+" %",s:{color:pc(f.roi),fontWeight:700}}:"–";const $=v=>({v:(v>0?"+":"")+Math.round(v)+" $",s:{color:pc(v),fontWeight:700}});
- const chip=(on,t,fn,k)=><button key={k||t} onClick={fn} aria-pressed={on} style={{height:30,padding:"0 11px",borderRadius:8,border:"1px solid "+(on?"#7C3AED":"rgba(255,255,255,.07)"),background:on?"#151c28":"#0d121a",color:on?"#fff":"#9ca3af",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:F}}>{t}</button>;
- const few=S.maps<20;
- return(<div style={{display:"flex",flexDirection:"column",gap:12,fontFamily:F}}>
-  <div style={{display:"flex",flexDirection:"column",gap:6,background:"transparent",padding:10,borderRadius:3}}>
-   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:11.5,color:"#8b93a7",width:44}}>Jeu</span>{[["CS2","CS2"],["Valorant","Valorant"],["LoL","LoL"],["Dota2","Dota 2"]].map(([k,l])=>chip(g===k,l,()=>setG(k)))}</div>
-   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:11.5,color:"#8b93a7",width:44}}>Stat</span>{chip(st==="kills","Kills",()=>setSt("kills"))}{g==="CS2"&&chip(st==="hs","Headshots",()=>setSt("hs"))}</div>
-   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:11.5,color:"#8b93a7",width:44}}>Cote</span>{[1,1.6,1.7,1.8,1.9].map(o=>chip(oMin===o,o===1?"Toutes":"≥ "+o,()=>setOMin(o),"o"+o))}</div>
-  </div>
-  {few&&<div style={{padding:"9px 12px",borderLeft:"3px solid #F59E0B",background:"rgba(232,169,58,.08)",fontSize:12.5,color:"#fcd34d",lineHeight:1.4}}>Seulement {S.maps} map{S.maps>1?"s":""} saisie{S.maps>1?"s":""}. Les pourcentages bougeront beaucoup : il faut quelques centaines de lignes pour qu'ils veuillent dire quelque chose.</div>}
-  <Sec t="Vue d'ensemble" d={S.matches+" match"+(S.matches>1?"s":"")+" · "+S.maps+" map"+(S.maps>1?"s":"")+" saisies · "+S.nB+" lignes Betby avec résultat"}>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:1,background:"rgba(255,255,255,.07)"}}>
-    <Big t="Tes paris" v={S.myN?((S.myP>0?"+":"")+Math.round(S.myP)+" $"):"–"} s={S.myN+" paris reliés à un résultat"} c={pc(S.myP)}/>
-    <Big t="Tout jouer en Under" v={S.fu.n?sg(S.fu.p)+" u":"–"} s={S.fu.n?pct(S.fu.wr)+" de réussite · "+S.fu.n+" lignes":""} c={pc(S.fu.p)} hint="Si tu avais pris l'Under de chaque ligne Betby, 1 unité par bet"/>
-    <Big t="Tout jouer en Over" v={S.fo.n?sg(S.fo.p)+" u":"–"} s={S.fo.n?pct(S.fo.wr)+" de réussite · "+S.fo.n+" lignes":""} c={pc(S.fo.p)} hint="Même chose côté Over"/>
-    <Big t="Sous le cut PrizePicks" v={S.ppA?pct(S.ppUnder/S.ppA*100):"–"} s={S.ppA+" cuts comparés"} hint="Part des joueurs qui finissent sous leur cut PP par map"/>
-    {(g==="CS2"||g==="Valorant")&&<Big t="Prolongations" v={S.maps?pct(S.otp):"–"} s={S.nOT+" map"+(S.nOT>1?"s":"")+" sur "+S.maps} c="#F59E0B" hint="Normal : environ 10 à 15 %"/>}
-    {(g==="CS2"||g==="Valorant")&&<Big t="Rounds par map" v={S.avgR?S.avgR.toFixed(1):"–"} s={S.kpr?S.kpr.toFixed(2)+" kills par round (10 joueurs)":""}/>}
-    <Big t="Le pick gagne" v={S.pkN?pct(S.pkW/S.pkN*100):"–"} s={S.pkN+" maps avec un pick"}/>
-    {(g==="CS2"||g==="Valorant")&&<Big t="Départ en défense gagne" v={S.ctN?pct(S.ctW/S.ctN*100):"–"} s={S.ctN+" maps"}/>}
+ const snap=[];pr.forEach(x=>{if(GNORM(x.game)!==g||done.has(x.match_key+"|"+x.map_no+"|"+x.pkey))return;potOf(x,hs).forEach(p=>{if(p.side===side)snap.push({e:p.e,o:p.o,res:p.res,day:x.day,n:x.player,map:x.map_no,L:p.L,v:p.v,r:x});});});
+ return J.map(x=>({e:x.e,o:x.o,res:x.res,day:x.r.day,n:x.player,map:x.map,L:x.L,v:x.v,r:x.r})).concat(snap).filter(x=>x.res!=="void");}
+// ── Statistiques façon « props » : joueur / équipe / tournoi / global, filtres, graphique, écart × cote ──
+const SP={bg:"#0B0E13",pn:"#12161D",pn2:"#171C25",ln:"#232A35",fg:"#E7EBF0",mu:"#8A94A3",dm:"#5D6776",ov:"#2FB868",un:"#E2483D",li:"#D9B44A",ac:"#5B8DEF",mono:"'JetBrains Mono',ui-monospace,Menlo,monospace"};
+function StatsPM({bets=[],allPlayers={},teamLogos={}}){
+ const [ex,setEx]=useState("matchs");const [exQ,setExQ]=useState("");const [today,setToday]=useState(null);const [openM,setOpenM]=useState(null);
+ const lidx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
+ const [D,setD]=useState(null);const [pots,setPots]=useState(null);
+ const [g,setG]=useState("CS2");const [scope,setScope]=useState("joueur");const [ent,setEnt]=useState("");const [stat,setStat]=useState("kills");
+ const [F,setF]=useState({period:"all",n:20,sugg:[],map:null,no:null,opp:null,edge:0,odds:1});const [fOpen,setFOpen]=useState(false);
+ const [side,setSide]=useState("under");const [cell,setCell]=useState(null);const [unit,setUnit]=useState(50);
+ useEffect(()=>{(async()=>{try{const [pr,mp,mr]=await Promise.all([cloudDb("player_results?select=*&limit=20000"),cloudDb("map_results?select=*&limit=10000"),cloudDb("match_results?select=*&limit=5000")]);setD({pr:pr||[],mp:mp||[],mr:mr||[]});}catch(e){setD({err:String(e.message||e)});}})();loadPots().then(setPots);},[]);
+ const isRounds=g==="CS2"||g==="Valorant";
+ // matchs du jour (cuts PrizePicks), groupés par tournoi
+ useEffect(()=>{const d=new Date();const day=rsDay(d);const pv=rsDay(new Date(d.getTime()-864e5)),nx=rsDay(new Date(d.getTime()+2*864e5));
+  cloudDb("cut_history?source=eq.pp&start=gte."+pv+"&start=lt."+nx+"&select=player,pkey,game,team,match,start,tournament,stat,maps,line&limit=6000").then(r=>{const cl=[];(r||[]).forEach(x=>{const A=rsClean(x.team),B=rsClean(x.match);if(!A||!B)return;const pr=rsPair(A,B),t=rsTs(x.start);if(isNaN(t))return;
+   let o=cl.find(c=>c.pair===pr&&Math.abs(c.t-t)<8*3600e3);if(!o){o={pair:pr,t,game:x.game,teams:{},players:{},tour:""};cl.push(o);}if(t>o.t)o.t=t;o.teams[teamKey(A)]=o.teams[teamKey(A)]||A;o.teams[teamKey(B)]=o.teams[teamKey(B)]||B;if(x.tournament)o.tour=x.tournament;
+   const pl=(o.players[x.pkey]=o.players[x.pkey]||{name:x.player,pkey:x.pkey,team:A,cuts:{}});if(x.stat==="kills")pl.cuts[x.maps]=x.line;});setToday(cl.filter(o=>rsDay(new Date(o.t))===day));}).catch(()=>setToday([]));},[]);
+ // lignes enrichies : adversaire, tournoi, pick, départ CT, OT
+ const rows=useMemo(()=>{if(!D||D.err)return [];const MR={},MP={};D.mr.forEach(x=>MR[x.key]=x);D.mp.forEach(x=>MP[x.match_key+"|"+x.map_no]=x);
+  return D.pr.filter(x=>GNORM(x.game)===g).map(x=>{const m=MR[x.match_key]||{};const mp=MP[x.match_key+"|"+x.map_no]||{};const tk=teamKey(x.team);const opp=teamKey(m.team1)===tk?m.team2:m.team1;
+   const pick=!mp.picked_by?null:mp.picked_by==="Decider"?"Decider":teamKey(mp.picked_by)===tk?"Pick":"Pick adv.";
+   return {...x,opp:opp||"?",tour:m.tournament||"Sans tournoi",pick,ct:mp.first_ct?teamKey(mp.first_ct)===tk:null,ot:!!(mp.ot||x.ot),rounds:mp.rounds||x.rounds,map:x.map_name||(g==="LoL"?"Game "+x.map_no:"?"),t:new Date(x.day+"T12:00:00").getTime()};}).sort((a,b)=>b.t-a.t||b.map_no-a.map_no);},[D,g]);
+ const lists=useMemo(()=>{const c=k=>{const o={};rows.forEach(x=>{const v=k(x);if(v)o[v]=(o[v]||0)+1;});return Object.entries(o).sort((a,b)=>b[1]-a[1]);};
+  const names={};rows.forEach(x=>{names[x.pkey]=x.player;});return {joueur:c(x=>x.pkey).map(([k,n])=>[k,names[k]+" ("+n+")"]),equipe:c(x=>x.team).map(([k,n])=>[k,k+" ("+n+")"]),tournoi:c(x=>x.tour).map(([k,n])=>[k,k+" ("+n+")"])};},[rows]);
+ useEffect(()=>{if(scope==="global")return;const L=lists[scope]||[];if(!ent&&L[0])setEnt(L[0][0]);},[scope,lists]);
+ const inScope=x=>scope==="global"||!ent?true:scope==="joueur"?x.pkey===ent:scope==="equipe"?x.team===ent:x.tour===ent;
+ const hs=stat==="hs";const val=x=>stat==="kr"?(x.rounds?x.kills/x.rounds:null):hs?x.hs:x.kills;
+ const lineOf=x=>stat==="kr"?null:hs?(x.bb_hs_line!=null?Number(x.bb_hs_line):null):(x.bb_line!=null?Number(x.bb_line):null);
+ const ouOf=x=>Number(hs?x.bb_hs_under:x.bb_under)||null;const ooOf=x=>Number(hs?x.bb_hs_over:x.bb_over)||null;
+ const ppOf=x=>{const l=hs?x.pp_hs_line:x.pp_line,m=hs?x.pp_hs_maps:x.pp_maps;return l!=null&&m?Number(l)/String(m).split("+").length:null;};
+ const pass=(x,ign)=>{if(F.period==="30"&&x.t<Date.now()-30*864e5)return false;if(ign!=="map"&&F.map&&x.map!==F.map)return false;if(ign!=="no"&&F.no&&x.map_no!==F.no)return false;if(ign!=="opp"&&F.opp&&x.opp!==F.opp)return false;
+  if(F.sugg.includes("noot")&&x.ot)return false;if(F.sugg.includes("decider")&&x.pick!=="Decider")return false;if(F.sugg.includes("pick")&&x.pick!=="Pick")return false;if(F.sugg.includes("ct")&&x.ct!==true)return false;
+  const l=lineOf(x),pp=ppOf(x);if(ign!=="edge"&&F.edge&&(l==null||pp==null||(side==="under"?l-pp:pp-l)<F.edge))return false;const o=side==="under"?ouOf(x):ooOf(x);if(ign!=="odds"&&F.odds>1&&(!o||o<F.odds))return false;return true;};
+ const base=rows.filter(inScope);const all=base.filter(x=>pass(x));const L=all.filter(x=>val(x)!=null).slice(0,F.n>=999?99999:F.n);
+ const withLine=L.filter(x=>lineOf(x)!=null&&val(x)!==lineOf(x));const hit=a=>{const b=a.filter(x=>lineOf(x)!=null&&val(x)!==lineOf(x));return b.length?b.filter(x=>side==="under"?val(x)<lineOf(x):val(x)>lineOf(x)).length/b.length*100:null;};
+ const roi=a=>{const b=a.filter(x=>lineOf(x)!=null&&val(x)!==lineOf(x)&&(side==="under"?ouOf(x):ooOf(x)));return b.length?b.reduce((t,x)=>{const w=side==="under"?val(x)<lineOf(x):val(x)>lineOf(x);return t+(w?(side==="under"?ouOf(x):ooOf(x))-1:-1);},0)/b.length*100:null;};
+ const pc=v=>v==null?SP.mu:v>0?SP.ov:v<0?SP.un:SP.mu;const hc=v=>v==null?SP.dm:v>=55?SP.ov:v<45?SP.un:SP.fg;
+ // écart × cote (toutes les lignes Betby gardées + ligne principale), dans le périmètre et les filtres
+ const items=useMemo(()=>Array.isArray(pots)&&D&&!D.err?potItems(pots,D.pr,g,stat==="hs"?"hs":"kills",side):[],[pots,D,g,stat,side]);
+ const rowOf=useMemo(()=>{const o={};rows.forEach(x=>o[x.match_key+"|"+x.map_no+"|"+x.pkey]=x);return o;},[rows]);
+ const EI=items.map(it=>({...it,x:rowOf[it.r.match_key+"|"+it.r.map_no+"|"+it.r.pkey]})).filter(it=>it.x&&inScope(it.x)&&pass(it.x,"edge")&&pass(it.x,"odds")&&it.e>=(F.edge||0)-1e-9&&it.o>=F.odds);
+ const lo=(POT_MIN[g]||{})[side]||1;const EB=[[lo,lo+.5],[lo+.5,lo+1],[lo+1,lo+1.5],[lo+1.5,lo+2.5],[lo+2.5,99]];const OB=[[0,1.6,"< 1.60"],[1.6,1.75,"1.60"],[1.75,1.9,"1.75"],[1.9,2.1,"1.90"],[2.1,99,"2.10+"]];
+ const cellOf=a=>{const n=a.length,w=a.filter(x=>x.res==="won").length,p=a.reduce((t,x)=>t+(x.res==="won"?x.o-1:-1),0);return {n,w,wr:n?w/n*100:0,roi:n?p/n*100:0,p};};
+ const grid=EB.map(e=>OB.map(o=>EI.filter(x=>x.e>=e[0]-1e-9&&x.e<e[1]-1e-9&&x.o>=o[0]&&x.o<o[1])));
+ const best=(()=>{let b=null;grid.forEach((r,i)=>r.forEach((a,j)=>{const c=cellOf(a);if(c.n>=20&&(!b||c.roi>b.c.roi))b={i,j,c};}));return b;})();
+ if(!D)return <div style={{color:SP.mu,fontSize:13,padding:12}}>…</div>;
+ if(D.err)return <div style={{color:"#fca5a5",fontSize:13,padding:12}}>Lance resultats.sql dans Supabase</div>;
+ const card={background:SP.pn,border:"1px solid "+SP.ln,borderRadius:12,overflow:"hidden"};const H=(t,sub,extra)=><div style={{display:"flex",alignItems:"center",gap:8,padding:"11px 12px",borderBottom:"1px solid "+SP.ln}}><b style={{fontSize:14.5,color:"#fff"}}>{t}</b>{extra}{sub&&<span style={{marginLeft:"auto",fontSize:12,color:SP.mu}}>{sub}</span>}</div>;
+ const chip=(on,lab,fn,k,r)=><button key={k||lab} onClick={fn} aria-pressed={on} style={{height:28,padding:"0 10px",borderRadius:7,border:"1px solid "+(on?SP.ac:SP.ln),background:on?SP.ac:"#1C222C",color:on?"#fff":"#C9D1DB",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{lab}{r!=null&&<span style={{fontFamily:SP.mono,fontSize:11,marginLeft:4,color:on?"#fff":hc(r)}}>{r.toFixed(0)}%</span>}</button>;
+ const seg=(opts,v,set)=><div style={{display:"flex",background:SP.pn2,borderRadius:9,padding:3,gap:3}}>{opts.map(([k,l])=><button key={k} onClick={()=>set(k)} aria-pressed={v===k} style={{flex:1,height:30,border:"none",borderRadius:7,background:v===k?"#2A3240":"transparent",color:v===k?"#fff":SP.mu,fontWeight:700,fontSize:12.5,cursor:"pointer",whiteSpace:"nowrap",padding:"0 8px"}}>{l}</button>)}</div>;
+ const kpi=(t,v,c,sub)=><div key={t} style={{flex:"1 0 78px",background:SP.pn2,borderRadius:9,padding:"7px 9px",textAlign:"center"}}><div style={{fontSize:10.5,fontWeight:800,color:SP.mu,letterSpacing:.4}}>{t}</div><div style={{fontFamily:SP.mono,fontWeight:700,fontSize:16,color:c||SP.fg,marginTop:2}}>{v}</div>{sub&&<div style={{fontSize:10.5,color:SP.dm}}>{sub}</div>}</div>;
+ const setFx=(k,v)=>setF(f=>({...f,[k]:f[k]===v?null:v}));const togS=k=>setF(f=>({...f,sugg:f.sugg.includes(k)?f.sugg.filter(x=>x!==k):[...f.sugg,k]}));
+ const nF=(F.period!=="all")+F.sugg.length+!!F.map+!!F.no+!!F.opp+!!F.edge+(F.odds>1);
+ const h=hit(L),r=roi(L),avg=L.length?L.reduce((t,x)=>t+val(x),0)/L.length:null;const lastLine=L.find(x=>lineOf(x)!=null);
+ const maps=[...new Set(base.map(x=>x.map))];const opps=[...new Set(base.map(x=>x.opp))].slice(0,14);
+ // graphique : joueur = une barre par map ; équipe / tournoi / global = répartition résultat − ligne
+ const chart=(()=>{const W=700,Hh=220;if(scope==="joueur"){const Dd=L.slice(0,30).reverse();if(!Dd.length)return null;const vmax=Math.max(1,...Dd.map(val),...Dd.map(x=>lineOf(x)||0))*1.15;const y=v=>Hh-24-(v/vmax)*(Hh-40);const st=(W-40)/Dd.length;const bw=Math.max(7,Math.min(28,st-6));
+   return <svg viewBox={"0 0 "+W+" "+Hh} style={{width:"100%",height:"auto",display:"block"}} role="img" aria-label="Résultat par map">
+    {Dd.map((x,i)=>{const cx=20+i*st+st/2,v=val(x),l=lineOf(x),pp=ppOf(x);const col=l==null?SP.ac:v>l?SP.ov:SP.un;const vv=stat==="kr"?v.toFixed(2):v;
+     return <g key={i}><rect x={cx-bw/2} y={y(v)} width={bw} height={Hh-24-y(v)} rx="3" fill={col}><title>{x.day+" · "+x.map+" vs "+x.opp+" : "+vv+(l!=null?" (ligne "+l+")":"")+(x.ot?" · OT":"")}</title></rect>
+      {bw>=16&&<text x={cx} y={y(v)+13} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#0B0E13" fontFamily="JetBrains Mono,monospace">{vv}</text>}
+      {l!=null&&<line x1={cx-st/2+2} x2={cx+st/2-2} y1={y(l)} y2={y(l)} stroke={SP.li} strokeWidth="2" strokeDasharray="4 3"/>}
+      {pp!=null&&stat!=="kr"&&<circle cx={cx} cy={y(pp)} r="3" fill={SP.ac}/>}
+      <text x={cx} y={Hh-9} textAnchor="middle" fontSize="9" fontWeight={x.ot?800:400} fill={x.ot?"#E8A93A":SP.dm}>{x.ot?"OT":String(x.map).slice(0,3)}</text></g>;})}</svg>;}
+  const d=L.filter(x=>lineOf(x)!=null).map(x=>Math.max(-8,Math.min(8,Math.round(val(x)-lineOf(x)))));if(!d.length)return null;const B=[];for(let i=-8;i<=8;i++)B.push([i,d.filter(v=>v===i).length]);const mx=Math.max(...B.map(b=>b[1]));const st=(W-40)/B.length;
+  return <svg viewBox={"0 0 "+W+" "+Hh} style={{width:"100%",height:"auto",display:"block"}} role="img" aria-label="Répartition résultat moins ligne">
+   <line x1={20+8*st+st/2} x2={20+8*st+st/2} y1="6" y2={Hh-24} stroke={SP.li} strokeDasharray="4 3"/>
+   {B.map(([k,n],i)=>{const hh=n/mx*(Hh-44);return <g key={k}><rect x={20+i*st+3} y={Hh-24-hh} width={st-6} height={hh} rx="3" fill={k<0?SP.un:k>0?SP.ov:SP.dm}><title>{(k>0?"+":"")+k+" : "+n}</title></rect>
+    {n>0&&<text x={20+i*st+st/2} y={Hh-28-hh} textAnchor="middle" fontSize="10" fill={SP.mu} fontFamily="JetBrains Mono,monospace">{n}</text>}<text x={20+i*st+st/2} y={Hh-9} textAnchor="middle" fontSize="10" fill={SP.dm}>{(k>0?"+":"")+k}</text></g>;})}</svg>;})();
+ const ctx=[["Pick",x=>x.pick==="Pick"],["Pick adverse",x=>x.pick==="Pick adv."],["Decider",x=>x.pick==="Decider"]].concat(isRounds?[["Départ CT",x=>x.ct===true],["Départ T",x=>x.ct===false],["Prolongation",x=>x.ot]]:[]);
+ // bankroll simulée sur les cases écart × cote filtrées (ou une case choisie)
+ const simL=(cell?grid[cell[0]][cell[1]]:EI).slice().sort((a,b)=>String(a.day).localeCompare(String(b.day)));let bk=0,pk=0,dd=0;const pts=[0];simL.forEach(x=>{bk+=x.res==="won"?(x.o-1)*unit:-unit;pts.push(bk);pk=Math.max(pk,bk);dd=Math.max(dd,pk-bk);});
+ return(<div style={{display:"flex",flexDirection:"column",gap:10,color:SP.fg}}>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700&display=swap"/>
+  <style>{`.spm-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}.spm-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+   @media (min-width:900px){.spm-grid{grid-template-columns:280px minmax(0,1fr)}.spm-ex{position:sticky;top:10px;max-height:calc(100vh - 20px);overflow:auto}}`}</style>
+  <header style={{...card,display:"flex",alignItems:"center",gap:4,padding:"6px 8px",flexWrap:"wrap"}}>
+   <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{[["CS2","CS2"],["Dota2","Dota 2"],["LoL","LoL"],["Valorant","Valorant"]].map(([k,l])=><button key={k} onClick={()=>{setG(k);setStat("kills");setF(f=>({...f,map:null,opp:null}));setOpenM(null);}} aria-pressed={g===k}
+    style={{display:"flex",alignItems:"center",gap:6,height:34,padding:"0 10px",borderRadius:8,border:"1px solid "+(g===k?"#2A3240":"transparent"),background:g===k?SP.pn2:"transparent",color:g===k?"#fff":SP.mu,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+    <span style={{width:18,height:18,borderRadius:4,overflow:"hidden",display:"inline-flex"}}><GameLogo game={k} size={18}/></span>{l}</button>)}</div>
+   <b style={{marginLeft:"auto",fontSize:16,color:"#fff",letterSpacing:-.2,padding:"0 6px"}}>Statistiques</b>
+  </header>
+  <div className="spm-grid">
+  <aside className="spm-ex" style={{...card}}>
+   <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderBottom:"1px solid "+SP.ln}}><b style={{fontSize:14,color:"#fff"}}>Explorer</b>
+    <button onClick={()=>{setScope("global");setEnt("");}} aria-pressed={scope==="global"} style={{marginLeft:"auto",height:26,padding:"0 9px",borderRadius:7,border:"1px solid "+(scope==="global"?SP.ac:SP.ln),background:scope==="global"?SP.ac:"transparent",color:"#fff",fontWeight:700,fontSize:11.5,cursor:"pointer"}}>Tout le jeu</button></div>
+   <div style={{padding:"8px 10px",display:"flex",flexDirection:"column",gap:8}}>
+    {seg([["matchs","Matchs"],["joueurs","Joueurs"],["equipes","Équipes"],["tournois","Tournois"]],ex,setEx)}
+    {ex!=="matchs"&&<input value={exQ} onChange={e=>setExQ(e.target.value)} placeholder="Rechercher" aria-label="Rechercher" style={{height:34,borderRadius:8,border:"1px solid "+SP.ln,background:SP.pn2,color:"#fff",fontSize:13,padding:"0 10px"}}/>}
    </div>
-  </Sec>
-  <Sec t="Bankroll simulée" d="Comme si tu avais joué chaque ligne Betby qui respecte tes critères (écart, cote) avec la même mise. Choisis un écart minimum pour voir s'il est rentable sur la durée.">
-   <BankSim pr={D.pr} g={g} st={st}/></Sec>
-  <Sec t="Bets potentiels : écart × cote" d={"Toutes les lignes Betby au-dessus de ton seuil, jouées ou non. Chaque case : ROI, nombre de bets et réussite. En gris : moins de 30 bets, pas assez pour conclure."}>
-   <div style={{padding:"0 10px 10px"}}><PotGrid pr={D.pr} g={g} st={st}/></div></Sec>
-  {(g==="CS2"||g==="Valorant")&&<Sec t="Prolongations et nombre de rounds" d="On ne connaît le nombre de rounds qu'après la map : ce tableau mesure ce que te coûtent les maps longues, il ne sert pas à choisir un bet.">
-   <Tab cols="1.3fr .5fr .9fr .9fr .9fr" head={["Map jouée en","Maps","Tout Under","Tout Over","Tes paris"]} rows={S.rbRows.map(r=>[r.k==="OT"?"Prolongation":r.k==="≤ 20"?"20 rounds ou moins":"21 à 24 rounds",r.c,R(r.u),R(r.o),r.myN?$(r.my):"–"])}/></Sec>}
-  {(g==="CS2"||g==="Valorant")&&<Sec t="Par carte" d="Rounds moyens, part de prolongations, kills par round, rentabilité de l'Under et tes paris, carte par carte.">
-   <Tab cols="1.1fr .45fr .6fr .5fr .55fr .8fr .8fr" head={["Carte","Maps","Rounds","OT","K/R","Under","Tes paris"]} rows={S.mapRows.map(r=>[r.n,r.c,r.rd.toFixed(1),pct(r.ot),r.kpr?r.kpr.toFixed(2):"–",R(r.u),r.myN?$(r.my):"–"])}/></Sec>}
-  {g==="LoL"&&<Sec t="Par champion" d="Kills moyens par game, écart avec la ligne Betby (vert = le joueur finit en dessous) et rentabilité de l'Under.">
-   <Tab cols="1.3fr .45fr .7fr .8fr .8fr" head={["Champion","Games","Kills moy.","vs ligne","Under"]} rows={S.champs.slice(0,80).map(r=>[r.n,r.c,r.avg.toFixed(1),r.diff==null?"–":{v:(r.diff>0?"+":"")+r.diff.toFixed(1),s:{color:r.diff<0?"#22C55E":"#EF4444"}},R(r.u)])}/></Sec>}
-  <Sec t="Ligne principale Betby : écart avec PrizePicks" d="Seulement la ligne principale de chaque joueur par map. La section « Bets potentiels » plus haut compte toutes les lignes.">
-   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:1,background:"rgba(255,255,255,.07)"}}>
-    {[["Under",S.edgeU],["Over",S.edgeO]].map(([l,rows])=><div key={l} style={{background:"#0f141d"}}><div style={{padding:"8px 12px 0",fontSize:13,fontWeight:700,color:"#fff"}}>{l}</div>
-     <Tab cols="1fr .5fr .7fr .8fr" head={["Écart","Lignes","Réussite","ROI"]} rows={rows.filter(r=>r.n).map(r=>[r.l,r.n,r.n?pct(r.wr):"–",R(r)])}/></div>)}</div></Sec>
-  <Sec t="Joueurs" d={"Moyenne par map, kills par round et écart moyen avec la ligne Betby. Vert = il finit en général sous sa ligne."}>
-   <Tab cols="1.2fr .45fr .6fr .55fr .7fr .7fr" head={["Joueur","Maps",st==="hs"?"HS":"Kills","K/R","vs ligne","Under"]} rows={S.players.slice(0,60).map(r=>[r.n,r.c,r.avg.toFixed(1),r.kpr?r.kpr.toFixed(2):"–",r.diff==null?"–":{v:(r.diff>0?"+":"")+r.diff.toFixed(1),s:{color:r.diff<0?"#22C55E":"#EF4444"}},R(r.u)])}/></Sec>
-  {(g==="CS2"||g==="Valorant")&&<Sec t="Équipes" d="Les équipes qui jouent le plus de rounds par map : leurs joueurs ont plus de kills, risque pour l'Under.">
-   <Tab cols="1.4fr .5fr .8fr .6fr" head={["Équipe","Maps","Rounds / map","OT"]} rows={S.teams.slice(0,60).map(r=>[r.t,r.n,r.avg.toFixed(1),r.ot])}/></Sec>}
+   {(()=>{const LG=(t,sz=22)=>{const u=findLogo(lidx,t,g);return u?<img src={u} alt="" style={{width:sz,height:sz,objectFit:"contain",flexShrink:0}}/>:<span style={{width:sz,height:sz,borderRadius:5,background:teamColors(t)[0],color:"#0B0E13",fontSize:9,fontWeight:800,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{teamAbbr(t).slice(0,3)}</span>;};
+    const row=(on,onClick,left,right,k)=><button key={k} onClick={onClick} aria-current={on} style={{display:"flex",alignItems:"center",gap:9,width:"100%",padding:"9px 12px",border:"none",borderTop:"1px solid "+SP.ln,background:on?SP.pn2:"transparent",boxShadow:on?"inset 3px 0 0 "+SP.ac:"none",color:SP.fg,cursor:"pointer",textAlign:"left"}}>{left}<span style={{marginLeft:"auto",fontSize:12,color:SP.mu,fontFamily:SP.mono}}>{right}</span></button>;
+    const q=cutNorm(exQ);
+    if(ex==="matchs"){const M=(today||[]).filter(m=>GNORM(m.game)===g);if(!today)return <div style={{padding:12,color:SP.dm,fontSize:12.5}}>…</div>;if(!M.length)return <div style={{padding:12,color:SP.dm,fontSize:12.5}}>Aucun match aujourd'hui</div>;
+     const by={};M.forEach(m=>{(by[m.tour||"Autres"]=by[m.tour||"Autres"]||[]).push(m);});
+     return Object.entries(by).map(([t,l])=><div key={t}><div style={{padding:"7px 12px",fontSize:11.5,fontWeight:800,color:SP.mu,borderTop:"1px solid "+SP.ln,background:SP.bg}}>{t}</div>
+      {l.sort((a,b)=>a.t-b.t).map(m=>{const [A,B]=Object.values(m.teams);const on=openM===m.pair;const hh=new Date(m.t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+       return <div key={m.pair}>{row(on,()=>setOpenM(on?null:m.pair),<span style={{display:"flex",alignItems:"center",gap:6,minWidth:0}}>{LG(A,20)}<b style={{fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{teamAbbr(A)}</b><span style={{color:SP.dm,fontSize:11}}>vs</span><b style={{fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{teamAbbr(B)}</b>{LG(B,20)}</span>,hh,m.pair)}
+        {on&&[A,B].map(t=><div key={t}><div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px 4px 20px",fontSize:11.5,fontWeight:800,color:SP.mu}}>{LG(t,14)}{t}</div>
+         {Object.values(m.players).filter(p=>teamKey(p.team)===teamKey(t)).map(p=>row(scope==="joueur"&&ent===p.pkey,()=>{setScope("joueur");setEnt(p.pkey);},<span style={{paddingLeft:8,fontSize:13,fontWeight:700}}>{p.name}</span>,p.cuts["1+2"]!=null?"M1-2 "+p.cuts["1+2"]:p.cuts["3"]!=null?"M3 "+p.cuts["3"]:"",p.pkey))}</div>)}</div>;})}</div>);}
+    const L=(ex==="joueurs"?lists.joueur:ex==="equipes"?lists.equipe:lists.tournoi)||[];const sc=ex==="joueurs"?"joueur":ex==="equipes"?"equipe":"tournoi";
+    const tm={};rows.forEach(x=>{tm[x.pkey]=x.team;});
+    const F2=L.filter(([k,l])=>!q||cutNorm(l).includes(q));if(!F2.length)return <div style={{padding:12,color:SP.dm,fontSize:12.5}}>Aucune donnée saisie</div>;
+    return F2.slice(0,80).map(([k,l])=>{const nm=l.replace(/ \(\d+\)$/,""),n=(l.match(/\((\d+)\)$/)||[])[1];
+     return row(scope===sc&&ent===k,()=>{setScope(sc);setEnt(k);},<span style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>{sc==="joueur"?LG(tm[k]||"",20):sc==="equipe"?LG(k,20):null}<b style={{fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nm}</b>{sc==="joueur"&&<span style={{fontSize:11.5,color:SP.dm,whiteSpace:"nowrap"}}>{tm[k]}</span>}</span>,n?n+" maps":"",k);});})()}
+  </aside>
+  <div className="spm-main">
+  <section style={card}>
+   <div style={{display:"flex",gap:2,borderBottom:"1px solid "+SP.ln,padding:"0 6px",overflowX:"auto"}}>{[["kills","Kills"],...(g==="CS2"?[["hs","Headshots"]]:[]),...(isRounds?[["kr","K/R"]]:[])].map(([k,l])=><button key={k} onClick={()=>setStat(k)} style={{border:"none",background:"none",color:stat===k?"#fff":SP.mu,fontWeight:700,fontSize:13,padding:"11px 9px",cursor:"pointer",boxShadow:stat===k?"inset 0 -2px 0 #fff":"none",whiteSpace:"nowrap"}}>{l}</button>)}
+    <span style={{flex:1}}/><button onClick={()=>setFOpen(v=>!v)} style={{alignSelf:"center",height:30,padding:"0 12px",borderRadius:8,border:"1px solid "+(nF?SP.ac:SP.ln),background:nF?"rgba(91,141,239,.15)":SP.pn2,color:"#fff",fontWeight:700,fontSize:12.5,cursor:"pointer",whiteSpace:"nowrap"}}>Filtres{nF?" · "+nF:""}</button></div>
+   {fOpen&&<div style={{padding:"4px 12px 10px",borderBottom:"1px solid "+SP.ln,display:"flex",flexDirection:"column",gap:9,background:SP.pn2}}>
+    {[["Période",[chip(F.period==="all","Tout",()=>setF(f=>({...f,period:"all"}))),chip(F.period==="30","30 jours",()=>setF(f=>({...f,period:"30"})))]],
+      ["Maps",[10,20,50,999].map(n=>chip(F.n===n,n>=999?"Toutes":n+" dern.",()=>setF(f=>({...f,n})),"n"+n))],
+      ["Suggérés",[["noot","Sans OT"],["pick","Son pick"],["decider","Decider"],["ct","Départ CT"]].filter(([k])=>isRounds||!["noot","ct"].includes(k)).map(([k,l])=>chip(F.sugg.includes(k),l,()=>togS(k),k))],
+      ["Carte",maps.map(m=>chip(F.map===m,m,()=>setFx("map",m),"m"+m,hit(base.filter(x=>x.map===m&&pass(x,"map")))))],
+      ["Map n°",[1,2,3].map(n=>chip(F.no===n,"Map "+n,()=>setFx("no",n),"no"+n,hit(base.filter(x=>x.map_no===n&&pass(x,"no")))))],
+      ["Adversaire",opps.map(o=>chip(F.opp===o,o,()=>setFx("opp",o),"o"+o,hit(base.filter(x=>x.opp===o&&pass(x,"opp")))))],
+      ["Écart PP ≥",[0,.5,1,1.5,2].map(e=>chip(F.edge===e,e?"+"+e:"Tout",()=>setF(f=>({...f,edge:e})),"e"+e))],
+      ["Cote ≥",[1,1.7,1.8,1.9].map(o=>chip(F.odds===o,o===1?"Tout":o.toFixed(2),()=>setF(f=>({...f,odds:o})),"c"+o))]].map(([t,c])=><div key={t}><div style={{fontSize:11,fontWeight:800,color:SP.mu,margin:"6px 0 5px"}}>{t}</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{c}</div></div>)}
+    {nF>0&&<button onClick={()=>setF({period:"all",n:20,sugg:[],map:null,no:null,opp:null,edge:0,odds:1})} style={{alignSelf:"flex-start",border:"none",background:"none",color:SP.ac,fontWeight:700,fontSize:12.5,cursor:"pointer",padding:0}}>Tout effacer</button>}
+   </div>}
+   <div style={{display:"flex",alignItems:"center",gap:12,padding:12}}>
+    <div style={{minWidth:0,flex:1}}><div style={{fontSize:18,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{scope==="global"?"Tous les joueurs":scope==="joueur"?((L[0]||base[0]||{}).player||((today||[]).flatMap(m=>Object.values(m.players)).find(p=>p.pkey===ent)||{}).name||ent||"–"):ent||"–"}</div>
+     <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>{seg([["under","Under"],["over","Over"]],side,v=>{setSide(v);setCell(null);})}{scope==="joueur"&&lastLine&&<span style={{fontFamily:SP.mono,fontSize:12,padding:"5px 8px",borderRadius:7,background:SP.pn2,border:"1px solid "+SP.ln}}>dernière ligne {lineOf(lastLine)}</span>}</div></div>
+    <div style={{textAlign:"right"}}><div style={{fontSize:10.5,fontWeight:800,color:SP.mu,letterSpacing:.5}}>RÉUSSITE {side==="under"?"UNDER":"OVER"}</div><div style={{fontFamily:SP.mono,fontSize:24,fontWeight:700,color:hc(h)}}>{h==null?"–":h.toFixed(0)+" %"}</div><div style={{fontSize:11,color:SP.dm}}>{withLine.length} maps avec ligne</div></div></div>
+   <div style={{display:"flex",gap:6,padding:"0 12px 12px",overflowX:"auto"}}>
+    {kpi("MOY.",avg==null?"–":stat==="kr"?avg.toFixed(2):avg.toFixed(1))}{kpi("ROI",r==null?"–":(r>0?"+":"")+r.toFixed(0)+"%",pc(r))}{kpi("MAPS",String(L.length))}
+    {isRounds&&kpi("K/R",(()=>{const a=L.filter(x=>x.rounds);return a.length?(a.reduce((t,x)=>t+x.kills,0)/a.reduce((t,x)=>t+x.rounds,0)).toFixed(2):"–";})())}
+    {g==="CS2"&&kpi("HS %",(()=>{const k=L.reduce((t,x)=>t+(x.kills||0),0);return k?Math.round(L.reduce((t,x)=>t+(x.hs||0),0)/k*100)+"%":"–";})())}
+    {isRounds&&kpi("OT",String(L.filter(x=>x.ot).length))}</div>
+   <div style={{padding:"0 8px 4px"}}>{chart||<div style={{padding:20,textAlign:"center",color:SP.dm,fontSize:13}}>Aucune map avec ces filtres</div>}</div>
+   <div style={{display:"flex",gap:12,flexWrap:"wrap",padding:"4px 12px 12px",fontSize:11.5,color:SP.mu,fontWeight:700}}>{scope==="joueur"?<><span><i style={{display:"inline-block",width:10,height:10,borderRadius:2,background:SP.ov,marginRight:5}}/>Au-dessus</span><span><i style={{display:"inline-block",width:10,height:10,borderRadius:2,background:SP.un,marginRight:5}}/>En dessous</span><span><i style={{display:"inline-block",width:10,height:10,borderRadius:2,background:SP.li,marginRight:5}}/>Ligne Betby</span><span><i style={{display:"inline-block",width:10,height:10,borderRadius:2,background:SP.ac,marginRight:5}}/>Cut PP / map</span></>:<span>Résultat moins ligne Betby, par map et par joueur</span>}</div>
+  </section>
+  <section style={card}>{H("Écart × cote",EI.length+" bets",<span style={{fontSize:11.5,color:SP.mu,fontWeight:700,padding:"2px 8px",borderRadius:20,background:SP.pn2}}>{side==="under"?"Under":"Over"}</span>)}
+   {best&&<div style={{margin:"10px 12px 0",padding:"8px 10px",borderRadius:9,background:"rgba(47,184,104,.1)",border:"1px solid rgba(47,184,104,.3)",fontSize:12.5}}>Meilleure case : <b>écart {EB[best.i][1]>50?"+"+EB[best.i][0]+" et +":"+"+EB[best.i][0]+" à "+EB[best.i][1]}</b>, cote <b>{OB[best.j][2]}</b> · <b style={{color:SP.ov}}>{(best.c.roi>0?"+":"")+best.c.roi.toFixed(0)} %</b> sur {best.c.n} bets</div>}
+   <div style={{overflowX:"auto",padding:"10px 8px 6px"}}><table style={{width:"100%",borderCollapse:"separate",borderSpacing:4,minWidth:420,color:SP.fg}}>
+    <thead><tr><th style={{fontSize:10.5,color:SP.mu,textAlign:"left",fontWeight:800,padding:"0 4px"}}>Écart \ cote</th>{OB.map(o=><th key={o[2]} style={{fontSize:10.5,color:SP.mu,fontWeight:800}}>{o[2]}</th>)}<th style={{fontSize:10.5,color:"#fff",fontWeight:800}}>Total</th></tr></thead>
+    <tbody>{EB.map((e,i)=>{const rowAll=cellOf(grid[i].flat());return <tr key={i}><td style={{fontSize:12,fontWeight:800,whiteSpace:"nowrap",padding:"0 4px"}}>{e[1]>50?"+"+e[0]+" et +":"+"+e[0]+" à "+e[1]}</td>
+     {grid[i].map((a,j)=>{const c=cellOf(a);const weak=c.n<20;const on=cell&&cell[0]===i&&cell[1]===j;const al=Math.min(.6,Math.abs(c.roi)/35);
+      return <td key={j}><button onClick={()=>setCell(on?null:[i,j])} disabled={!c.n} aria-pressed={!!on} title={c.n+" bets · "+c.w+" gagnés"} style={{width:"100%",minWidth:62,border:on?"2px solid #fff":"1px solid transparent",borderRadius:8,padding:"6px 2px",cursor:c.n?"pointer":"default",
+       background:!c.n?"#161B23":weak?"#1E242E":c.roi>0?"rgba(47,184,104,"+(.14+al)+")":"rgba(226,72,61,"+(.14+al)+")",color:!c.n?SP.dm:weak?SP.mu:"#fff",textAlign:"center"}}>
+       <div style={{fontFamily:SP.mono,fontWeight:700,fontSize:13.5}}>{c.n?(c.roi>0?"+":"")+c.roi.toFixed(0)+"%":"–"}</div>{c.n>0&&<div style={{fontSize:10,opacity:.8}}>{c.n} · {c.wr.toFixed(0)}%</div>}</button></td>;})}
+     <td><div style={{textAlign:"center",borderRadius:8,padding:"6px 2px",background:SP.pn2}}><div style={{fontFamily:SP.mono,fontWeight:700,fontSize:13,color:rowAll.n?pc(rowAll.roi):SP.dm}}>{rowAll.n?(rowAll.roi>0?"+":"")+rowAll.roi.toFixed(0)+"%":"–"}</div><div style={{fontSize:10,color:SP.dm}}>{rowAll.n}</div></div></td></tr>;})}
+     <tr><td style={{fontSize:12,fontWeight:800,padding:"0 4px"}}>Total</td>{OB.map((o,j)=>{const c=cellOf(grid.map(r=>r[j]).flat());return <td key={j}><div style={{textAlign:"center",borderRadius:8,padding:"6px 2px",background:SP.pn2}}><div style={{fontFamily:SP.mono,fontWeight:700,fontSize:13,color:c.n?pc(c.roi):SP.dm}}>{c.n?(c.roi>0?"+":"")+c.roi.toFixed(0)+"%":"–"}</div><div style={{fontSize:10,color:SP.dm}}>{c.n}</div></div></td>;})}
+      {(()=>{const c=cellOf(EI);return <td><div style={{textAlign:"center",borderRadius:8,padding:"6px 2px",background:"#2A3240"}}><div style={{fontFamily:SP.mono,fontWeight:700,fontSize:13,color:c.n?pc(c.roi):SP.dm}}>{c.n?(c.roi>0?"+":"")+c.roi.toFixed(0)+"%":"–"}</div><div style={{fontSize:10,color:SP.dm}}>{c.n}</div></div></td>;})()}</tr></tbody></table></div>
+   <div style={{padding:"0 12px 10px",fontSize:11.5,color:SP.dm}}>Grisé : moins de 20 bets. Touche une case pour la simuler.</div>
+  </section>
+  <section style={card}>{H("Bankroll simulée",cell?"case choisie":"toutes les cases")}
+   <div style={{display:"flex",gap:6,padding:"12px 12px 0",flexWrap:"wrap",alignItems:"center"}}>{kpi("PROFIT",(bk>0?"+":"")+Math.round(bk)+" $",pc(bk))}{kpi("BETS",String(simL.length),null,simL.length?Math.round(simL.filter(x=>x.res==="won").length/simL.length*100)+" %":null)}{kpi("PIRE CHUTE",dd?"-"+Math.round(dd)+" $":"–","#E8A93A")}
+    <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:SP.mu}}>Mise <input type="number" inputMode="decimal" value={unit} onChange={e=>setUnit(Number(e.target.value)||0)} style={{width:70,height:30,borderRadius:7,border:"1px solid "+SP.ln,background:SP.pn2,color:"#fff",padding:"0 6px",fontFamily:SP.mono}}/> $</label></div>
+   {pts.length>2&&(()=>{const W=320,Hh=90,mx=Math.max(unit,...pts.map(Math.abs));return <svg viewBox={"0 0 "+W+" "+Hh} style={{width:"100%",height:"auto",display:"block",padding:"8px 12px 12px",boxSizing:"border-box"}} role="img" aria-label="Courbe de bankroll simulée"><line x1="0" x2={W} y1={Hh/2} y2={Hh/2} stroke={SP.ln} strokeDasharray="3 3"/><polyline fill="none" stroke={bk>=0?SP.ov:SP.un} strokeWidth="2" points={pts.map((v,i)=>(i/(pts.length-1)*W).toFixed(1)+","+(Hh/2-v/mx*(Hh/2-6)).toFixed(1)).join(" ")}/></svg>;})()}
+  </section>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:10}}>
+   <section style={card}>{H(isRounds?"Par carte":"Par game","réussite "+(side==="under"?"Under":"Over"))}
+    <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>{maps.map(m=>{const a=base.filter(x=>x.map===m&&pass(x,"map"));const hh=hit(a);return {m,a,hh};}).filter(x=>x.a.length).sort((a,b)=>b.a.length-a.a.length).map(({m,a,hh})=>
+     <button key={m} onClick={()=>setFx("map",m)} style={{display:"grid",gridTemplateColumns:"72px 1fr 46px",alignItems:"center",gap:8,border:"none",background:"none",padding:0,cursor:"pointer",color:SP.fg,textAlign:"left",outline:F.map===m?"2px solid "+SP.ac:"none",borderRadius:6}}>
+      <b style={{fontSize:12.5}}>{m}</b><span style={{height:22,background:SP.pn2,borderRadius:6,position:"relative",overflow:"hidden"}}><span style={{position:"absolute",inset:"0 auto 0 0",width:Math.max(4,hh||0)+"%",background:hh==null?SP.dm:hh>=55?SP.ov:hh>=45?SP.li:SP.un,borderRadius:6}}/><span style={{position:"absolute",left:8,top:3,fontFamily:SP.mono,fontSize:11,fontWeight:700,color:"#0B0E13"}}>{a.length} maps</span></span>
+      <b style={{fontFamily:SP.mono,fontSize:12.5,textAlign:"right",color:hc(hh)}}>{hh==null?"–":hh.toFixed(0)+"%"}</b></button>)}</div></section>
+   <section style={card}>{H("Contexte","réussite "+(side==="under"?"Under":"Over"))}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,padding:12}}>{ctx.map(([t,f])=>{const a=all.filter(f);const hh=hit(a);return <div key={t} style={{background:SP.pn2,borderRadius:9,padding:"9px 6px",textAlign:"center"}}><div style={{fontSize:11,fontWeight:800,color:SP.mu}}>{t}</div><div style={{fontFamily:SP.mono,fontSize:18,fontWeight:700,color:hc(hh)}}>{hh==null?"–":hh.toFixed(0)+"%"}</div><div style={{fontSize:10.5,color:SP.dm}}>{a.length} maps</div></div>;})}</div></section>
+  </div>
+  {scope!=="joueur"&&<section style={card}>{H(scope==="equipe"?"Joueurs de l'équipe":"Joueurs","réussite "+(side==="under"?"Under":"Over"))}
+   {(()=>{const o={};all.forEach(x=>{(o[x.pkey]=o[x.pkey]||[]).push(x);});return Object.values(o).sort((a,b)=>b.length-a.length).slice(0,25).map((a,i)=>{const hh=hit(a),rr=roi(a);
+    return <button key={i} onClick={()=>{setScope("joueur");setEnt(a[0].pkey);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"9px 12px",border:"none",borderTop:"1px solid "+SP.ln,background:"transparent",color:SP.fg,cursor:"pointer",textAlign:"left"}}>
+     <b style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a[0].player} <span style={{fontWeight:600,color:SP.dm,fontSize:12}}>{a[0].team}</span></b><span style={{fontFamily:SP.mono,fontSize:12,color:SP.mu}}>{a.length}</span>
+     <span style={{fontFamily:SP.mono,fontSize:13,fontWeight:700,width:46,textAlign:"right",color:hc(hh)}}>{hh==null?"–":hh.toFixed(0)+"%"}</span><span style={{fontFamily:SP.mono,fontSize:13,fontWeight:700,width:52,textAlign:"right",color:pc(rr)}}>{rr==null?"–":(rr>0?"+":"")+rr.toFixed(0)+"%"}</span></button>;});})()}</section>}
+  <section style={card}>{H("Dernières maps",L.length+" maps")}
+   <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5,fontVariantNumeric:"tabular-nums",minWidth:520,color:SP.fg}}>
+    <thead><tr>{["Date",scope!=="joueur"?"Joueur":null,"Adv.","Carte","Map",isRounds?"Rounds":null,stat==="kr"?"K/R":hs?"HS":"Kills","Ligne","PP","Cote",""].filter(x=>x!==null).map((t,i)=><th key={i} style={{fontSize:10.5,color:SP.mu,fontWeight:800,textAlign:i?"right":"left",padding:"8px 10px",borderBottom:"1px solid "+SP.ln}}>{t}</th>)}</tr></thead>
+    <tbody>{L.slice(0,25).map((x,i)=>{const l=lineOf(x),v=val(x),pp=ppOf(x),w=l==null?null:side==="under"?v<l:v>l;const td={textAlign:"right",padding:"8px 10px",borderBottom:"1px solid "+SP.ln};
+     return <tr key={i}><td style={{...td,textAlign:"left"}}>{x.day.slice(5).split("-").reverse().join("/")}</td>{scope!=="joueur"&&<td style={td}>{x.player}</td>}<td style={td}>{x.opp}</td><td style={td}>{x.map}</td><td style={td}>{x.map_no}</td>
+      {isRounds&&<td style={td}>{x.rounds||"–"}{x.ot&&<b style={{color:"#E8A93A",marginLeft:4}}>OT</b>}</td>}<td style={{...td,fontWeight:800,color:"#fff"}}>{v==null?"–":stat==="kr"?v.toFixed(2):v}</td><td style={td}>{l??"–"}</td><td style={td}>{pp==null?"–":pp.toFixed(2).replace(/\.?0+$/,"")}</td><td style={td}>{(side==="under"?ouOf(x):ooOf(x))?.toFixed(2)??"–"}</td>
+      <td style={td}>{w==null?"":<span style={{fontSize:11,fontWeight:800,padding:"2px 7px",borderRadius:5,background:w?"rgba(47,184,104,.15)":"rgba(226,72,61,.15)",color:w?SP.ov:SP.un}}>{v>l?"OVER":"UNDER"}</span>}</td></tr>;})}</tbody></table></div>
+  </section>
+  </div>
+  </div>
  </div>);
 }
 
