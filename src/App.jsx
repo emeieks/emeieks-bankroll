@@ -5250,8 +5250,8 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
  const prevDay=rsDay(new Date(new Date(m.day+"T12:00:00").getTime()-864e5));
  const inMatch=b=>{const k=cutNorm(b.player);if(keysT[k])return true;if(Object.keys(keysT).some(x=>x.length>=4&&(x.includes(k)||k.includes(x))&&k.length>=4))return true;return !!(b.team&&(same(b.team,A)||same(b.team,B)));};
  const mineB=(bets||[]).filter(b=>{if(GNORM(b.game)!==G)return false;if(!inMatch(b))return false;const bt=rsTs(b.datetime);if(isNaN(bt))return false;
-  // même jour (date locale) que le match, ou la veille ; ou dans la fenêtre autour de l'heure du match
-  const bd=rsDay(new Date(bt));if(bd===m.day||bd===prevDay)return true;return !isNaN(mStart)&&bt>=mStart-24*3600e3&&bt<=mStart+5*3600e3;}).concat((bets||[]).filter(b=>{const x=bm[String(b.id)];return x&&x.team1&&x.team1!=="__exclu__";})).filter((b,i,arr)=>arr.findIndex(y=>y.id===b.id)===i).filter(b=>{
+  // lien = même joueur/équipe + même date que le match
+  return rsDay(new Date(bt))===m.day||String(b.datetime||"").slice(0,10)===m.day;}).concat((bets||[]).filter(b=>{const x=bm[String(b.id)];return x&&x.team1&&x.team1!=="__exclu__";})).filter((b,i,arr)=>arr.findIndex(y=>y.id===b.id)===i).filter(b=>{
   // choix manuel prioritaire : rattaché à un match précis (bet_match) ou retiré de ce match
   const x=bm[String(b.id)];if(x&&x.team1==="__exclu__")return x.team2!==mk&&x.team2!==m.key;
   if(x&&x.team1){const ok=[x.team1,x.team2].every(t=>same(t,A)||same(t,B));const dd=x.day?Math.abs(new Date(x.day+"T12:00:00Z")-d0):0;return ok&&dd<=864e5;}
