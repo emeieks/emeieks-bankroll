@@ -5160,7 +5160,11 @@ function ScorePaste({i,roster,A,B,setP,hsOn}){const [st,setSt]=useState("");cons
  const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
  const apply=t=>{const r=parseBoard(t,roster,A,B);const n=Object.keys(r).length;Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu");};
  const onPaste=async e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith("image/"));if(!it)return;e.preventDefault();setSt("Lecture de l'image…");
-  try{const T=await loadTess();const {data}=await T.recognize(it.getAsFile(),"eng");apply(data.text);setTxt("");}catch(err){setSt("Erreur : "+String(err.message||err).slice(0,60));}};
+  try{const T=await loadTess();const f=it.getAsFile();const url=URL.createObjectURL(f);const im=await new Promise((ok,ko)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=()=>ko(new Error("image illisible"));x.src=url;});
+   const cv=document.createElement("canvas");const z=im.width<1400?2:1;cv.width=im.width*z;cv.height=im.height*z;const cx=cv.getContext("2d");cx.drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+   const px=cx.getImageData(0,0,cv.width,cv.height),d=px.data;let sum=0;for(let p=0;p<d.length;p+=4)sum+=d[p]*.3+d[p+1]*.59+d[p+2]*.11;const dark=sum/(d.length/4)<128;
+   for(let p=0;p<d.length;p+=4){let g=d[p]*.3+d[p+1]*.59+d[p+2]*.11;if(dark)g=255-g;d[p]=d[p+1]=d[p+2]=g;}cx.putImageData(px,0,0);
+   const {data}=await T.recognize(cv.toDataURL("image/png"),"eng");apply(data.text);setTxt("");}catch(err){setSt("Erreur : "+String(err.message||err).slice(0,60));}};
  return <div style={{padding:"8px 10px",borderBottom:"1px solid var(--ln)"}}>
   <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={2} placeholder="Colle ici le scoreboard (texte copié ou capture d'écran Ctrl+V) : kills et HS se remplissent seuls" aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px dashed var(--ln)",borderRadius:2,padding:6,fontSize:12.5,resize:"vertical"}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
