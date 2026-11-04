@@ -113,7 +113,7 @@ async function supaInsertNewBets(bets){
 function betRow({id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,datetime,isHeadshot,isLive,mapTag,profit,tournament,splits,updatedAt,ppMapType,ppLine,ppEdge},now){
  const s=datetime?String(datetime):datetime;
  return {id,player,description,overUnder,odds,stake,bookmaker,status,game,league,role,team,
-  datetime:s&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)?s.slice(0,16):datetime,isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
+  datetime:s&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)?s.slice(0,16):(normalizeDT(datetime,id)||datetime),isHeadshot:!!isHeadshot,isLive:!!isLive,mapTag,profit,tournament,
   splits:splits&&splits.length>0?JSON.stringify(splits):null,updatedAt:updatedAt||now,archived:false,
   pp_map_type:ppMapType||null,pp_line:ppLine||null,pp_edge:ppEdge!=null?ppEdge:null};
 }
@@ -841,11 +841,10 @@ function toDateKey(dt){
 const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
 const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 function nowDT(){
- // Toujours utiliser l'heure de Montréal (America/Toronto)
+ // heure locale de l'appareil (l'ancien passage par toLocaleString "en-CA" donnait "NaN-NaN-NaN" sur iPhone)
  const p=v=>String(v).padStart(2,"0");
- const now=new Date();
- const mtl=new Date(now.toLocaleString("en-CA",{timeZone:"America/Toronto"}));
- return mtl.getFullYear()+"-"+p(mtl.getMonth()+1)+"-"+p(mtl.getDate())+"T"+p(mtl.getHours())+":"+p(mtl.getMinutes());
+ const d=new Date();
+ return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
 }
 const localYMD=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 function calcProfit(status,stake,odds){
@@ -5582,7 +5581,7 @@ const MRk={};(D.mr||[]).forEach(x=>MRk[x.key]=x);const MPk={};(D.mp||[]).forEach
  const MPs=(D.mp||[]).filter(x=>{if(!allK.has(x.match_key+"|"+x.map_no))return false;const mm=MRk[x.match_key];if(!mm||GNORM(mm.game)!==g)return false;if(F.period==="30"&&new Date((mm.day||"")+"T12:00:00").getTime()<Date.now()-30*864e5)return false;
   if(F.sugg.includes("ot")&&!x.ot)return false;if(F.sugg.includes("noot")&&x.ot)return false;if(F.map&&(x.map_name||"?")!==F.map)return false;if(F.no&&x.map_no!==F.no)return false;if(scope==="tournoi")return tourOf(x.match_key)===ent;if(scope==="equipe")return teamKey(mm.team1)===teamKey(ent)||teamKey(mm.team2)===teamKey(ent);return true;});
  const prI={};(D.pr||[]).forEach(r=>{if(GNORM(r.game)===g)prI[r.pkey+"|"+r.map_no+"|"+r.day]=r;});
- const myL=(bets||[]).filter(b=>GNORM(b.game)===g&&(b.status==="won"||b.status==="lost"||b.status==="void")&&(!!b.isHeadshot)===hs).map(b=>{const n=parseInt(String(b.mapTag||"").replace(/\D/g,""))||1;const t=rsTs(b.datetime);if(isNaN(t))return null;const k=cutNorm(b.player);const d=rsDay(new Date(t)),d2=rsDay(new Date(t+864e5));
+ const myL=(bets||[]).filter(b=>GNORM(b.game)===g&&(b.status==="won"||b.status==="lost"||b.status==="void")).map(b=>{const n=parseInt(String(b.mapTag||"").replace(/\D/g,""))||1;const t=rsTs(b.datetime);if(isNaN(t))return null;const k=cutNorm(b.player);const d=rsDay(new Date(t)),d2=rsDay(new Date(t+864e5));
   const r=prI[k+"|"+n+"|"+d]||prI[k+"|"+n+"|"+d2];return r?{b,r,x:rowOf[r.match_key+"|"+r.map_no+"|"+r.pkey]}:null;}).filter(o=>o&&o.x&&inScope(o.x)&&pass(o.x));
  const stB=a=>{const s2=a.filter(o=>o.b.status!=="void");const w=s2.filter(o=>o.b.status==="won").length;return {n:a.length,w,wr:s2.length?w/s2.length*100:null,p:a.reduce((t,o)=>t+(Number(betProfit(o.b))||0),0)};};
  const myAll=stB(myL);const myBy=f=>{const o={};myL.forEach(x=>{const k=f(x);(o[k]=o[k]||[]).push(x);});return o;};
