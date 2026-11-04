@@ -5147,6 +5147,23 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets}){
   {rows&&!matches.length&&<div style={{fontSize:12.5,color:"var(--dm)",textAlign:"center",padding:12}}>Aucun match ce jour-là.</div>}</>}
  </div>);
 }
+
+// ── Coller un scoreboard (texte copié ou capture d'écran HLTV / vlr) → kills + HS ──
+let _tessP=null;const loadTess=()=>_tessP||(_tessP=new Promise((ok,ko)=>{if(window.Tesseract)return ok(window.Tesseract);const sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";sc.onload=()=>ok(window.Tesseract);sc.onerror=()=>{_tessP=null;ko(new Error("lecture d'image indisponible"));};document.head.appendChild(sc);}));
+function parseBoard(txt,roster,A,B){const flat=" "+String(txt).replace(/[\r\n\t]+/g," ").replace(/\s+/g," ")+" ";const low=flat.toLowerCase();const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+ const hits=[];[A,B].forEach(t=>Object.entries(roster[t]).forEach(([k,n])=>{const nm=String(n).toLowerCase();const tries=[nm,nm.replace(/0/g,"o"),nm.slice(0,6),nm.slice(0,4)].filter((x,i,a)=>x.length>=3&&a.indexOf(x)===i);
+  for(const q of tries){const re=new RegExp("(^|[^a-z0-9])"+esc(q),"g");let mm,best=-1;while((mm=re.exec(low))){best=mm.index+mm[1].length;break;}if(best>=0){hits.push({k,pos:best,len:q.length});return;}}}));
+ hits.sort((a,b)=>a.pos-b.pos);const out={};
+ hits.forEach((h,j)=>{const seg=flat.slice(h.pos+h.len,j+1<hits.length?hits[j+1].pos:h.pos+220);const mm=seg.match(/(\d{1,2})\s*[\(\[{]\s*(\d{1,2})\s*[\)\]}]/);if(mm&&+mm[2]<=+mm[1]){out[h.k]={k:mm[1],h:mm[2]};return;}
+  const vv=seg.match(/(\d{1,2})\s*[\/|lI]\s*(\d{1,2})\s*[\/|lI]\s*(\d{1,2})/);if(vv)out[h.k]={k:vv[1],h:""};});return out;}
+function ScorePaste({i,roster,A,B,setP,hsOn}){const [st,setSt]=useState("");const [txt,setTxt]=useState("");
+ const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
+ const apply=t=>{const r=parseBoard(t,roster,A,B);const n=Object.keys(r).length;Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu");};
+ const onPaste=async e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith("image/"));if(!it)return;e.preventDefault();setSt("Lecture de l'image…");
+  try{const T=await loadTess();const {data}=await T.recognize(it.getAsFile(),"eng");apply(data.text);setTxt("");}catch(err){setSt("Erreur : "+String(err.message||err).slice(0,60));}};
+ return <div style={{padding:"8px 10px",borderBottom:"1px solid var(--ln)"}}>
+  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={2} placeholder="Colle ici le scoreboard (texte copié ou capture d'écran Ctrl+V) : kills et HS se remplissent seuls" aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px dashed var(--ln)",borderRadius:2,padding:6,fontSize:12.5,resize:"vertical"}}/>
+  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
 function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
  const [A,B]=Object.values(m.teams);const G=GNORM(m.game);const rounds=G==="CS2"||G==="Valorant";const pool=G==="CS2"?CS_MAPS:G==="Valorant"?VAL_MAPS:null;const hsOn=G==="CS2";const lol=G==="LoL";
  const [mapImg,setMapImg]=useState(MAP_IMG||{});useEffect(()=>{loadMapImg().then(setMapImg);},[]);
@@ -5235,6 +5252,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
  const others=(bets||[]).filter(b=>GNORM(b.game)===G&&keysT[cutNorm(b.player)]&&!mineB.some(x=>x.b.id===b.id)).filter(b=>{const bt=new Date(String(b.datetime||"")).getTime();return !isNaN(bt)&&Math.abs(bt-(isNaN(mStart)?d0:mStart))<5*864e5;})
   .sort((a,b)=>String(b.datetime).localeCompare(String(a.datetime)));
  const wrong=mineB.filter(x=>x.b.status!=="pending"&&x.res&&x.res!==x.b.status);
+ const shown=mineB.filter(x=>x.b.status==="pending"||(x.res&&x.res!==x.b.status));   // paris en cours + paris réglés en erreur
  const delMatch=async()=>{try{const pair=m.key.split("|")[0];const vs=[-1,0,1].map(n=>pair+"|"+rsDay(new Date(new Date(m.day+"T12:00:00").getTime()+n*864e5)));if(!vs.includes(mk))vs.push(mk);
   const L="("+vs.map(encodeURIComponent).join(",")+")";
   await cloudDb("player_results?match_key=in."+L,{method:"DELETE",prefer:"return=minimal"});await cloudDb("map_results?match_key=in."+L,{method:"DELETE",prefer:"return=minimal"});
@@ -5268,6 +5286,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
     <div className="lol-w">{[A,B].map(t=><button key={t} aria-pressed={x.win===t} onClick={()=>upd(i,"win",t)}>Victoire {teamAbbr(t)}</button>)}</div>
    </div>}
    {!lol&&<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>Scoreboard</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
+   {!lol&&isO&&<ScorePaste i={i} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn}/>}
    {!lol&&isO&&<div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>K</th>{hsOn&&<th>HS</th>}<th>K/R</th>{hsOn&&<th>HS %</th>}</tr></thead><tbody>
     {[A,B].map(t=><React.Fragment key={t}><tr className="team"><td colSpan={hsOn?5:3}>{t}</td></tr>
      {Object.entries(roster[t]).map(([k,n])=>{const v=pk[(i+1)+"|"+k]||{};const kv=val(i,k,"k");return <tr key={k}><td>{n}</td>
@@ -5283,18 +5302,20 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
    <b style={{color:"#fff"}}>{wrong.length} pari{wrong.length>1?"s":""} ne correspond{wrong.length>1?"ent":""} pas au résultat saisi</b>
    {wrong.map(x=><div key={x.b.id}>· {capName(x.b.player)} Map {x.n} {x.b.overUnder==="Over"?"Over":"Under"} {x.line}{x.b.isHeadshot?" HS":""} : enregistré <b>{LB[x.b.status]||x.b.status}</b>, le résultat ({x.v}) dit <b>{LB[x.res]}</b></div>)}
    <div style={{marginTop:4,color:"#D7DEE6"}}>Vérifie ta saisie ou le pari. « Régler » corrige le pari selon le résultat saisi.</div></div>}
-  <section className="bx"><div className="bx-h">Tes paris sur ce match<span style={{color:"var(--dm)",fontWeight:600}}>{mineB.length}</span>
+  <section className="bx"><div className="bx-h">Paris en cours sur ce match<span style={{color:"var(--dm)",fontWeight:600}}>{shown.length}</span>
    <button onClick={()=>setAddOpen(v=>!v)} style={{marginLeft:"auto",border:"1px solid var(--ln)",borderRadius:2,background:"transparent",color:"var(--lk)",fontWeight:700,fontSize:12,padding:"4px 8px",cursor:"pointer"}}>{addOpen?"Fermer":"+ Ajouter"}</button>
-   {mineB.some(x=>!(bm[String(x.b.id)]&&bm[String(x.b.id)].team1&&bm[String(x.b.id)].team1!=="__exclu__"))&&<button onClick={()=>mineB.forEach(x=>link(x.b,true))} title="Confirme que ces paris sont bien sur ce match : ils y restent attachés pour de bon" style={{marginLeft:6,border:"1px solid var(--wn)",borderRadius:2,background:"transparent",color:"var(--wn)",fontWeight:700,fontSize:12,padding:"4px 8px",cursor:"pointer"}}>Valider</button>}
+   {mineB.some(x=>!(bm[String(x.b.id)]&&bm[String(x.b.id)].team1&&bm[String(x.b.id)].team1!=="__exclu__"))&&<button onClick={()=>shown.forEach(x=>link(x.b,true))} title="Confirme que ces paris sont bien sur ce match : ils y restent attachés pour de bon" style={{marginLeft:6,border:"1px solid var(--wn)",borderRadius:2,background:"transparent",color:"var(--wn)",fontWeight:700,fontSize:12,padding:"4px 8px",cursor:"pointer"}}>Valider</button>}
    {todo.length>0&&<button className="go" style={{marginLeft:6}} onClick={settle}>Régler {todo.length}</button>}</div>
    <div style={{padding:"6px 12px",fontSize:12,color:"var(--dm)",borderBottom:"1px solid var(--ln)"}}>🔒 = rattaché pour de bon (alerte du bot, ajout ou validation) · <span style={{color:"#E8A93A"}}>auto</span> = deviné avec l'heure du pari, à valider</div>
    {addOpen&&<div style={{padding:"6px 10px 10px",borderBottom:"1px solid var(--ln)"}}><div style={{fontSize:12,color:"var(--dm)",margin:"2px 0 6px"}}>Paris de ces joueurs dans les 5 jours autour du match. Touche un pari pour le rattacher à ce match.</div>
     {others.length?others.slice(0,30).map(b=><button key={b.id} onClick={()=>link(b,true)} style={{display:"flex",width:"100%",gap:8,alignItems:"center",padding:"7px 8px",marginBottom:4,border:"1px solid var(--ln)",borderRadius:2,background:"var(--rw)",color:"var(--fg)",cursor:"pointer",textAlign:"left",fontSize:13}}>
      <b>{capName(b.player)}</b><span style={{color:"#FBBF24",fontSize:11.5,fontWeight:700}}>{b.mapTag}</span><span style={{color:"var(--sf)"}}>{b.description}</span><span style={{marginLeft:"auto",color:"var(--dm)",fontSize:12}}>{String(b.datetime||"").slice(5,16).replace("T"," ")}</span></button>)
      :<div style={{fontSize:12.5,color:"var(--dm)"}}>Aucun autre pari trouvé.</div>}</div>}
-   {mineB.length>0&&<>
+   {wrong.length>0&&<div role="alert" style={{margin:8,padding:"8px 10px",borderRadius:4,background:"rgba(239,68,68,.15)",border:"1px solid #EF4444",color:"#FCA5A5",fontSize:12.5,fontWeight:700}}>⚠ {wrong.length} pari(s) réglé(s) ne correspondent pas au résultat : {wrong.map(x=>capName(x.b.player)+" "+(x.b.overUnder==="Over"?"O":"U")+x.line+" (enregistré "+x.b.status+", réel "+x.res+")").join(" · ")}</div>}
+   {shown.length===0&&<div style={{padding:"10px 12px",fontSize:12.5,color:"var(--dm)"}}>Aucun pari en cours sur ce match.</div>}
+   {shown.length>0&&<>
    <div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>Map</th><th>Pari</th><th>Cote</th><th>Réel</th><th></th></tr></thead><tbody>
-    {mineB.map(x=>{const lk=bm[String(x.b.id)];const sure=lk&&lk.team1&&lk.team1!=="__exclu__";return <tr key={x.b.id}><td>{capName(x.b.player)} {sure?<span title="Rattaché pour de bon">🔒</span>:<span style={{fontSize:10,fontWeight:700,color:"#E8A93A"}}>auto</span>}</td><td>{x.n}{x.ot?<span className="pill" style={{background:"var(--ot)",color:"#2A1C05",marginLeft:4}}>OT</span>:null}</td>
+    {shown.map(x=>{const lk=bm[String(x.b.id)];const sure=lk&&lk.team1&&lk.team1!=="__exclu__";return <tr key={x.b.id}><td>{capName(x.b.player)} {sure?<span title="Rattaché pour de bon">🔒</span>:<span style={{fontSize:10,fontWeight:700,color:"#E8A93A"}}>auto</span>}</td><td>{x.n}{x.ot?<span className="pill" style={{background:"var(--ot)",color:"#2A1C05",marginLeft:4}}>OT</span>:null}</td>
      <td>{x.b.overUnder==="Over"?"O":"U"} {isNaN(x.line)?"?":x.line}{x.b.isHeadshot?" HS":""}</td><td>{Number(x.b.odds).toFixed(2)}</td><td style={{fontWeight:700,color:"#fff"}}>{x.v==null?"–":x.v}</td>
      <td><span className={"pill "+(x.res||"wait")}>{x.res?LB[x.res]:"…"}</span>{x.b.status!=="pending"&&x.res&&x.res!==x.b.status&&<span title={"Enregistré : "+x.b.status} style={{color:"var(--ls)",marginLeft:4,fontWeight:900}}>!</span>}
       <button onClick={()=>link(x.b,false)} aria-label={"Retirer ce pari du match"} title="Ce pari n'est pas sur ce match" style={{marginLeft:6,border:"none",background:"none",color:"var(--dm)",cursor:"pointer",fontSize:14}}>×</button></td></tr>;})}</tbody></table></div></>}
