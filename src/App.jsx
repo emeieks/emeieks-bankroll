@@ -5459,8 +5459,8 @@ function StatsPM({bets=[],allPlayers={},teamLogos={}}){
       ["Cote ≥",[1,1.7,1.8,1.9].map(o=>chip(F.odds===o,o===1?"Tout":o.toFixed(2),()=>setF(f=>({...f,odds:o})),"c"+o))]].map(([t,c])=><div key={t}><div style={{fontSize:11,fontWeight:800,color:SP.mu,margin:"6px 0 5px"}}>{t}</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{c}</div></div>)}
     {nF>0&&<button onClick={()=>setF({period:"all",n:20,sugg:[],map:null,no:null,opp:null,edge:0,odds:1})} style={{alignSelf:"flex-start",border:"none",background:"none",color:SP.ac,fontWeight:700,fontSize:12.5,cursor:"pointer",padding:0}}>Tout effacer</button>}
    </div>}
-   <div style={{display:"flex",alignItems:"center",gap:12,padding:12}}>
-    <div style={{minWidth:0,flex:1}}><div style={{fontSize:18,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{scope==="global"?"Tous les joueurs":scope==="joueur"?((L[0]||base[0]||{}).player||((today||[]).flatMap(m=>Object.values(m.players)).find(p=>p.pkey===ent)||{}).name||ent||"–"):ent||"–"}</div>
+   <div style={{display:"flex",alignItems:"center",gap:12,padding:12,flexWrap:"wrap"}}>
+    <div style={{minWidth:180,flex:1}}><div style={{fontSize:18,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{scope==="global"?"Tous les joueurs":scope==="joueur"?((L[0]||base[0]||{}).player||((today||[]).flatMap(m=>Object.values(m.players)).find(p=>p.pkey===ent)||{}).name||ent||"–"):ent||"–"}</div>
      <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>{seg([["under","Under"],["over","Over"]],side,v=>{setSide(v);setCell(null);})}{scope==="joueur"&&lastLine&&<span style={{fontFamily:SP.mono,fontSize:12,padding:"5px 8px",borderRadius:7,background:SP.pn2,border:"1px solid "+SP.ln}}>dernière ligne {lineOf(lastLine)}</span>}</div></div>
     <div style={{textAlign:"right"}}><div style={{fontSize:10.5,fontWeight:800,color:SP.mu,letterSpacing:.5}}>RÉUSSITE {side==="under"?"UNDER":"OVER"}</div><div style={{fontFamily:SP.mono,fontSize:24,fontWeight:700,color:hc(h)}}>{h==null?"–":h.toFixed(0)+" %"}</div><div style={{fontSize:11,color:SP.dm}}>{withLine.length} maps avec ligne</div></div></div>
    <div style={{display:"flex",gap:6,padding:"0 12px 12px",overflowX:"auto"}}>
@@ -8532,7 +8532,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  `}</style>
 
- <div className="app-main" style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
+ <style>{`@media (min-width:900px){.app-main.wide{max-width:1280px!important;padding-left:24px!important;padding-right:24px!important}}`}</style>
+ <div className={"app-main"+(view==="players"?" wide":"")} style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
 
 
  {/* Toast */}
