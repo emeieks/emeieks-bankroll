@@ -5184,8 +5184,15 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
  const cutOf=(k,i,f)=>{const pl=m.players[k];return null;};
  // paris du match
  const keysT={};[A,B].forEach(t=>Object.keys(roster[t]).forEach(k=>keysT[k]=t));const d0=new Date(m.day+"T12:00:00Z").getTime();
- const mineB=(bets||[]).filter(b=>{if(GNORM(b.game)!==G)return false;const k=cutNorm(b.player);if(!keysT[k])return false;const d=new Date(String(b.datetime||"").slice(0,10)+"T12:00:00Z").getTime();if(isNaN(d)||d<d0-2*864e5||d>d0+864e5)return false;
-  if(b.team&&!same(b.team,A)&&!same(b.team,B))return false;const x=bm[String(b.id)];if(x&&x.team1){const ok=[x.team1,x.team2].every(t=>same(t,A)||same(t,B));const dd=x.day?Math.abs(new Date(x.day+"T12:00:00Z")-d0):0;if(!ok||dd>864e5)return false;}return true;})
+ // un pari appartient à CE match s'il a été posé entre 24 h avant son début et 5 h après (live) — l'équipe rejoue souvent le lendemain
+ const mStart=rsTs(m.start);
+ const mineB=(bets||[]).filter(b=>{if(GNORM(b.game)!==G)return false;const k=cutNorm(b.player);if(!keysT[k])return false;const bt=new Date(String(b.datetime||"")).getTime();
+  if(isNaN(bt))return false;if(!isNaN(mStart)){if(bt<mStart-24*3600e3||bt>mStart+5*3600e3)return false;}else{const d=new Date(String(b.datetime).slice(0,10)+"T12:00:00Z").getTime();if(d<d0-864e5||d>d0+864e5)return false;}
+  return true;}).concat((bets||[]).filter(b=>{const x=bm[String(b.id)];return x&&x.team1&&x.team1!=="__exclu__";})).filter((b,i,arr)=>arr.findIndex(y=>y.id===b.id)===i).filter(b=>{
+  // choix manuel prioritaire : rattaché à un match précis (bet_match) ou retiré de ce match
+  const x=bm[String(b.id)];if(x&&x.team1==="__exclu__")return x.team2!==m.key;
+  if(x&&x.team1){const ok=[x.team1,x.team2].every(t=>same(t,A)||same(t,B));const dd=x.day?Math.abs(new Date(x.day+"T12:00:00Z")-d0):0;return ok&&dd<=864e5;}
+  if(b.team&&!same(b.team,A)&&!same(b.team,B))return false;return true;})
   .map(b=>{const n=parseInt(String(b.mapTag||"").replace(/\D/g,""))||1;const k=cutNorm(b.player);const hs=!!b.isHeadshot;const v=val(n-1,k,hs?"h":"k");const line=parseFloat((String(b.description||"").match(/\d+(?:[.,]\d+)?/)||[""])[0].replace(",","."));const ov=b.overUnder==="Over";
    const res=v==null||isNaN(line)||n>maps.length?null:v===line?"void":(ov?v>line:v<line)?"won":"lost";return {b,n,v,line,res,ot:maps[n-1]?isOT(maps[n-1]):false};}).sort((x,y)=>x.n-y.n);
  const todo=mineB.filter(x=>x.res&&x.res!==x.b.status);
@@ -5194,6 +5201,14 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
   cloudDb("bet_match?on_conflict=id",{method:"POST",body:todo.map(x=>({id:String(x.b.id),game:m.game,team1:A,team2:B,day:m.day,actual:x.v,ot:!!x.ot,updated_at:new Date().toISOString()})),prefer:"resolution=merge-duplicates"}).catch(()=>{});
   setMsg("✓ "+ch.length+" pari(s) réglé(s)");};
  const LB={won:"GAGNÉ",lost:"PERDU",void:"REMB."};
+ const [addOpen,setAddOpen]=useState(false);const [delStep,setDelStep]=useState(0);
+ const link=async(b,on)=>{const row=on?{id:String(b.id),game:m.game,team1:A,team2:B,day:m.day,start:m.start?String(m.start):null,updated_at:new Date().toISOString()}:{id:String(b.id),team1:"__exclu__",team2:m.key,updated_at:new Date().toISOString()};
+  setBm(o=>({...o,[row.id]:row}));try{await cloudDb("bet_match?on_conflict=id",{method:"POST",body:[row],prefer:"resolution=merge-duplicates"});}catch(e){setMsg("Erreur Supabase : "+String(e.message||e).slice(0,80));}};
+ const others=(bets||[]).filter(b=>GNORM(b.game)===G&&keysT[cutNorm(b.player)]&&!mineB.some(x=>x.b.id===b.id)).filter(b=>{const bt=new Date(String(b.datetime||"")).getTime();return !isNaN(bt)&&Math.abs(bt-(isNaN(mStart)?d0:mStart))<5*864e5;})
+  .sort((a,b)=>String(b.datetime).localeCompare(String(a.datetime)));
+ const wrong=mineB.filter(x=>x.b.status!=="pending"&&x.res&&x.res!==x.b.status);
+ const delMatch=async()=>{try{await cloudDb("player_results?match_key=eq."+encodeURIComponent(m.key),{method:"DELETE"});await cloudDb("map_results?match_key=eq."+encodeURIComponent(m.key),{method:"DELETE"});await cloudDb("match_results?key=eq."+encodeURIComponent(m.key),{method:"DELETE"});onClose();}
+  catch(e){setMsg("Erreur : "+String(e.message||e).slice(0,90));setDelStep(0);}};
  return(<>
   <div className="mh"><button className="back" onClick={onClose} aria-label="Retour">‹</button>
    <div className="tn">{L(A,m.game,48)}<span>{A}</span></div>
@@ -5233,11 +5248,25 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
    {W.length>0&&(isO||lol)&&<div className="warn" style={{marginTop:8}}>{W.map((w,j)=><div key={j}>⚠ {w}</div>)}</div>}
    {!lol&&isO&&i<maps.length-1&&<button className="next" onClick={()=>setOpen(i+1)}>Map {i+2} ›</button>}
   </section>;})}
-  {mineB.length>0&&<section className="bx"><div className="bx-h">Tes paris sur ce match<span style={{color:"var(--dm)",fontWeight:600}}>{mineB.length}</span>{todo.length>0&&<button className="go" onClick={settle}>Régler {todo.length}</button>}</div>
+  {wrong.length>0&&<div role="alert" style={{background:"rgba(226,86,79,.12)",borderLeft:"3px solid var(--ls)",padding:"9px 12px",fontSize:13,color:"#F5B4AF",lineHeight:1.45}}>
+   <b style={{color:"#fff"}}>{wrong.length} pari{wrong.length>1?"s":""} ne correspond{wrong.length>1?"ent":""} pas au résultat saisi</b>
+   {wrong.map(x=><div key={x.b.id}>· {capName(x.b.player)} Map {x.n} {x.b.overUnder==="Over"?"Over":"Under"} {x.line}{x.b.isHeadshot?" HS":""} : enregistré <b>{LB[x.b.status]||x.b.status}</b>, le résultat ({x.v}) dit <b>{LB[x.res]}</b></div>)}
+   <div style={{marginTop:4,color:"#D7DEE6"}}>Vérifie ta saisie ou le pari. « Régler » corrige le pari selon le résultat saisi.</div></div>}
+  <section className="bx"><div className="bx-h">Tes paris sur ce match<span style={{color:"var(--dm)",fontWeight:600}}>{mineB.length}</span>
+   <button onClick={()=>setAddOpen(v=>!v)} style={{marginLeft:"auto",border:"1px solid var(--ln)",borderRadius:2,background:"transparent",color:"var(--lk)",fontWeight:700,fontSize:12,padding:"4px 8px",cursor:"pointer"}}>{addOpen?"Fermer":"+ Ajouter"}</button>
+   {todo.length>0&&<button className="go" style={{marginLeft:6}} onClick={settle}>Régler {todo.length}</button>}</div>
+   {addOpen&&<div style={{padding:"6px 10px 10px",borderBottom:"1px solid var(--ln)"}}><div style={{fontSize:12,color:"var(--dm)",margin:"2px 0 6px"}}>Paris de ces joueurs dans les 5 jours autour du match. Touche un pari pour le rattacher à ce match.</div>
+    {others.length?others.slice(0,30).map(b=><button key={b.id} onClick={()=>link(b,true)} style={{display:"flex",width:"100%",gap:8,alignItems:"center",padding:"7px 8px",marginBottom:4,border:"1px solid var(--ln)",borderRadius:2,background:"var(--rw)",color:"var(--fg)",cursor:"pointer",textAlign:"left",fontSize:13}}>
+     <b>{capName(b.player)}</b><span style={{color:"#FBBF24",fontSize:11.5,fontWeight:700}}>{b.mapTag}</span><span style={{color:"var(--sf)"}}>{b.description}</span><span style={{marginLeft:"auto",color:"var(--dm)",fontSize:12}}>{String(b.datetime||"").slice(5,16).replace("T"," ")}</span></button>)
+     :<div style={{fontSize:12.5,color:"var(--dm)"}}>Aucun autre pari trouvé.</div>}</div>}
+   {mineB.length>0&&<>
    <div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>Map</th><th>Pari</th><th>Cote</th><th>Réel</th><th></th></tr></thead><tbody>
     {mineB.map(x=><tr key={x.b.id}><td>{capName(x.b.player)}</td><td>{x.n}{x.ot?<span className="pill" style={{background:"var(--ot)",color:"#2A1C05",marginLeft:4}}>OT</span>:null}</td>
      <td>{x.b.overUnder==="Over"?"O":"U"} {isNaN(x.line)?"?":x.line}{x.b.isHeadshot?" HS":""}</td><td>{Number(x.b.odds).toFixed(2)}</td><td style={{fontWeight:700,color:"#fff"}}>{x.v==null?"–":x.v}</td>
-     <td><span className={"pill "+(x.res||"wait")}>{x.res?LB[x.res]:"…"}</span>{x.b.status!=="pending"&&x.res&&x.res!==x.b.status&&<span title={"Enregistré : "+x.b.status} style={{color:"var(--ot)",marginLeft:4}}>!</span>}</td></tr>)}</tbody></table></div></section>}
+     <td><span className={"pill "+(x.res||"wait")}>{x.res?LB[x.res]:"…"}</span>{x.b.status!=="pending"&&x.res&&x.res!==x.b.status&&<span title={"Enregistré : "+x.b.status} style={{color:"var(--ls)",marginLeft:4,fontWeight:900}}>!</span>}
+      <button onClick={()=>link(x.b,false)} aria-label={"Retirer ce pari du match"} title="Ce pari n'est pas sur ce match" style={{marginLeft:6,border:"none",background:"none",color:"var(--dm)",cursor:"pointer",fontSize:14}}>×</button></td></tr>)}</tbody></table></div></>}
+   {!mineB.length&&!addOpen&&<div style={{padding:"10px 12px",fontSize:12.5,color:"var(--dm)"}}>Aucun pari relié à ce match.</div>}
+  </section>
   {(()=>{// lignes Betby au-dessus du seuil pour ce match, réglées avec ce que tu viens de taper
    const live=[];maps.forEach((x,i)=>[A,B].forEach(t=>Object.entries(roster[t]).forEach(([k])=>{const kv=val(i,k,"k");if(kv==null)return;live.push({pkey:k,map_no:i+1,day:m.day,team:t,match_key:m.key,kills:kv,hs:val(i,k,"h"),ot:isOT(x)});})));
    const P=potJoin(pots.filter(x=>hsOn||x.stat!=="headshots"),live).map(x=>({...x,hs:x.stat==="headshots",n:x.player,ot:x.r.ot})).filter(x=>x.res!=="void");P.sort((a,b)=>a.map-b.map||b.e-a.e);
@@ -5247,6 +5276,10 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
      {P.map((p,i)=><tr key={i}><td>{p.n}</td><td>{p.map}{p.ot?<span className="pill" style={{background:"var(--ot)",color:"#2A1C05",marginLeft:4}}>OT</span>:null}</td><td>{p.side==="under"?"U":"O"} {p.L}{p.hs?" HS":""}</td><td>{p.o.toFixed(2)}</td><td>+{Number(p.e.toFixed(2))}</td><td style={{fontWeight:700,color:"#fff"}}>{p.v}</td><td><span className={"pill "+p.res}>{LB[p.res]}</span></td></tr>)}</tbody></table></div></section>;})()}
   {msg&&<div className="msg" role="status" style={{color:msg.startsWith("✓")?"var(--wn)":"var(--ls)"}}>{msg}</div>}
   <button className="save" onClick={save} disabled={busy||!nMaps}>{busy?"…":"Enregistrer le match"}</button>
+  {delStep===0?<button onClick={()=>setDelStep(1)} style={{height:38,border:"1px solid var(--ln)",borderRadius:3,background:"transparent",color:"var(--ls)",fontWeight:700,fontSize:13.5,cursor:"pointer"}}>Effacer ce match</button>
+   :<div style={{display:"flex",gap:6,alignItems:"center",padding:"8px 10px",background:"rgba(226,86,79,.12)",borderRadius:3}}><span style={{flex:1,fontSize:13,color:"#F5B4AF"}}>Effacer le score, les maps et les stats joueurs de ce match ? Tes paris ne sont pas touchés.</span>
+    <button onClick={()=>setDelStep(0)} style={{height:32,padding:"0 10px",border:"1px solid var(--ln)",borderRadius:2,background:"transparent",color:"var(--sf)",cursor:"pointer"}}>Annuler</button>
+    <button onClick={delMatch} style={{height:32,padding:"0 10px",border:"none",borderRadius:2,background:"var(--ls)",color:"#fff",fontWeight:700,cursor:"pointer"}}>Effacer</button></div>}
  </>);
 }
 
@@ -5258,7 +5291,10 @@ const potOf=(x,hs)=>{const G=GNORM(x.game);const T=POT_MIN[G];if(!T)return [];co
 // relie une ligne pot_bets au résultat saisi du joueur sur cette map (même joueur, même n° de map, jour ±1, mêmes équipes)
 function potJoin(pots,pr){const idx={};pr.forEach(x=>{(idx[x.pkey+"|"+x.map_no]=idx[x.pkey+"|"+x.map_no]||[]).push(x);});const out=[];const seen=new Set();
  pots.forEach(x=>{const C=idx[x.pkey+"|"+x.map]||[];const d=new Date(String(x.day)+"T12:00:00Z").getTime();
-  const r=C.find(c=>Math.abs(new Date(c.day+"T12:00:00Z")-d)<=864e5&&(!x.match||!c.team||String(x.match).split(/\s+vs\.?\s+/i).some(t=>{const a=teamKey(t),b=teamKey(c.team);return a&&b&&(a.includes(b)||b.includes(a));})));
+  // mêmes DEUX équipes (la clé du match = équipes triées | jour) : évite le match du lendemain de la même équipe
+  const pairOk=c=>{const P=String(c.match_key||"").split("|")[0].split("~").filter(Boolean);if(!x.match||P.length<2)return true;const T=String(x.match).replace(/\s*MAPS?\s*\d.*$/i,"").split(/\s+vs\.?\s+/i).map(teamKey);
+   return T.length===2&&T.every(t=>P.some(q=>t&&q&&(t===q||t.includes(q)||q.includes(t))));};
+  const r=C.find(c=>Math.abs(new Date(c.day+"T12:00:00Z")-d)<=864e5&&pairOk(c));
   if(!r)return;const v=x.stat==="headshots"?r.hs:r.kills;if(v==null)return;const k=x.pkey+"|"+x.stat+"|"+x.side+"|"+x.map+"|"+x.line+"|"+r.match_key;if(seen.has(k))return;seen.add(k);
   const L=Number(x.line);out.push({...x,v,L,o:Number(x.odds),e:Number(x.edge),r,res:v===L?"void":(x.side==="under"?v<L:v>L)?"won":"lost"});});return out;}
 function PotGrid({pr=[],g,st}){
@@ -5331,36 +5367,55 @@ function ResultStats({bets=[]}){
    mapRows,teams,players,champs,ppA:ppA.length,ppUnder,edgeU:edgeRows("u"),edgeO:edgeRows("o"),pkN:pk.length,pkW,ctN:ct.length,ctW,myN:myB.length,myP:myB.reduce((t,x)=>t+(x.b.profit||0),0),nB:B.length};},[D,g,st,oMin,bets]);
  if(!D)return <div style={{fontSize:12,color:"#6b7280"}}>…</div>;
  if(D.err)return <div style={{fontSize:12,color:"#fca5a5"}}>Lance resultats.sql dans Supabase · {D.err.slice(0,80)}</div>;
- const pc=v=>v>0?"#22C55E":v<0?"#EF4444":"#9ca3af";const sg=v=>(v>0?"+":"")+v.toFixed(1);const pct=v=>v.toFixed(0)+" %";
- const Card=({t,v,s,c})=><div style={{flex:"1 1 30%",minWidth:96,padding:"9px 10px",borderRadius:3,background:"#36414E",border:"1px solid #46525F"}}><div style={{fontSize:11,color:"#8b93a7"}}>{t}</div><div style={{fontSize:22,fontWeight:800,color:c||"#fff",fontFamily:"'Barlow Condensed',Arial,sans-serif"}}>{v}</div>{s&&<div style={{fontSize:10.5,color:"#6b7280"}}>{s}</div>}</div>;
- const Tab=({cols,head,rows})=><div style={{marginTop:8,borderRadius:3,background:"#36414E",border:"1px solid #46525F",overflow:"hidden"}}>
-  <div style={{display:"grid",gridTemplateColumns:cols,gap:6,padding:"8px 10px",fontSize:11,fontWeight:700,color:"#A9B5C2",background:"#232A33",textTransform:"uppercase",letterSpacing:.5,fontFamily:"'Barlow Condensed',Arial,sans-serif"}}>{head.map((h,i)=><span key={i} style={{textAlign:i?"right":"left"}}>{h}</span>)}</div>
-  {rows.map((r,j)=><div key={j} style={{display:"grid",gridTemplateColumns:cols,gap:6,padding:"8px 10px",borderTop:"1px solid #46525F",fontSize:13,color:"#D7DEE6",fontFamily:"Barlow,Arial,sans-serif"}}>{r.map((c,i)=><span key={i} style={{textAlign:i?"right":"left",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",...(c&&c.s?c.s:{})}}>{c&&c.v!==undefined?c.v:c}</span>)}</div>)}
-  {!rows.length&&<div style={{padding:10,fontSize:12,color:"#6b7280"}}>Pas encore de données.</div>}</div>;
- const R=f=>f.n?{v:sg(f.roi)+" %",s:{color:pc(f.roi),fontWeight:800}}:"–";const U=v=>({v:(v>0?"+":"")+v.toFixed(1)+" u",s:{color:pc(v),fontWeight:800}});const $=v=>({v:(v>0?"+":"")+Math.round(v)+" $",s:{color:pc(v),fontWeight:800}});
- const SECS=g==="LoL"?[["resume","Résumé"],["potentiels","Potentiels"],["champions","Champions"],["ecart","Écart PP"],["joueurs","Joueurs"]]:g==="Dota2"?[["resume","Résumé"],["potentiels","Potentiels"],["ecart","Écart PP"],["joueurs","Joueurs"]]:[["resume","Résumé"],["potentiels","Potentiels"],["rounds","Rounds"],["cartes","Cartes"],["ecart","Écart PP"],["joueurs","Joueurs"],["equipes","Équipes"]];
- return(<div>
-  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{[["CS2","CS2"],["Valorant","Valo"],["LoL","LoL"],["Dota2","Dota"]].map(([k,l])=>rsChip(g===k,l,()=>setG(k)))}<span style={{width:6}}/>{rsChip(st==="kills","Kills",()=>setSt("kills"))}{g==="CS2"&&rsChip(st==="hs","HS",()=>setSt("hs"))}</div>
-  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:6}}>{[1,1.6,1.7,1.8,1.9].map(o=>rsChip(oMin===o,o===1?"Toutes cotes":"Cote ≥ "+o,()=>setOMin(o),"o"+o))}</div>
-  <div style={{display:"flex",gap:4,overflowX:"auto",margin:"10px 0 4px",paddingBottom:2}}>{SECS.map(([k,l])=>rsChip(sec===k,l,()=>setSec(k),"s"+k,"#3b82f6"))}</div>
-  {sec==="resume"&&<>
-   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
-    <Card t="Matchs · maps" v={S.matches+" · "+S.maps}/><Card t="Overtime" v={S.nOT+" · "+pct(S.otp)} c="#fbbf24"/><Card t="Rounds / map" v={S.avgR?S.avgR.toFixed(1):"–"}/>
-    <Card t="Kills / round (map)" v={S.kpr?S.kpr.toFixed(2):"–"}/><Card t="Full Under (1 u)" v={S.fu.n?sg(S.fu.p)+" u":"–"} s={S.fu.n?pct(S.fu.wr)+" · "+S.fu.n+" lignes":""} c={pc(S.fu.p)}/><Card t="Full Over (1 u)" v={S.fo.n?sg(S.fo.p)+" u":"–"} s={S.fo.n?pct(S.fo.wr)+" · "+S.fo.n+" lignes":""} c={pc(S.fo.p)}/>
-    <Card t="Sous le cut PP" v={S.ppA?pct(S.ppUnder/S.ppA*100):"–"} s={S.ppA+" cuts"}/><Card t="Pick gagné" v={S.pkN?pct(S.pkW/S.pkN*100):"–"} s={S.pkN+" maps"}/><Card t="1re déf. gagne" v={S.ctN?pct(S.ctW/S.ctN*100):"–"} s={S.ctN+" maps"}/>
-    <Card t="Tes paris reliés" v={S.myN?((S.myP>0?"+":"")+Math.round(S.myP)+" $"):"–"} s={S.myN+" paris"} c={pc(S.myP)}/>
-   </div></>}
-  {sec==="rounds"&&<Tab cols="1fr .5fr .9fr .9fr .9fr" head={["Rounds","Maps","Full Under","Full Over","Tes paris"]} rows={S.rbRows.map(r=>[r.k,r.c,R(r.u),R(r.o),r.myN?$(r.my):"–"])}/>}
-  {sec==="cartes"&&<Tab cols="1fr .45fr .6fr .55fr .6fr .8fr .8fr" head={["Carte","Maps","Rounds","OT","K/R","Under","Tes paris"]} rows={S.mapRows.map(r=>[r.n,r.c,r.rd.toFixed(1),pct(r.ot),r.kpr?r.kpr.toFixed(2):"–",R(r.u),r.myN?$(r.my):"–"])}/>}
-  {sec==="ecart"&&<><div style={{fontSize:12,fontWeight:800,color:"#cbd5e1",marginTop:6}}>Under</div>
-   <Tab cols="1fr .5fr .7fr .8fr" head={["Écart","N","Réussite","ROI"]} rows={S.edgeU.map(r=>[r.l,r.n,r.n?pct(r.wr):"–",R(r)])}/>
-   <div style={{fontSize:12,fontWeight:800,color:"#cbd5e1",marginTop:10}}>Over</div>
-   <Tab cols="1fr .5fr .7fr .8fr" head={["Écart","N","Réussite","ROI"]} rows={S.edgeO.map(r=>[r.l,r.n,r.n?pct(r.wr):"–",R(r)])}/></>}
-  {sec==="joueurs"&&<Tab cols="1.2fr .45fr .6fr .6fr .8fr .8fr" head={["Joueur","Maps",st==="hs"?"HS moy.":"Kills moy.","K/R","vs ligne","Under"]} rows={S.players.slice(0,60).map(r=>[r.n,r.c,r.avg.toFixed(1),r.kpr?r.kpr.toFixed(2):"–",r.diff==null?"–":{v:(r.diff>0?"+":"")+r.diff.toFixed(1),s:{color:r.diff<0?"#22C55E":"#EF4444"}},R(r.u)])}/>}
-  {sec==="potentiels"&&<PotGrid pr={D.pr} g={g} st={st}/>}
-  {sec==="champions"&&<Tab cols="1.3fr .45fr .7fr .8fr .8fr" head={["Champion","Games","Kills moy.","vs ligne","Under"]} rows={S.champs.slice(0,80).map(r=>[r.n,r.c,r.avg.toFixed(1),r.diff==null?"–":{v:(r.diff>0?"+":"")+r.diff.toFixed(1),s:{color:r.diff<0?"#22C55E":"#EF4444"}},R(r.u)])}/>}
-  {sec==="equipes"&&<Tab cols="1.4fr .5fr .8fr .6fr" head={["Équipe","Maps","Rounds / map","OT"]} rows={S.teams.slice(0,60).map(r=>[r.t,r.n,r.avg.toFixed(1),r.ot])}/>}
-  <div style={{fontSize:11,color:"#6b7280",marginTop:8}}>{S.nB} lignes Betby avec résultat</div>
+ const pc=v=>v>0?"#6CC070":v<0?"#E2564F":"#A9B5C2";const sg=v=>(v>0?"+":"")+v.toFixed(1);const pct=v=>v.toFixed(0)+" %";
+ const F="Barlow,Arial,sans-serif",FC="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
+ // Une section = un titre, une phrase qui dit ce qu'on regarde, puis le contenu
+ const Sec=({t,d,children})=><section style={{background:"#36414E",borderRadius:3,overflow:"hidden",fontFamily:F}}>
+  <div style={{padding:"10px 12px",background:"#232A33"}}><div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{t}</div>{d&&<div style={{fontSize:12.5,color:"#A9B5C2",marginTop:2,lineHeight:1.35}}>{d}</div>}</div>{children}</section>;
+ const Big=({t,v,s,c,hint})=><div style={{padding:"12px 12px",background:"#36414E",minWidth:0}}><div style={{fontSize:11.5,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",color:"#7D8A98",fontFamily:FC}}>{t}</div>
+  <div style={{fontSize:30,fontWeight:800,lineHeight:1.05,color:c||"#fff",fontFamily:FC,marginTop:2}}>{v}</div>{s&&<div style={{fontSize:12,color:"#A9B5C2"}}>{s}</div>}{hint&&<div style={{fontSize:11.5,color:"#7D8A98",marginTop:4,lineHeight:1.3}}>{hint}</div>}</div>;
+ const Tab=({cols,head,rows})=><div style={{overflowX:"auto"}}><div style={{minWidth:360}}>
+  <div style={{display:"grid",gridTemplateColumns:cols,gap:6,padding:"7px 12px",fontSize:11,fontWeight:700,color:"#A9B5C2",background:"#2E3743",textTransform:"uppercase",letterSpacing:.5,fontFamily:FC}}>{head.map((h,i)=><span key={i} style={{textAlign:i?"right":"left"}}>{h}</span>)}</div>
+  {rows.map((r,j)=><div key={j} style={{display:"grid",gridTemplateColumns:cols,gap:6,padding:"8px 12px",borderTop:"1px solid #46525F",fontSize:13.5,color:"#D7DEE6",background:j%2?"#36414E":"#323C48",fontVariantNumeric:"tabular-nums"}}>{r.map((c,i)=><span key={i} style={{textAlign:i?"right":"left",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",...(c&&c.s?c.s:{})}}>{c&&c.v!==undefined?c.v:c}</span>)}</div>)}
+  {!rows.length&&<div style={{padding:12,fontSize:12.5,color:"#7D8A98"}}>Pas encore de données : saisis des matchs dans l'onglet Saisie.</div>}</div></div>;
+ const R=f=>f.n?{v:sg(f.roi)+" %",s:{color:pc(f.roi),fontWeight:700}}:"–";const $=v=>({v:(v>0?"+":"")+Math.round(v)+" $",s:{color:pc(v),fontWeight:700}});
+ const chip=(on,t,fn,k)=><button key={k||t} onClick={fn} aria-pressed={on} style={{height:30,padding:"0 11px",borderRadius:2,border:"1px solid "+(on?"#87A8DA":"#46525F"),background:on?"#3E4A58":"#323C48",color:on?"#fff":"#A9B5C2",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:F}}>{t}</button>;
+ const few=S.maps<20;
+ return(<div style={{display:"flex",flexDirection:"column",gap:12,fontFamily:F}}>
+  <div style={{display:"flex",flexDirection:"column",gap:6,background:"#2B3440",padding:10,borderRadius:3}}>
+   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:11.5,color:"#7D8A98",width:44}}>Jeu</span>{[["CS2","CS2"],["Valorant","Valorant"],["LoL","LoL"],["Dota2","Dota 2"]].map(([k,l])=>chip(g===k,l,()=>setG(k)))}</div>
+   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:11.5,color:"#7D8A98",width:44}}>Stat</span>{chip(st==="kills","Kills",()=>setSt("kills"))}{g==="CS2"&&chip(st==="hs","Headshots",()=>setSt("hs"))}</div>
+   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:11.5,color:"#7D8A98",width:44}}>Cote</span>{[1,1.6,1.7,1.8,1.9].map(o=>chip(oMin===o,o===1?"Toutes":"≥ "+o,()=>setOMin(o),"o"+o))}</div>
+  </div>
+  {few&&<div style={{padding:"9px 12px",borderLeft:"3px solid #E8A93A",background:"rgba(232,169,58,.08)",fontSize:12.5,color:"#F1D39B",lineHeight:1.4}}>Seulement {S.maps} map{S.maps>1?"s":""} saisie{S.maps>1?"s":""}. Les pourcentages bougeront beaucoup : il faut quelques centaines de lignes pour qu'ils veuillent dire quelque chose.</div>}
+  <Sec t="Vue d'ensemble" d={S.matches+" match"+(S.matches>1?"s":"")+" · "+S.maps+" map"+(S.maps>1?"s":"")+" saisies · "+S.nB+" lignes Betby avec résultat"}>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:1,background:"#46525F"}}>
+    <Big t="Tes paris" v={S.myN?((S.myP>0?"+":"")+Math.round(S.myP)+" $"):"–"} s={S.myN+" paris reliés à un résultat"} c={pc(S.myP)}/>
+    <Big t="Tout jouer en Under" v={S.fu.n?sg(S.fu.p)+" u":"–"} s={S.fu.n?pct(S.fu.wr)+" de réussite · "+S.fu.n+" lignes":""} c={pc(S.fu.p)} hint="Si tu avais pris l'Under de chaque ligne Betby, 1 unité par bet"/>
+    <Big t="Tout jouer en Over" v={S.fo.n?sg(S.fo.p)+" u":"–"} s={S.fo.n?pct(S.fo.wr)+" de réussite · "+S.fo.n+" lignes":""} c={pc(S.fo.p)} hint="Même chose côté Over"/>
+    <Big t="Sous le cut PrizePicks" v={S.ppA?pct(S.ppUnder/S.ppA*100):"–"} s={S.ppA+" cuts comparés"} hint="Part des joueurs qui finissent sous leur cut PP par map"/>
+    {(g==="CS2"||g==="Valorant")&&<Big t="Prolongations" v={S.maps?pct(S.otp):"–"} s={S.nOT+" map"+(S.nOT>1?"s":"")+" sur "+S.maps} c="#E8A93A" hint="Normal : environ 10 à 15 %"/>}
+    {(g==="CS2"||g==="Valorant")&&<Big t="Rounds par map" v={S.avgR?S.avgR.toFixed(1):"–"} s={S.kpr?S.kpr.toFixed(2)+" kills par round (10 joueurs)":""}/>}
+    <Big t="Le pick gagne" v={S.pkN?pct(S.pkW/S.pkN*100):"–"} s={S.pkN+" maps avec un pick"}/>
+    {(g==="CS2"||g==="Valorant")&&<Big t="Départ en défense gagne" v={S.ctN?pct(S.ctW/S.ctN*100):"–"} s={S.ctN+" maps"}/>}
+   </div>
+  </Sec>
+  <Sec t="Bets potentiels : écart × cote" d={"Toutes les lignes Betby au-dessus de ton seuil, jouées ou non. Chaque case : ROI, nombre de bets et réussite. En gris : moins de 30 bets, pas assez pour conclure."}>
+   <div style={{padding:"0 10px 10px"}}><PotGrid pr={D.pr} g={g} st={st}/></div></Sec>
+  {(g==="CS2"||g==="Valorant")&&<Sec t="Prolongations et nombre de rounds" d="On ne connaît le nombre de rounds qu'après la map : ce tableau mesure ce que te coûtent les maps longues, il ne sert pas à choisir un bet.">
+   <Tab cols="1.3fr .5fr .9fr .9fr .9fr" head={["Map jouée en","Maps","Tout Under","Tout Over","Tes paris"]} rows={S.rbRows.map(r=>[r.k==="OT"?"Prolongation":r.k==="≤ 20"?"20 rounds ou moins":"21 à 24 rounds",r.c,R(r.u),R(r.o),r.myN?$(r.my):"–"])}/></Sec>}
+  {(g==="CS2"||g==="Valorant")&&<Sec t="Par carte" d="Rounds moyens, part de prolongations, kills par round, rentabilité de l'Under et tes paris, carte par carte.">
+   <Tab cols="1.1fr .45fr .6fr .5fr .55fr .8fr .8fr" head={["Carte","Maps","Rounds","OT","K/R","Under","Tes paris"]} rows={S.mapRows.map(r=>[r.n,r.c,r.rd.toFixed(1),pct(r.ot),r.kpr?r.kpr.toFixed(2):"–",R(r.u),r.myN?$(r.my):"–"])}/></Sec>}
+  {g==="LoL"&&<Sec t="Par champion" d="Kills moyens par game, écart avec la ligne Betby (vert = le joueur finit en dessous) et rentabilité de l'Under.">
+   <Tab cols="1.3fr .45fr .7fr .8fr .8fr" head={["Champion","Games","Kills moy.","vs ligne","Under"]} rows={S.champs.slice(0,80).map(r=>[r.n,r.c,r.avg.toFixed(1),r.diff==null?"–":{v:(r.diff>0?"+":"")+r.diff.toFixed(1),s:{color:r.diff<0?"#6CC070":"#E2564F"}},R(r.u)])}/></Sec>}
+  <Sec t="Ligne principale Betby : écart avec PrizePicks" d="Seulement la ligne principale de chaque joueur par map. La section « Bets potentiels » plus haut compte toutes les lignes.">
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:1,background:"#46525F"}}>
+    {[["Under",S.edgeU],["Over",S.edgeO]].map(([l,rows])=><div key={l} style={{background:"#36414E"}}><div style={{padding:"8px 12px 0",fontSize:13,fontWeight:700,color:"#fff"}}>{l}</div>
+     <Tab cols="1fr .5fr .7fr .8fr" head={["Écart","Lignes","Réussite","ROI"]} rows={rows.map(r=>[r.l,r.n,r.n?pct(r.wr):"–",R(r)])}/></div>)}</div></Sec>
+  <Sec t="Joueurs" d={"Moyenne par map, kills par round et écart moyen avec la ligne Betby. Vert = il finit en général sous sa ligne."}>
+   <Tab cols="1.2fr .45fr .6fr .55fr .7fr .7fr" head={["Joueur","Maps",st==="hs"?"HS":"Kills","K/R","vs ligne","Under"]} rows={S.players.slice(0,60).map(r=>[r.n,r.c,r.avg.toFixed(1),r.kpr?r.kpr.toFixed(2):"–",r.diff==null?"–":{v:(r.diff>0?"+":"")+r.diff.toFixed(1),s:{color:r.diff<0?"#6CC070":"#E2564F"}},R(r.u)])}/></Sec>
+  {(g==="CS2"||g==="Valorant")&&<Sec t="Équipes" d="Les équipes qui jouent le plus de rounds par map : leurs joueurs ont plus de kills, risque pour l'Under.">
+   <Tab cols="1.4fr .5fr .8fr .6fr" head={["Équipe","Maps","Rounds / map","OT"]} rows={S.teams.slice(0,60).map(r=>[r.t,r.n,r.avg.toFixed(1),r.ot])}/></Sec>}
  </div>);
 }
 
