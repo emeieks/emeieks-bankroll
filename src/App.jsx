@@ -4190,7 +4190,7 @@ function Explorer({bets,allPlayers,initial=[],title,onClose,teamLogos={},bkPhoto
  const Card=({t,children,right})=><div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,marginTop:12,overflow:"hidden"}}>
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 14px 4px"}}><span style={{fontSize:15,fontWeight:800,color:"#F3F4F6"}}>{t}</span>{right}</div>{children}</div>;
  return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:490,background:"rgba(0,0,0,.8)",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"}}>
-  <div onClick={e=>e.stopPropagation()} style={{maxWidth:620,margin:"0 auto",minHeight:"100%",background:"#0B1220",padding:"calc(14px + env(safe-area-inset-top)) 14px calc(110px + env(safe-area-inset-bottom))",fontVariantNumeric:"tabular-nums",fontFamily:"Inter,system-ui,sans-serif"}}>
+  <div className="ex-sheet" onClick={e=>e.stopPropagation()} style={{maxWidth:620,margin:"0 auto",minHeight:"100%",background:"#0B1220",padding:"calc(14px + env(safe-area-inset-top)) 14px calc(110px + env(safe-area-inset-bottom))",fontVariantNumeric:"tabular-nums",fontFamily:"Inter,system-ui,sans-serif"}}>
    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
     <button onClick={onClose} aria-label="Fermer" style={{width:38,height:38,borderRadius:19,border:"none",background:"rgba(255,255,255,.07)",color:"#fff",cursor:"pointer",fontSize:16}}>✕</button>
     <div style={{fontSize:20,fontWeight:900,color:"#fff",flex:1,minWidth:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ctxF?"":title||"Explorer"}</div>
@@ -4229,10 +4229,12 @@ function Explorer({bets,allPlayers,initial=[],title,onClose,teamLogos={},bkPhoto
      <div style={{display:"flex",gap:6,margin:"0 0 4px"}}>{[["all","Tout"],["kills","Kills"],["hs","Headshots"]].map(([k,l])=><button key={k} onClick={()=>setXst(k)} aria-pressed={xst===k} style={{flex:1,height:34,borderRadius:10,border:"1px solid "+(xst===k?"#A78BFA":C.ln),background:xst===k?"rgba(124,58,237,.2)":C.pn,color:xst===k?"#fff":C.mu,fontWeight:700,fontSize:13,cursor:"pointer"}}>{l}</button>)}</div>
      {H("Résumé")}
      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:1,background:C.ln,border:"1px solid "+C.ln,borderRadius:14,overflow:"hidden"}}>{kp.map(([t,v,sub,c])=><div key={t} style={{background:C.pn,padding:"9px 6px",textAlign:"center"}}><div style={{fontSize:10.5,fontWeight:700,color:C.mu}}>{t.toUpperCase()}</div><div style={{fontSize:18,fontWeight:800,color:c||"#F3F4F6"}}>{v}</div>{sub&&<div style={{fontSize:10.5,color:C.mu}}>{sub}</div>}</div>)}</div>
+     <div className="ex-grid"><div>
      {ctxF.k==="club"&&plRows.length>0&&<>{H("Mes joueurs")}<Box cols={[["JOUEUR","minmax(0,1fr)"],["PARIS","44px"],["BILAN","52px"],["PROFIT","82px"]]} rows={plRows.map(r=>({on:()=>setStack(s=>[...s.filter(f=>f.k!=="player"),{k:"player",label:"Joueur : "+r.k,fn:b=>String(b.player||"").trim().toLowerCase()===r.k.toLowerCase()}]),c:[<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{logoOf("player",r.k)}<b>{r.k}</b></span>,r.n,bil(r),prf(r)]}))}/></>}
      {ctxF.k==="bk"&&gmRows.length>0&&<>{H("Par jeu")}<Box cols={[["JEU","minmax(0,1fr)"],["PARIS","44px"],["WR","48px"],["PROFIT","82px"]]} rows={gmRows.map(r=>({c:[<span style={{display:"inline-flex",alignItems:"center",gap:8}}><GameLogo game={r.k} size={16}/><b>{r.k}</b></span>,r.n,pct(r.wr),prf(r)]}))}/></>}
      {mapRows.length>0&&<>{H("Par carte",1)}<Box cols={[["CARTE","minmax(0,1fr)"],["MAPS","42px"],[xst==="hs"?"HS/MAP":"K/MAP","56px"],...(ctxF.k==="club"?[["WIN","50px"]]:[]),["OT","66px"]]} rows={mapRows}/></>}
      {byMap.length>0&&<>{H("Mes paris par carte",1)}<Box cols={[["CARTE","minmax(0,1fr)"],["BILAN","52px"],["WR","48px"],["PROFIT","82px"]]} rows={byMap.map(r=>({c:[<b>{r.k}</b>,bil(r),<b style={{color:r.wr>=55?C.gr:r.wr<45?C.rd:"#E5E7EB"}}>{pct(r.wr)}</b>,prf(r)]})).concat([{tot:1,c:[<span style={{fontSize:11,fontWeight:800,color:C.mu}}>TOTAL</span>,bil(tot),<b>{pct(tot.wr)}</b>,prf(tot)]}])}/></>}
+     </div><div>
      {!xd&&<div style={{fontSize:12,color:C.mu,margin:"8px 2px"}}>Chargement des cartes…</div>}
      {xd&&!mps.length&&ctxF.k!=="bk"&&<div style={{fontSize:12,color:C.mu,margin:"8px 2px"}}>Aucun match saisi pour {ctxV}.</div>}
      {(()=>{const ou=grp(list,b=>b.overUnder||null);const mn=grp(list,b=>b.mapTag||null).sort((a,b)=>String(a.k).localeCompare(String(b.k)));const lv=grp(list,b=>b.isLive?"Live":"Pré-match");
@@ -4242,6 +4244,7 @@ function Explorer({bets,allPlayers,initial=[],title,onClose,teamLogos={},bkPhoto
        {lv.length>1&&<>{H("Live / pré-match")}<Box cols={[["","minmax(0,1fr)"],...cols.slice(1)]} rows={lv.map(row)}/></>}</>;})()}
      {(ctxF.k==="tour"||ctxF.k==="bk")&&tmRows.length>0&&<>{H(ctxF.k==="tour"?"Équipes":"Par équipe")}<Box cols={[["ÉQUIPE","minmax(0,1fr)"],["PARIS","44px"],["BILAN","52px"],["PROFIT","82px"]]} rows={tmRows.slice(0,30).map(r=>({on:()=>setStack(s=>[...s.filter(f=>f.k!=="club"),{k:"club",label:"Club : "+r.k,fn:b=>teamKey(b.team||clubOfBet(b,allPlayers)||"")===teamKey(r.k)}]),c:[<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{logoOf("club",r.k)}<b>{r.k}</b></span>,r.n,bil(r),prf(r)]}))}/></>}
      {(ctxF.k==="tour"||ctxF.k==="bk")&&plRows.length>0&&<>{H("Meilleurs joueurs")}<Box cols={[["JOUEUR","minmax(0,1fr)"],["PARIS","44px"],["BILAN","52px"],["PROFIT","82px"]]} rows={plRows.slice(0,10).map(r=>({on:()=>setStack(s=>[...s.filter(f=>f.k!=="player"),{k:"player",label:"Joueur : "+r.k,fn:b=>String(b.player||"").trim().toLowerCase()===r.k.toLowerCase()}]),c:[<span style={{display:"inline-flex",alignItems:"center",gap:8}}>{logoOf("player",r.k)}<b>{r.k}</b></span>,r.n,bil(r),prf(r)]}))}/></>}
+     </div></div>
     </div>;})()}
    {ctxF?null:A.n===0?<div style={{padding:"40px 10px",textAlign:"center",color:"#9CA3AF",fontSize:15}}>Aucun pari ne correspond.</div>:<>
    <div style={{marginTop:12,borderRadius:18,padding:"18px 16px",background:"radial-gradient(120% 150% at 88% 20%,"+(A.pr>=0?"#22C55E":"#EF4444")+"2a 0%,rgba(11,18,32,0) 60%),linear-gradient(180deg,#0d1830,#09101f)",border:"1px solid rgba(255,255,255,.07)"}}>
@@ -5172,7 +5175,22 @@ function MapPhotos({showToast}){
    <div style={{padding:6}}><ImageInput value={img[n]||""} onChange={u=>save(n,u)} folder="maps" size={26} showToast={showToast}/></div></div>)}</div>}
  </div>);
 }
-let RS_TOURS=[];let BET_ALIAS={};const aliasOf=n=>{const k=cutNorm(n);return BET_ALIAS[k]||k;};
+let RS_TOURS=[];
+function DuelAlerts(){
+ const [rows,setRows]=useState(null);
+ useEffect(()=>{let stop=false;const ld=()=>{const since=new Date(Date.now()-20*3600e3).toISOString();cloudDb("duel_alerts?updated_at=gte."+since+"&order=gap.desc&limit=60").then(r=>{if(!stop)setRows(Array.isArray(r)?r:[]);}).catch(()=>{if(!stop)setRows([]);});};ld();const t=setInterval(ld,60000);return()=>{stop=true;clearInterval(t);};},[]);
+ if(!rows||!rows.length)return null;
+ const GI={"CS2":"CS2","Valorant":"Valorant","Dota 2":"Dota2","League of Legends":"LoL"};
+ return <div style={{borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+  <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px 6px"}}><b style={{fontSize:14,color:"#F3F4F6"}}>Duels</b><span style={{fontSize:11,fontWeight:800,padding:"1px 7px",borderRadius:6,background:"rgba(251,191,36,.15)",color:"#FBBF24"}}>{rows.length}</span><span style={{fontSize:11.5,color:"#6B7280"}}>most kills · écart PP par map</span></div>
+  {rows.map(d=><div key={d.key} role="button" tabIndex={0} title="Ajouter ce duel" onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-add-duel",{detail:d}));}catch(e){}}} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderTop:"1px solid rgba(255,255,255,.04)",cursor:"pointer"}}>
+   <GameLogo game={GI[d.game]||d.game} size={26}/>
+   <div style={{flex:1,minWidth:0}}>
+    <div style={{fontSize:14,fontWeight:800,color:"#F3F4F6",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.player} <span style={{color:"#6B7280",fontWeight:600}}>vs</span> {d.vs} <span style={{fontSize:10.5,fontWeight:800,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,marginLeft:4}}>Map {d.map}</span></div>
+    <div style={{fontSize:12,color:"#9CA3AF",marginTop:2}}>@{Number(d.odds).toFixed(2)} · PP {Number(d.pp_me).toFixed(2)} vs {Number(d.pp_vs).toFixed(2)} · {String(d.match||"").replace(/ Esports| Team/g,"")}</div></div>
+   <b style={{fontSize:14,color:"#A78BFA"}}>+{Number(d.gap).toFixed(2)}</b><span style={{width:28,height:28,borderRadius:8,background:"rgba(251,191,36,.14)",color:"#FBBF24",display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:16}}>+</span></div>)}
+ </div>;
+}let BET_ALIAS={};const aliasOf=n=>{const k=cutNorm(n);return BET_ALIAS[k]||k;};
 const PI=({n,s=14,c="currentColor"})=>{const P={trophy:<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></>,globe:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></>,lock:<><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></>,alert:<><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></>,check:<path d="m5 12 5 5 9-10"/>,search:<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>};
  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0,verticalAlign:"-2px"}}>{P[n]}</svg>;};
 function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
@@ -6825,6 +6843,7 @@ function AppMain(){
   showToast(capName(nm)+" → "+d.team+(ids.size?" · "+ids.size+" pari(s)":""));};
   window.addEventListener("emeieks-player-team",h);return()=>window.removeEventListener("emeieks-player-team",h);},[]);
  const [tourSheet,setTourSheet]=useState(null);
+ useEffect(()=>{const h=e=>{const d=e.detail||{};setDuelMode(true);setDuelForm(f=>({...f,player1:d.player||"",player2:d.vs||"",winner:d.player||"",odds:d.odds!=null?String(d.odds):"",mapTag:"Map "+(d.map||1),ppMapType:"1+2",ppLine_player1:d.pp_me!=null?String(Math.round(d.pp_me*2*2)/2):"",ppLine_player2:d.pp_vs!=null?String(Math.round(d.pp_vs*2*2)/2):""}));setView("add");};window.addEventListener("emeieks-add-duel",h);return()=>window.removeEventListener("emeieks-add-duel",h);},[]);
  useEffect(()=>{const h=e=>setTourSheet(e.detail||null);window.addEventListener("emeieks-open-tour",h);return()=>window.removeEventListener("emeieks-open-tour",h);},[]);
  const [lineBets,setLineBets]=useState(null);
  useEffect(()=>{const h=e=>{const d=e.detail||{};const ids=d.ids?new Set(d.ids):null;setBets(prev=>prev.map(b=>((ids?ids.has(String(b.id)):(b.game===d.game&&d.names.includes((b.player||"").toLowerCase().trim())))&&b.role!==d.role)?{...b,role:d.role}:b));};
@@ -8778,7 +8797,21 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  `}</style>
 
- <style>{`@media (min-width:900px){.app-main.wide{max-width:1280px!important;padding-left:24px!important;padding-right:24px!important}}`}</style>
+ <style>{`@media (min-width:900px){.app-main.wide{max-width:1280px!important;padding-left:24px!important;padding-right:24px!important}}
+@media (min-width:1024px){
+ .bottom-nav{top:0!important;bottom:0!important;left:0!important;right:auto!important;width:228px!important;border-top:none!important;border-right:1px solid rgba(255,255,255,.07)!important;padding:22px 14px!important;box-sizing:border-box;display:block}
+ .bottom-nav-in{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:4px!important;max-width:none!important}
+ .bottom-nav .navitem{flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:12px!important;padding:11px 14px!important;border-radius:11px!important;width:100%!important;min-height:44px}
+ .bottom-nav .navitem.on{background:rgba(124,58,237,.16)!important}
+ .bottom-nav .navitem:hover{background:rgba(255,255,255,.04)}
+ .bottom-nav .navitem .lbl{font-size:14px!important;font-weight:600!important;margin:0!important}
+ .bottom-nav .nav-fab{order:-1;width:100%!important;height:46px!important;border-radius:12px!important;margin:0 0 16px!important;transform:none!important}
+ .app-main.wide{margin-left:228px!important;margin-right:0!important;max-width:none!important;padding:28px 40px 40px!important;box-sizing:border-box}
+ .app-main.wide>*{max-width:1240px;margin-left:auto;margin-right:auto}
+ .app-main.wide svg[viewBox]{max-height:320px}
+ .ex-sheet{max-width:980px!important}
+ .ex-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;align-items:start}
+}`}</style>
  <div className={"app-main wide"} style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
 
 
@@ -12662,6 +12695,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
    {evTab==="outils"&&<><MapPhotos showToast={showToast}/><MLStats bets={bets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
    {evTab==="bets"&&<>
+   <DuelAlerts/>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
    {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center"}}>
