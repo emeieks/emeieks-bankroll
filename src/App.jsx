@@ -2880,7 +2880,7 @@ const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmak
 
  return(
   <div style={{marginBottom:8}}>
-   <SuiviHead n="wallet" color="#60a5fa" title="Bookmakers" sub={bookmakers.length+" bookmakers · logos et visibilité"} open={open} onClick={()=>setOpen(o=>!o)}/>
+   <SuiviHead n="wallet" color="#60a5fa" title="Logos des bookmakers" sub={bookmakers.length+" bookmakers · afficher ou cacher"} open={open} onClick={()=>setOpen(o=>!o)}/>
    {open&&(
     <div style={SV_BODY}>
      {/* BK list */}
@@ -3799,14 +3799,14 @@ const MesParisView=memo(function MesParisView({
 
  {/* MAP SORT + BK LOGO FILTERS */}
  {bookmakers.length>0&&(
- <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10,alignItems:"center"}}>
+ <div style={{display:"flex",gap:5,flexWrap:"nowrap",overflowX:"auto",marginBottom:10,alignItems:"center",paddingTop:4,scrollbarWidth:"none"}}>
 
- {bookmakers.filter(bk=>!(hiddenBKs instanceof Set?hiddenBKs.has(bk):false)).map(bk=>{
+ {(()=>{const used=new Set((bets||[]).map(b=>b.bookmaker));return bookmakers.filter(bk=>used.has(bk)&&!(hiddenBKs instanceof Set?hiddenBKs.has(bk):false));})().map(bk=>{
  const on=fBKs.includes(bk);
  const logo=BK_LOGOS[bk]||bkPhotos[bk]||null;
  return(
  <button key={bk} onClick={()=>setFBKs(prev=>on?prev.filter(x=>x!==bk):[...prev,bk])} title={bk}
- style={{width:36,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.4)":"rgba(255,255,255,.06)"),background:on?"rgba(34,197,94,.08)":"rgba(255,255,255,.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
+ style={{flexShrink:0,width:36,height:36,borderRadius:9,border:"1px solid "+(on?"rgba(34,197,94,.4)":"rgba(255,255,255,.06)"),background:on?"rgba(34,197,94,.08)":"rgba(255,255,255,.02)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0}}>
  {logo?(<img src={logo} alt={bk} style={{width:22,height:22,borderRadius:4,objectFit:"cover"}}/>):(<span style={{fontSize:8,color:on?"#22C55E":"#6B7280",fontWeight:700}}>{bk.slice(0,4)}</span>)}
  {on&&<div style={{position:"absolute",top:-3,right:-3,background:"#22C55E",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",border:"1.5px solid #0B1220"}}><span style={{fontSize:6,color:"#000",fontWeight:900}}><Ic n="check" s={7} c="#000" w={4}/></span></div>}
  </button>
@@ -3874,11 +3874,9 @@ const MesParisView=memo(function MesParisView({
  <div>
  <div style={{fontSize:16,fontWeight:800,color:"#dce8ff",textTransform:"none",letterSpacing:0}}>{fmtMonth(mk)}</div>
  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3}}>
- <span style={{fontSize:11,color:"#4B6080",fontWeight:500}}>{allBets.length} paris</span>
+ <span style={{fontSize:12,color:"#9ca3af",fontWeight:600}}>{allBets.filter(b=>b.status==="won").length}-{allBets.filter(b=>b.status==="lost").length}</span>
  <span style={{fontSize:10,color:"#3a5070"}}>·</span>
- <span style={{fontSize:11,color:wr>=55?"#22C55E":wr>=45?"#f59e0b":"#EF4444",fontWeight:700}}>{wr.toFixed(0)}% WR</span>
- <span style={{fontSize:10,color:"#3a5070"}}>·</span>
- <span style={{fontSize:11,color:staked>0?"#7a9cc4":"#3a5070",fontWeight:500}}>{staked.toFixed(0)}$ misés</span>
+ <span style={{fontSize:12,color:wr>=55?"#22C55E":wr<50?"#EF4444":"#e5e7eb",fontWeight:700}}>{wr.toFixed(0)}%</span>
  </div>
  </div>
  <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -5300,6 +5298,7 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
  const [s,setS]=useState({s1:null,s2:null});const [maps,setMaps]=useState([]);const [pk,setPk]=useState({});const [open,setOpen]=useState(0);const [msg,setMsg]=useState(null);const [busy,setBusy]=useState(false);const [ver,setVer]=useState(DD_VER);
  useEffect(()=>{if(lol)ddVer().then(setVer);},[lol]);
  const same=(x,y)=>{const a=teamKey(x),b=teamKey(y);return !!(a&&b&&(a===b||a.includes(b)||b.includes(a)));};
+ const [extraP,setExtraP]=useState({});const [hideP,setHideP]=useState({});const addExtra=(ex,pr)=>{if(pr)setHideP(o=>{const n={...o};Object.entries(pr).forEach(([t,ks])=>{if(ks.length>=5)n[t]=ks;});return n;});setExtraP(o=>{const n={...o};ex.forEach(x=>{n[x.team]={...(n[x.team]||{}),[x.k]:x.name};});return n;});};
  const roster=useMemo(()=>{const out={[A]:{},[B]:{}};
   Object.values(m.players).forEach(p=>{const t=same(p.team,A)?A:same(p.team,B)?B:null;if(t)out[t][p.pkey]=p.name;});
   [A,B].forEach(t=>Object.entries(extraP[t]||{}).forEach(([k,n])=>{out[t][k]=n;}));
@@ -5314,7 +5313,6 @@ function ResultForm({m,allPlayers,L,onClose,bets=[],setBets}){
   setPotRows(pr||[]);let flip=false;if(mr&&mr[0]){const x=mr[0];flip=teamKey(x.team1)!==teamKey(A);setS({s1:flip?x.score2:x.score1,s2:flip?x.score1:x.score2});}
   if(mp&&mp.length)setMaps(mp.map(x=>{const a=flip?x.score2:x.score1,b=flip?x.score1:x.score2;return {name:x.map_name||"",pick:x.picked_by||"",ct:x.first_ct||"",a:a==null?"":String(a),b:b==null?"":String(b),win:x.winner?(same(x.winner,A)?A:B):(a>b?A:b>a?B:"")};}));
   const o={};(pr||[]).forEach(x=>{o[x.map_no+"|"+x.pkey]={k:x.kills==null?"":String(x.kills),h:x.hs==null?"":String(x.hs),c:x.champion||""};});setPk(o);}catch(e){setMsg("Lance resultats.sql dans Supabase");}})();},[m.key]);
- const [extraP,setExtraP]=useState({});const [hideP,setHideP]=useState({});const addExtra=(ex,pr)=>{if(pr)setHideP(o=>{const n={...o};Object.entries(pr).forEach(([t,ks])=>{if(ks.length>=5)n[t]=ks;});return n;});setExtraP(o=>{const n={...o};ex.forEach(x=>{n[x.team]={...(n[x.team]||{}),[x.k]:x.name};});return n;});};
  const [mk,setMk]=useState(m.key);const [cp,setCp]=useState(null);const [chg,setChg]=useState(null);const [tourV,setTourV]=useState(m.tour||"");useEffect(()=>{setTourV(m.tour||"");},[m.key,m.tour]);const [bm,setBm]=useState({});const [potRows,setPotRows]=useState([]);const [pots,setPots]=useState([]);
  useEffect(()=>{const keys=[...new Set(Object.values(m.players).map(p=>p.pkey))];if(!keys.length)return;const d0=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()-864e5)),d2=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()+864e5));
   cloudDb("pot_bets?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&day=gte."+d0+"&day=lte."+d2+"&select=pkey,player,stat,side,map,line,odds,edge,day,match,start,at&limit=2000").then(r=>setPots(Array.isArray(r)?r:[])).catch(()=>{});},[m.key]);
@@ -9917,7 +9915,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{fontSize:22,fontWeight:900,letterSpacing:-.5,color:"#eef3ff"}}>
  {editingBet?"Modifier pari":duelMode?"Duel ":sessionMode?"Session multi-map":"Ajouter un pari"}
  </div>
- <div style={{fontSize:13,fontWeight:500,color:"#9aa4bb",marginTop:2}}>Configure ton pari esport</div>
+ 
  </div>
  </div>
  <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -12809,6 +12807,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
  <SuiviLabel>DONNÉES & SAUVEGARDE</SuiviLabel>
+ <div style={{marginBottom:8}}><SuiviHead n="cloud" color={supaOk?"#22C55E":"#a78bfa"} title="Cloud (Supabase)" sub={syncing?"Synchronisation…":supaOk?"Connecté"+(pendingSync>0?" · "+pendingSync+" en attente":""):"Non connecté"} open={false} onClick={()=>setSupaModal(true)}/></div>
  <div style={{marginBottom:8}}>
   <SuiviHead n="cloud" color={backupAge>=7?"#F59E0B":"#22C55E"} title="Sauvegarde sur le téléphone" sub={"Dernière : "+(backupAge>=999?"jamais":backupAge===0?"aujourd'hui":"il y a "+backupAge+" j")+" · copie hors Supabase"} open={backupOpen} onClick={()=>setBackupOpen(v=>!v)}
    right={backupAge>=14?<span style={{fontSize:11,fontWeight:800,color:"#111",background:"#F59E0B",padding:"3px 8px",borderRadius:8}}>À faire</span>:null}/>
