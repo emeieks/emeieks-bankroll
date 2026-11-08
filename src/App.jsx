@@ -8975,28 +8975,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  `}</style>
 
- <style>{`@media (min-width:900px){.app-main.wide{max-width:1280px!important;padding-left:24px!important;padding-right:24px!important}}
-.br-l2>*,.br-l2 .br-m{display:inline-flex;align-items:center;line-height:1}.br-l2 img{display:block}
-@media (min-width:1024px){
- .bottom-nav{top:0!important;bottom:0!important;left:0!important;right:auto!important;width:228px!important;border-top:none!important;border-right:1px solid rgba(255,255,255,.07)!important;padding:22px 14px!important;box-sizing:border-box;display:block}
- .bottom-nav-in{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:4px!important;max-width:none!important}
- .bottom-nav .navitem{flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:12px!important;padding:11px 14px!important;border-radius:11px!important;width:100%!important;min-height:44px}
- .bottom-nav .navitem.on{background:rgba(124,58,237,.16)!important}
- .bottom-nav .navitem:hover{background:rgba(255,255,255,.04)}
- .bottom-nav .navitem .lbl{font-size:14px!important;font-weight:600!important;margin:0!important}
- .bottom-nav .nav-fab{order:-1;width:100%!important;height:46px!important;border-radius:12px!important;margin:0 0 16px!important;transform:none!important}
- .app-main.wide{margin-left:228px!important;margin-right:0!important;max-width:none!important;padding:28px 40px 40px!important;box-sizing:border-box}
- .app-main.wide>*{max-width:1400px;margin-left:auto;margin-right:auto}
- .app-main.wide svg[viewBox]{max-height:320px}
- .ex-sheet{max-width:980px!important}
- .home-grid{display:grid!important;grid-template-columns:minmax(0,1.65fr) minmax(360px,1fr);column-gap:22px;align-items:start;grid-template-rows:auto auto auto auto auto auto 1fr;grid-template-areas:"top top" "ev ev" "sync sync" "hero recent" "kpi recent" "act recent" "rest recent"}
- .home-grid>*{min-width:0}
- .home-grid>.h-top{grid-area:top}.home-grid>.h-sync{grid-area:sync}.home-grid>.h-hero{grid-area:hero;margin-bottom:14px!important}
- .home-grid>.h-ev{grid-area:ev;margin:0 0 14px!important}.home-grid>.h-recent{grid-area:recent}.home-grid>.h-kpi{grid-area:kpi}
- .home-grid>.h-act2{grid-area:act}
-  .home-grid .h-hero svg[viewBox]{max-height:280px}
- .ex-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;align-items:start}
-}`}</style>
+ <style>{`.br-l2>*,.br-l2 .br-m{display:inline-flex;align-items:center;line-height:1}.br-l2 img{display:block}`}</style>
  <div className={"app-main wide"} style={{maxWidth:500,margin:"0 auto",padding:"16px 14px",WebkitOverflowScrolling:"touch"}}>
 
 
