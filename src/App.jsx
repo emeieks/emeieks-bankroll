@@ -12763,13 +12763,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
       <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px 8px",background:"rgba(255,255,255,.02)",borderBottom:"1px solid "+SV.line}}>
        <GameLogo game={g} size={20}/><span style={{fontSize:14,fontWeight:900,color:"#fff",letterSpacing:-.2}}>{NAMES[g]||g}</span><span style={{fontSize:12,color:"#6b7280",fontWeight:700}}>{L.length}</span></div>
       {mk.map(k=>{const M=L.filter(a=>mKey(a)===k);const [t1,t2]=String(M[0].match||"").split(/\s+vs\.?\s+/i);const maps=[...new Set(M.map(a=>String(a.map||"?")))].sort();return(
-       <div key={k} style={{borderBottom:"2px solid rgba(255,255,255,.08)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:7,padding:"11px 14px",background:"rgba(124,58,237,.08)",borderBottom:"1px solid "+SV.line}}>
+       <div key={k} style={{marginTop:14,border:"1px solid rgba(167,139,250,.28)",borderRadius:14,overflow:"hidden",background:"rgba(255,255,255,.01)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:7,padding:"13px 14px",background:"linear-gradient(90deg,rgba(124,58,237,.28),rgba(124,58,237,.08))",borderBottom:"1px solid rgba(167,139,250,.3)"}}>
          {LG(t1,g,20)}<b style={{fontSize:14,color:"#fff"}}>{t1||"?"}</b><span style={{color:"#6b7280",fontSize:12,fontWeight:700}}>vs</span>{LG(t2,g,20)}<b style={{fontSize:14,color:"#fff"}}>{t2||""}</b>
          <span style={{marginLeft:"auto",fontSize:11.5,fontWeight:800,color:"#c4b5fd",background:"rgba(124,58,237,.18)",padding:"3px 8px",borderRadius:7}}>{M.length} pari{M.length>1?"s":""}</span></div>
         {maps.map(m=>{const MM=M.filter(a=>String(a.map||"?")===m);const teams=[];MM.forEach(a=>{const t=evTeams(a)[0]||"?";if(!teams.includes(t))teams.push(t);});return(
          <div key={m}>
-          <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px"}}><span style={{fontSize:10.5,fontWeight:900,color:"#fbbf24",letterSpacing:.6}}>MAP {m}</span><span style={{flex:1,height:1,background:"rgba(251,191,36,.18)"}}/><span style={{fontSize:10.5,color:"#6b7280",fontWeight:700}}>{MM.length}</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",marginTop:4,background:"rgba(251,191,36,.08)",borderTop:"2px solid rgba(251,191,36,.45)",borderBottom:"1px solid rgba(251,191,36,.2)"}}><span style={{fontSize:12,fontWeight:900,color:"#fbbf24",letterSpacing:.8}}>MAP {m}</span><span style={{flex:1}}/><span style={{fontSize:10.5,color:"#6b7280",fontWeight:700}}>{MM.length}</span></div>
           {teams.map(t=>{const TT=MM.filter(a=>(evTeams(a)[0]||"?")===t);const byE=(x,y)=>(Number(y.edge)||0)-(Number(x.edge)||0);const K=TT.filter(a=>a.stat!=="headshots").sort(byE),H=TT.filter(a=>a.stat==="headshots").sort(byE);
            const sub=(l,n)=><div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 14px 4px",fontSize:10.5,fontWeight:900,color:"#9ca3af",letterSpacing:.5}}>{LG(t,g,14)}<span>{String(t).toUpperCase()} · {l}</span><span style={{color:"#4b5563"}}>{n}</span></div>;
            return(<div key={t}>{K.length>0&&<>{sub("KILLS",K.length)}{K.map(renderEv)}</>}{H.length>0&&<>{sub("HEADSHOTS",H.length)}{H.map(renderEv)}</>}</div>);})}
