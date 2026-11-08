@@ -9061,44 +9061,56 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {bkOver.length>0&&<button className="h-ev" onClick={()=>{setView("players");setSuiviTab("reglages");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,margin:"6px 0 10px",padding:"11px 14px",borderRadius:14,border:"1px solid rgba(251,146,60,.5)",background:"rgba(251,146,60,.1)",color:"#fff",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
   <Ic n="warn" s={18} c="#FB923C"/><span style={{flex:1,fontSize:13.5}}><b>Retire de l'argent</b>{bkOver.map(x=><span key={x.bk} style={{display:"block",fontSize:12.5,color:"#FED7AA"}}>{x.bk} : {Math.round(x.bal)} $ (plafond {bkCap} $) → retirer {Math.round(x.bal-bkCap)} $</span>)}</span></button>}
  {/* EN-TÊTE */}
- <div className="h-top" style={{display:"grid",gridTemplateColumns:"auto minmax(0,1fr) auto",alignItems:"center",gap:8,margin:"2px 0 12px"}}>
-  <button onClick={()=>setSupaModal(true)} aria-label="Cloud" title="Cloud" style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,padding:0,borderRadius:10,border:"none",background:"transparent",color:supaOk?"#22C55E":"#a78bfa",cursor:"pointer",position:"relative",opacity:syncing?.5:1}}>
-   <Ic n="cloud" s={19}/>{pendingSync>0&&<span style={{position:"absolute",top:-4,right:-4,minWidth:15,height:15,borderRadius:8,background:"#F59E0B",color:"#111",fontSize:9.5,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{pendingSync}</span>}</button>
-  <button onClick={()=>setView("statistiques")} style={{justifySelf:"center",display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#f3f4f6",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap",minWidth:0}}>Bankroll {season==="all"?"· Tout":"Saison "+season}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg></button>
-  <div style={{textAlign:"right"}}><div style={{fontSize:10.5,color:"#9ca3af",fontWeight:700}}>Profit net</div><div style={{fontSize:17,fontWeight:900,color:totalProfit>=0?"#22C55E":"#EF4444",lineHeight:1.1}}>{fmtM(totalProfit)}</div></div>
- </div>
-
- {/* GRAPHIQUE */}
- <div className="h-hero" style={{background:"linear-gradient(170deg,rgba(124,58,237,.22),#111827 55%)",border:"1px solid rgba(167,139,250,.25)",borderRadius:20,padding:"12px 10px 12px",marginBottom:12}}>
-  <BankrollChart points={chartPointsFiltered} h={Math.max(240,Math.min(520,(typeof window!=="undefined"?window.innerHeight:900)-500))}/>
-  <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:6,marginTop:8}}>
-   {[{k:1,l:"1j"},{k:7,l:"1s"},{k:30,l:"1m"},{k:365,l:"1a"},{k:null,l:"Tout"}].map(({k,l})=>{const on=homePeriod===k;return(
-    <button key={l} onClick={()=>setHomePeriod(k)} style={{height:34,borderRadius:17,border:"1.5px solid "+(on?"#a78bfa":"rgba(255,255,255,.18)"),background:on?"rgba(124,58,237,.3)":"transparent",color:on?"#fff":"#cbd5e1",fontSize:13.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>);})}
+ <div className="h-top" style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"6px 0 14px",gap:10}}>
+  <div>
+   <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1.3px",lineHeight:1,background:"linear-gradient(90deg,#7c3aed,#3b82f6)",WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>EMEIEKS</div>
+   <div style={{fontSize:10,color:"#6b7280",letterSpacing:"7px",fontWeight:700,marginTop:6}}>BANKROLL</div>
+  </div>
+  <div style={{textAlign:"right"}}>
+   <div style={{fontSize:12,color:"#9ca3af",fontWeight:600}}>Profit net</div>
+   <div style={{fontSize:28,fontWeight:900,color:totalProfit>=0?"#22C55E":"#EF4444",letterSpacing:"-1px",lineHeight:1.05}}>{fmtM(totalProfit)}</div>
   </div>
  </div>
 
- {/* BOUTONS */}
- <div className="h-act2" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,marginBottom:12}}>
-  {[["statistiques","Stats","chart"],["calendrier","Calendrier","cal"]].map(([v,l,ic])=><button key={v} onClick={()=>setView(v)} style={{height:44,borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"#111827",color:"#f3f4f6",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-   {ic==="cal"?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/></svg>}{l}</button>)}
+ {/* GRAPHIQUE */}
+ <div className="h-hero" style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,padding:"12px 10px 8px",marginBottom:10}}>
+  <BankrollChart points={chartPointsFiltered} h={Math.max(200,Math.min(380,(typeof window!=="undefined"?window.innerHeight:900)-640))}/>
+  <div style={{display:"flex",gap:5,marginTop:4,alignItems:"center",justifyContent:"center"}}>
+   {[{k:null,l:"Tout"},{k:3,l:"3j"},{k:7,l:"7j"},{k:14,l:"14j"},{k:30,l:"30j"}].map(({k,l})=>{const on=homePeriod===k;return(
+    <button key={l} onClick={()=>setHomePeriod(k)} style={{padding:"5px 12px",borderRadius:9,border:"1px solid "+(on?"rgba(167,139,250,.45)":"transparent"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#c4b5fd":"#6b7280",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>);})}
+  </div>
  </div>
 
- {/* 4 CASES */}
+ {/* 3 CASES */}
  {(()=>{const pend=betsForDisplay.filter(b=>b.status==="pending").length;const st=homeSettled.reduce((a,b)=>a+(b.stake||0),0);const roi=st?totalProfit/st*100:0;
-  const C=({l,v,u,c})=><div style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"18px 10px",textAlign:"center",minWidth:0}}>
-   <div style={{fontSize:12.5,color:"#9ca3af",fontWeight:600,letterSpacing:".5px"}}>{l}</div>
-   <div style={{fontSize:28,fontWeight:900,color:c,letterSpacing:"-.5px",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{v}<span style={{fontSize:15,marginLeft:2}}>{u}</span></div></div>;
-  const g=x=>x>=0?"#22C55E":"#EF4444";
-  return <div className="h-kpi" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,marginBottom:14}}>
-   <C l="PARIS" v={(homeSettled.length+pend).toLocaleString("fr-CA")} c="#a78bfa"/>
-   <C l="BÉNÉFICE" v={(totalProfit>=0?"+":"")+totalProfit.toLocaleString("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2})} u="$" c={g(totalProfit)}/>
-   <C l="ROI" v={roi.toFixed(2)} u="%" c={g(roi)}/>
-   <C l="PROGRESSION" v={progression.toFixed(2)} u="%" c={g(progression)}/>
+  const C=({l,v,sub,c})=><div style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"12px 12px 11px",minWidth:0}}>
+   <div style={{fontSize:10.5,color:"#9ca3af",fontWeight:700,letterSpacing:"1.5px"}}>{l}</div>
+   <div style={{fontSize:21,fontWeight:900,color:c,letterSpacing:"-.5px",margin:"6px 0 4px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{v}</div>
+   <div style={{fontSize:11,color:"#6b7280"}}>{sub}</div></div>;
+  return <div className="h-kpi" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:10}}>
+   <C l="PARIS" v={(homeSettled.length+pend).toLocaleString("fr-CA")} sub={pend+" en cours"} c="#f3f4f6"/>
+   <C l="PROGRESSION" v={(progression>=0?"+":"")+progression.toFixed(1)+"%"} sub="depuis le début" c={progression>=0?"#22C55E":"#EF4444"}/>
+   <C l="ROI" v={(roi>=0?"+":"")+roi.toFixed(1)+"%"} sub={"Misé "+Math.round(st).toLocaleString("fr-CA")+"$"} c={roi>=0?"#22C55E":"#EF4444"}/>
   </div>;})()}
+
+ {/* BOUTONS */}
+ <div className="h-act2" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginBottom:12}}>
+  {[["calendrier","Calendrier","cal"],["statistiques","Stats","chart"]].map(([v,l,ic])=><button key={v} onClick={()=>setView(v)} style={{height:46,borderRadius:14,border:"1px solid rgba(255,255,255,.08)",background:"#111827",color:"#f3f4f6",fontWeight:800,fontSize:14.5,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+   {ic==="cal"?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>}{l}</button>)}
+ </div>
 
  {syncAlert&&<div className="h-sync" style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",marginBottom:10,borderRadius:14,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.4)"}}>
   <Ic n="warn" s={16} c="#EF4444"/><div style={{flex:1,fontSize:13,color:"#fecaca",fontWeight:700}}>{pendingSync} pari(s) pas encore envoyé(s) sur Supabase</div>
   <button onClick={()=>{flushRef.current&&flushRef.current();}} style={{height:34,padding:"0 12px",borderRadius:10,border:"none",background:"#EF4444",color:"#fff",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Réessayer</button></div>}
+
+ {/* PARIS RÉCENTS */}
+ {(()=>{const all=[...betsForDisplay].filter(b=>b.status!=="pending"&&!isAdjBet(b)).sort((a,b2)=>String(b2.datetime||"").localeCompare(String(a.datetime||"")));if(!all.length)return null;
+  return <div className="h-recent">
+   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"2px 2px 8px"}}><span style={{fontSize:12,color:"#9ca3af",fontWeight:800,letterSpacing:"1.5px"}}>PARIS RÉCENTS</span>
+    <button onClick={()=>setView("mesparis")} style={{fontSize:13,color:"#a78bfa",fontWeight:800,background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",padding:0}}>Voir tous ({all.length}) →</button></div>
+   <div className="stat-bloc">{all.slice(0,homeN).map(b=><BetRow key={b.id} bet={b} onStatus={updateStatus} onDelete={deleteBet} onDuplicate={duplicateBet} onEdit={openEdit} onSplit={splitBet} bkPhotos={bkPhotos}/>)}</div>
+   {all.length>homeN&&<button onClick={()=>setHomeN(n=>n+20)} style={{width:"100%",height:44,marginTop:10,borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>▾ Afficher plus ({all.length-homeN} paris)</button>}
+  </div>;})()}
 
 
 
@@ -10079,7 +10091,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  )}
  {form.autoInfo&&(
  <div style={{position:"relative",isolation:"isolate",containerType:"inline-size",borderRadius:16,border:"1px solid rgba(139,92,246,.18)",background:"linear-gradient(105deg,rgba(12,18,38,.99) 55%,rgba(20,14,42,.97))",display:"flex",alignItems:"stretch",overflow:"hidden",minHeight:118}}>
- {(()=>{const g=form.autoInfo.game;const tn=(activeTourneys[g]&&activeTourneys[g].name)||form.autoInfo.league;const tl=tn&&anyTourLogo(tn,g);return tl?<img src={tl} alt={tn} title={tn} onError={e=>e.target.style.display='none'} style={{position:"absolute",right:10,top:8,width:26,height:26,objectFit:"contain",zIndex:3,pointerEvents:"none"}}/>:null;})()}
  <ClubWatermark team={form.autoInfo.team} logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}/>
  {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<ClubColor logo={tl} game={form.autoInfo.game}>{cc=>(
   <div aria-hidden="true" style={{position:"absolute",right:4,top:"calc(50% + 16px)",transform:"translateY(-50%)",width:74,height:74,zIndex:1,pointerEvents:"none"}}>
@@ -10138,7 +10149,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   return <div style={{fontSize:13,fontWeight:600,color:"#fff",whiteSpace:"nowrap"}}>
    {a.won}-{a.lost} · <span style={{color:c,fontWeight:700}}>{fmtM(a.profit)}</span>
   </div>;})()}
- {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;return <span style={{display:"inline-flex",alignItems:"center",gap:3,padding:"2px 7px",borderRadius:5,background:"rgba(124,58,237,.1)",color:"#a78bfa",fontWeight:600,fontSize:10,border:"1px solid rgba(124,58,237,.2)",alignSelf:"flex-start"}}> {t.name}</span>})()}
+ {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 8px 3px 5px",borderRadius:6,background:"rgba(124,58,237,.1)",color:"#c4b5fd",fontWeight:700,fontSize:11,border:"1px solid rgba(124,58,237,.25)",alignSelf:"flex-start"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:15,height:15,objectFit:"contain"}}/>}{t.name}</span>})()}
  </div>
 
  {/* Bouton Changer */}
@@ -10243,7 +10254,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <span style={{fontSize:9,color:"#4a5468",fontWeight:700,letterSpacing:0,textTransform:"none"}}>Mise rapide</span>
  <span style={{fontSize:10,color:AC,fontWeight:600}}>1u = {unitValue.toFixed(0)}$ · Palier {bkTier.toFixed(0)}$</span>
  </div>
- <AdviceChip bets={bets} game={(form.autoInfo&&form.autoInfo.game)||""} hs={form.isHeadshot} ou={form.overUnder} cur={form.stake} onPick={v=>setForm(f=>({...f,stake:String(v)}))}/>
  {form.bookmaker&&bkBal[form.bookmaker]&&bkBal[form.bookmaker].bal>bkCap&&<div style={{fontSize:12,color:"#FDBA74",fontWeight:700,margin:"-2px 0 8px"}}>⚠ {form.bookmaker} : solde estimé {Math.round(bkBal[form.bookmaker].bal)} $ — au-dessus de {bkCap} $, pense à retirer.</div>}
  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:form.odds&&form.stake?9:0}}>
  {quickUnits.map(u=>{
@@ -10437,7 +10447,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  Ignorer
  </button>
  <button onClick={()=>form.player&&setPpHist(form.player)} disabled={!form.player}
- aria-label="Historique des cuts" title="Historique des cuts" style={{padding:"1px 7px",borderRadius:7,border:"1px solid rgba(167,139,250,.35)",background:"rgba(167,139,250,.08)",fontSize:13,lineHeight:1.4,cursor:form.player?"pointer":"default",opacity:form.player?1:.4}}>🕐</button>
+ aria-label="Historique des cuts" title="Historique des cuts" style={{padding:"1px 7px",borderRadius:7,border:"1px solid rgba(167,139,250,.35)",background:"rgba(167,139,250,.08)",lineHeight:0,display:"inline-flex",alignItems:"center",justifyContent:"center",height:26,color:"#c4b5fd",cursor:form.player?"pointer":"default",opacity:form.player?1:.4}}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/></svg></button>
  {/* Quick PP button */}
  {baseKills&&form.overUnder&&form.ppMapType&&(
  <button onClick={quickPP}
@@ -10998,105 +11008,41 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  })()}
 
  {statsTab==="apercu"&&<>
- <button onClick={()=>setExplore({title:"Tous mes paris",initial:[]})} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",marginBottom:12,height:46,borderRadius:12,border:"1px solid rgba(124,58,237,.45)",background:"rgba(124,58,237,.12)",color:"#DDD6FE",fontSize:14.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}><Ic n="search" s={15}/> Tout explorer</button>
- {statsSettled.length>0&&(()=>{
- const totalStaked=settledFiltered.reduce((s,b)=>s+(b.stake||0),0);
- const globalROI=totalStaked>0?(statsProfit/totalStaked*100):0;
- const globalWR=settledFiltered.length>0?(settledFiltered.filter(b=>b.status==="won").length/settledFiltered.length*100):0;
- const won=settledFiltered.filter(b=>b.status==="won").length,lost=settledFiltered.filter(b=>b.status==="lost").length;
- const pc=statsProfit>=0?"#22C55E":"#EF4444";
- const Tile=({l,v,c,sub})=>(<div style={{flex:1,minWidth:0,background:"#0f1524",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"12px 8px",textAlign:"center"}}>
-  <div style={{fontSize:10.5,color:"#7c8599",fontWeight:800,textTransform:"none",letterSpacing:0}}>{l}</div>
-  <div style={{fontSize:19,fontWeight:900,color:c||"#eef1f7",marginTop:4}}>{v}</div>
-  {sub&&<div style={{fontSize:10.5,color:"#6b7280",marginTop:2}}>{sub}</div>}</div>);
- return(
- <div style={{marginBottom:14}}>
-  <div style={{position:"relative",overflow:"hidden",containerType:"inline-size",borderRadius:18,border:"1px solid rgba(255,255,255,.07)",borderBottom:"3px solid "+pc,
-   background:"radial-gradient(120% 150% at 88% 20%,"+pc+"33 0%,rgba(11,18,32,0) 60%),linear-gradient(180deg,#0d1830 0%,#09101f 100%)",padding:"22px 18px 20px",marginBottom:10}}>
-   <div style={{position:"absolute",right:"3%",top:"50%",transform:"translateY(-50%)",fontSize:"min(110px, calc(50cqw / 3.4))",fontWeight:900,letterSpacing:-2,whiteSpace:"nowrap",color:"transparent",WebkitTextStroke:"1.5px "+pc+"40",pointerEvents:"none",lineHeight:1}}>BILAN</div>
-   <div style={{position:"relative",zIndex:1,display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-    <div>
-     <div style={{fontSize:12,fontWeight:800,letterSpacing:0,textTransform:"none",color:"#9ca3af"}}>Profit</div>
-     <div style={{fontSize:"clamp(34px,10vw,54px)",fontWeight:900,letterSpacing:-1.5,color:pc,lineHeight:1.05,textShadow:"0 2px 14px rgba(0,0,0,.5)"}}>{fmtM(statsProfit)}</div>
-     <div style={{fontSize:13,color:"#cbd5e1",fontWeight:600,marginTop:6}}>{won} - {lost} · ROI <b style={{color:globalROI>=0?"#22C55E":"#EF4444"}}>{globalROI>=0?"+":""}{globalROI.toFixed(1)}%</b></div>
-     <TaxLine usd={totalProfit} size={13} saved={taxDeposits.reduce((x,d)=>x+(Number(d.amount)||0),0)}/>
-    </div>
+ {(()=>{const S=settledFiltered.filter(b=>!isAdjBet(b));if(!S.length)return <div style={{textAlign:"center",color:"#6b7280",padding:30}}>Aucun pari réglé sur cette période</div>;
+  const agg=L=>{const w=L.filter(b=>b.status==="won").length,l=L.filter(b=>b.status==="lost").length,st=L.reduce((a,b)=>a+(b.stake||0),0),p=L.reduce((a,b)=>a+(b.profit||0),0);return {n:L.length,w,l,st,p,wr:w+l?w/(w+l)*100:0,roi:st?p/st*100:0};};
+  const T=agg(S);const col=v=>v>=0?"#22C55E":"#EF4444";const f2=v=>(v>=0?"+":"")+v.toFixed(1)+"%";
+  const isHS=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
+  const card={background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:16};
+  const H=t=><div style={{fontSize:12,color:"#9ca3af",fontWeight:800,letterSpacing:"1.5px",margin:"18px 2px 8px"}}>{t}</div>;
+  const Row=({icon,l,a,last,onClick})=><button onClick={onClick} style={{width:"100%",display:"grid",gridTemplateColumns:"minmax(0,1fr) 62px 54px 84px",alignItems:"center",gap:8,padding:"12px 14px",border:"none",borderBottom:last?"none":"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#e5e7eb",cursor:onClick?"pointer":"default",fontFamily:"Inter,sans-serif",textAlign:"left",fontSize:14}}>
+   <span style={{display:"flex",alignItems:"center",gap:9,minWidth:0}}>{icon}<b style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</b></span>
+   <span style={{textAlign:"right",color:"#9ca3af",fontSize:13}}>{a.w}-{a.l}</span>
+   <span style={{textAlign:"right",fontWeight:700,color:a.wr>=55?"#22C55E":a.wr<50?"#EF4444":"#e5e7eb"}}>{Math.round(a.wr)}%</span>
+   <b style={{textAlign:"right",color:col(a.p)}}>{fmtM(a.p)}</b></button>;
+  const Head=()=><div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 62px 54px 84px",gap:8,padding:"9px 14px",fontSize:10.5,fontWeight:800,color:"#6b7280",letterSpacing:".5px",borderBottom:"1px solid rgba(255,255,255,.06)"}}><span/><span style={{textAlign:"right"}}>BILAN</span><span style={{textAlign:"right"}}>WR</span><span style={{textAlign:"right"}}>PROFIT</span></div>;
+  const Tbl=({rows})=><div style={{...card,overflow:"hidden"}}><Head/>{rows.map((r,i)=><Row key={r.l} {...r} last={i===rows.length-1}/>)}</div>;
+  const games=["CS2","LoL","Valorant","Dota2"].map(g=>({g,a:agg(S.filter(b=>GNORM(b.game)===GNORM(g)))})).filter(x=>x.a.n);
+  const bks=[...new Set(S.map(b=>b.bookmaker).filter(Boolean))].map(k=>({k,a:agg(S.filter(b=>b.bookmaker===k))})).sort((x,y)=>y.a.p-x.a.p);
+  const maps=["Map 1","Map 2","Map 3"].map(m=>({m,a:agg(S.filter(b=>b.mapTag===m))})).filter(x=>x.a.n);
+  const Bar=({l,a})=>!a.n?null:<div style={{padding:"12px 14px",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
+   <div style={{display:"flex",justifyContent:"space-between",fontSize:13.5,marginBottom:7}}><b style={{color:"#e5e7eb"}}>{l}</b><span style={{color:"#9ca3af"}}>{a.w}-{a.l} · <b style={{color:col(a.p)}}>{fmtM(a.p)}</b></span></div>
+   <div style={{height:8,borderRadius:4,background:"rgba(255,255,255,.06)",overflow:"hidden"}}><div style={{width:Math.min(100,a.wr)+"%",height:"100%",borderRadius:4,background:a.wr>=55?"#22C55E":a.wr<50?"#EF4444":"#a78bfa"}}/></div>
+   <div style={{fontSize:11.5,color:"#6b7280",marginTop:5}}>{Math.round(a.wr)}% réussite · ROI {f2(a.roi)}</div></div>;
+  return <>
+   <div style={{...card,padding:"16px 16px 14px",display:"grid",gridTemplateColumns:"1fr auto",alignItems:"end",gap:8}}>
+    <div><div style={{fontSize:12,color:"#9ca3af",fontWeight:700}}>Profit</div><div style={{fontSize:32,fontWeight:900,color:col(T.p),letterSpacing:"-1px",lineHeight:1.05}}>{fmtM(T.p)}</div><div style={{fontSize:12.5,color:"#9ca3af",marginTop:4}}>{T.w}-{T.l} · misé {Math.round(T.st).toLocaleString("fr-CA")}$</div></div>
+    <button onClick={()=>setExplore({title:"Tous mes paris",initial:[]})} style={{height:36,padding:"0 12px",borderRadius:10,border:"1px solid rgba(167,139,250,.4)",background:"rgba(124,58,237,.12)",color:"#c4b5fd",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Explorer</button>
    </div>
-  </div>
-  <div style={{display:"flex",gap:8}}>
-   <Tile l="Paris" v={settledFiltered.length}/>
-   <Tile l="Réussite" v={globalWR.toFixed(1)+"%"} c={globalWR>=55?"#22C55E":globalWR<45?"#EF4444":"#e5e7eb"}/>
-   {(()=>{const pg=bankroll>0?statsProfit/bankroll*100:0;return <Tile l="Progression" v={(pg>=0?"+":"")+pg.toFixed(1)+"%"} c={pg>=0?"#22C55E":"#EF4444"} sub={"BK "+bankroll.toFixed(0)+"$"}/>;})()}
-  </div>
- </div>
- );
- })()}
-
-
-
-
- {/* GRAPHIQUES BANKROLL */}
- {statsSettled.length>=2&&(
- <div style={{marginBottom:16}}>
- <div style={{background:"linear-gradient(180deg,rgba(10,18,34,.98),rgba(6,12,24,.99))",border:"1px solid rgba(99,130,200,.15)",borderRadius:16,padding:"14px 16px",boxShadow:"0 8px 32px rgba(0,0,0,.3)"}}>
- <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
- <div>
- <div style={{fontSize:10.5,color:"#4a5a6e",textTransform:"none",letterSpacing:0,fontWeight:700,marginBottom:2}}>Bankroll cumulative</div>
- <div style={{fontSize:22,fontWeight:800,color:statsProfit>=0?"#22C55E":"#EF4444",letterSpacing:-.5}}>{fmtM(statsProfit)}</div>
- </div>
- <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
- <div style={{textAlign:"right"}}>
- <div style={{fontSize:10.5,color:"#4a5a6e",textTransform:"none",letterSpacing:0,fontWeight:700,marginBottom:2}}>Paris</div>
- <div style={{fontSize:14,fontWeight:700,color:"#7a9cc4"}}>{settledFiltered.length}</div>
- </div>
- {/* Chart mode toggle */}
- <div style={{display:"flex",gap:4,background:"rgba(0,0,0,.3)",borderRadius:8,padding:3}}>
- {[{k:"line",l:""},{k:"candle",l:""} ].map(({k,l})=>(
- <button key={k} onClick={()=>setStatsChartMode(k)}
- style={{padding:"4px 10px",borderRadius:6,border:"none",background:statsChartMode===k?"rgba(96,165,250,.2)":"transparent",color:statsChartMode===k?"#60a5fa":"#4a5a6e",fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:statsChartMode===k?700:400}}>
- {l}
- </button>
- ))}
- </div>
- </div>
- </div>
- {statsChartMode==="line"?(
- <BankrollChart points={statsChartPoints} h={155}/>
- ):(
- <div>
- <div style={{display:"flex",gap:4,marginBottom:8}}>
- {[{k:"day",l:"1J"},{k:"week",l:"1S"},{k:"month",l:"1M"}].map(({k,l})=>(
- <button key={k} onClick={()=>setCandleTF(k)}
- style={{padding:"3px 9px",borderRadius:6,border:"1px solid "+(candleTF===k?"rgba(167,139,250,.4)":"rgba(255,255,255,.07)"),background:candleTF===k?"rgba(124,58,237,.15)":"transparent",color:candleTF===k?"#c4b5fd":"#4a5a6e",fontSize:11,fontWeight:candleTF===k?700:500,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- {l}
- </button>
- ))}
- <span style={{fontSize:10.5,color:"#3a4a5e",alignSelf:"center",marginLeft:4}}>Vert = haussier · Rouge = baissier</span>
- </div>
- <CandleChart points={statsChartPoints} h={155} tf={candleTF}/>
- </div>
- )}
- </div>
- </div>
- )}
-
- {/* Période filter */}
- <div style={{display:"flex",gap:6,marginBottom:14}}>
- {[{d:null,l:"Tout"},{d:3,l:"3j"},{d:7,l:"7j"},{d:14,l:"14j"},{d:30,l:"30j"}].map(({d,l})=>(
- <button key={l} onClick={()=>setStatsPeriod(d)}
- style={{flex:1,padding:"7px 0",borderRadius:8,border:"1.5px solid "+(statsPeriod===d?"#60A5FA":"#1F2937"),background:statsPeriod===d?"rgba(96,165,250,0.12)":"#111827",color:statsPeriod===d?"#60A5FA":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",transition:"all .15s"}}>
- {l}
- </button>
- ))}
- </div>
-
-
-
-
-
-
-
-
+   <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginTop:8}}>
+    {[["PARIS",T.n.toLocaleString("fr-CA"),"#f3f4f6"],["RÉUSSITE",Math.round(T.wr)+"%",T.wr>=55?"#22C55E":T.wr<50?"#EF4444":"#f3f4f6"],["ROI",f2(T.roi),col(T.roi)]].map(([l,v,c])=><div key={l} style={{...card,padding:"12px 10px",textAlign:"center"}}><div style={{fontSize:10.5,color:"#9ca3af",fontWeight:800,letterSpacing:"1px"}}>{l}</div><div style={{fontSize:20,fontWeight:900,color:c,marginTop:4}}>{v}</div></div>)}
+   </div>
+   {games.length>0&&<>{H("PAR JEU")}<Tbl rows={games.map(x=>({icon:<GameLogo game={x.g} size={20}/>,l:x.g==="Dota2"?"Dota 2":x.g,a:x.a,onClick:()=>setStatsTab("jeux")}))}/></>}
+   {H("UNDER / OVER")}<div style={{...card,overflow:"hidden"}}><Bar l="Under" a={agg(S.filter(b=>b.overUnder==="Under"))}/><Bar l="Over" a={agg(S.filter(b=>b.overUnder==="Over"))}/></div>
+   {H("KILLS / HEADSHOTS")}<div style={{...card,overflow:"hidden"}}><Bar l="Kills" a={agg(S.filter(b=>!isHS(b)))}/><Bar l="Headshots" a={agg(S.filter(isHS))}/></div>
+   {maps.length>0&&<>{H("PAR MAP")}<Tbl rows={maps.map(x=>({icon:<span style={{fontSize:11,fontWeight:900,color:"#fbbf24",background:"rgba(251,191,36,.1)",border:"1px solid rgba(251,191,36,.3)",borderRadius:5,padding:"2px 6px"}}>{x.m.replace("Map ","M")}</span>,l:x.m,a:x.a}))}/></>}
+   {bks.length>0&&<>{H("PAR BOOKMAKER")}<Tbl rows={bks.slice(0,8).map(x=>{const lg=BK_LOGOS[x.k]||bkPhotos[x.k];return {icon:lg?<img src={lg} alt="" style={{width:20,height:20,borderRadius:5,objectFit:"cover"}}/>:<span style={{width:20,height:20,borderRadius:5,background:"#1f2937",display:"inline-block"}}/>,l:x.k,a:x.a,onClick:()=>setStatsTab("cote_bk")};})}/></>}
+   {H("ÉCART PRIZEPICKS")}
+  </>;})()}
  {/* PP ANALYTICS HUB */}
  {(()=>{
  // Edge recalculé à partir des lignes (plus fiable que la valeur stockée, arrondie à 2 décimales)
