@@ -324,7 +324,7 @@ function BankrollChart({points,h=150}){
  if(!points||points.length<2)return(
  <div style={{height:h,display:"flex",alignItems:"center",justifyContent:"center",color:"#6B7280",fontSize:13}}>Pas assez de donnees</div>
  );
- const W=400,H=h,pad={t:10,b:22,l:44,r:42};
+ const W=400,H=h,pad={t:12,b:24,l:56,r:36};
  const vals=points.map(p=>p.v);
  const min=Math.min(...vals),max=Math.max(...vals);
  const range=max-min||1;
@@ -379,19 +379,19 @@ function BankrollChart({points,h=150}){
  {yTicks.filter(v=>py(v)>pad.t&&py(v)<pad.t+cy).map((v,i)=>(
  <g key={i}>
  <line x1={pad.l} y1={py(v)} x2={W-pad.r} y2={py(v)} stroke={v===0?"rgba(255,255,255,.12)":"rgba(255,255,255,.05)"} strokeWidth={v===0?"1":"0.8"} strokeDasharray={v===0?"none":"3,6"}/>
- <text x={pad.l-3} y={py(v)+3.5} textAnchor="end" fontSize="8.5" fill={v===0?"rgba(255,255,255,.25)":v>0?"rgba(34,197,94,.35)":"rgba(239,68,68,.35)"} fontWeight="600">{v>0?"+":""}{v.toFixed(0)}$</text>
+ <text x={pad.l-3} y={py(v)+3.5} textAnchor="end" fontSize="11" fill={v===0?"rgba(255,255,255,.6)":v>0?"rgba(134,239,172,.85)":"rgba(252,165,165,.85)"} fontWeight="700">{v>0?"+":""}{v.toFixed(0)}$</text>
  </g>
  ))}
- {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,.18)">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
+ {xSamples.filter(i=>points[i]&&points[i].dt).map((i,k)=><text key={k} x={px(i)} y={H-2} textAnchor="middle" fontSize="10.5" fill="rgba(255,255,255,.55)" fontWeight="600">{points[i].dt.slice(5,10).replace("-","/")}</text>)}
  {/* Gradient fill */}
  <path d={fillPath} fill="url(#cf)"/>
  {/* Soft underline for depth */}
  <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.18"/>
  {/* Main glow line */}
- <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter={"url(#"+glowId+")"}/>
+ <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
  {/* ATH dashed line */}
  <line x1={pad.l} y1={athY} x2={W-pad.r} y2={athY} stroke="rgba(255,215,80,.22)" strokeWidth="0.8" strokeDasharray="4,5"/>
- <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="8" fill="rgba(255,215,80,.45)" fontWeight="700">ATH</text>
+ <text x={W-pad.r+3} y={athY+4} textAnchor="start" fontSize="10" fill="rgba(255,215,80,.8)" fontWeight="800">ATH</text>
  {/* ATH halo point */}
  {!isAtATH&&<>
  <circle cx={athX} cy={athY} r="14" fill="rgba(255,215,80,.04)" filter={"url(#"+glowId+"ath)"}/>
@@ -407,7 +407,7 @@ function BankrollChart({points,h=150}){
  {distFromATH>1&&(
  <g>
  <line x1={currentX} y1={currentY-7} x2={currentX} y2={athY+4} stroke="rgba(255,255,255,.12)" strokeWidth="1" strokeDasharray="2,3"/>
- <text x={currentX-6} y={Math.max(athY+14,(currentY+athY)/2+4)} textAnchor="end" fontSize="9" fill="rgba(255,255,255,.4)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"$"}</text>
+ <text x={currentX-6} y={Math.max(athY+14,(currentY+athY)/2+4)} textAnchor="end" fontSize="10.5" fill="rgba(255,255,255,.7)" fontWeight="700">{"-"+distFromATH.toFixed(0)+"$"}</text>
  </g>
  )}
  </svg>
@@ -453,7 +453,7 @@ function CandleChart({points,h=155,tf="day"}){
  {yTicks.filter(v=>py(v)>pad.t&&py(v)<pad.t+cy).map((v,i)=>(
  <g key={i}>
  <line x1={pad.l} y1={py(v)} x2={W-pad.r} y2={py(v)} stroke={v===0?"rgba(255,255,255,.12)":"rgba(255,255,255,.05)"} strokeWidth={v===0?"1":"0.7"} strokeDasharray={v===0?"none":"3,6"}/>
- <text x={pad.l-3} y={py(v)+3.5} textAnchor="end" fontSize="8.5" fill={v===0?"rgba(255,255,255,.25)":v>0?"rgba(34,197,94,.35)":"rgba(239,68,68,.35)"} fontWeight="600">{v>0?"+":""}{v.toFixed(0)}$</text>
+ <text x={pad.l-3} y={py(v)+3.5} textAnchor="end" fontSize="11" fill={v===0?"rgba(255,255,255,.6)":v>0?"rgba(134,239,172,.85)":"rgba(252,165,165,.85)"} fontWeight="700">{v>0?"+":""}{v.toFixed(0)}$</text>
  </g>
  ))}
  {/* Candles */}
@@ -477,7 +477,7 @@ function CandleChart({points,h=155,tf="day"}){
  })}
  {/* X date labels */}
  {[0,Math.floor(candles.length/3),Math.floor(candles.length*2/3),candles.length-1].filter(i=>candles[i]).map((i,k)=>(
- <text key={k} x={pad.l+i*(cx/candles.length)+cx/candles.length/2} y={H-2} textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,.18)">{(candles[i].date||"").slice(5,10).replace("-","/")}</text>
+ <text key={k} x={pad.l+i*(cx/candles.length)+cx/candles.length/2} y={H-2} textAnchor="middle" fontSize="10.5" fill="rgba(255,255,255,.55)" fontWeight="600">{(candles[i].date||"").slice(5,10).replace("-","/")}</text>
  ))}
  </svg>
  );
@@ -1312,23 +1312,23 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
    style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}>
    {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=><option key={m} value={m}>{m}</option>)}
   </select></span>}
- {descLine&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
+ {descLine&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:12,color:"#aab8ca",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
  </div>
  {/* L2 : Cote · BK · Mise · Ligue — plus visible */}
- <div className="br-l2" style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap"}}>
- <span className="br-m" style={{fontSize:12,fontWeight:700,color:"#7a9cbd",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
- {(bkLogo||bet.bookmaker)&&<span className="br-m" style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
+ <div className="br-l2" style={{display:"flex",alignItems:"center",gap:0,flexWrap:"nowrap",minWidth:0,overflow:"hidden",whiteSpace:"nowrap",lineHeight:1,height:16}}>
+ <span className="br-m" style={{fontSize:12,fontWeight:700,color:"#b4c4d8",letterSpacing:"-.1px"}}>@{(+bet.odds||0).toFixed(2)}</span>
+ {(bkLogo||bet.bookmaker)&&<span className="br-m" style={{color:"#7d8ea4",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {bkLogo
  ? (<img src={bkLogo} alt={bet.bookmaker} style={{width:15,height:15,borderRadius:3,objectFit:"cover",flexShrink:0}}/>)
- : bet.bookmaker ? (<span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.bookmaker}</span>) : null
+ : bet.bookmaker ? (<span style={{fontSize:12,fontWeight:700,color:"#b4c4d8"}}>{bet.bookmaker}</span>) : null
  }
  {(bet.splits||[]).map((sp,i)=>{
  const spLogo=BK_LOGOS[sp.bookmaker]||bkPhotos[sp.bookmaker]||null;
- if(!spLogo)return(<span key={i} style={{fontSize:12,fontWeight:700,color:"#7a9cbd",marginLeft:3}}>{sp.bookmaker}</span>);
+ if(!spLogo)return(<span key={i} style={{fontSize:12,fontWeight:700,color:"#b4c4d8",marginLeft:3}}>{sp.bookmaker}</span>);
  return(<img key={i} src={spLogo} alt={sp.bookmaker} style={{width:13,height:13,borderRadius:3,objectFit:"cover",flexShrink:0,marginLeft:3}}/>);
  })}
- {bet.stake&&<span className="br-m"><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#7a9cbd"}}>{bet.stake}$</span></span>}
- {hasPP&&<><span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#EF4444",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
+ {bet.stake&&<span className="br-m"><span style={{color:"#7d8ea4",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><span style={{fontSize:12,fontWeight:700,color:"#b4c4d8"}}>{bet.stake}$</span></span>}
+ {hasPP&&<><span style={{color:"#7d8ea4",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span><img src={_B64_PP_LOGO_B64} alt="PP" style={{width:12,height:12,borderRadius:2,objectFit:"cover",flexShrink:0,verticalAlign:"middle"}}/><span style={{fontSize:12,fontWeight:700,color:bet.ppEdge>=0?"rgba(167,139,250,.85)":"#EF4444",marginLeft:3}}>{bet.ppEdge>0?"+":""}{bet.ppEdge}</span></>}
  {/* Tournament/League — affichage custom + select invisible */}
  {(()=>{
  const lolLeagues=["LCK","LEC","LCS","LPL"];
@@ -1377,14 +1377,14 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  return(
  <span style={{display:"inline-flex",alignItems:"center",gap:3,marginLeft:4,position:"relative",cursor:"pointer"}}
  onClick={e=>e.stopPropagation()}>
- {currentVal&&<span style={{color:"#5a6e84",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
+ {currentVal&&<span style={{color:"#7d8ea4",margin:"0 4px",fontSize:15,fontWeight:900,lineHeight:1}}>·</span>}
  {/* Affichage custom : logo + nom */}
  <span style={{display:"inline-flex",alignItems:"center",gap:3,pointerEvents:"none"}}>
  {currentVal
  ?<>{tLogo
  ?<img src={tLogo} alt={currentVal} style={{width:13,height:13,objectFit:"contain",verticalAlign:"middle",borderRadius:2}}/>
- :<span style={{fontSize:11}}><Ic n="trophy" s={11} c="#7a9cbd"/></span>}
- <span style={{fontSize:11,fontWeight:700,color:"#7a9cbd"}}>{displayLabel}</span>
+ :<span style={{fontSize:11}}><Ic n="trophy" s={11} c="#b4c4d8"/></span>}
+ <span style={{fontSize:11,fontWeight:700,color:"#b4c4d8"}}>{displayLabel}</span>
  </>
  :<span style={{fontSize:11,color:"#3a4a5e",opacity:.6}}><Ic n="plus" s={11}/></span>}
  </span>
@@ -8976,6 +8976,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  `}</style>
 
  <style>{`@media (min-width:900px){.app-main.wide{max-width:1280px!important;padding-left:24px!important;padding-right:24px!important}}
+.br-l2>*,.br-l2 .br-m{display:inline-flex;align-items:center;line-height:1}.br-l2 img{display:block}
 @media (min-width:1024px){
  .bottom-nav{top:0!important;bottom:0!important;left:0!important;right:auto!important;width:228px!important;border-top:none!important;border-right:1px solid rgba(255,255,255,.07)!important;padding:22px 14px!important;box-sizing:border-box;display:block}
  .bottom-nav-in{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:4px!important;max-width:none!important}
@@ -9060,62 +9061,46 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {bkOver.length>0&&<button className="h-ev" onClick={()=>{setView("players");setSuiviTab("reglages");}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,margin:"6px 0 10px",padding:"11px 14px",borderRadius:14,border:"1px solid rgba(251,146,60,.5)",background:"rgba(251,146,60,.1)",color:"#fff",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
   <Ic n="warn" s={18} c="#FB923C"/><span style={{flex:1,fontSize:13.5}}><b>Retire de l'argent</b>{bkOver.map(x=><span key={x.bk} style={{display:"block",fontSize:12.5,color:"#FED7AA"}}>{x.bk} : {Math.round(x.bal)} $ (plafond {bkCap} $) → retirer {Math.round(x.bal-bkCap)} $</span>)}</span></button>}
  {/* EN-TÊTE */}
- <div className="h-top" style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",margin:"6px 0 16px",gap:10}}>
-  <div style={{paddingTop:22}}>
-   <div style={{fontSize:34,fontWeight:900,letterSpacing:"-1.5px",lineHeight:1,background:"linear-gradient(90deg,#7c3aed,#3b82f6)",WebkitBackgroundClip:"text",backgroundClip:"text",color:"transparent"}}>EMEIEKS</div>
-   <div style={{fontSize:11,color:"#6b7280",letterSpacing:"9px",fontWeight:600,marginTop:8}}>BANKROLL</div>
-  </div>
-  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-   <button onClick={()=>setSupaModal(true)} style={{display:"flex",alignItems:"center",gap:6,height:34,padding:"0 12px",borderRadius:11,border:"1px solid rgba(124,58,237,.45)",background:"rgba(124,58,237,.12)",color:"#c4b5fd",fontWeight:800,fontSize:13.5,cursor:"pointer",fontFamily:"Inter,sans-serif",position:"relative"}}>
-    <Ic n="cloud" s={15}/>{syncing?"Sync…":"Cloud"}{supaOk&&!syncing&&<span style={{width:6,height:6,borderRadius:3,background:"#22C55E"}}/>}{pendingSync>0&&<span style={{position:"absolute",top:-6,right:-6,minWidth:16,height:16,borderRadius:8,background:"#F59E0B",color:"#111",fontSize:10,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{pendingSync}</span>}</button>
-   <div style={{fontSize:13,color:"#9ca3af",marginTop:4}}>Profit Net</div>
-   <div style={{fontSize:24,fontWeight:900,color:totalProfit>=0?"#22C55E":"#EF4444",lineHeight:1}}>{fmtM(totalProfit)}</div>
-   <div style={{fontSize:11.5,color:"#6b7280"}}>Bankroll : <b style={{color:"#e5e7eb"}}>{Math.round(bankroll)}$</b></div>
-  </div>
+ <div className="h-top" style={{display:"grid",gridTemplateColumns:"auto minmax(0,1fr) auto",alignItems:"center",gap:8,margin:"2px 0 12px"}}>
+  <button onClick={()=>setSupaModal(true)} aria-label="Cloud" title="Cloud" style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,padding:0,borderRadius:10,border:"none",background:"transparent",color:supaOk?"#22C55E":"#a78bfa",cursor:"pointer",position:"relative",opacity:syncing?.5:1}}>
+   <Ic n="cloud" s={19}/>{pendingSync>0&&<span style={{position:"absolute",top:-4,right:-4,minWidth:15,height:15,borderRadius:8,background:"#F59E0B",color:"#111",fontSize:9.5,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px"}}>{pendingSync}</span>}</button>
+  <button onClick={()=>setView("statistiques")} style={{justifySelf:"center",display:"flex",alignItems:"center",gap:5,background:"none",border:"none",color:"#f3f4f6",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap",minWidth:0}}>Bankroll {season==="all"?"· Tout":"Saison "+season}<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg></button>
+  <div style={{textAlign:"right"}}><div style={{fontSize:10.5,color:"#9ca3af",fontWeight:700}}>Profit net</div><div style={{fontSize:17,fontWeight:900,color:totalProfit>=0?"#22C55E":"#EF4444",lineHeight:1.1}}>{fmtM(totalProfit)}</div></div>
  </div>
 
  {/* GRAPHIQUE */}
- <div className="h-hero" style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,padding:"14px 12px 10px",marginBottom:12}}>
-  <BankrollChart points={chartPointsFiltered} h={190}/>
-  <div style={{display:"flex",gap:5,marginTop:6,alignItems:"center",justifyContent:"center"}}>
-   {[{k:null,l:"Tout"},{k:3,l:"3j"},{k:7,l:"7j"},{k:14,l:"14j"},{k:30,l:"30j"}].map(({k,l})=>{const on=homePeriod===k;return(
-    <button key={l} onClick={()=>setHomePeriod(k)} style={{padding:"4px 10px",borderRadius:8,border:"1px solid "+(on?"rgba(167,139,250,.4)":"transparent"),background:on?"rgba(124,58,237,.15)":"transparent",color:on?"#c4b5fd":"#4b5563",fontSize:11.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>);})}
+ <div className="h-hero" style={{background:"linear-gradient(170deg,rgba(124,58,237,.22),#111827 55%)",border:"1px solid rgba(167,139,250,.25)",borderRadius:20,padding:"12px 10px 12px",marginBottom:12}}>
+  <BankrollChart points={chartPointsFiltered} h={Math.max(240,Math.min(520,(typeof window!=="undefined"?window.innerHeight:900)-500))}/>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:6,marginTop:8}}>
+   {[{k:1,l:"1j"},{k:7,l:"1s"},{k:30,l:"1m"},{k:365,l:"1a"},{k:null,l:"Tout"}].map(({k,l})=>{const on=homePeriod===k;return(
+    <button key={l} onClick={()=>setHomePeriod(k)} style={{height:34,borderRadius:17,border:"1.5px solid "+(on?"#a78bfa":"rgba(255,255,255,.18)"),background:on?"rgba(124,58,237,.3)":"transparent",color:on?"#fff":"#cbd5e1",fontSize:13.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>);})}
   </div>
  </div>
 
- {/* 3 CASES */}
+ {/* BOUTONS */}
+ <div className="h-act2" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,marginBottom:12}}>
+  {[["statistiques","Stats","chart"],["calendrier","Calendrier","cal"]].map(([v,l,ic])=><button key={v} onClick={()=>setView(v)} style={{height:44,borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"#111827",color:"#f3f4f6",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+   {ic==="cal"?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/></svg>}{l}</button>)}
+ </div>
+
+ {/* 4 CASES */}
  {(()=>{const pend=betsForDisplay.filter(b=>b.status==="pending").length;const st=homeSettled.reduce((a,b)=>a+(b.stake||0),0);const roi=st?totalProfit/st*100:0;
-  const C=({l,v,sub,c})=><div style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"12px 12px 11px",minWidth:0}}>
-   <div style={{fontSize:10.5,color:"#9ca3af",fontWeight:700,letterSpacing:"1.5px"}}>{l}</div>
-   <div style={{fontSize:22,fontWeight:900,color:c,letterSpacing:"-.5px",margin:"6px 0 4px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{v}</div>
-   <div style={{fontSize:11,color:"#6b7280"}}>{sub}</div></div>;
-  return <div className="h-kpi" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:12}}>
-   <C l="PARIS" v={homeSettled.length+pend} sub={pend+" en cours"} c="#f3f4f6"/>
-   <C l="PROGRESSION" v={(progression>=0?"+":"")+progression.toFixed(1)+"%"} sub={"BK : "+Math.round(bankroll)+"$"} c={progression>=0?"#22C55E":"#EF4444"}/>
-   <C l="PROFIT NET" v={fmtM(totalProfit)} sub={"ROI "+roi.toFixed(1)+"%"} c={totalProfit>=0?"#22C55E":"#EF4444"}/>
+  const C=({l,v,u,c})=><div style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"18px 10px",textAlign:"center",minWidth:0}}>
+   <div style={{fontSize:12.5,color:"#9ca3af",fontWeight:600,letterSpacing:".5px"}}>{l}</div>
+   <div style={{fontSize:28,fontWeight:900,color:c,letterSpacing:"-.5px",marginTop:6,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{v}<span style={{fontSize:15,marginLeft:2}}>{u}</span></div></div>;
+  const g=x=>x>=0?"#22C55E":"#EF4444";
+  return <div className="h-kpi" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,marginBottom:14}}>
+   <C l="PARIS" v={(homeSettled.length+pend).toLocaleString("fr-CA")} c="#a78bfa"/>
+   <C l="BÉNÉFICE" v={(totalProfit>=0?"+":"")+totalProfit.toLocaleString("fr-CA",{minimumFractionDigits:2,maximumFractionDigits:2})} u="$" c={g(totalProfit)}/>
+   <C l="ROI" v={roi.toFixed(2)} u="%" c={g(roi)}/>
+   <C l="PROGRESSION" v={progression.toFixed(2)} u="%" c={g(progression)}/>
   </div>;})()}
 
  {syncAlert&&<div className="h-sync" style={{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",marginBottom:10,borderRadius:14,background:"rgba(239,68,68,.12)",border:"1px solid rgba(239,68,68,.4)"}}>
   <Ic n="warn" s={16} c="#EF4444"/><div style={{flex:1,fontSize:13,color:"#fecaca",fontWeight:700}}>{pendingSync} pari(s) pas encore envoyé(s) sur Supabase</div>
   <button onClick={()=>{flushRef.current&&flushRef.current();}} style={{height:34,padding:"0 12px",borderRadius:10,border:"none",background:"#EF4444",color:"#fff",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Réessayer</button></div>}
 
- {/* BOUTONS */}
- <div className="h-act2" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:12}}>
-  {[["calendrier","Calendrier","cal"],["mesparis","Filtres","search"],["statistiques","Stats","chart"]].map(([v,l,ic])=><button key={v} onClick={()=>setView(v)} style={{height:52,borderRadius:16,border:"1px solid rgba(255,255,255,.08)",background:"#111827",color:"#f3f4f6",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-   {ic==="cal"?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>:ic==="search"?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>}{l}</button>)}
- </div>
 
- {/* PARIS RÉCENTS */}
- {(()=>{const all=[...betsForDisplay].filter(b=>b.status!=="pending"&&!isAdjBet(b)).sort((a,b2)=>String(b2.datetime||"").localeCompare(String(a.datetime||"")));if(!all.length)return null;const L=all.slice(0,homeN);
-  return <div className="h-recent" style={{background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:20,padding:"14px 16px 12px"}}>
-   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span style={{fontSize:12,color:"#9ca3af",fontWeight:700,letterSpacing:"2px"}}>PARIS RÉCENTS</span>
-    <button onClick={()=>setView("mesparis")} style={{fontSize:13,color:"#a78bfa",fontWeight:800,background:"none",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",padding:0}}>Voir tous ({all.length})</button></div>
-   {L.map(b=><button key={b.id} onClick={()=>openEdit(b)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"11px 0",border:"none",borderBottom:"1px solid rgba(255,255,255,.07)",background:"transparent",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
-    <GameLogo game={b.game} size={22}/>
-    <span style={{flex:1,minWidth:0}}><b style={{display:"block",fontSize:15,color:"#f3f4f6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player}</b><span style={{fontSize:12.5,color:"#9ca3af"}}>{b.description}{b.mapTag?" · "+b.mapTag:""}</span></span>
-    <b style={{fontSize:15,color:(b.profit||0)>0?"#22C55E":(b.profit||0)<0?"#EF4444":"#9ca3af"}}>{fmtM(b.profit||0)}</b></button>)}
-   {all.length>homeN&&<button onClick={()=>setHomeN(n=>n+20)} style={{width:"100%",height:44,marginTop:12,borderRadius:12,border:"1px solid rgba(255,255,255,.1)",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>▾ Afficher plus ({all.length-homeN} paris)</button>}
-  </div>;})()}
 
  </div>
  )}
@@ -9364,52 +9349,27 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div className="view-enter">
  {/* Header */}
  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
- <button onClick={()=>setView("home")} style={{background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:10,padding:"8px 12px",color:"#A78BFA",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:700}}>←</button>
- <div style={{fontSize:16,fontWeight:700,color:"#E5E7EB"}}>Calendrier des bénéfices</div>
+ <button onClick={()=>setView("home")} aria-label="Retour" style={{background:"none",border:"none",padding:"4px 6px",color:"#A78BFA",cursor:"pointer",fontSize:22,fontWeight:700,lineHeight:1}}>←</button>
+ <div style={{fontSize:18,fontWeight:800,color:"#F3F4F6"}}>Calendrier des bénéfices</div>
  </div>
 
  {/* Nav mois */}
  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
  <button onClick={()=>{let m=calMonth-1,y=calYear;if(m<0){m=11;y--;}setCalMonth(m);setCalYear(y);setCalSelected(null);}}
  style={{background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"9px 14px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:16,fontWeight:700}}>‹</button>
- <div style={{flex:1,background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px",textAlign:"center",fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{FR_MONTHS[calMonth]} {calYear}</div>
+ <div style={{minWidth:130,background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"10px 14px",textAlign:"center",fontSize:15,fontWeight:700,color:"#E5E7EB"}}>{FR_MONTHS[calMonth]} {calYear}</div>
  <button onClick={()=>{let m=calMonth+1,y=calYear;if(m>11){m=0;y++;}setCalMonth(m);setCalYear(y);setCalSelected(null);}}
  style={{background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"9px 14px",color:"#94A3B8",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:16,fontWeight:700}}>›</button>
- <button onClick={()=>{setCalMonth(new Date().getMonth());setCalYear(new Date().getFullYear());setCalSelected(null);}}
- style={{background:"#111827",border:"1px solid #1F2937",borderRadius:10,padding:"9px 12px",color:"#A78BFA",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:12,fontWeight:700,whiteSpace:"nowrap"}}>Auj.</button>
+ <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+ {ALL_GAMES.map(g=>{const on=calGames.includes(g);return(
+ <button key={g} title={g} aria-label={g} aria-pressed={on} onClick={()=>setCalGames(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g])}
+ style={{width:36,height:40,borderRadius:10,border:"1.5px solid "+(on?"#A78BFA":"#1F2937"),background:on?"rgba(124,58,237,.2)":"#111827",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0,opacity:calGames.length&&!on?.45:1}}>
+ <GameLogo game={g} size={18}/></button>);})}
  </div>
-
- {/* Filtre jeu */}
- <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
- {ALL_GAMES.map(g=>(
- <button key={g} onClick={()=>setCalGames(prev=>prev.includes(g)?prev.filter(x=>x!==g):[...prev,g])}
- style={{display:"flex",alignItems:"center",gap:4,padding:"5px 11px",borderRadius:8,border:"1.5px solid "+(calGames.includes(g)?"#7C3AED":"#1F2937"),background:calGames.includes(g)?"rgba(124,58,237,0.15)":"transparent",color:calGames.includes(g)?"#A78BFA":"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- <GameLogo game={g} size={12}/>{g}
- </button>
- ))}
- {calGames.length>0&&<button onClick={()=>setCalGames([])} style={{padding:"5px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,0.2)",background:"rgba(239,68,68,0.06)",color:"#EF4444",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tous</button>}
  </div>
-
- {/* Période entre 2 dates */}
- {(()=>{const inR=b=>{const d=String(b.datetime||"").slice(0,10);return d&&(!calFrom||d>=calFrom)&&(!calTo||d<=calTo);};
-  const rs=(calFrom||calTo)?calFilteredBets.filter(b=>b.status!=="pending"&&!isAdjBet(b)&&inR(b)):[];
-  const pr=rs.reduce((t,b)=>t+(b.profit||0),0),stk=rs.reduce((t,b)=>t+(b.stake||0),0),w=rs.filter(b=>b.status==="won").length,l=rs.filter(b=>b.status==="lost").length;
-  const roi=stk>0?pr/stk*100:0;const box={display:"flex",flexDirection:"column",gap:3,padding:"8px 12px",borderRadius:12,background:"#111827",border:"1px solid #1F2937"};
-  return <div style={{marginBottom:12}}>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,alignItems:"stretch"}}>
-    <label style={box}><span style={{fontSize:11,color:"#6B7280",fontWeight:600}}>Depuis</span><input type="date" value={calFrom} max={calTo||undefined} onChange={e=>setCalFrom(e.target.value)} style={{background:"transparent",border:"none",outline:"none",color:"#E5E7EB",fontSize:14,fontWeight:600,colorScheme:"dark",fontFamily:"Inter,sans-serif",padding:0}}/></label>
-    <label style={box}><span style={{fontSize:11,color:"#6B7280",fontWeight:600}}>Jusqu'à</span><input type="date" value={calTo} min={calFrom||undefined} onChange={e=>setCalTo(e.target.value)} style={{background:"transparent",border:"none",outline:"none",color:"#E5E7EB",fontSize:14,fontWeight:600,colorScheme:"dark",fontFamily:"Inter,sans-serif",padding:0}}/></label>
-    {(calFrom||calTo)&&<button onClick={()=>{setCalFrom("");setCalTo("");}} style={{padding:"0 12px",borderRadius:12,border:"1px solid rgba(239,68,68,.25)",background:"rgba(239,68,68,.06)",color:"#EF4444",fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>✕</button>}
-   </div>
-   {(calFrom||calTo)&&<div style={{marginTop:8,padding:"14px 16px",borderRadius:14,background:"#111827",border:"1px solid "+(pr>=0?"rgba(34,197,94,.3)":"rgba(239,68,68,.3)")}}>
-    <div style={{fontSize:11,color:"#9CA3AF",fontWeight:600}}>Bénéfice sur la période</div>
-    <div style={{fontSize:28,fontWeight:900,color:pr>=0?"#22C55E":"#EF4444",letterSpacing:-.8}}>{fmtM(pr)}</div>
-    <div style={{fontSize:13,color:"#CBD5E1",fontWeight:600,marginTop:2}}>{rs.length} paris · {w}-{l} · {rs.length?Math.round(w*100/Math.max(1,w+l)):0}% WR · ROI <b style={{color:roi>=0?"#22C55E":"#EF4444"}}>{roi>=0?"+":""}{roi.toFixed(1)}%</b> · misé {fmtM(stk).replace("+","")}</div>
-   </div>}
-  </div>;})()}
 
  {/* Calendrier grand format */}
- <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"12px",marginBottom:14}}>
+ <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:16,padding:"12px 8px",marginBottom:14,"--calh":"max(64px, calc((100vh - 470px) / 6))"}}>
  {/* Jours de la semaine — commence Lundi */}
  <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>
  {["L","M","M","J","V","S","D"].map((d,i)=>(
@@ -9417,7 +9377,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  ))}
  </div>
  {/* Cellules */}
- <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+ <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4}}>
  {(()=>{
  // Lundi = 0, ..., Dimanche = 6 (format Bet Analytix)
  const firstDayJS = new Date(calYear,calMonth,1).getDay(); // 0=dim
@@ -9430,8 +9390,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  for(let i=0;i<firstDayMon;i++){
  const d=prevMonthDays-firstDayMon+1+i;
  cells.push(
- <div key={"prev"+i} style={{borderRadius:10,padding:"8px 4px",textAlign:"center",minHeight:52,opacity:.25}}>
- <div style={{fontSize:14,fontWeight:600,color:"#6B7280"}}>{d}</div>
+ <div key={"prev"+i} style={{borderRadius:10,padding:"8px 2px",textAlign:"center",height:"var(--calh)",display:"flex",alignItems:"center",justifyContent:"center",opacity:.3}}>
+ <div style={{fontSize:13,fontWeight:500,color:"#6B7280"}}>{d}</div>
  </div>
  );
  }
@@ -9453,35 +9413,22 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  // Color: green shades for profit, red shades for loss
  var bg,border,textColor;
  if(isSel){bg="rgba(124,58,237,0.3)";border="#7C3AED";textColor="#c4b5fd";}
- else if(isPositive){
- // Low: rgba(34,197,94,0.08) → High: rgba(0,160,60,0.85)
- var a=0.08+intensity*0.77;
- bg="rgba("+(intensity>0.6?"0,140,50":"22,163,74")+","+a.toFixed(2)+")";
- border=intensity>0.5?"rgba(0,200,80,0.6)":"rgba(34,197,94,0.25)";
- textColor=intensity>0.7?"#fff":"#E5E7EB";
- }else if(isNegative){
- var a=0.08+intensity*0.77;
- bg="rgba("+(intensity>0.6?"180,20,20":"239,68,68")+","+a.toFixed(2)+")";
- border=intensity>0.5?"rgba(220,30,30,0.6)":"rgba(239,68,68,0.25)";
- textColor=intensity>0.7?"#fff":"#E5E7EB";
- }else if(hasPending){
- bg="rgba(59,130,246,0.08)";border="transparent";textColor="#E5E7EB";
- }else{
- bg="transparent";border="transparent";textColor="#E5E7EB";
- }
+ else if(isPositive){bg="rgba(34,197,94,0.12)";border="rgba(34,197,94,0.4)";textColor="#E5E7EB";}
+ else if(isNegative){bg="rgba(239,68,68,0.12)";border="rgba(239,68,68,0.4)";textColor="#E5E7EB";}
+ else if(hasPending){bg="rgba(59,130,246,0.08)";border="rgba(59,130,246,.2)";textColor="#E5E7EB";}
+ else{bg="transparent";border="transparent";textColor="#E5E7EB";}
  cells.push(
  <div key={dk} onClick={()=>{if(!dailyCount[dk]&&!pending){setCalSelected(isSel?null:dk);return;}setFDateFrom(dk);setFDateTo(dk);setView("mesparis");try{window.scrollTo({top:0});}catch(e){}}}
  style={{
- borderRadius:10,padding:"8px 4px",textAlign:"center",minHeight:52,
+ borderRadius:10,padding:"6px 1px",textAlign:"center",height:"var(--calh)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
  cursor:"pointer",background:bg,
- border:"1px solid "+border,
- transition:"all .15s ease",
- boxShadow:intensity>0.7&&hasProfit?"0 2px 8px rgba("+(isPositive?"0,180,80":"220,30,30")+","+(intensity*0.4).toFixed(2)+")":"none",
+ border:"1px solid "+(isToday&&!isSel?"#A78BFA":border),
+ transition:"all .15s ease",minWidth:0,overflow:"hidden"
  }}>
- <div style={{fontSize:14,fontWeight:isToday?800:600,color:isToday?"#22C55E":textColor,marginBottom:hasProfit?2:0}}>{d}</div>
+ <div style={{fontSize:12.5,fontWeight:isToday?800:500,color:isToday?"#C4B5FD":hasProfit?"#CBD5E1":textColor,lineHeight:1}}>{d}</div>
  {hasProfit&&(
- <div style={{fontSize:9,fontWeight:700,color:isPositive?(intensity>0.6?"#fff":"#22C55E"):(intensity>0.6?"#fff":"#EF4444"),lineHeight:1.1}}>
- {isPositive?"+":""}{Math.abs(profit)>=1000?(profit/1000).toFixed(1)+"K":profit.toFixed(0)}$
+ <div style={{fontSize:Math.abs(profit)>=100?12.5:14,fontWeight:700,color:isPositive?"#22C55E":"#EF4444",lineHeight:1,whiteSpace:"nowrap",letterSpacing:"-.4px"}}>
+ {Math.abs(profit)>=1000?(profit/1000).toFixed(1)+"K $":Math.abs(profit)>=100?profit.toFixed(1)+"$":profit.toFixed(0)+" $"}
  </div>
  )}
  {hasPending&&!hasProfit&&<div style={{width:5,height:5,borderRadius:"50%",background:"#3B82F6",margin:"4px auto 0"}}/>}
@@ -9493,8 +9440,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const remaining=(7-totalCells%7)%7;
  for(let i=1;i<=remaining;i++){
  cells.push(
- <div key={"next"+i} style={{borderRadius:10,padding:"8px 4px",textAlign:"center",minHeight:52,opacity:.25}}>
- <div style={{fontSize:14,fontWeight:600,color:"#6B7280"}}>{i}</div>
+ <div key={"next"+i} style={{borderRadius:10,padding:"8px 2px",textAlign:"center",height:"var(--calh)",display:"flex",alignItems:"center",justifyContent:"center",opacity:.3}}>
+ <div style={{fontSize:13,fontWeight:500,color:"#6B7280"}}>{i}</div>
  </div>
  );
  }
@@ -9503,6 +9450,19 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  </div>
 
+ {/* Stats du mois */}
+ <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+ <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
+ <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Bénéfice du mois</div>
+ <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#22C55E":"#EF4444"}}>{fmtM(monthProfit)}</div>
+ </div>
+ <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
+ <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Progression du mois</div>
+ <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#22C55E":"#EF4444"}}>
+ {(monthProfit>=0?"+":"")+(bankroll>0?monthProfit/bankroll*100:0).toFixed(1)}%
+ </div>
+ </div>
+ </div>
  {/* Détail jour sélectionné */}
  {calSelected&&(()=>{
  const selectedDayBets=(calGames.length>0?calFilteredBets.filter(b=>toDateKey(b.datetime)===calSelected):byDay[calSelected])||[];
@@ -9537,23 +9497,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  );
  })()}
 
- {/* Stats du mois */}
- <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
- <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
- <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Bénéfice du mois</div>
- <div style={{fontSize:22,fontWeight:800,color:monthProfit>=0?"#22C55E":"#EF4444"}}>{fmtM(monthProfit)}</div>
- </div>
- <div style={{background:"#111827",border:"1px solid #1F2937",borderRadius:14,padding:"14px 16px"}}>
- <div style={{fontSize:11,color:"#9CA3AF",marginBottom:4}}>Paris du mois</div>
- <div style={{fontSize:22,fontWeight:800,color:"#60A5FA"}}>
- {(()=>{
- const mo=String(calMonth+1).padStart(2,"0");
- const prefix=calYear+"-"+mo;
- return Object.entries(dailyCount).filter(([d])=>d.startsWith(prefix)).reduce((s,[,v])=>s+v,0);
- })()}
- </div>
- </div>
- </div>
  </div>
  )}
 
