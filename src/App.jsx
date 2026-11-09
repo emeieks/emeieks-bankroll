@@ -5316,14 +5316,15 @@ function advOf(seg,vv){const o={d:+vv[2],a:+vv[3]};let tail=seg.slice(vv.index+v
  const kp=tail.match(/KP%?\s*([\d.]+)\s*%/i);if(kp)o.kp=+kp[1];const cs=tail.match(/\bCS\s*(\d{1,4})\b/i);if(cs)o.cs=+cs[1];
  const gd=tail.match(/Gold\s*([\d.]+)\s*(k)?/i);if(gd)o.gold=Math.round(+gd[1]*(gd[2]?1000:1));const dm=tail.match(/Damage\s*([\d,]+)/i);if(dm)o.dmg=+dm[1].replace(/,/g,"");return o;}
 // lignes « Nom Champion KDA k/d/a » du collage (pour les joueurs que l'app n'a pas reconnus)
-function boardRows(txt){const flat=" "+String(txt).replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/\s+/g," ")+" ";const out=[];let m;
+function boardRows(txt){const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]/g,"'").replace(/[\u00A0\u2000-\u200D\uFEFF]/g," ").replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/\s+/g," ")+" ";const out=[];let m;
  // LoL (Liquipedia) : Nom Champion KDA k/d/a …
  const re=/KDA\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/g;
  const CH=(typeof LOL_CHAMPS!=="undefined"?LOL_CHAMPS:[]).slice().sort((a,b)=>b.length-a.length);
- while((m=re.exec(flat))){const before=flat.slice(Math.max(0,m.index-60),m.index).trim();const ch=CH.find(x=>before.toLowerCase().endsWith(x.toLowerCase()));
-  const rest=ch?before.slice(0,before.length-ch.length).trim():before;const name=(rest.split(" ").pop()||"").replace(/[^A-Za-z0-9_.\-]/g,"");if(!name)continue;
+ while((m=re.exec(flat))){const before=flat.slice(Math.max(0,m.index-60),m.index).trim();const bn=cutNorm(before);const ch=CH.find(x=>cutNorm(x)&&bn.endsWith(cutNorm(x)));
+  let rest=before;if(ch){let n=cutNorm(ch).length;let j=before.length;while(n>0&&j>0){j--;if(/[a-z0-9]/i.test(before[j]))n--;}rest=before.slice(0,j).trim();}
+  const name=(rest.split(" ").pop()||"").replace(/[^A-Za-z0-9_.\-]/g,"");if(!name)continue;
   const seg=flat.slice(m.index,m.index+260);const vv=seg.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
-  out.push({name,k:cutNorm(name),champ:ch||"",kills:m[1],adv:vv?advOf(seg,vv):null});}
+  out.push({name,k:cutNorm(name),champ:ch||"",kills:m[1],ctx:bn.slice(-30),adv:vv?advOf(seg,vv):null});}
  // Valorant (vlr.gg) : Nom TAG rating ACS K/D/A +/- KAST ADR HS%
  const rv=/([A-Za-z0-9_.\-]{2,20})\s+[A-Za-z0-9]{2,5}\s+(\d\.\d{2})\s+(\d{2,3})\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\s+[+\-]?\d+\s+(\d{1,3})%\s+(\d{2,3})\s+(\d{1,3})%/g;
  while((m=rv.exec(flat)))out.push({name:m[1],k:cutNorm(m[1]),kills:m[4],adv:{rating:+m[2],acs:+m[3],d:+m[5],a:+m[6],kast:+m[7],adr:+m[8],hsp:+m[9]}});
@@ -5349,18 +5350,18 @@ function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g,"
  return {extras,present,rows};}
 function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss}){const [st,setSt]=useState("");const [txt,setTxt]=useState("");
  const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
- const apply=t=>{const r=parseBoard(t,roster,A,B);let TK=null;
+ const apply=t=>{const r=parseBoard(t,roster,A,B);let TK=null,RN="";
   // tableau structuré reconnu (Liquipedia / vlr / HLTV) → il prime : nom exact, sans risque de prendre un autre endroit du texte
   {const rows0=boardRows(t);if(rows0.length>=4){const nm=k=>cutNorm(roster[A][k]||roster[B][k]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const taken=new Set();
    const pick=(k,f)=>rows0.find(x=>!taken.has(x)&&f(x,k));
-   const tests=[(x,k)=>x.k===k||x.k===nm(k),(x,k)=>BET_ALIAS[x.k]===k,(x,k)=>x.k.replace(/0/g,"o")===nm(k).replace(/0/g,"o"),(x,k)=>(x.k.length>=4&&nm(k).startsWith(x.k))||(nm(k).length>=4&&x.k.startsWith(nm(k)))];
+   const tests=[(x,k)=>x.k===k||x.k===nm(k),(x,k)=>BET_ALIAS[x.k]===k,(x,k)=>x.k.replace(/0/g,"o")===nm(k).replace(/0/g,"o"),(x,k)=>(x.k.length>=4&&nm(k).startsWith(x.k))||(nm(k).length>=4&&x.k.startsWith(nm(k))),(x,k)=>!!x.ctx&&nm(k).length>=2&&x.ctx.includes(nm(k))&&(!x.champ||x.ctx.lastIndexOf(nm(k))+nm(k).length===x.ctx.length-cutNorm(x.champ).length)];
    const got={};tests.forEach(f=>all.forEach(k=>{if(got[k])return;const x=pick(k,f);if(x){taken.add(x);got[k]=x;}}));TK=new Set([...taken].map(x=>x.name+"|"+x.kills));
-   all.forEach(k=>{if(got[k]){const x=got[k];r[k]={k:x.kills,h:x.hs!=null?x.hs:"",...(x.champ?{c:x.champ}:{}),...(x.adv?{adv:x.adv}:{})};}else delete r[k];});}}const bx=boardExtras(t,roster,A,B),ex=bx.extras;if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(i,kk,"k",x.kills);if(hsOn)setP(i,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length);Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(v.c)setP(i,k,"c",v.c);if(v.adv)setP(i,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});
+   if(Object.keys(got).length<3){TK=null;RN=rows0.slice(0,4).map(x=>x.name).join(", ");}else all.forEach(k=>{if(got[k]){const x=got[k];r[k]={k:x.kills,h:x.hs!=null?x.hs:"",...(x.champ?{c:x.champ}:{}),...(x.adv?{adv:x.adv}:{})};}else delete r[k];});}}const bx=boardExtras(t,roster,A,B),ex=bx.extras;if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(i,kk,"k",x.kills);if(hsOn)setP(i,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length);Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(v.c)setP(i,k,"c",v.c);if(v.adv)setP(i,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});
   {const got=new Set([...Object.keys(r),...bx.rows.map(x=>x.k)]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const nm=k=>cutNorm(roster[A][k]||roster[B][k]);
    const hit=(x,k)=>k===x.k||nm(k)===x.k||BET_ALIAS[x.k]===k||(x.k.length>=4&&k.startsWith(x.k))||(k.length>=4&&x.k.startsWith(k));
    const rows=boardRows(t);const used=new Set();
    all.forEach(k=>{if(!got.has(k))return;const x=rows.find(y=>!used.has(y)&&hit(y,k));if(x){used.add(x);if(x.adv)setP(i,k,"adv",{...((r[k]&&r[k].adv)||{}),...x.adv});}});
-   if(onMiss)onMiss(i,TK?rows.filter(x=>!TK.has(x.name+"|"+x.kills)&&!bx.rows.some(y=>y.k===x.k)):rows.filter(x=>!used.has(x)&&!got.has(x.k)));}setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu");};
+   if(onMiss)onMiss(i,TK?rows.filter(x=>!TK.has(x.name+"|"+x.kills)&&!bx.rows.some(y=>y.k===x.k)):rows.filter(x=>!used.has(x)&&!got.has(x.k)));}setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu"+(RN?" (lu : "+RN+")":""));};
  const onPaste=async e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith("image/"));if(!it)return;e.preventDefault();setSt("Lecture de l'image…");
   try{const T=await loadTess();const f=it.getAsFile();const url=URL.createObjectURL(f);const im=await new Promise((ok,ko)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=()=>ko(new Error("image illisible"));x.src=url;});
    const cv=document.createElement("canvas");const z=im.width<1400?2:1;cv.width=im.width*z;cv.height=im.height*z;const cx=cv.getContext("2d");cx.drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
