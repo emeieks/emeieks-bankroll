@@ -5349,12 +5349,18 @@ function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g,"
  return {extras,present,rows};}
 function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss}){const [st,setSt]=useState("");const [txt,setTxt]=useState("");
  const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
- const apply=t=>{const r=parseBoard(t,roster,A,B);const bx=boardExtras(t,roster,A,B),ex=bx.extras;if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(i,kk,"k",x.kills);if(hsOn)setP(i,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length);Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(v.c)setP(i,k,"c",v.c);if(v.adv)setP(i,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});
+ const apply=t=>{const r=parseBoard(t,roster,A,B);let TK=null;
+  // tableau structuré reconnu (Liquipedia / vlr / HLTV) → il prime : nom exact, sans risque de prendre un autre endroit du texte
+  {const rows0=boardRows(t);if(rows0.length>=4){const nm=k=>cutNorm(roster[A][k]||roster[B][k]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const taken=new Set();
+   const pick=(k,f)=>rows0.find(x=>!taken.has(x)&&f(x,k));
+   const tests=[(x,k)=>x.k===k||x.k===nm(k),(x,k)=>BET_ALIAS[x.k]===k,(x,k)=>x.k.replace(/0/g,"o")===nm(k).replace(/0/g,"o"),(x,k)=>(x.k.length>=4&&nm(k).startsWith(x.k))||(nm(k).length>=4&&x.k.startsWith(nm(k)))];
+   const got={};tests.forEach(f=>all.forEach(k=>{if(got[k])return;const x=pick(k,f);if(x){taken.add(x);got[k]=x;}}));TK=new Set([...taken].map(x=>x.name+"|"+x.kills));
+   all.forEach(k=>{if(got[k]){const x=got[k];r[k]={k:x.kills,h:x.hs!=null?x.hs:"",...(x.champ?{c:x.champ}:{}),...(x.adv?{adv:x.adv}:{})};}else delete r[k];});}}const bx=boardExtras(t,roster,A,B),ex=bx.extras;if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(i,kk,"k",x.kills);if(hsOn)setP(i,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length);Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(v.c)setP(i,k,"c",v.c);if(v.adv)setP(i,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});
   {const got=new Set([...Object.keys(r),...bx.rows.map(x=>x.k)]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const nm=k=>cutNorm(roster[A][k]||roster[B][k]);
    const hit=(x,k)=>k===x.k||nm(k)===x.k||BET_ALIAS[x.k]===k||(x.k.length>=4&&k.startsWith(x.k))||(k.length>=4&&x.k.startsWith(k));
    const rows=boardRows(t);const used=new Set();
    all.forEach(k=>{if(!got.has(k))return;const x=rows.find(y=>!used.has(y)&&hit(y,k));if(x){used.add(x);if(x.adv)setP(i,k,"adv",{...((r[k]&&r[k].adv)||{}),...x.adv});}});
-   if(onMiss)onMiss(i,rows.filter(x=>!used.has(x)&&!got.has(x.k)));}setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu");};
+   if(onMiss)onMiss(i,TK?rows.filter(x=>!TK.has(x.name+"|"+x.kills)&&!bx.rows.some(y=>y.k===x.k)):rows.filter(x=>!used.has(x)&&!got.has(x.k)));}setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu");};
  const onPaste=async e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith("image/"));if(!it)return;e.preventDefault();setSt("Lecture de l'image…");
   try{const T=await loadTess();const f=it.getAsFile();const url=URL.createObjectURL(f);const im=await new Promise((ok,ko)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=()=>ko(new Error("image illisible"));x.src=url;});
    const cv=document.createElement("canvas");const z=im.width<1400?2:1;cv.width=im.width*z;cv.height=im.height*z;const cx=cv.getContext("2d");cx.drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
