@@ -5320,11 +5320,13 @@ function boardRows(txt){const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]
  // LoL (Liquipedia) : Nom Champion KDA k/d/a …
  const re=/KDA\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/g;
  const CH=(typeof LOL_CHAMPS!=="undefined"?LOL_CHAMPS:[]).slice().sort((a,b)=>b.length-a.length);
- while((m=re.exec(flat))){const before=flat.slice(Math.max(0,m.index-60),m.index).trim();const bn=cutNorm(before);const ch=CH.find(x=>cutNorm(x)&&bn.endsWith(cutNorm(x)));
-  let rest=before;if(ch){let n=cutNorm(ch).length;let j=before.length;while(n>0&&j>0){j--;if(/[a-z0-9]/i.test(before[j]))n--;}rest=before.slice(0,j).trim();}
-  const name=(rest.split(" ").pop()||"").replace(/[^A-Za-z0-9_.\-]/g,"");if(!name)continue;
+ let prevEnd=0;
+ // Liquipedia met aussi les noms des objets (images) entre le champion et « KDA » : on cherche le DERNIER champion depuis la ligne précédente
+ while((m=re.exec(flat))){const win=flat.slice(Math.max(prevEnd,m.index-400),m.index);const wl=win.toLowerCase();prevEnd=m.index+m[0].length;
+  let ch=null,at=-1;CH.forEach(x=>{const q=x.toLowerCase();let i=wl.lastIndexOf(q);while(i>=0){const nx=wl[i+q.length]||" ";if(!/[a-z]/.test(nx)||i+q.length===wl.length)break;i=wl.lastIndexOf(q,i-1);}if(i>at||(i===at&&ch&&x.length>ch.length)){at=i;ch=x;}});
+  const before=(at>=0?win.slice(0,at):win).trim();const name=(before.split(" ").pop()||"").replace(/[^A-Za-z0-9_.\-]/g,"");if(!name)continue;
   const seg=flat.slice(m.index,m.index+260);const vv=seg.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
-  out.push({name,k:cutNorm(name),champ:ch||"",kills:m[1],ctx:bn.slice(-30),adv:vv?advOf(seg,vv):null});}
+  out.push({name,k:cutNorm(name),champ:ch||"",kills:m[1],ctx:cutNorm(before).slice(-20),adv:vv?advOf(seg,vv):null});}
  // Valorant (vlr.gg) : Nom TAG rating ACS K/D/A +/- KAST ADR HS%
  const rv=/([A-Za-z0-9_.\-]{2,20})\s+[A-Za-z0-9]{2,5}\s+(\d\.\d{2})\s+(\d{2,3})\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\s+[+\-]?\d+\s+(\d{1,3})%\s+(\d{2,3})\s+(\d{1,3})%/g;
  while((m=rv.exec(flat)))out.push({name:m[1],k:cutNorm(m[1]),kills:m[4],adv:{rating:+m[2],acs:+m[3],d:+m[5],a:+m[6],kast:+m[7],adr:+m[8],hsp:+m[9]}});
@@ -5354,7 +5356,7 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss}){const [st,se
   // tableau structuré reconnu (Liquipedia / vlr / HLTV) → il prime : nom exact, sans risque de prendre un autre endroit du texte
   {const rows0=boardRows(t);if(rows0.length>=4){const nm=k=>cutNorm(roster[A][k]||roster[B][k]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const taken=new Set();
    const pick=(k,f)=>rows0.find(x=>!taken.has(x)&&f(x,k));
-   const tests=[(x,k)=>x.k===k||x.k===nm(k),(x,k)=>BET_ALIAS[x.k]===k,(x,k)=>x.k.replace(/0/g,"o")===nm(k).replace(/0/g,"o"),(x,k)=>(x.k.length>=4&&nm(k).startsWith(x.k))||(nm(k).length>=4&&x.k.startsWith(nm(k))),(x,k)=>!!x.ctx&&nm(k).length>=2&&x.ctx.includes(nm(k))&&(!x.champ||x.ctx.lastIndexOf(nm(k))+nm(k).length===x.ctx.length-cutNorm(x.champ).length)];
+   const tests=[(x,k)=>x.k===k||x.k===nm(k),(x,k)=>BET_ALIAS[x.k]===k,(x,k)=>x.k.replace(/0/g,"o")===nm(k).replace(/0/g,"o"),(x,k)=>(x.k.length>=4&&nm(k).startsWith(x.k))||(nm(k).length>=4&&x.k.startsWith(nm(k))),(x,k)=>!!x.ctx&&nm(k).length>=2&&x.ctx.endsWith(nm(k))];
    const got={};tests.forEach(f=>all.forEach(k=>{if(got[k])return;const x=pick(k,f);if(x){taken.add(x);got[k]=x;}}));TK=new Set([...taken].map(x=>x.name+"|"+x.kills));
    if(Object.keys(got).length<3){TK=null;RN=rows0.slice(0,4).map(x=>x.name).join(", ");}else all.forEach(k=>{if(got[k]){const x=got[k];r[k]={k:x.kills,h:x.hs!=null?x.hs:"",...(x.champ?{c:x.champ}:{}),...(x.adv?{adv:x.adv}:{})};}else delete r[k];});}}const bx=boardExtras(t,roster,A,B),ex=bx.extras;if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(i,kk,"k",x.kills);if(hsOn)setP(i,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length);Object.entries(r).forEach(([k,v])=>{setP(i,k,"k",v.k);if(v.c)setP(i,k,"c",v.c);if(v.adv)setP(i,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(i,k,"h",v.h);});
   {const got=new Set([...Object.keys(r),...bx.rows.map(x=>x.k)]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const nm=k=>cutNorm(roster[A][k]||roster[B][k]);
