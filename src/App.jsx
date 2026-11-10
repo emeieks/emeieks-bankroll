@@ -5410,7 +5410,8 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
         const gg=GNORM(m.game);const site=gg==="CS2"?["HLTV","https://www.hltv.org/search?query="+encodeURIComponent(A),"#2D6DA3"]:gg==="Valorant"?["VLR","https://www.vlr.gg/search/?q="+encodeURIComponent(A),"#E34A4A"]:null;
         return <>{site&&<span role="link" tabIndex={0} title={"Ouvrir sur "+site[0]} onClick={e=>{e.stopPropagation();window.open(site[1],"_blank","noopener");}} style={{font:"900 9px Inter,sans-serif",letterSpacing:.3,padding:"2px 5px",borderRadius:3,background:site[2],color:"#fff",cursor:"pointer"}}>{site[0]}</span>}{Array.from({length:nOT}).map((_,j)=><span key={j} style={{font:"800 10px Inter,sans-serif",background:"var(--ot)",color:"#2A1C05",padding:"1px 5px",borderRadius:3}}>OT</span>)}
          {noMap&&<span title="Carte non assignée" style={{width:16,height:16,borderRadius:"50%",background:"#E0533F",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
-         {pend&&<span title="Paris pas verrouillés" style={{width:16,height:16,borderRadius:"50%",background:"#3B82F6",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}</>;})()}{r?<span className="ok" aria-label="Saisi">✓</span>:null}</span></button>;})}</section>);});})()}
+         {pend&&<span title="Paris pas verrouillés" style={{width:16,height:16,borderRadius:"50%",background:"#3B82F6",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
+         {(()=>{let S={};try{S=JSON.parse(localStorage.getItem("v7_res_incomplete")||"{}");}catch(e){}const mi=S[m.key];return mi?<span title={"Scoreboard manquant : map "+mi.join(", ")} style={{width:16,height:16,borderRadius:"50%",background:"#F59E0B",color:"#1a1000",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>:null;})()}</>;})()}{r?<span className="ok" aria-label="Saisi">✓</span>:null}</span></button>;})}</section>);});})()}
   {rows&&!shownM.length&&<div style={{fontSize:12.5,color:"var(--dm)",textAlign:"center",padding:12}}>Aucun match avec des props Betby</div>}</>}
  </div>);
 }
@@ -5481,7 +5482,7 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss}){const [st,se
   <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={2} placeholder="Coller scoreboard (texte ou capture)" aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px dashed var(--ln)",borderRadius:2,padding:6,fontSize:12.5,resize:"vertical"}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
 function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
- const [evM,setEvM]=useState(null);
+ const [evM,setEvM]=useState(null);const [forceSave,setForceSave]=useState(false);
  useEffect(()=>{const t0=rsTs(m.start);const since=new Date((isNaN(t0)?Date.now():t0)-3*864e5).toISOString();
   cloudDb("ev_alerts?created_at=gte."+since+"&select=key,player,game,stat,side,map,book_line,book_odds,edge,match,start&limit=2000").then(r=>setEvM(Array.isArray(r)?r:[])).catch(()=>setEvM([]));},[m.key]);
  const [A0,B0]=Object.values(m.teams);const [lnk,setLnk]=useState({});const [clubFor,setClubFor]=useState(null);const A=lnk[A0]||A0,B=lnk[B0]||B0;
@@ -5540,7 +5541,13 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const save=async()=>{const _G=GNORM(m.game);const _n=s.s1==null?0:Number(s.s1)+Number(s.s2);if(!_n){setMsg("Score de la série manquant");return;}const _ms=maps.slice(0,_n);
   if(_ms.length<_n){setMsg("Maps manquantes");return;}
   if(["CS2","Valorant"].includes(_G)){const bad=_ms.findIndex(x=>!String(x.name||"").trim()||x.a===""||x.b==="");if(bad>=0){setMsg("Map "+(bad+1)+" incomplète (carte ou score)");return;}}
-  else{const bad=_ms.findIndex(x=>!x.win);if(bad>=0){setMsg((_G==="LoL"?"Game ":"Map ")+(bad+1)+" : vainqueur manquant");return;}}setBusy(true);setMsg(null);const now=new Date().toISOString();
+  else{const bad=_ms.findIndex(x=>!x.win);if(bad>=0){setMsg((_G==="LoL"?"Game ":"Map ")+(bad+1)+" : vainqueur manquant");return;}}
+  // scoreboard de chaque map jouée (ex. 2-0 → 2 scoreboards) : sinon on prévient, 2e appui = enregistrer quand même
+  {const miss=_ms.map((x,i)=>(tot(i,A,"k")>0&&tot(i,B,"k")>0)?null:i+1).filter(Boolean);
+   const IK="v7_res_incomplete";let S={};try{S=JSON.parse(localStorage.getItem(IK)||"{}");}catch(e){}
+   if(miss.length&&!forceSave){setForceSave(true);setMsg("⚠️ Scoreboard manquant : "+(_G==="LoL"?"Game ":"Map ")+miss.join(", ")+". Appuie encore pour enregistrer quand même.");return;}
+   if(miss.length)S[m.key]=miss;else delete S[m.key];try{localStorage.setItem(IK,JSON.stringify(S));}catch(e){}setForceSave(false);}
+  setBusy(true);setMsg(null);const now=new Date().toISOString();
   const _kA=i=>tot(i,A,"k"),_kB=i=>tot(i,B,"k");
   try{const keys=[...new Set([...Object.keys(roster[A]),...Object.keys(roster[B])])];const d0=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()-864e5)),d2=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()+2*864e5));
    const ch=keys.length?await cloudDb("cut_history?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&at=gte."+d0+"&at=lt."+d2+"&select=source,pkey,stat,maps,line,odds_over,odds_under,match,at&order=at.desc&limit=2000").catch(()=>[]):[];
@@ -5729,7 +5736,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
     <div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>Map</th><th>Bet</th><th>Cote</th><th>Écart</th><th>Réel</th><th></th></tr></thead><tbody>
      {P.map((p,i)=><tr key={i}><td>{p.n}</td><td>{p.map}{p.ot?<span className="pill" style={{background:"var(--ot)",color:"#2A1C05",marginLeft:4}}>OT</span>:null}</td><td>{p.side==="under"?"U":"O"} {p.L}{p.hs?" HS":""}</td><td>{p.o.toFixed(2)}</td><td>+{Number(p.e.toFixed(2))}</td><td style={{fontWeight:700,color:"#fff"}}>{p.v}</td><td><span className={"pill "+p.res}>{LB[p.res]}</span></td></tr>)}</tbody></table></div></section>;})()}
   {msg&&<div className="msg" role="status" style={{color:msg.startsWith("✓")?"var(--wn)":"var(--ls)"}}>{msg}</div>}
-  <button className="save" onClick={save} disabled={busy||!nMaps}>{busy?"…":"Enregistrer le match"}</button>
+  <button className="save" onClick={save} disabled={busy||!nMaps} style={forceSave?{background:"#B45309"}:undefined}>{busy?"…":forceSave?"! Enregistrer quand même":"Enregistrer le match"}</button>
   {delStep===0?<button onClick={()=>setDelStep(1)} style={{height:38,border:"1px solid var(--ln)",borderRadius:3,background:"transparent",color:"var(--ls)",fontWeight:700,fontSize:13.5,cursor:"pointer"}}>Effacer ce match</button>
    :<div style={{display:"flex",gap:6,alignItems:"center",padding:"8px 10px",background:"rgba(226,86,79,.12)",borderRadius:3}}><span style={{flex:1,fontSize:13,color:"#F5B4AF"}}>Effacer le score, les maps et les stats joueurs de ce match ? Tes paris ne sont pas touchés.</span>
     <button onClick={()=>setDelStep(0)} style={{height:32,padding:"0 10px",border:"1px solid var(--ln)",borderRadius:2,background:"transparent",color:"var(--sf)",cursor:"pointer"}}>Annuler</button>
@@ -6666,16 +6673,28 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
  const av=n=>{const P=allPlayers[String(n||"").toLowerCase().trim()];const sr=getAvatarSrc(P);return <span style={{width:40,height:40,borderRadius:20,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af"}}>{sr?<img src={sr} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:String(n||"?").slice(0,2).toUpperCase()}</span>;};
  const TL=(t,gm,sz=22)=>{const u=findLogo(idx,t,gm);return u?<img src={u} alt="" style={{width:sz,height:sz,objectFit:"contain",flexShrink:0}}/>:<span style={{width:sz,height:sz,borderRadius:6,background:"#1f2937",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#9ca3af",flexShrink:0}}>{String(t||"?").slice(0,3).toUpperCase()}</span>;};
  const Bet=({x})=>{const c=x.result==="won"?"#22C55E":x.result==="lost"?"#EF4444":x.result==="void"?"#9ca3af":"#FBBF24";const duel=x.kind==="duel";
-  return <div style={{...card,borderLeft:"3px solid "+c,borderRadius:14,padding:"11px 13px",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-   {av(x.player)}
-   <div style={{flex:1,minWidth:0}}>
-    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}><b style={{fontSize:15,color:"#f3f4f6",textTransform:"capitalize"}}>{x.player}</b><span style={{fontSize:11,fontWeight:700,color:"#cbd5e1",background:"#1f2937",padding:"2px 6px",borderRadius:5}}>Map {x.map}</span>{x.mode==="live"&&<span style={{fontSize:10,fontWeight:900,padding:"2px 5px",borderRadius:5,background:"rgba(239,68,68,.16)",color:"#fca5a5"}}>LIVE</span>}<Tag x={x}/></div>
-    <div style={{fontSize:13,color:"#cbd5e1",marginTop:2}}>{duel?"Plus de kills que "+(x.vs||"?"):(x.side==="under"?"Under ":"Over ")+String(x.line).replace(".",",")+(x.stat==="headshots"?" HS":" Kills")}</div>
-    <div style={{fontSize:12,color:"#8b93a7",marginTop:3,display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-     {x.pp_line!=null&&<span style={{display:"inline-flex",alignItems:"center",gap:4,color:"#e5e7eb",fontWeight:700}}><img src={_B64_PP_LOGO_B64} alt="PrizePicks" style={{width:15,height:15,borderRadius:4}}/>{String(x.pp_line).replace(".",",")}{x.pp_maps&&String(x.pp_maps)!=="3"?<span style={{color:"#8b93a7",fontWeight:600}}>(Map {x.pp_maps})</span>:null}</span>}
-     <span>· {duel?"écart PP ":"écart "}{f2(Number(x.edge))} · @{Number(x.odds).toFixed(2)}{x.value!=null?" · "+x.value+(x.stat==="headshots"?" HS":" kills"):""}</span></div>
+  const v=Number(x.value),L=Number(x.line);const ratio=duel||isNaN(v)||!L?1:Math.max(0.04,Math.min(1,v/L));
+  const bw=!x.result?0:x.result==="void"?100:duel?100:x.side==="over"?(x.result==="won"?100:ratio*100):(x.result==="lost"?100:ratio*100);
+  return <div style={{background:"#111827",border:"1px solid #1F2937",borderLeft:"2.5px solid "+c,borderRadius:12,marginBottom:8,overflow:"hidden"}}>
+   <div style={{padding:"11px 13px 10px 12px",display:"flex",alignItems:"center",gap:11}}>
+    {av(x.player)}
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
+      <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0,textTransform:"capitalize"}}>{x.player}</span>
+      {x.mode==="live"&&<span style={{fontSize:8.5,fontWeight:900,padding:"2px 5px",borderRadius:4,background:"#EF4444",color:"#fff",flexShrink:0}}>LIVE</span>}<Tag x={x}/>
+      <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {x.map}</span>
+      <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
+      <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{duel?"plus de kills que "+(x.vs||"?"):(x.side==="under"?"Under ":"Over ")+String(x.line).replace(".",",")+(x.stat==="headshots"?" HS":" Kills")}</span>
+     </div>
+     <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
+      <span>@{Number(x.odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
+      <img src={_B64_PP_LOGO_B64} alt="PrizePicks" style={{width:12,height:12,borderRadius:2,marginRight:4}}/><span style={{color:"rgba(167,139,250,.95)"}}>{duel?"":String(x.pp_line??"").replace(".",",")+" "}<span style={{color:"#8b93a7",fontWeight:600}}>({f2(Number(x.edge))})</span></span>
+      {x.value!=null&&<><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"#e5e7eb"}}>{x.value} {x.stat==="headshots"?"HS":"kills"}</span></>}
+     </div>
+    </div>
+    <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:14.5,fontWeight:800,color:c}}>{x.result?m2(pu(x)):f2(su0(x))+" u"}</div><div style={{fontSize:11,color:"#8b93a7"}}>{x.result==="won"?"gagné":x.result==="lost"?"perdu":x.result==="void"?"remboursé":"en attente"}</div></div>
    </div>
-   <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:15,fontWeight:800,color:c}}>{x.result?m2(pu(x)):f2(su0(x))+" u"}</div><div style={{fontSize:11,color:"#8b93a7"}}>{x.result==="won"?"gagné":x.result==="lost"?"perdu":x.result==="void"?"remboursé":"en attente"}</div></div>
+   <div style={{height:4,background:"rgba(255,255,255,.05)"}}><div style={{height:"100%",width:bw+"%",background:c,transition:"width .4s"}}/></div>
   </div>;};
  const Month=({M})=>{const L=Object.values(M.matches).flatMap(z=>z.L);const a=agg(L);const isC=!!closed[M.mk];const wn=L.filter(x=>!x.result).length;
   return <div style={{marginBottom:12}}>
@@ -6690,7 +6709,7 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
       <button onClick={()=>setOpenM(o=>({...o,[z.k]:!op}))} aria-expanded={op} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",...card,borderRadius:op?"14px 14px 0 0":14,cursor:"pointer",color:"#e5e7eb",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
        <span style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{TL(A,z.game)}{TL(B,z.game)}</span>
        <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:14,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{A||"?"} <span style={{color:"#6b7280",fontWeight:600}}>vs</span> {B||"?"}</span>
-        <span style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",fontSize:11.5,color:"#8b93a7"}}>{new Date(z.day+"T12:00:00").toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short"})} · {z.L.length} paris{zw?" · "+zw+" en attente":""}
+        <span style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",fontSize:11.5,color:"#8b93a7"}}>{z.L.length} paris{zw?" · "+zw+" en attente":""}
         {z.tour&&(()=>{const nm=tourAlias(z.tour);const known=((savedTourneys||{})[z.game]||[]).some(x=>cutNorm(x)===cutNorm(nm));return known?<span style={{color:"#cbd5e1"}}>· {nm}</span>:
          <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();setTourPick({g:z.game,name:z.tour});}} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();setTourPick({g:z.game,name:z.tour});}}} style={{fontSize:11,fontWeight:800,color:"#FBBF24",border:"1px solid rgba(251,191,36,.4)",padding:"2px 7px",borderRadius:6}}>{z.tour} · lier / créer</span>;})()}</span></span>
        <span style={{textAlign:"right"}}><b style={{display:"block",fontSize:14,color:b.n?pc(b.p):"#FBBF24"}}>{b.n?m2(b.p):zw+" ⏳"}</b>{b.n>0&&<span style={{fontSize:11,color:"#8b93a7"}}>{b.w}-{b.l}</span>}</span>
@@ -6726,7 +6745,7 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
  const roles=[...new Set((Array.isArray(rows)?rows:[]).map(roleOf).filter(Boolean))].sort();
  return(<div>
   <Seg v={tab} set={setTab} opts={[["apercu","Aperçu"],["paris","Paris"],["stats","Stats"],["scenario","Scénario"]]}/>
-  {(()=>{const nAct=(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+(tab==="paris"&&res!=="all");return <>
+  {tab!=="scenario"&&(()=>{const nAct=(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+(tab==="paris"&&res!=="all");return <>
   <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
    {[["all","Tout"],["under","↓ Under"],["over","↑ Over"]].map(([k,l])=><Chip key={k} on={sd===k} onClick={()=>setSd(k)} c={k==="over"?"#22C55E":k==="under"?"#60A5FA":"#8b5cf6"}>{l}</Chip>)}
    <div style={{flex:1}}/>
@@ -6800,7 +6819,6 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
    <Bars title="Par tournoi" groups={by(done,x=>x.tournament||null).sort((p,q)=>agg(q[1]).p-agg(p[1]).p).slice(0,8)}/>
   </>}
   {tab==="scenario"&&<>
-   <Row>{[["Tous les paris",SC0],["Écart de 0,5 à 2",{...SC0,emin:.5,emax:2}],["Over, écart 1 et plus",{...SC0,side:"over",emin:1}],["Under, écart 1 et plus, cote 1,80 et plus",{...SC0,side:"under",emin:1,omin:1.8}],["Seulement HS",{...SC0,stat:"hs"}],["Petits écarts : 0,5 et 0,75",{...SC0,emin:.5,emax:.75}]].map(([l,v])=><Chip key={l} on={JSON.stringify(sc)===JSON.stringify(v)} onClick={()=>setSc(v)}>{l}</Chip>)}</Row>
    <div style={{...card,padding:14}}>
     {[["Écart","emin","emax",0.25,0,3],["Cote","omin","omax",0.05,1.5,3]].map(([lab,lo,hi,st,mn,mx])=>{const fmt=v=>v>=9?"pas de limite":String(Math.round(v*100)/100).replace(".",",");
      const Btn=({k,d,children})=><button onClick={()=>setSc(o=>{let v=o[k]>=9?mx:o[k];v=Math.round((v+d*st)*100)/100;if(k===hi&&v>mx)v=9;if(v<mn)v=mn;if(k===lo&&v>(o[hi]>=9?99:o[hi]))return o;if(k===hi&&v!==9&&v<o[lo])return o;return {...o,[k]:v};})} aria-label={children==="+"?"Augmenter":"Diminuer"} style={{width:44,height:44,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",fontSize:22,fontWeight:800,cursor:"pointer"}}>{children}</button>;
@@ -7684,7 +7702,7 @@ function AppMain(){
   showToast(capName(nm)+" → "+d.team+(ids.size?" · "+ids.size+" pari(s)":""));};
   window.addEventListener("emeieks-player-team",h);return()=>window.removeEventListener("emeieks-player-team",h);},[]);
  const [tourSheet,setTourSheet]=useState(null);
- useEffect(()=>{const h=e=>{const d=e.detail||{};setDuelMode(true);setDuelForm(f=>({...f,player1:d.player||"",player2:d.vs||"",winner:"player1",odds:d.odds!=null?String(d.odds):"",mapTag:"Map "+(d.map||1),ppMapType:"1+2",ppLine_player1:d.pp_me!=null?String(Math.round(d.pp_me*2*2)/2):"",ppLine_player2:d.pp_vs!=null?String(Math.round(d.pp_vs*2*2)/2):""}));setView("add");};window.addEventListener("emeieks-add-duel",h);return()=>window.removeEventListener("emeieks-add-duel",h);},[]);
+ useEffect(()=>{const h=e=>{const d=e.detail||{};setDuelMode(true);setDuelForm(f=>({...f,player1:d.player||"",player2:d.vs||"",winner:"player1",odds:d.odds!=null?String(d.odds):"",mapTag:"Map "+(d.map||1),ppMapType:"Map 1+2",ppLine_player1:d.pp_me!=null?String(Math.round(d.pp_me*2*2)/2):"",ppLine_player2:d.pp_vs!=null?String(Math.round(d.pp_vs*2*2)/2):""}));setView("add");};window.addEventListener("emeieks-add-duel",h);return()=>window.removeEventListener("emeieks-add-duel",h);},[]);
  useEffect(()=>{const h=e=>setTourSheet(e.detail||null);window.addEventListener("emeieks-open-tour",h);return()=>window.removeEventListener("emeieks-open-tour",h);},[]);
  const [lineBets,setLineBets]=useState(null);
  useEffect(()=>{const h=e=>{const d=e.detail||{};const ids=d.ids?new Set(d.ids):null;setBets(prev=>prev.map(b=>((ids?ids.has(String(b.id)):(b.game===d.game&&d.names.includes((b.player||"").toLowerCase().trim())))&&b.role!==d.role)?{...b,role:d.role}:b));};
@@ -10620,7 +10638,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const nMap=D.ppMapType==="Map 1+2"?2:D.ppMapType==="Map 1+2+3"?3:1;
  const l1=parseFloat(String(D.ppLine_player1||"").replace(",",".")),l2=parseFloat(String(D.ppLine_player2||"").replace(",","."));
  // Écart PP PAR MAP (comme le bot) : Map 1+2 ÷ 2, Map 1+2+3 ÷ 3, Map 3 tel quel
- const ppN=D.ppMapType==="Map 1+2"?2:D.ppMapType==="Map 1+2+3"?3:1;
+ const ppMT=String(D.ppMapType||"").replace(/^map\s*/i,"").replace(/\s/g,"");const ppN=ppMT==="1+2"?2:ppMT==="1+2+3"?3:1;
  const ecartTot=(!isNaN(l1)&&!isNaN(l2)&&D.ppMapType)?(l1-l2):null;
  const ecart=ecartTot==null?null:Math.round(ecartTot/ppN*100)/100;
  const pCard=k=>{const nm=D[k];const pi=nm?findPlayer(nm):null;const on=D.winner===k;const src=pi?getAvatarSrc(pi):null;return(
