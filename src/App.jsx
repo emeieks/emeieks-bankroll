@@ -35,7 +35,13 @@ function normalizeDT(dt,id){
  if(!dt&&id)return tsToStr(id)||"";
  return dt||"";
 }
-function normalizeBet(b){return{...b,datetime:normalizeDT(b.datetime,b.id)};}
+// Nombres toujours propres : « 1,85 », "", null ou NaN ne passent jamais (plus de NaN affiché ni enregistré)
+const numF=v=>{if(typeof v==="number")return isFinite(v)?v:0;const x=parseFloat(String(v??"").replace(",",".").replace(/[^\d.\-]/g,""));return isFinite(x)?x:0;};
+function normalizeBet(b){const o={...b,datetime:normalizeDT(b.datetime,b.id)};
+ if("odds" in b)o.odds=numF(b.odds);if("stake" in b)o.stake=numF(b.stake);
+ if("profit" in b){const p=numF(b.profit);o.profit=(b.profit==null||b.profit===""||!isFinite(Number(String(b.profit).replace(",","."))))&&b.status?Math.round(calcProfit(b.status,o.stake||0,o.odds||0)*100)/100:p;}
+ if(Array.isArray(b.splits))o.splits=b.splits.map(x=>({...x,stake:numF(x.stake),odds:numF(x.odds)}));
+ return o;}
 
 // Supabase — sync sans login 
 const SUPA_URL = "https://mtgryzsovqiolinobbjw.supabase.co";
@@ -607,7 +613,7 @@ function LinesBlock({game,bets=[],allPlayers={},onPlayer}){
  </>;
 }
 
-function fmtM(n){n=Math.round(n||0);return (n>=0?"+":"\u2212")+String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+"$";}
+function fmtM(n){n=Math.round(Number(n)||0);return (n>=0?"+":"\u2212")+String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+"$";}
 
 function getAvatarSrc(player) {
  if ((player&&player.photo_url)) return player.photo_url;
@@ -903,6 +909,7 @@ function nowDT(){
 }
 const localYMD=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 function calcProfit(status,stake,odds){
+ stake=Number(String(stake??0).replace(",","."))||0;odds=Number(String(odds??0).replace(",","."))||0;
  if(status==="won")return stake*(odds-1);
  if(status==="lost")return -stake;
  return 0;
@@ -1959,6 +1966,11 @@ function TourEditSheet({t,mediaStore,setMediaStore,tourneyCal,setTourneyCal,show
  </div>;
 }
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets,mediaStore={},setMediaStore,tourneyCal=[],setTourneyCal,savedTourneys={}}){
+ // Changement de club : les anciens paris du joueur gardent son ancien club (stats et bankroll passées inchangées)
+ const freezeTeam=(p,newTeam)=>{if(!p||!p.team||p.team===newTeam||!setBets)return;const k=(p.name||"").toLowerCase().trim();const ch=[];setBets(prev=>prev.map(b=>{if((b.player||"").toLowerCase().trim()===k&&b.game===p.game&&(!b.team||b.team==="?")){const nb={...b,team:p.team};ch.push(nb);return nb;}return b;}));setTimeout(()=>{if(ch.length&&supaPushBets)supaPushBets(ch).catch(()=>{});},0);
+  const today=localYMD(new Date());
+  cloudDb("player_teams?player=ilike."+encodeURIComponent(p.name)+"&game=eq."+encodeURIComponent(p.game)+"&date_to=is.null",{method:"PATCH",prefer:"return=minimal",body:{date_to:today}})
+   .then(()=>newTeam?cloudDb("player_teams",{method:"POST",prefer:"return=minimal",body:[{player:p.name,game:p.game,team:newTeam,date_from:today}]}):null).catch(()=>{});};
  const [tourEdit,setTourEdit]=useState(null);
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
@@ -2049,6 +2061,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
   if(!editP)return;
   setEditPSaving(true);
   try{
+   freezeTeam(editP,editPForm.team||"");
    const data={...editP,...editPForm,photo_url:editPPhotoUrl||editP.photo_url||null,avatar_url:editPPhotoUrl||editP.avatar_url||null};
    // Always resolve fresh id from players state (editP may be stale after creation)
    const freshKey=(editPForm.name||editP.name||"").toLowerCase().trim();
@@ -2320,7 +2333,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               p={p} bets={bets} teamLogos={teamLogos} allPlayers={players}
               showToast={showToast} editMode={false}
               onEdit={()=>openEdit(p)} onDelete={deletePlayer}
-              onFA={async(p)=>{const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → FA","#F59E0B");closeEdit();}}
+              onFA={async(p)=>{freezeTeam(p,"");const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → FA","#F59E0B");closeEdit();}}
               editP={editP} editPForm={editPForm} setEditPForm={setEditPForm}
               editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
               editPSaving={editPSaving} savePlayer={savePlayer} closeEdit={closeEdit}
@@ -2362,8 +2375,8 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
           {leagues.map(l=>(
            <button key={l} onClick={()=>{setRosterLeague(rosterLeague===l?null:l);setRosterTeam(null);}}
-            style={{padding:"4px 10px",borderRadius:16,border:"1px solid "+(rosterLeague===l?"#60A5FA":"#1F2937"),background:rosterLeague===l?"rgba(96,165,250,.1)":"transparent",color:rosterLeague===l?"#60A5FA":"#6B7280",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-            {l}
+            style={{height:36,padding:"0 12px",borderRadius:18,border:"1px solid "+(rosterLeague===l?"#60A5FA":"#1F2937"),background:rosterLeague===l?"rgba(96,165,250,.12)":"transparent",color:rosterLeague===l?"#93c5fd":"#9ca3af",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"inline-flex",alignItems:"center",gap:6}}>
+            {l!=="(Sans ligue)"&&<LeagueLogo league={l} size={18}/>}{l}
            </button>
           ))}
          </div>
@@ -2379,18 +2392,18 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
             <div style={{display:"flex",width:"100%",alignItems:"center"}}>
             <button onClick={()=>setRosterTeam(isOpen?null:key)}
              style={{flex:1,display:"flex",alignItems:"center",gap:10,padding:"10px 10px 10px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
-             {logoUrl?<img src={logoUrl} alt={team} style={{width:28,height:28,borderRadius:6,objectFit:"cover",flexShrink:0}}/>
-              :<div style={{width:28,height:28,borderRadius:6,background:"rgba(167,139,250,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:accent,fontWeight:800}}>{team[0]||"?"}</div>}
+             {logoUrl?<img src={logoUrl} alt={team} style={{width:42,height:42,borderRadius:10,objectFit:"contain",flexShrink:0}}/>
+              :<div style={{width:42,height:42,borderRadius:10,background:"rgba(167,139,250,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16,color:accent,fontWeight:800}}>{team[0]||"?"}</div>}
              <div style={{flex:1}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-               <span style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{team}</span>
+               <span style={{fontWeight:800,fontSize:16,color:"#F2F4F8"}}>{team}</span>
                {rosterGame==="CS2"&&!tPlayers.some(p=>(p.role||"").toLowerCase().includes("awp"))&&(
                 <span title="Aucun AWPer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",color:"#EF4444",fontSize:9,fontWeight:900,flexShrink:0}}>!</span>
                )}
               </div>
-              {needLeague&&<div style={{fontSize:9,color:"#4a5a6e",fontWeight:600}}>{league}</div>}
+              {needLeague&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,fontSize:12,color:"#9ca3af",fontWeight:600}}>{league!=="(Sans ligue)"&&<LeagueLogo league={league} size={16}/>}{league}</div>}
              </div>
-             <span style={{fontSize:10,color:"#6B7280"}}>{tPlayers.length}p</span>
+             <span style={{fontSize:12.5,color:"#9ca3af",fontWeight:700}}>{tPlayers.length} joueurs</span>
              <button onClick={e=>{e.stopPropagation();deleteTeam(team,rosterGame,tPlayers);}}
               style={{padding:"3px 7px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer",flexShrink:0}}><Ic n="trash" s={12}/></button>
              <span style={{color:"#6B7280",fontSize:10,transform:isOpen?"rotate(180deg)":"none",display:"inline-block",transition:"transform .2s"}}>▼</span>
@@ -2428,7 +2441,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                      <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.team||"Free Agent",p.role],p.role)}</div>
                     </div>
                     <button onClick={async()=>{
-                     const updated={...p,team,league};
+                     freezeTeam(p,team);const updated={...p,team,league};
                      await supaUpsertPlayer(updated);
                      setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...updated,id:p.id};return n;});
                      showToast(p.name+" → "+team,"#22C55E");
@@ -2481,7 +2494,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                     <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.role,p.league],p.role)}</div>
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
-                   {p.team&&<button onClick={async e=>{e.stopPropagation();const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
+                   {p.team&&<button onClick={async e=>{e.stopPropagation();freezeTeam(p,"");const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
                    <button onClick={e=>{e.stopPropagation();quickPlayerPhoto(p);}} title="Coller une photo (remplace l'ancienne)" style={{padding:"5px 9px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Photo</button>
                   </div>
                  ):(
@@ -2490,7 +2503,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                     p={p} bets={bets} teamLogos={teamLogos} allPlayers={players}
                     showToast={showToast} editMode={true}
                     onEdit={()=>openEdit(p)} onDelete={deletePlayer}
-                    onFA={async(p)=>{const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → FA","#F59E0B");closeEdit();}}
+                    onFA={async(p)=>{freezeTeam(p,"");const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → FA","#F59E0B");closeEdit();}}
                     editP={editP} editPForm={editPForm} setEditPForm={setEditPForm}
                     editPPhotoUrl={editPPhotoUrl} setEditPPhotoUrl={setEditPPhotoUrl}
                     editPSaving={editPSaving} savePlayer={savePlayer} closeEdit={closeEdit}
@@ -2935,7 +2948,9 @@ const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmak
 
  const [sel,setSel]=useState(null);
  const [crypto,setCryptoRaw]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_bk_crypto")||"{}");}catch(e){return {};}});
- const setCrypto=(bk,v)=>setCryptoRaw(prev=>{const n={...prev,[bk]:{...(prev[bk]||{}),...v}};try{localStorage.setItem("v7_bk_crypto",JSON.stringify(n));}catch(e){}return n;});
+ const setCrypto=(bk,v)=>setCryptoRaw(prev=>{const n={...prev,[bk]:{...(prev[bk]||{}),...v}};try{localStorage.setItem("v7_bk_crypto",JSON.stringify(n));}catch(e){}
+  cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"bk_crypto",value:n}]}).catch(()=>{});return n;});
+ useEffect(()=>{cloudDb("settings?select=value&key=eq.bk_crypto").then(r=>{const v=r&&r[0]&&r[0].value;if(v&&typeof v==="object"){setCryptoRaw(prev=>{const m={...v,...prev};try{localStorage.setItem("v7_bk_crypto",JSON.stringify(m));}catch(e){}return m;});}}).catch(()=>{});},[]);
  const statsOf=bk=>{const L=bets.filter(b=>b.bookmaker===bk&&(b.status==="won"||b.status==="lost"));const w=L.filter(b=>b.status==="won").length,st=L.reduce((t,b)=>t+(b.stake||0),0),pr=L.reduce((t,b)=>t+(b.profit||0),0),od=L.reduce((t,b)=>t+(b.odds||0),0);
   const pend=bets.filter(b=>b.bookmaker===bk&&b.status==="pending");const last=L.map(b=>String(b.datetime||"")).sort().pop();
   const m30=L.filter(b=>new Date(b.datetime)>new Date(Date.now()-30*864e5));
@@ -7871,6 +7886,9 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const inflight=useRef(new Set());
  // Paris envoyés récemment / en cours d'envoi : protégés de toute suppression par une relecture
  const recentPush=useRef(new Map());
+ // Une version serveur PLUS VIEILLE que notre dernier envoi (relecture partie avant l'envoi) est ignorée : plus de modif qui « revient »
+ const isStaleRow=r=>{const id=String(r.id);const t=recentPush.current.get(id);const u=Number(r.updatedAt)||0;if(t&&u<t-2)return true;
+  const l=betsRef.current.find(x=>String(x.id)===id);return !!(l&&(Number(l.updatedAt)||0)>u);};
  
  const retryTimer=useRef(null);
  const [pendingSync,setPendingSync]=useState(0);
@@ -7940,7 +7958,8 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
    }
   }
  })().then(()=>{
-  all.forEach(([b])=>inflight.current.delete(String(b.id)));
+  all.forEach(([b])=>{inflight.current.delete(String(b.id));recentPush.current.set(String(b.id),now);});
+  {const ids=new Set(all.map(([b])=>String(b.id)));setBets(prev=>prev.map(x=>ids.has(String(x.id))&&(Number(x.updatedAt)||0)<now?{...x,updatedAt:now}:x));}
   good("bets");savePending();setSaveState("ok");
   if(betsRef.current.some(b=>b&&b.id!=null&&betSnap.current.get(String(b.id))!==betJ(b)))setTimeout(()=>flushRef.current&&flushRef.current(),60);
  }).catch(e=>{
@@ -7979,6 +7998,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  if(l&&snap.get(String(r.id))!==betJson(l))return l;
  // relecture commencée avant un envoi récent : la version locale plus récente gagne
  if(l&&(Number(l.updatedAt)||0)>(Number(r.updatedAt)||0))return l;
+ if(l&&isStaleRow(r))return l;
  return r;
  });
  const rIds=new Set(remote.map(r=>String(r.id)));
@@ -8055,7 +8075,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const gone=new Set(rows.filter(r=>r._deleted&&!inflight.current.has(String(r.id))).map(r=>String(r.id)));
  if(gone.size){gone.forEach(id=>snap.delete(id));setBets(prev=>prev.filter(b=>!gone.has(String(b.id))));}
  rows=rows.filter(r=>!r._deleted);
- rows.forEach(r=>{const id=String(r.id);if(inflight.current.has(id))return;
+ rows.forEach(r=>{const id=String(r.id);if(inflight.current.has(id))return;if(isStaleRow(r))return;
   const loc=betsRef.current.find(x=>String(x.id)===id);
   if(loc&&snap.has(id)&&snap.get(id)!==betJson(loc))return;
   snap.set(id,betJson(r));upd.push(r);});
@@ -8303,6 +8323,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const b=normalizeBet({...row,id:Number(row.id),odds:Number(row.odds),stake:Number(row.stake),profit:Number(row.profit)||0,splits,ppMapType:row.pp_map_type||null,ppLine:row.pp_line||null,ppEdge:row.pp_edge!=null?Number(row.pp_edge):null});
  const lid=String(b.id);
  if(inflight.current.has(lid))return;
+ if(isStaleRow(b))return;
  const loc=betsRef.current.find(x=>String(x.id)===lid);
  if(loc&&betSnap.current.has(lid)&&betSnap.current.get(lid)!==betJson(loc))return; // modif locale pas encore envoyée : elle gagne
  betSnap.current.set(lid,betJson(b));
@@ -9110,18 +9131,15 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  };
  {const dk=String(newBet.datetime||"").slice(0,10);const dup=(bets||[]).find(x=>cutNorm(x.player)===cutNorm(newBet.player)&&String(x.description||"").trim().toLowerCase()===String(newBet.description||"").trim().toLowerCase()&&String(x.mapTag||"")===String(newBet.mapTag||"")&&String(x.datetime||"").slice(0,10)===dk);
   if(dup&&!window.confirm("Pari identique déjà enregistré ce jour-là ("+dup.player+" · "+dup.mapTag+" · "+dup.description+"). Ajouter quand même ?"))return;}
- setBets(b=>{
- const updated=[newBet,...b];
- // Write to localStorage immediately to prevent stale reads
- return updated;
- });
+ {const sig=[cutNorm(newBet.player),newBet.description,newBet.mapTag,newBet.overUnder,newBet.odds,newBet.stake,newBet.bookmaker].join("|");
+  const L=window.__lastAdd;if(L&&L.sig===sig&&Date.now()-L.t<4000){showToast("Déjà ajouté (double appui ignoré)","#F59E0B");return;}window.__lastAdd={sig,t:Date.now()};}
+ setBets(b=>b.some(x=>String(x.id)===String(newBet.id))?b:[newBet,...b]);
  // Mark push time to block auto-pull for 15s
  lastPushRef.current=Date.now();
  // Push immédiat vers Supabase (pas d'attente du debounce)
- supaPushBets([newBet]).catch(function(){});
+ supaPushBets([newBet]).then(()=>showToast("✓ Enregistré dans le cloud","#22C55E")).catch(function(){showToast("Hors ligne : gardé sur le téléphone, envoi automatique dès le retour du réseau","#F59E0B");});
  const addedBK=form.bookmaker;
  setForm(f=>({...EMPTY_FORM,datetime:nowDT(),bookmaker:stickyBK?f.bookmaker:"",mapTag:f.mapLocked?f.mapTag:"Map 1",mapLocked:f.mapLocked,status:lockedStatus||"pending"}));
- showToast("Pari enregistré ");
  showBetConfirm(form.status);
  // Filtrer automatiquement par le bookmaker du pari ajouté
  if(addedBK){setFBKs(prev=>prev.includes(addedBK)?prev:[...prev,addedBK]);}
