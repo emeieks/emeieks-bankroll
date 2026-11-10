@@ -6577,10 +6577,11 @@ function SimulationTab({allPlayers={},teamLogos={}}){
  const all=useMemo(()=>Array.isArray(rows)?rows.filter(pre).filter(x=>g==="all"||GN(x.game)===g):[],[rows,g]);
  const done=all.filter(x=>x.result==="won"||x.result==="lost"||x.result==="void");
  const wait=all.filter(x=>!x.result);
- const agg=L=>{const S=L.filter(x=>x.result==="won"||x.result==="lost");const w=S.filter(x=>x.result==="won").length;const st=S.reduce((t,x)=>t+(Number(x.stake)||0),0);const p=L.reduce((t,x)=>t+(Number(x.profit)||0),0);
+ const su=x=>Number(x.stake_pct??x.edge)||0;const pu=x=>x.result==="won"?su(x)*((Number(x.odds)||0)-1):x.result==="lost"?-su(x):0;
+ const agg=L=>{const S=L.filter(x=>x.result==="won"||x.result==="lost");const w=S.filter(x=>x.result==="won").length;const st=S.reduce((t,x)=>t+su(x),0);const p=L.reduce((t,x)=>t+pu(x),0);
   const od=S.length?S.reduce((t,x)=>t+(Number(x.odds)||0),0)/S.length:0;return {n:S.length,w,l:S.length-w,st,p,roi:st?p/st*100:0,wr:S.length?w/S.length*100:0,need:od?100/od:0};};
  const T=agg(done);const pc=v=>v>=0?"#22C55E":"#EF4444";const pct=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(1).replace(".",",")+" %";
- const m2=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2).replace(".",",")+" $";
+ const m2=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2).replace(".",",")+" u";
  const card={background:"#111827",border:"1px solid #1F2937",borderRadius:16};
  const H=t=><div style={{fontSize:16,fontWeight:800,color:"#eef1f7",margin:"18px 0 10px"}}>{t}</div>;
  const now=Date.now();
@@ -6589,7 +6590,7 @@ function SimulationTab({allPlayers={},teamLogos={}}){
   return Object.values(o).sort((a,b)=>String(b.day).localeCompare(String(a.day)));},[wait]);
  const openMatch=z=>{const teams=z.m.split(/\s+vs\.?\s+/i).map(s=>s.trim()).filter(Boolean);try{window.dispatchEvent(new CustomEvent("emeieks-open-result",{detail:{day:z.day,teams}}));}catch(e){}};
  // courbe
- const pts=useMemo(()=>{let r=0;return [{v:0,dt:""}].concat([...done].sort((a,b)=>String(a.start||a.day).localeCompare(String(b.start||b.day))).map(x=>{r+=Number(x.profit)||0;return {v:r,dt:String(x.day)};}));},[done]);
+ const pts=useMemo(()=>{let r=0;return [{v:0,dt:""}].concat([...done].sort((a,b)=>String(a.start||a.day).localeCompare(String(b.start||b.day))).map(x=>{r+=pu(x);return {v:r,dt:String(x.day)};}));},[done]);
  const Seg=({v,set,opts})=><div style={{display:"flex",gap:4,padding:4,background:"#111827",border:"1px solid #1F2937",borderRadius:14,marginBottom:12}}>{opts.map(([k,l])=><button key={k} onClick={()=>set(k)} aria-pressed={v===k} style={{flex:1,height:42,border:"none",borderRadius:10,background:v===k?"#7c3aed":"transparent",color:v===k?"#fff":"#9ca3af",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>;
  // mois → jours → matchs
  const months=useMemo(()=>{const L=(tab==="paris"?all:done).filter(x=>res==="all"||(res==="wait"?!x.result:x.result===res));const o={};L.forEach(x=>{const mk=String(x.day).slice(0,7);const M=o[mk]=o[mk]||{mk,days:{}};const dk=String(x.day)+"|"+String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"");(M.days[dk]=M.days[dk]||[]).push(x);});
@@ -6603,9 +6604,9 @@ function SimulationTab({allPlayers={},teamLogos={}}){
    <div style={{flex:1,minWidth:0}}>
     <div style={{display:"flex",alignItems:"center",gap:6}}><b style={{fontSize:15,color:"#f3f4f6",textTransform:"capitalize"}}>{x.player}</b><span style={{fontSize:11,fontWeight:700,color:"#cbd5e1",background:"#1f2937",padding:"2px 6px",borderRadius:5}}>Map {x.map}</span><GameLogo game={GN(x.game)} size={14}/></div>
     <div style={{fontSize:13,color:"#cbd5e1",marginTop:2}}>{x.side==="under"?"Under":"Over"} {String(x.line).replace(".",",")} {x.stat==="headshots"?"Headshots":"Kills"}</div>
-    <div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>écart {String(x.edge).replace(".",",")} · @{Number(x.odds).toFixed(2)} · mise {String(x.stake_pct??x.edge).replace(".",",")} %{x.value!=null?" · "+x.value+(x.stat==="headshots"?" HS":" kills"):""}</div>
+    <div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>écart {String(x.edge).replace(".",",")} · @{Number(x.odds).toFixed(2)} · mise {String(su(x)).replace(".",",")} u{x.value!=null?" · "+x.value+(x.stat==="headshots"?" HS":" kills"):""}</div>
    </div>
-   <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:15,fontWeight:800,color:c}}>{x.result?m2(Number(x.profit)||0):Math.round(Number(x.stake)||0)+" $"}</div><div style={{fontSize:11,color:"#8b93a7"}}>{x.result==="won"?"gagné":x.result==="lost"?"perdu":x.result==="void"?"remboursé":"en attente"}</div></div>
+   <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:15,fontWeight:800,color:c}}>{x.result?m2(pu(x)):String(su(x)).replace(".",",")+" u"}</div><div style={{fontSize:11,color:"#8b93a7"}}>{x.result==="won"?"gagné":x.result==="lost"?"perdu":x.result==="void"?"remboursé":"en attente"}</div></div>
   </div>;};
  const Month=({M})=>{const L=Object.values(M.days).flat();const a=agg(L);const isC=!!closed[M.mk];const wn=L.filter(x=>!x.result).length;
   return <div style={{marginBottom:12}}>
@@ -6643,7 +6644,7 @@ function SimulationTab({allPlayers={},teamLogos={}}){
     <div style={{fontSize:36,fontWeight:900,color:pc(T.p),letterSpacing:-1,marginTop:6}}>{m2(T.p)}</div>
     {pts.length>=3&&<div style={{margin:"10px -4px 0"}}><BankrollChart points={pts} h={150}/></div>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,borderTop:"1px solid #1F2937",marginTop:10,paddingTop:12}}>
-     {[["RÉGLÉS",T.n],["EN ATTENTE",wait.length,"#FBBF24"],["RÉUSSITE",Math.round(T.wr)+" %"],["MISÉ",Math.round(T.st).toLocaleString("fr-CA")+" $"]].map(([l,v,c])=><div key={l}><div style={{fontSize:10.5,fontWeight:800,color:"#8b93a7"}}>{l}</div><div style={{fontSize:16,fontWeight:800,color:c||"#eef1f7"}}>{v}</div></div>)}
+     {[["RÉGLÉS",T.n],["EN ATTENTE",wait.length,"#FBBF24"],["RÉUSSITE",Math.round(T.wr)+" %"],["MISÉ",(Math.round(T.st*10)/10).toString().replace(".",",")+" u"]].map(([l,v,c])=><div key={l}><div style={{fontSize:10.5,fontWeight:800,color:"#8b93a7"}}>{l}</div><div style={{fontSize:16,fontWeight:800,color:c||"#eef1f7"}}>{v}</div></div>)}
     </div>
    </div>
    {H("À régler")}
