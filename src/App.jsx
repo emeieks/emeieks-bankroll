@@ -1344,7 +1344,7 @@ const BetRow=memo(function BetRow({bet,onStatus,onDelete,onDuplicate,onEdit,onSp
  const borderCol=isPending?"rgba(255,255,255,0.06)":isWon?"rgba(34,197,94,0.35)":"rgba(239,68,68,0.35)";
  const bkLogo=BK_LOGOS[bet.bookmaker]||bkPhotos[bet.bookmaker]||null;
  // Fix double Over/Under : bet.description contient déjà "Over X Kills" — on affiche seulement description
- const descLine=bet.description||"";
+ const descLine=String(bet.description||"").replace(/^Duel vs\s+(.+?)\s+—\s+Plus de kills.*$/i,(m0,v)=>"Over "+v);
 
  const hasPP=bet.ppEdge!=null&&bet.ppMapType;
  const glowStyle=!isPending&&(isWon
@@ -3936,14 +3936,14 @@ const MesParisView=memo(function MesParisView({
  const wr=total>0?won/total*100:0;
  return(
  <div key={mk} style={{marginBottom:14}}>
- <button onClick={()=>toggleMonth(mk)} aria-expanded={!isCollapsed(mk)} style={{width:"100%",textAlign:"left",background:"#141821",border:"1px solid #232A36",borderRadius:isCollapsed(mk)?16:"16px 16px 0 0",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",userSelect:"none",fontFamily:"Inter,sans-serif",color:"#F2F4F8"}}>
+ <button onClick={()=>toggleMonth(mk)} aria-expanded={!isCollapsed(mk)} style={{width:"100%",textAlign:"left",background:"linear-gradient(135deg,#0f1c3a,#0b1530)",border:"1px solid rgba(96,165,250,.22)",borderRadius:isCollapsed(mk)?16:"16px 16px 0 0",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",userSelect:"none",fontFamily:"Inter,sans-serif",color:"#F2F4F8"}}>
  <div style={{flex:1,minWidth:0}}>
   <div style={{fontSize:17,fontWeight:700,fontFamily:"'Space Grotesk',Inter,sans-serif"}}>{fmtMonth(mk)}</div>
-  <div style={{fontSize:13,color:"#9AA3B2",marginTop:3}}>{total} paris · {won}-{allBets.filter(b=>b.status==="lost").length} · {wr.toFixed(0)} %</div>
+  <div style={{fontSize:13,color:"#93a4c3",marginTop:3}}>{total} paris · {won}-{allBets.filter(b=>b.status==="lost").length} · {wr.toFixed(0)} %</div>
  </div>
  <div style={{textAlign:"right"}}>
-  <div style={{fontSize:19,fontWeight:700,fontFamily:"'Space Grotesk',Inter,sans-serif",color:profit>=0?"#34D399":"#F87171",whiteSpace:"nowrap"}}>{(profit>=0?"+":"−")+Math.abs(profit).toFixed(2).replace(".",",")} $</div>
-  <div style={{fontSize:12,color:roi>=0?"#34D399":"#F87171"}}>ROI {roi>=0?"+":"−"}{Math.abs(roi).toFixed(2).replace(".",",")} %</div>
+  <div style={{fontSize:19,fontWeight:700,fontFamily:"'Space Grotesk',Inter,sans-serif",color:profit>=0?"#22C55E":"#EF4444",whiteSpace:"nowrap"}}>{(profit>=0?"+":"−")+Math.abs(profit).toFixed(2).replace(".",",")} $</div>
+  <div style={{fontSize:12,color:roi>=0?"#22C55E":"#EF4444"}}>ROI {roi>=0?"+":"−"}{Math.abs(roi).toFixed(2).replace(".",",")} %</div>
  </div>
  <span style={{color:"#6b7280",display:"inline-block",transition:"transform .2s",transform:isCollapsed(mk)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span>
  </button>
@@ -5290,24 +5290,33 @@ function SimBtn(){const [v,setV]=useState(null);
  const set=x=>{setV(x);cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"sim_live",value:x}]}).catch(()=>{});};
  return <button onClick={()=>set(on?{on:false}:{on:true,once:true,until:new Date(Date.now()+3*3600e3).toISOString()})} aria-pressed={on} title={on?"SIM actif : le prochain passage du bot prend les cuts Map 3 / 5 live":"Prendre les cuts Map 3 / 5 live au prochain passage du bot"}
   style={{height:32,padding:"0 12px",borderRadius:9,border:"1.5px solid #39FF14",background:on?"#39FF14":"rgba(57,255,20,.08)",color:on?"#06210a":"#39FF14",fontSize:12.5,fontWeight:900,letterSpacing:.6,cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:on?"0 0 14px rgba(57,255,20,.55)":"none"}}>SIM{on?" ✓":""}</button>;}
-function DuelAlerts({teamLogos={},allPlayers={}}){
+// Cache partagé : une seule lecture des duels pour toute la page (liste générale + duels dans chaque match)
+const DUEL_CACHE={t:0,rows:null,p:null};
+const loadDuels=()=>{if(DUEL_CACHE.rows&&Date.now()-DUEL_CACHE.t<55000)return Promise.resolve(DUEL_CACHE.rows);if(DUEL_CACHE.p)return DUEL_CACHE.p;
+ const since=new Date(Date.now()-20*3600e3).toISOString();DUEL_CACHE.p=cloudDb("duel_alerts?updated_at=gte."+since+"&order=gap.desc&limit=80").then(r=>{DUEL_CACHE.rows=Array.isArray(r)?r:[];DUEL_CACHE.t=Date.now();DUEL_CACHE.p=null;return DUEL_CACHE.rows;}).catch(e=>{DUEL_CACHE.p=null;throw e;});return DUEL_CACHE.p;};
+const duelSame=(a,b)=>{const x=cutNorm(a||""),y=cutNorm(b||"");return !!x&&!!y&&(x===y||x.includes(y)||y.includes(x));};
+const duelInMatch=(d,t1,t2)=>{const [A,B]=String(d.match||"").split(/\s+vs\.?\s+/i);return (duelSame(A,t1)&&duelSame(B,t2))||(duelSame(A,t2)&&duelSame(B,t1));};
+function DuelAlerts({teamLogos={},allPlayers={},teams=null,map=null,inline=false,exclude=null}){
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
- const [rows,setRows]=useState(null);
- useEffect(()=>{let stop=false;const ld=()=>{const since=new Date(Date.now()-20*3600e3).toISOString();cloudDb("duel_alerts?updated_at=gte."+since+"&order=gap.desc&limit=60").then(r=>{if(!stop)setRows(Array.isArray(r)?r:[]);}).catch(()=>{if(!stop)setRows([]);});};ld();const t=setInterval(ld,60000);return()=>{stop=true;clearInterval(t);};},[]);
+ const [rows0,setRows]=useState(null);
+ useEffect(()=>{let stop=false;const ld=()=>loadDuels().then(r=>{if(!stop)setRows(r);}).catch(()=>{if(!stop)setRows([]);});ld();const t=setInterval(ld,60000);return()=>{stop=true;clearInterval(t);};},[]);
+ const rows=(rows0||[]).map(d=>({...d,gap:(d.pp_me!=null&&d.pp_vs!=null)?Math.round((Number(d.pp_me)-Number(d.pp_vs))*100)/100:d.gap}))
+  .filter(d=>!teams||(duelInMatch(d,teams[0],teams[1])&&(map==null||String(d.map)===String(map))))
+  .filter(d=>!exclude||!exclude.some(([a,b])=>duelInMatch(d,a,b)));
  const [open,setOpen]=useState(()=>{try{return localStorage.getItem("v7_duels_open")!=="0";}catch(e){return true;}});
  const tog=()=>setOpen(v=>{try{localStorage.setItem("v7_duels_open",v?"0":"1");}catch(e){}return !v;});
  if(!rows||!rows.length)return null;
  const GI={"CS2":"CS2","Valorant":"Valorant","Dota 2":"Dota2","League of Legends":"LoL"};
  return <div style={{borderBottom:"1px solid rgba(255,255,255,.06)"}}>
-  <button onClick={tog} aria-expanded={open} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"12px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}><b style={{fontSize:14,color:"#F3F4F6"}}>Duels</b><span style={{fontSize:11,fontWeight:800,padding:"1px 7px",borderRadius:6,background:"rgba(251,191,36,.15)",color:"#FBBF24"}}>{rows.length}</span><span style={{fontSize:11.5,color:"#6B7280",flex:1}}>most kills · écart PP par map</span><span style={{color:"#6B7280",display:"inline-block",transition:"transform .2s",transform:open?"rotate(180deg)":"none"}}><Ic n="down" s={12}/></span></button>
-  {open&&rows.map(d=><div key={d.key} role="button" tabIndex={0} title="Ajouter ce duel" onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-add-duel",{detail:d}));}catch(e){}}} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid #FBBF24",padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
+  {inline?<div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px 4px",fontSize:10.5,fontWeight:900,color:"#fbbf24",letterSpacing:.5}}>DUELS<span style={{color:"#4b5563"}}>{rows.length}</span></div>:<button onClick={tog} aria-expanded={open} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"12px 14px",background:"transparent",border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"left"}}><b style={{fontSize:14,color:"#F3F4F6"}}>Duels</b><span style={{fontSize:11,fontWeight:800,padding:"1px 7px",borderRadius:6,background:"rgba(251,191,36,.15)",color:"#FBBF24"}}>{rows.length}</span><span style={{fontSize:11.5,color:"#6B7280",flex:1}}>most kills · écart PP par map</span><span style={{color:"#6B7280",display:"inline-block",transition:"transform .2s",transform:open?"rotate(180deg)":"none"}}><Ic n="down" s={12}/></span></button>}
+  {(open||inline)&&rows.map(d=><div key={d.key} role="button" tabIndex={0} title="Ajouter ce duel" onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-add-duel",{detail:d}));}catch(e){}}} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid #FBBF24",padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
    <div style={{width:37,height:37,borderRadius:10,overflow:"hidden",flexShrink:0,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)"}}><GameLogo game={GI[d.game]||d.game} size={37}/></div>
    <div style={{flex:1,minWidth:0}}>
     <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
      <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{d.player}</span>
      <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {d.map}</span>
      <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
-     <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>plus de kills que {d.vs}</span>
+     <span style={{fontSize:12,color:"#8a9eb8",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Over {d.vs}</span>
     </div>
     <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
      <span>@{Number(d.odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
@@ -6609,16 +6618,18 @@ function ChampSimple({bets=[],allPlayers={}}){const {data,ver,loading}=useChampD
 let TOUR_ALIAS=(()=>{try{return JSON.parse(localStorage.getItem("v7_tour_alias")||"{}");}catch(e){return {};}})();
 const tourAlias=n=>{if(!n)return n;const k=cutNorm(n);return TOUR_ALIAS[k]||n;};
 // ══ SIMULATION (Labo d'edge) : paris fictifs (bot), + bets EV et duels, réglés par les scores saisis ══
-function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourneys={},onTour}){
+function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={},activeTourneys={},onTour}){
  const [msort,setMsort]=useState(()=>{try{return localStorage.getItem("v7_sim_msort")||"edge";}catch(e){return "edge";}});const [tourPick,setTourPick]=useState(null);const [more,setMore]=useState(false);
  const [rows,setRows]=useState(null);const [tab,setTab]=useState("apercu");const [g,setG]=useState("all");const [closed,setClosed]=useState({});const [openM,setOpenM]=useState({});const [res,setRes]=useState("all");
  const [sd,setSd]=useState("all");const [stt,setStt]=useState("all");const [src,setSrc]=useState({sim:true,ev:true,duel:true});const [md,setMd]=useState("all");
- const [uniq,setUniq]=useState(false);const [fOpen,setFOpen]=useState(false);const [live,setLive]=useState(null);const [link,setLink]=useState(null);const [cands,setCands]=useState(null);const [liveDur,setLiveDur]=useState(60);
+ const [uniq,setUniq]=useState(false);const [close,setClose]=useState(0);const [mlF,setMlF]=useState("all");const [evSet,setEvSet]=useState(()=>new Set());const [fOpen,setFOpen]=useState(false);const [live,setLive]=useState(null);const [link,setLink]=useState(null);const [cands,setCands]=useState(null);const [liveDur,setLiveDur]=useState(60);
  // Scénario : règles à tester
  const SC0={emin:0.5,emax:9,omin:1.6,omax:9,side:"all",stat:"all",map:"all",stake:"edge",mode:"all",tour:"all",role:"all"};const [sc,setSc]=useState(SC0);
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
- const load=useCallback(()=>{setRows(null);cloudDb("pot_bets?select=key,base,pkey,player,game,stat,side,map,line,odds,edge,stake,stake_pct,pp_line,pp_maps,result,value,profit,day,match,team,vs,start,at,tournament,mode,kind,is_ev&order=day.desc&limit=40000")
+ const load=useCallback(()=>{setRows(null);const Q="pot_bets?select=key,base,pkey,player,game,stat,side,map,line,odds,edge,stake,stake_pct,pp_line,pp_maps,result,value,profit,day,match,team,vs,start,at,tournament,mode,kind,is_ev";
+  cloudDb(Q+",team_ml,opp_ml&order=day.desc&limit=40000").catch(()=>cloudDb(Q+"&order=day.desc&limit=40000"))
   .then(r=>setRows(Array.isArray(r)?r:[])).catch(e=>setRows({err:String(e.message||e)}));
+  cloudDb("ev_alerts?created_at=gte."+new Date(Date.now()-60*864e5).toISOString()+"&select=player,stat,side,map,book_line,match&limit=20000").then(r=>{const S=new Set();(r||[]).forEach(a=>S.add([cutNorm(a.player),a.stat,a.side,String(a.map),Number(a.book_line)].join("|")));setEvSet(S);}).catch(()=>{});
   cloudDb("settings?select=value&key=eq.sim_live").then(r=>{let v=r&&r[0]&&r[0].value;if(typeof v==="string")try{v=JSON.parse(v);}catch(e){}setLive(v||{on:false});}).catch(()=>setLive({on:false}));},[]);
  useEffect(()=>{load();},[load]);
  const [tick,setTick]=useState(0);useEffect(()=>{const i=setInterval(()=>setTick(t=>t+1),30000);return()=>clearInterval(i);},[]);
@@ -6627,12 +6638,14 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
  const GN=x=>GNORM(x)||x;
  const fmtMonth=mk=>{try{const [y,m]=String(mk).split("-").map(Number);return FR_MONTHS[m-1]+" "+y;}catch(e){return mk;}};
  const pre=x=>x.mode==="live"||(()=>{const t=rsTs(x.start),a=x.at?new Date(x.at).getTime():NaN;return isNaN(t)||isNaN(a)||a<=t+5*60e3;})();
- const srcOf=x=>x.kind==="duel"?"duel":x.is_ev?"ev":"sim";
+ const srcOf=x=>x.kind==="duel"?"duel":(x.is_ev||evSet.has([cutNorm(x.player),x.stat,x.side,String(x.map),Number(x.line)].join("|")))?"ev":"sim";
+ const mlB=x=>{const o=Number(x.team_ml);return !o?null:o<1.6?"fav":o<2.5?"mid":o<3?"out":"big";};
+ const nearOk=x=>!close||(x.result&&x.value!=null&&x.kind!=="duel"&&Math.abs(Number(x.value)-Number(x.line))<=close+.5);
  const roleOf=x=>{const P=allPlayers[String(x.player||"").toLowerCase().trim()]||allPlayers[String(x.pkey||"")];return (P&&P.role)||null;};
  // 1 seul pari par joueur · map · stat · côté · match : la ligne dont la cote est la plus proche de 1,85 (ligne principale)
  const one=L=>{if(!uniq)return L;const m={};L.forEach(x=>{const k=[x.pkey,x.kind==="duel"?"duel|"+x.vs:x.stat,x.side,x.map,x.day,String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"")].join("|");const o=m[k];if(!o||Math.abs(Number(x.odds)-1.85)<Math.abs(Number(o.odds)-1.85))m[k]=x;});return Object.values(m);};
- const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq]);
- const all=useMemo(()=>base.filter(x=>(sd==="all"||x.side===sd||x.kind==="duel"&&sd==="duel")&&(stt==="all"||(stt==="duel"?x.kind==="duel":x.kind!=="duel"&&(stt==="hs")===(x.stat==="headshots")))),[base,sd,stt]);
+ const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq,evSet]);
+ const all=useMemo(()=>base.filter(x=>nearOk(x)&&(mlF==="all"||mlB(x)===mlF)&&(sd==="all"||x.side===sd||x.kind==="duel"&&sd==="duel")&&(stt==="all"||(stt==="duel"?x.kind==="duel":x.kind!=="duel"&&(stt==="hs")===(x.stat==="headshots")))),[base,sd,stt,close,mlF,evSet]);
  const done=all.filter(x=>x.result);const wait=all.filter(x=>!x.result);
  const su0=x=>Number(x.stake_pct??x.edge)||0;
  const agg=(L,stk)=>{const su=stk==="1u"?()=>1:su0;const pu=x=>x.result==="won"?su(x)*((Number(x.odds)||0)-1):x.result==="lost"?-su(x):0;
@@ -6653,12 +6666,16 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
  const doLink=async(z,c)=>{const nm=c.team1+" vs "+c.team2;const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day);
   try{for(let i=0;i<L.length;i+=60){const ks=L.slice(i,i+60).map(x=>encodeURIComponent(x.key)).join(",");await cloudDb("pot_bets?key=in.("+ks+")",{method:"PATCH",prefer:"return=minimal",body:{match:nm}});}
    await cloudDb("rpc/pot_resettle",{method:"POST",body:{d:c.day}}).catch(()=>{});setLink(null);load();}catch(e){alert("Lien impossible : "+String(e.message||e).slice(0,80));}};
+ const editTime=z=>{const st=rsTs(z.start);const cur=isNaN(st)?"":new Date(st).toTimeString().slice(0,5);const v=window.prompt("Heure du match (HH:MM)",cur);if(!v||!/^\d{1,2}:\d{2}$/.test(v.trim()))return;
+  const [h,mi]=v.trim().split(":").map(Number);const d=new Date(z.day+"T00:00:00");d.setHours(h,mi,0,0);const iso=d.toISOString();
+  const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day);setRows(R=>Array.isArray(R)?R.map(x=>mName(x)===z.m&&x.day===z.day?{...x,start:iso}:x):R);
+  (async()=>{for(let i=0;i<L.length;i+=60){const ks=L.slice(i,i+60).map(x=>encodeURIComponent(x.key)).join(",");await cloudDb("pot_bets?key=in.("+ks+")",{method:"PATCH",prefer:"return=minimal",body:{start:iso}}).catch(()=>{});}})();};
  const openMatch=z=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-result",{detail:{day:z.day,teams:teamsOf(z.m)}}));}catch(e){}};
  const curve=(L,stk)=>{const A=agg([],stk);let r=0;return [{v:0,dt:""}].concat([...L].filter(x=>x.result).sort((a,b)=>String(a.start||a.day).localeCompare(String(b.start||b.day))).map(x=>{r+=A.pu(x);return {v:r,dt:String(x.day)};}));};
  const pts=useMemo(()=>curve(done),[done]);
  // mois → matchs
  const months=useMemo(()=>{const L=(tab==="paris"?all:done).filter(x=>res==="all"||(res==="wait"?!x.result:x.result===res));const o={};
-  L.forEach(x=>{const mk=String(x.day).slice(0,7);const M=o[mk]=o[mk]||{mk,matches:{}};const k=String(x.day)+"|"+mName(x);(M.matches[k]=M.matches[k]||{k,day:x.day,m:mName(x),game:GN(x.game),tour:x.tournament,L:[]}).L.push(x);});
+  L.forEach(x=>{const mk=String(x.day).slice(0,7);const M=o[mk]=o[mk]||{mk,matches:{}};const k=String(x.day)+"|"+mName(x);(M.matches[k]=M.matches[k]||{k,day:x.day,m:mName(x),game:GN(x.game),tour:x.tournament,start:x.start,L:[]}).L.push(x);});
   return Object.values(o).sort((a,b)=>b.mk.localeCompare(a.mk));},[all,done,tab,res]);
  // scénario
  const scL=useMemo(()=>{const L=one((Array.isArray(rows)?rows:[]).filter(pre).filter(x=>x.result&&src[srcOf(x)]&&(g==="all"||GN(x.game)===g)));
@@ -6688,11 +6705,12 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
      </div>
      <div style={{display:"flex",alignItems:"center",whiteSpace:"nowrap",overflow:"hidden",fontSize:12,fontWeight:700,color:"#7a9cbd"}}>
       <span>@{Number(x.odds).toFixed(2)}</span><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span>
-      <img src={_B64_PP_LOGO_B64} alt="PrizePicks" style={{width:12,height:12,borderRadius:2,marginRight:4}}/><span style={{color:"rgba(167,139,250,.95)"}}>{duel?"":String(x.pp_line??"").replace(".",",")+" "}<span style={{color:"#8b93a7",fontWeight:600}}>({f2(Number(x.edge))})</span></span>
-      {x.value!=null&&<><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:"#e5e7eb"}}>{x.value} {x.stat==="headshots"?"HS":"kills"}</span></>}
+      <img src={_B64_PP_LOGO_B64} alt="PrizePicks" style={{width:12,height:12,borderRadius:2,marginRight:4}}/><span style={{color:"rgba(167,139,250,.95)"}}>{duel?f2(Number(x.edge)):String(x.pp_line??"").replace(".",",")}</span>
+      {x.team_ml?<><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span title="Cote ML de son équipe">ML {Number(x.team_ml).toFixed(2)}</span></>:null}
+      {x.value!=null&&<><span style={{color:"#5a6e84",margin:"0 4px"}}>·</span><span style={{color:x.result==="won"?"#22C55E":x.result==="lost"?"#EF4444":"#e5e7eb",fontWeight:800}}>{x.value} {x.stat==="headshots"?"HS":"kills"}</span></>}
      </div>
     </div>
-    <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:14.5,fontWeight:800,color:c}}>{x.result?m2(pu(x)):f2(su0(x))+" u"}</div><div style={{fontSize:11,color:"#8b93a7"}}>{x.result==="won"?"gagné":x.result==="lost"?"perdu":x.result==="void"?"remboursé":"en attente"}</div></div>
+    <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:14.5,fontWeight:800,color:c}}>{x.result?m2(pu(x)):f2(su0(x))+" u"}</div>{x.result==="void"&&<div style={{fontSize:11,color:"#8b93a7"}}>remboursé</div>}</div>
    </div>
    <div style={{height:4,background:"rgba(255,255,255,.05)"}}><div style={{height:"100%",width:bw+"%",background:c,transition:"width .4s"}}/></div>
   </div>;};
@@ -6704,15 +6722,16 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
     <span style={{color:"#6b7280",display:"inline-block",transition:"transform .2s",transform:isC?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span>
    </button>
    {!isC&&<div style={{border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 16px 16px",padding:"10px 10px 4px",background:"rgba(17,24,39,.45)"}}>
-    {Object.values(M.matches).sort((p,q)=>String(q.day).localeCompare(String(p.day))||p.m.localeCompare(q.m)).map(z=>{const b=agg(z.L);const op=!!openM[z.k];const [A,B]=teamsOf(z.m);const zw=z.L.filter(x=>!x.result).length;
+    {Object.values(M.matches).sort((p,q)=>{const a=rsTs(q.start),b=rsTs(p.start);return (isNaN(a)?0:a)-(isNaN(b)?0:b)||String(q.day).localeCompare(String(p.day));}).map(z=>{const b=agg(z.L);const op=!!openM[z.k];const [A,B]=teamsOf(z.m);const zw=z.L.filter(x=>!x.result).length;
      return <div key={z.k} style={{marginBottom:8}}>
       <button onClick={()=>setOpenM(o=>({...o,[z.k]:!op}))} aria-expanded={op} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",...card,borderRadius:op?"14px 14px 0 0":14,cursor:"pointer",color:"#e5e7eb",fontFamily:"Inter,sans-serif",textAlign:"left"}}>
-       <span style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>{TL(A,z.game)}{TL(B,z.game)}</span>
-       <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:14,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{A||"?"} <span style={{color:"#6b7280",fontWeight:600}}>vs</span> {B||"?"}</span>
-        <span style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",fontSize:11.5,color:"#8b93a7"}}>{z.L.length} paris{zw?" · "+zw+" en attente":""}
+       <span style={{flex:1,minWidth:0}}><span style={{display:"flex",alignItems:"center",gap:5,fontSize:14,fontWeight:800,overflow:"hidden",whiteSpace:"nowrap"}}>{TL(A,z.game,20)}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{A||"?"}</span><span style={{color:"#6b7280",fontWeight:600,flexShrink:0}}>vs</span>{TL(B,z.game,20)}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{B||"?"}</span></span>
+        <span style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",fontSize:11.5,color:"#8b93a7",marginTop:2}}>
+        {(()=>{const st=rsTs(z.start);return <span role="button" tabIndex={0} title="Modifier l'heure" onClick={e=>{e.stopPropagation();editTime(z);}} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();editTime(z);}}} style={{fontWeight:800,color:isNaN(st)?"#FBBF24":"#cbd5e1",borderBottom:"1px dashed #374151"}}>{isNaN(st)?"heure ?":new Date(st).toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"})}</span>;})()}
+        · {z.L.length} paris
         {z.tour&&(()=>{const nm=tourAlias(z.tour);const known=((savedTourneys||{})[z.game]||[]).some(x=>cutNorm(x)===cutNorm(nm));return known?<span style={{color:"#cbd5e1"}}>· {nm}</span>:
          <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();setTourPick({g:z.game,name:z.tour});}} onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();setTourPick({g:z.game,name:z.tour});}}} style={{fontSize:11,fontWeight:800,color:"#FBBF24",border:"1px solid rgba(251,191,36,.4)",padding:"2px 7px",borderRadius:6}}>{z.tour} · lier / créer</span>;})()}</span></span>
-       <span style={{textAlign:"right"}}><b style={{display:"block",fontSize:14,color:b.n?pc(b.p):"#FBBF24"}}>{b.n?m2(b.p):zw+" ⏳"}</b>{b.n>0&&<span style={{fontSize:11,color:"#8b93a7"}}>{b.w}-{b.l}</span>}</span>
+       <span style={{textAlign:"right"}}><b style={{display:"block",fontSize:14,color:b.n?pc(b.p):"#8b93a7"}}>{b.n?m2(b.p):z.L.length}</b>{b.n>0&&<span style={{fontSize:11,color:"#8b93a7"}}>{b.w}-{b.l}</span>}</span>
        <span style={{color:"#6b7280",fontSize:11,transform:op?"rotate(180deg)":"none"}}>▾</span></button>
       {op&&<div style={{border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"8px 8px 0"}}>{(()=>{
        const E=x=>Number(x.edge)||0;
@@ -6727,10 +6746,10 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
      </div>;})}
    </div>}
   </div>;};
- const Bars=({title,groups,stk})=>{const G=groups.filter(([,L])=>agg(L,stk).n>0);if(!G.length)return null;const mx=Math.max(5,...G.map(([,L])=>Math.abs(agg(L,stk).roi)));
+ const Bars=({title,groups,stk,icon})=>{const G=groups.filter(([,L])=>agg(L,stk).n>0);if(!G.length)return null;const mx=Math.max(5,...G.map(([,L])=>Math.abs(agg(L,stk).roi)));
   return <>{H(title,"ROI")}
-   <div style={{...card,padding:"2px 14px"}}>{G.map(([k,L],i)=>{const a=agg(L,stk);const w=Math.min(50,Math.abs(a.roi)/mx*50);return <div key={k} style={{display:"grid",gridTemplateColumns:"104px minmax(0,1fr) 64px",gap:10,alignItems:"center",padding:"10px 0",borderTop:i?"1px solid #1F2937":"none",opacity:a.n<10?.6:1}}>
-    <div><div style={{fontSize:14,fontWeight:700,color:"#eef1f7"}}>{k}</div><div style={{fontSize:11,color:"#8b93a7"}}>{a.n} paris · {Math.round(a.wr)} %</div></div>
+   <div style={{...card,padding:"2px 14px"}}>{G.map(([k,L],i)=>{const a=agg(L,stk);const w=Math.min(50,Math.abs(a.roi)/mx*50);return <div key={k} style={{display:"grid",gridTemplateColumns:"128px minmax(0,1fr) 64px",gap:10,alignItems:"center",padding:"10px 0",borderTop:i?"1px solid #1F2937":"none",opacity:a.n<10?.6:1}}>
+    <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0}}>{icon?icon(k):null}<div style={{minWidth:0}}><div style={{fontSize:14,fontWeight:700,color:"#eef1f7",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{k}</div><div style={{fontSize:11,color:"#8b93a7"}}>{a.n} paris · {Math.round(a.wr)} %</div></div></div>
     <div style={{position:"relative",height:10,background:"#1f2937",borderRadius:5}}><div style={{position:"absolute",left:"50%",top:-3,bottom:-3,width:1,background:"#3A4354"}}/><div style={{position:"absolute",top:0,bottom:0,left:(a.roi>=0?50:50-w)+"%",width:w+"%",background:pc(a.roi),borderRadius:5}}/></div>
     <div style={{textAlign:"right",fontSize:14,fontWeight:800,color:pc(a.roi)}}>{pct(a.roi)}</div></div>;})}</div></>;};
  const by=(L,f)=>{const o={};L.forEach(x=>{const k=f(x);if(k==null)return;(o[k]=o[k]||[]).push(x);});return Object.entries(o);};
@@ -6745,7 +6764,7 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
  const roles=[...new Set((Array.isArray(rows)?rows:[]).map(roleOf).filter(Boolean))].sort();
  return(<div>
   <Seg v={tab} set={setTab} opts={[["apercu","Aperçu"],["paris","Paris"],["stats","Stats"],["scenario","Scénario"]]}/>
-  {tab!=="scenario"&&(()=>{const nAct=(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+(tab==="paris"&&res!=="all");return <>
+  {tab!=="scenario"&&(()=>{const nAct=(close>0)+(mlF!=="all")+(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+(tab==="paris"&&res!=="all");return <>
   <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
    {[["all","Tout"],["under","↓ Under"],["over","↑ Over"]].map(([k,l])=><Chip key={k} on={sd===k} onClick={()=>setSd(k)} c={k==="over"?"#22C55E":k==="under"?"#60A5FA":"#8b5cf6"}>{l}</Chip>)}
    <div style={{flex:1}}/>
@@ -6762,9 +6781,13 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
    <div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>MOMENT</div>
    <Row>{[["all","Tout"],["pre","Pré-match"],["live","Live"]].map(([k,l])=><Chip key={k} on={md===k} onClick={()=>setMd(k)} c={k==="live"?"#EF4444":"#8b5cf6"}>{l}</Chip>)}
     <span style={{width:1,background:"#1F2937",margin:"4px 2px",flexShrink:0}}/><Chip on={uniq} onClick={()=>setUniq(v=>!v)} c="#60A5FA">{uniq?"✓ ":""}1 pari / joueur · map</Chip></Row>
+   <div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>JOUÉS À RIEN</div>
+   <Row>{[[0,"Tous"],[1,"À 1 kill près"],[2,"À 2 kills près"],[3,"À 3 kills près"]].map(([k,l])=><Chip key={k} on={close===k} onClick={()=>setClose(k)} c="#F59E0B">{l}</Chip>)}</Row>
+   <div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>COTE DE L'ÉQUIPE DU JOUEUR (BETBY, AVANT LE MATCH)</div>
+   <Row>{[["all","Toutes"],["fav","Favorite · moins de 1,60"],["mid","1,60 à 2,49"],["out","2,50 à 2,99"],["big","Outsider · 3 et plus"]].map(([k,l])=><Chip key={k} on={mlF===k} onClick={()=>setMlF(k)}>{l}</Chip>)}</Row>
    {tab==="paris"&&<><div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>RÉSULTAT</div>
    <Row>{[["all","Tous"],["won","Gagnés"],["lost","Perdus"],["wait","En attente"]].map(([k,l])=><Chip key={k} on={res===k} onClick={()=>setRes(k)}>{l}</Chip>)}</Row></>}
-   {nAct>0&&<button onClick={()=>{setG("all");setSrc({sim:true,ev:true,duel:true});setMd("all");setStt("all");setUniq(false);setRes("all");}} style={{width:"100%",height:38,marginBottom:8,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Tout réinitialiser</button>}
+   {nAct>0&&<button onClick={()=>{setClose(0);setMlF("all");setG("all");setSrc({sim:true,ev:true,duel:true});setMd("all");setStt("all");setUniq(false);setRes("all");}} style={{width:"100%",height:38,marginBottom:8,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Tout réinitialiser</button>}
   </div>}</>;})()}
   {tourPick&&<div onClick={()=>setTourPick(null)} style={{position:"fixed",inset:0,zIndex:95,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
    <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"80vh",overflowY:"auto",background:"#0f1524",borderRadius:"20px 20px 0 0",border:"1px solid #1F2937",padding:"16px 14px 26px",boxSizing:"border-box"}}>
@@ -6809,14 +6832,16 @@ function SimulationTab({allPlayers={},teamLogos={},savedTourneys={},activeTourne
   </>}
   {tab==="stats"&&<>
    <Bars title="Par source" groups={by(done,x=>({sim:"Simulation",ev:"Bot",duel:"Duels"})[srcOf(x)])}/>
-   <Bars title="Par jeu" groups={by(done,x=>GN(x.game))}/>
+   <Bars title="Par jeu" groups={by(done,x=>GN(x.game))} icon={k=><GameLogo game={k} size={20}/>}/>
+   <Bars title="Par cote de l'équipe (ML)" groups={by(done,x=>({fav:"Favorite < 1,60",mid:"1,60 à 2,49",out:"2,50 à 2,99",big:"Outsider 3+"})[mlB(x)]||null)}/>
+   <Bars title="Joués à rien (1 ou 2 kills d'écart)" groups={by(done.filter(x=>x.kind!=="duel"&&x.value!=null),x=>{const d=Math.abs(Number(x.value)-Number(x.line));return d<=1.5?"À 1 kill":d<=2.5?"À 2 kills":"Plus de 2"})}/>
    <Bars title="Par type" groups={by(done,segN)}/>
    <Bars title="Par écart" groups={by(done,x=>eb(x.edge)).sort((p,q)=>p[0].localeCompare(q[0]))}/>
    <Bars title="Par cote" groups={by(done,x=>ob(x.odds)).sort((p,q)=>p[0].localeCompare(q[0]))}/>
    <Bars title="Par map" groups={by(done,x=>"Map "+x.map).sort((p,q)=>p[0].localeCompare(q[0]))}/>
    <Bars title="Pré-match vs live" groups={by(done,x=>(x.mode||"pre")==="live"?"Live":"Pré-match")}/>
    <Bars title="Par position" groups={by(done,x=>roleOf(x))}/>
-   <Bars title="Par tournoi" groups={by(done,x=>x.tournament||null).sort((p,q)=>agg(q[1]).p-agg(p[1]).p).slice(0,8)}/>
+   <Bars title="Par tournoi" groups={by(done,x=>x.tournament||null).sort((p,q)=>agg(q[1]).p-agg(p[1]).p).slice(0,8)} icon={k=>{const gm=(done.find(x=>x.tournament===k)||{}).game;const u=mediaStore["tourney_"+GN(gm)+"_"+tourAlias(k)]||mediaStore["tourney_"+GN(gm)+"_"+k];return u?<img src={u} alt="" style={{width:20,height:20,objectFit:"contain",borderRadius:4,flexShrink:0}}/>:<GameLogo game={GN(gm)} size={18}/>;}}/>
   </>}
   {tab==="scenario"&&<>
    <div style={{...card,padding:14}}>
@@ -10673,7 +10698,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>
   <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:5,marginTop:8}}>{QUICK_STAKES.map(q=>{const on=D.stake===String(q);return(
    <button key={q} onClick={()=>setD(f=>({...f,stake:String(q)}))} style={{height:32,borderRadius:9,border:"1px solid "+(on?OR:"rgba(255,255,255,.08)"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?OR:"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",padding:0}}>{q}$</button>);})}</div>
-  {(()=>{const pw=D.winner?findPlayer(D[D.winner]):null;const g=(pw&&pw.game)||"CS2";const e=ecart==null?null:(D.winner==="player2"?-ecart:ecart);if(e==null||!D.odds||!D.winner)return null;const pc=stakePct(g,e,D.odds,false,null,"",true);const amt=Math.round(unitValue*100*(pc||0)/100*2)/2;
+  {(()=>{const pw=D.winner?findPlayer(D[D.winner]):null;const g=(pw&&pw.game)||"CS2";const e=ecart==null?null:(D.winner==="player2"?-ecart:ecart);if(e==null||!D.odds||!D.winner)return null;const pc0=stakePct(g,e,D.odds,false,null,"",true);const pc=pc0?Math.round(Math.max(.5,e)*100)/100:0;const amt=Math.round(unitValue*(pc||0)*2)/2;
    return <button onClick={()=>pc&&setD(f=>({...f,stake:String(amt)}))} style={{width:"100%",marginTop:8,padding:"8px 10px",borderRadius:10,border:"1px solid "+(pc?"rgba(167,139,250,.35)":"rgba(239,68,68,.35)"),background:pc?"rgba(124,58,237,.1)":"rgba(239,68,68,.08)",color:pc?"#c4b5fd":"#FCA5A5",fontWeight:700,fontSize:12.5,cursor:pc?"pointer":"default",fontFamily:"Inter,sans-serif",textAlign:"left"}}>{pc?"Mise conseillée "+String(pc).replace(".",",")+" % = "+amt+"$ · Appliquer":"Edge ou cote insuffisant → passe"}</button>;})()}
   {D.odds&&D.stake&&<div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontSize:13,color:"#9ca3af"}}>Gain potentiel<b style={{color:"#22C55E"}}>+{(parseFloat(D.stake)*(parseFloat(D.odds)-1)||0).toFixed(2)}$</b></div>}
  </div>
@@ -11715,7 +11740,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>);
  })()}
 
- {statsTab==="sim"&&<SimulationTab allPlayers={allPlayers} teamLogos={teamLogos} savedTourneys={savedTourneys} activeTourneys={activeTourneys}
+ {statsTab==="sim"&&<SimulationTab allPlayers={allPlayers} teamLogos={teamLogos} mediaStore={mediaStore} savedTourneys={savedTourneys} activeTourneys={activeTourneys}
   onTour={(g,name,target)=>{const G=GNORM(g)||g;let t=target;
    if(!t){t=name;setSavedTourneys(p=>({...p,[G]:[...new Set([...((p||{})[G]||[]),name])]}));}
    else{TOUR_ALIAS={...TOUR_ALIAS,[cutNorm(name)]:t};try{localStorage.setItem("v7_tour_alias",JSON.stringify(TOUR_ALIAS));}catch(e){}
@@ -13321,7 +13346,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
    {evTab==="outils"&&<><MapPhotos showToast={showToast}/><MLStats bets={bets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
    {evTab==="bets"&&<>
-   <DuelAlerts teamLogos={teamLogos} allPlayers={allPlayers}/>
+   <DuelAlerts teamLogos={teamLogos} allPlayers={allPlayers} exclude={[...new Set((evAlerts||[]).map(a=>String(a.match||"")))].map(x=>x.split(/\s+vs\.?\s+/i))}/>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
    {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center"}}>
@@ -13385,6 +13410,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
           {teams.map(t=>{const TT=MM.filter(a=>(evTeams(a)[0]||"?")===t);const byE=(x,y)=>(Number(y.edge)||0)-(Number(x.edge)||0);const K=TT.filter(a=>a.stat!=="headshots").sort(byE),H=TT.filter(a=>a.stat==="headshots").sort(byE);
            const sub=(l,n)=><div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 14px 4px",fontSize:10.5,fontWeight:900,color:"#9ca3af",letterSpacing:.5}}>{LG(t,g,14)}<span>{String(t).toUpperCase()}</span><span style={{color:"#4b5563"}}>{n}</span></div>;
            return(<div key={t}>{sub("KILLS · HS",K.length+H.length)}{K.map(renderEv)}{H.map(renderEv)}</div>);})}
+          <DuelAlerts teamLogos={teamLogos} allPlayers={allPlayers} teams={[t1,t2]} map={m} inline/>
          </div>);})}
        </div>);})}
      </div>);});})()}
