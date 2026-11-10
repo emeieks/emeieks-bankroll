@@ -3921,26 +3921,17 @@ const MesParisView=memo(function MesParisView({
  const wr=total>0?won/total*100:0;
  return(
  <div key={mk} style={{marginBottom:14}}>
- <div onClick={()=>toggleMonth(mk)} style={{background:"linear-gradient(135deg,rgba(10,18,38,.99),rgba(7,14,30,.99))",border:"1px solid rgba(99,130,200,.22)",borderRadius:isCollapsed(mk)?"14px":"14px 14px 0 0",padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none",boxShadow:"0 6px 24px rgba(0,0,0,.4),0 0 0 1px rgba(124,58,237,.04)",position:"relative",overflow:"hidden"}}>
- <div style={{position:"absolute",top:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(124,58,237,.4),rgba(59,130,246,.3),transparent)",pointerEvents:"none"}}/>
- <div style={{position:"absolute",top:"-50%",right:"-10%",width:"40%",height:"150%",background:"radial-gradient(ellipse,rgba(124,58,237,.06),transparent 70%)",pointerEvents:"none"}}/>
- <div>
- <div style={{fontSize:16,fontWeight:800,color:"#dce8ff",textTransform:"none",letterSpacing:0}}>{fmtMonth(mk)}</div>
- <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3}}>
- <span style={{fontSize:12,color:"#9ca3af",fontWeight:600}}>{allBets.filter(b=>b.status==="won").length}-{allBets.filter(b=>b.status==="lost").length}</span>
- <span style={{fontSize:10,color:"#3a5070"}}>·</span>
- <span style={{fontSize:12,color:wr>=55?"#22C55E":wr<50?"#EF4444":"#e5e7eb",fontWeight:700}}>{wr.toFixed(0)}%</span>
+ <button onClick={()=>toggleMonth(mk)} aria-expanded={!isCollapsed(mk)} style={{width:"100%",textAlign:"left",background:"#141821",border:"1px solid #232A36",borderRadius:isCollapsed(mk)?16:"16px 16px 0 0",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",userSelect:"none",fontFamily:"Inter,sans-serif",color:"#F2F4F8"}}>
+ <div style={{flex:1,minWidth:0}}>
+  <div style={{fontSize:17,fontWeight:700,fontFamily:"'Space Grotesk',Inter,sans-serif"}}>{fmtMonth(mk)}</div>
+  <div style={{fontSize:13,color:"#9AA3B2",marginTop:3}}>{total} paris · {won}-{allBets.filter(b=>b.status==="lost").length} · {wr.toFixed(0)} %</div>
  </div>
- {(()=>{const S=allBets.filter(b=>(b.status==="won"||b.status==="lost")&&!(typeof isAdjBet==="function"&&isAdjBet(b)));const st=S.reduce((a,b)=>a+(+b.stake||0),0);const od=S.length?S.reduce((a,b)=>a+(+b.odds||0),0)/S.length:0;return <div style={{fontSize:11,color:"#7d8ba3",fontWeight:600,marginTop:4}}>{allBets.length} paris · misé {Math.round(st).toLocaleString("fr-CA")}$ · @{od.toFixed(2)} · moy. {S.length?Math.round(st/S.length):0}$</div>;})()}
- </div>
- <div style={{display:"flex",alignItems:"center",gap:10}}>
  <div style={{textAlign:"right"}}>
- <div style={{fontSize:19,fontWeight:800,color:profit>=0?"#22C55E":"#EF4444",letterSpacing:-.3}}>{(profit>=0?"+":"−")+Math.abs(profit).toFixed(2)}$</div>
- <div style={{fontSize:11,color:roi>=0?"#22a55a":"#c04040",fontWeight:600}}>{roi>=0?"+":""}{roi.toFixed(2)}% ROI</div>
+  <div style={{fontSize:19,fontWeight:700,fontFamily:"'Space Grotesk',Inter,sans-serif",color:profit>=0?"#34D399":"#F87171",whiteSpace:"nowrap"}}>{(profit>=0?"+":"−")+Math.abs(profit).toFixed(2).replace(".",",")} $</div>
+  <div style={{fontSize:12,color:roi>=0?"#34D399":"#F87171"}}>ROI {roi>=0?"+":"−"}{Math.abs(roi).toFixed(2).replace(".",",")} %</div>
  </div>
- <span style={{fontSize:11,color:"#4B6080",transition:"transform .2s",display:"inline-block",transform:isCollapsed(mk)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span>
- </div>
- </div>
+ <span style={{color:"#6b7280",display:"inline-block",transition:"transform .2s",transform:isCollapsed(mk)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span>
+ </button>
  {!isCollapsed(mk)&&(
  <div style={{borderRadius:"0 0 12px 12px",overflow:"hidden",border:"1px solid rgba(99,130,200,.14)",borderTop:"none",marginBottom:6,background:"rgba(8,12,24,.6)"}}>
  {days.map((dk,di)=>{
@@ -4075,9 +4066,9 @@ function ClubsTab({bets,allPlayers,teamLogos}){
  const open=c=>{const g=c.game||game;try{window.dispatchEvent(new CustomEvent("emeieks-explore",{detail:{game:g,filterType:"team",filterValue:c.team}}));}catch(e){openClubSheet(c.team,g);}};
  const mxP=Math.max(1,...clubs.map(c=>Math.abs(c.profit)));
  const Row=({c,i})=>{const g=c.game||game;const lg=clubLogo(c.team,g,teamLogos,allPlayers);const L=clubLeague(c.team,g,allPlayers,bets);const tc=(typeof teamColors==="function"&&teamColors(c.team)[0])||acc;const w=Math.round(c.n*c.wr/100);return(
-  <button onClick={()=>open(c)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"11px 12px",background:"linear-gradient(90deg,"+tc+"14,transparent 45%)",border:"none",borderTop:i?"1px solid rgba(255,255,255,.05)":"none",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
+  <button onClick={()=>open(c)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"11px 12px",background:"transparent",border:"none",borderTop:i?"1px solid rgba(255,255,255,.05)":"none",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
    <span style={{width:18,fontSize:12.5,fontWeight:900,color:i<3?"#fbbf24":"#5b6478",textAlign:"center"}}>{i+1}</span>
-   <span style={{position:"relative",width:40,height:40,borderRadius:11,background:"rgba(255,255,255,.95)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 0 0 2px "+tc+"55"}}>
+   <span style={{position:"relative",width:40,height:40,borderRadius:11,background:"rgba(255,255,255,.95)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"0 0 0 1px rgba(255,255,255,.12)"}}>
     {lg?<img src={lg} alt="" style={{width:31,height:31,objectFit:"contain"}}/>:<span style={{fontSize:11,fontWeight:900,color:"#0b1220"}}>{c.team.slice(0,3).toUpperCase()}</span>}
     {L&&<span title={L} style={{position:"absolute",right:-6,bottom:-6,width:20,height:20,borderRadius:6,background:"#0b1220",border:"1px solid rgba(255,255,255,.18)",display:"flex",alignItems:"center",justifyContent:"center"}}><LeagueLogo league={L} size={14}/></span>}</span>
    <span style={{flex:1,minWidth:0}}>
@@ -4087,7 +4078,7 @@ function ClubsTab({bets,allPlayers,teamLogos}){
    <span style={{fontSize:15,fontWeight:900,color:pcol(c.profit)}}>{money$(c.profit)}</span>
   </button>);};
  const Hero=({c})=>{if(!c)return null;const g=c.game||game;const lg=clubLogo(c.team,g,teamLogos,allPlayers);const L=clubLeague(c.team,g,allPlayers,bets);const tc=(typeof teamColors==="function"&&teamColors(c.team)[0])||acc;const w=Math.round(c.n*c.wr/100);
-  return <button onClick={()=>open(c)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"16px",marginBottom:12,borderRadius:18,border:"1px solid "+tc+"66",background:"radial-gradient(130% 140% at 100% 0%,"+tc+"55,"+tc+"10 55%,#0b1220)",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
+  return <button onClick={()=>open(c)} style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"16px",marginBottom:12,borderRadius:18,border:"1px solid rgba(251,191,36,.35)",background:"#111827",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
    <span style={{width:62,height:62,borderRadius:16,background:"rgba(255,255,255,.95)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{lg?<img src={lg} alt="" style={{width:50,height:50,objectFit:"contain"}}/>:<b style={{color:"#0b1220"}}>{c.team.slice(0,3).toUpperCase()}</b>}</span>
    <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:10.5,fontWeight:800,letterSpacing:1,color:"#fde68a"}}>🏆 CLUB LE PLUS RENTABLE · {game}</span>
     <span style={{display:"block",fontSize:20,fontWeight:900,color:"#fff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.team}</span>
@@ -6541,6 +6532,17 @@ function PlayerChamps({name,compact,bets=[],allPlayers={}}){const {rows,win,ver,
    <span style={{textAlign:"center",color:"#9ca3af"}}>{a.max}</span><span style={{textAlign:"right",fontWeight:700,color:a.wr==null?"#6b7280":a.wr>=55?"#22C55E":a.wr<45?"#EF4444":"#e5e7eb"}}>{a.wr==null?"–":Math.round(a.wr)+"%"}</span></div>)}
   {S.length>6&&<button onClick={()=>setAll(v=>!v)} style={{width:"100%",padding:"10px",border:"none",borderTop:"1px solid rgba(255,255,255,.05)",background:"transparent",color:"#5eead4",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>{all?"Réduire":"Voir les "+S.length+" champions"}</button>}
  </div>;}
+// Champions LoL — version simple dans la section LoL
+function ChampSimple({bets=[],allPlayers={}}){const {data,ver,loading}=useChampData(bets,allPlayers);const [m,setM]=useState("k");const [n,setN]=useState(10);
+ if(loading||!data||!data.length)return null;
+ const min=m==="n"?1:2;const L=[...data].filter(a=>a.n>=min&&(m!=="kda"||a.kda!=null)).sort((x,y)=>m==="k"?y.avg-x.avg:m==="kda"?y.kda-x.kda:y.n-x.n);
+ const val=a=>m==="k"?f1c(a.avg):m==="kda"?kdaF(a.kda):a.n;const mx=Math.max(...L.map(a=>m==="k"?a.avg:m==="kda"?a.kda:a.n),1);
+ return <><JSec t="Champions" right={<div style={{display:"flex",background:"#070b16",border:"1px solid rgba(255,255,255,.08)",borderRadius:9,padding:2}}>{[["k","Kills moy."],["kda","KDA"],["n","Joués"]].map(([v,l])=><button key={v} onClick={()=>setM(v)} aria-pressed={m===v} style={{padding:"5px 10px",borderRadius:7,border:"none",background:m===v?"rgba(167,139,250,.25)":"transparent",color:m===v?"#fff":"#6b7280",fontSize:12,fontWeight:800,cursor:"pointer"}}>{l}</button>)}</div>}/>
+  {L.slice(0,n).map((a,i)=><div key={a.c} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",borderTop:"1px solid rgba(255,255,255,.05)"}}>
+   <span style={{width:16,fontSize:12,fontWeight:800,color:"#6b7280",textAlign:"center"}}>{i+1}</span><ChampIcon c={a.c} ver={ver} size={30}/>
+   <span style={{flex:1,minWidth:0}}><b style={{display:"block",fontSize:14,color:"#eef1f7"}}>{a.c}</b><span style={{display:"block",height:4,borderRadius:2,background:"rgba(255,255,255,.06)",marginTop:5,overflow:"hidden"}}><span style={{display:"block",height:"100%",width:((m==="k"?a.avg:m==="kda"?a.kda:a.n)/mx*100)+"%",background:"#a78bfa",borderRadius:2}}/></span></span>
+   <span style={{fontSize:11.5,color:"#6b7280",minWidth:30,textAlign:"right"}}>{a.n}g</span><b style={{fontSize:15,color:"#fff",minWidth:40,textAlign:"right"}}>{val(a)}</b></div>)}
+  {L.length>n&&<button onClick={()=>setN(n+10)} style={{width:"100%",height:40,border:"none",borderTop:"1px solid rgba(255,255,255,.05)",background:"transparent",color:"#a78bfa",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Voir plus</button>}</>;}
 // Page complète
 function ChampStats({allPlayers={},bets=[]}){
  const {data,ver,loading,rows,win}=useChampData(bets,allPlayers);
@@ -11156,7 +11158,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"clubs",l:"Clubs"},{k:"tournois",l:"Tournois"},{k:"cote_bk",l:"Bookmakers"},{k:"champs",l:"Champions"},{k:"labo",l:"Recherche"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"clubs",l:"Clubs"},{k:"tournois",l:"Tournois"},{k:"cote_bk",l:"Bookmakers"},{k:"labo",l:"Recherche"},{k:"plus",l:"Plus"}].map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} onClick={()=>setStatsTab(t.k)}
@@ -11994,8 +11996,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
 
  {statsTab==="jeux"&&<>
- {(()=>{const G=ALL_GAMES.filter(g=>perGameStats[g]).map(g=>({g,p:perGameStats[g].profit,n:perGameStats[g].count,roi:perGameStats[g].roi}));if(!G.length)return null;const tot=G.reduce((a,x)=>a+x.p,0);
-  return <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto"}}>{[...G].sort((a,b)=>b.p-a.p).map((x,i)=><div key={x.g} style={{flex:"1 0 92px",background:"#111827",border:"1px solid "+(i===0?"rgba(251,191,36,.45)":"#1F2937"),borderRadius:13,padding:"9px 10px"}}><div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:800,color:"#e5e7eb"}}><GameLogo game={x.g} size={15}/>{x.g}{i===0&&<span style={{marginLeft:"auto",fontSize:11}}>🏆</span>}</div><div style={{fontSize:16,fontWeight:900,color:x.p>=0?"#22C55E":"#EF4444",marginTop:4}}>{fmtM(x.p)}</div><div style={{fontSize:10.5,color:"#6b7280"}}>{tot>0&&x.p>0?Math.round(x.p/tot*100)+"% du profit":"ROI "+x.roi.toFixed(1)+"%"}</div></div>)}</div>;})()}
  {/* PAR JEU — accordéons, du plus payant au moins payant */}
  {(()=>{const mx=Math.max(1,...ALL_GAMES.map(g=>Math.abs((perGameStats[g]||{}).profit||0)));window.__gMx=mx;return null;})()}
  {[...ALL_GAMES].sort((a,b)=>(perGameStats[b]?perGameStats[b].profit:-1e12)-(perGameStats[a]?perGameStats[a].profit:-1e12)).map(game=>{
@@ -12035,7 +12035,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <span style={{fontSize:11,color:"#6B7280"}}>·</span>
  <span style={{fontSize:11,fontWeight:700,color:gs.profit>=0?"#22C55E":"#EF4444",background:gs.profit>=0?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",padding:"1px 6px",borderRadius:5}}>{gs.profit>=0?"+":""}{bankroll>0?(gs.profit/bankroll*100).toFixed(1):0}% BK</span>
  </div>
- {(()=>{const pg=bankroll>0?gs.profit/bankroll*100:0;const w=Math.min(100,Math.abs(gs.profit)/(window.__gMx||1)*100);const c=gs.profit>=0?"#22C55E":"#EF4444";return <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}><div style={{flex:1,height:7,borderRadius:4,background:"rgba(255,255,255,.06)",overflow:"hidden"}}><div style={{width:w+"%",height:"100%",borderRadius:4,background:"linear-gradient(90deg,"+cfg.accent+","+c+")"}}/></div><span style={{fontSize:11.5,fontWeight:800,color:c,minWidth:52,textAlign:"right"}}>{pg>=0?"+":""}{pg.toFixed(1)}%</span></div>;})()}
+ {(()=>{const pg=bankroll>0?gs.profit/bankroll*100:0;const w=Math.min(100,Math.abs(gs.profit)/(window.__gMx||1)*100);const c=gs.profit>=0?"#22C55E":"#EF4444";return <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}><div style={{flex:1,height:7,borderRadius:4,background:"rgba(255,255,255,.06)",overflow:"hidden"}}><div style={{width:w+"%",height:"100%",borderRadius:4,background:c}}/></div><span style={{fontSize:11.5,fontWeight:800,color:c,minWidth:52,textAlign:"right"}}>{pg>=0?"+":""}{pg.toFixed(1)}%</span></div>;})()}
  </button>
 
  {isOpen&&(
@@ -12103,7 +12103,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {gs.roles.some(r=>r.role&&r.role!=="Inconnu")&&<><JSec t="Positions"/><JHd a="Position"/>{gs.roles.map(r=><JRow key={r.role} l={r.role} r={r} icon={game==="LoL"?<RoleLogo role={r.role} size={16}/>:null} onClick={()=>openDrill({game,league:null,filterType:"role",filterValue:r.role})}/>)}</>}
  {/* Tournois (retiré) */}
  {gs.tourneys.length>0&&<><JSec t={game==="LoL"||game==="Valorant"?"Tournois / ligues":"Tournois"}/><JHd a="Tournoi"/>{gs.tourneys.map(t=><JRow key={t.name} l={t.name} r={t} icon={t.name==="Hors tournoi"?<Ic n="ban" s={14} c="#6B7280"/>:<LeagueLogo league={t.name} size={18}/>} onClick={()=>openDrill({game,league:null,filterType:"tourney",filterValue:t.name})}/>)}</>}
- {game==="LoL"&&<ChampTop5 bets={settledFiltered} allPlayers={allPlayers} onMore={()=>setStatsTab("champs")}/>}
+ {game==="LoL"&&<ChampSimple bets={settledFiltered} allPlayers={allPlayers}/>}
  </div>
  )}
  </div>
