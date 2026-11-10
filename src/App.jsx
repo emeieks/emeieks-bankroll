@@ -6629,7 +6629,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const load=useCallback(()=>{setRows(null);const Q="pot_bets?select=key,base,pkey,player,game,stat,side,map,line,odds,edge,stake,stake_pct,pp_line,pp_maps,result,value,profit,day,match,team,vs,start,at,tournament,mode,kind,is_ev";
   cloudDb(Q+",team_ml,opp_ml&order=day.desc&limit=40000").catch(()=>cloudDb(Q+"&order=day.desc&limit=40000"))
   .then(r=>setRows(Array.isArray(r)?r:[])).catch(e=>setRows({err:String(e.message||e)}));
-  cloudDb("ev_alerts?created_at=gte."+new Date(Date.now()-60*864e5).toISOString()+"&select=player,stat,side,map,book_line,match&limit=20000").then(r=>{const S=new Set();(r||[]).forEach(a=>S.add([cutNorm(a.player),a.stat,a.side,String(a.map),Number(a.book_line)].join("|")));setEvSet(S);}).catch(()=>{});
+  cloudDb("ev_alerts?created_at=gte."+new Date(Date.now()-60*864e5).toISOString()+"&select=player,stat,side,map,book_line,match&limit=20000").then(r=>{const S=new Set();(r||[]).forEach(a=>S.add([cutNorm(a.player),a.stat,a.side,String(a.map),Number(a.book_line),String(a.match||"").toLowerCase().replace(/[^a-z0-9]/g,"")].join("|")));setEvSet(S);}).catch(()=>{});
   cloudDb("settings?select=value&key=eq.sim_live").then(r=>{let v=r&&r[0]&&r[0].value;if(typeof v==="string")try{v=JSON.parse(v);}catch(e){}setLive(v||{on:false});}).catch(()=>setLive({on:false}));},[]);
  useEffect(()=>{load();},[load]);
  const [tick,setTick]=useState(0);useEffect(()=>{const i=setInterval(()=>setTick(t=>t+1),30000);return()=>clearInterval(i);},[]);
@@ -6638,7 +6638,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const GN=x=>GNORM(x)||x;
  const fmtMonth=mk=>{try{const [y,m]=String(mk).split("-").map(Number);return FR_MONTHS[m-1]+" "+y;}catch(e){return mk;}};
  const pre=x=>x.mode==="live"||(()=>{const t=rsTs(x.start),a=x.at?new Date(x.at).getTime():NaN;return isNaN(t)||isNaN(a)||a<=t+5*60e3;})();
- const srcOf=x=>x.kind==="duel"?"duel":(x.is_ev||evSet.has([cutNorm(x.player),x.stat,x.side,String(x.map),Number(x.line)].join("|")))?"ev":"sim";
+ const srcOf=x=>x.kind==="duel"?"duel":(x.is_ev||evSet.has([cutNorm(x.player),x.stat,x.side,String(x.map),Number(x.line),String(x.match||"").toLowerCase().replace(/[^a-z0-9]/g,"")].join("|")))?"ev":"sim";
  const mlB=x=>{const o=Number(x.team_ml);return !o?null:o<1.6?"fav":o<2.5?"mid":o<3?"out":"big";};
  const nearOk=x=>!close||(x.result&&x.value!=null&&x.kind!=="duel"&&Math.abs(Number(x.value)-Number(x.line))<=close+.5);
  const roleOf=x=>{const P=allPlayers[String(x.player||"").toLowerCase().trim()]||allPlayers[String(x.pkey||"")];return (P&&P.role)||null;};
