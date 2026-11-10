@@ -13101,7 +13101,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>}
  <SuiviLabel>BOT</SuiviLabel>
  {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=evIsNew;const nNew=evAlerts.filter(a=>isNew(a)&&!isMuted(a)).length;
-  const running=evRun&&(evRun.status==="pending"||evRun.status==="running");
+  const running=evRunning;
   const hhmm=t=>t?new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
   return <div style={{marginBottom:8}}>
   <SuiviHead img={_B64_PP_LOGO_B64} color="#22C55E" title="Bot EV" badge={nNew?<span style={{fontSize:10,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 6px",borderRadius:6}}>{nNew} NEW</span>:null}
