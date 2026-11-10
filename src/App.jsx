@@ -5336,6 +5336,9 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
    setRows(Array.isArray(r)?r:[]);const o={};(d||[]).forEach(x=>{o[x.key]=x;const pair=x.key.split("|")[0];if(Math.abs(new Date(x.day+"T12:00:00")-new Date(day+"T12:00:00"))<=864e5&&!o[pair+"|"+day])o[pair+"|"+day]=x;});setDone(o);
    const ks=(d||[]).map(x=>x.key);if(ks.length)cloudDb("map_results?match_key=in.("+ks.map(encodeURIComponent).join(",")+")&select=match_key,map_no,map_name,ot").then(r=>{const q={};(r||[]).forEach(x=>{(q[x.match_key]=q[x.match_key]||[]).push(x);});Object.values(o).forEach(x=>{const pair=x.key.split("|")[0];if(q[x.key])q[pair+"|"+day]=q[pair+"|"+day]||q[x.key];});setMpOf(q);}).catch(()=>{});}catch(e){setRows([]);}},[day]);
  useEffect(()=>{load();},[load]);
+ // lien direct depuis Simulation › À régler : ouvre le jour puis le match
+ const [focusM,setFocusM]=useState(()=>window.__openResult||null);
+ useEffect(()=>{const h=()=>{const d=window.__openResult;if(d){setFocusM({...d,t:Date.now()});if(d.day)setDay(d.day);}};window.addEventListener("emeieks-open-result-go",h);if(window.__openResult)h();return()=>window.removeEventListener("emeieks-open-result-go",h);},[]);
  useEffect(()=>{const ids=(bets||[]).filter(b=>String(b.datetime||"").slice(0,10)===day).map(b=>String(b.id));if(!ids.length){setLockB(new Set());return;}cloudDb("bet_match?id=in.("+ids.map(encodeURIComponent).join(",")+")&select=id,team1").then(r=>setLockB(new Set((r||[]).filter(x=>x.team1&&x.team1!=="__exclu__").map(x=>String(x.id))))).catch(()=>setLockB(new Set()));},[day,bets]);
  // un match = même paire d'équipes + heures de début à moins de 8 h ; son jour = date LOCALE de son début (le plus tard vu, en cas de report)
  const matches=useMemo(()=>{const cl=[];(rows||[]).forEach(r=>{const A=rsClean(r.team),B=rsClean(r.match);if(!A||!B)return;const pr=rsPair(A,B);const t=rsTs(r.start);if(isNaN(t))return;
@@ -5348,6 +5351,9 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
    const bt={};hit.forEach(r=>{if(r.tournament)bt[r.tournament]=(bt[r.tournament]||0)+1;});const btour=Object.keys(bt).sort((a,b)=>bt[b]-bt[a])[0];
    return {...m,bb:m.manual||!bb?true:hit.length>0,tour:(done[m.pair+"|"+m.day]&&done[m.pair+"|"+m.day].tournament)||btour||Object.keys(m.tc).sort((a,b)=>m.tc[b]-m.tc[a])[0]||""};}).sort((a,b)=>String(a.start).localeCompare(String(b.start)));},[rows,day,done,bb,tlv]);
  useEffect(()=>{RS_TOURS=[...new Set([...(RS_TOURS||[]),...(rows||[]).map(r=>r.tournament).filter(Boolean),...Object.values(done).map(x=>x.tournament).filter(Boolean)])].sort();},[rows,done]);
+ useEffect(()=>{if(!focusM||!rows)return;const T=(focusM.teams||[]).map(teamKey).filter(Boolean);
+  const hit=(matches||[]).find(m=>{const K=Object.keys(m.teams||{});return T.length&&T.every(t=>K.some(k=>k===t||k.includes(t)||t.includes(k)));});
+  if(hit){setSel(hit);setFocusM(null);window.__openResult=null;}else if(focusM.day===day){setFocusM(null);window.__openResult=null;}},[focusM,matches,rows,day]);
  const shownM=useMemo(()=>allM?matches:matches.filter(m=>m.bb),[matches,allM]);const hiddenN=matches.length-matches.filter(m=>m.bb).length;
  useEffect(()=>{if(rows)setCnt(c=>({...c,[day]:{n:shownM.length,d:shownM.filter(m=>done[m.key]&&done[m.key].score1!=null).length}}));},[shownM,done]);
  const L=(t,g,s=24)=>{const u=findLogo(idx,t,g);return u?<img src={u} alt="" style={{width:s,height:s,objectFit:"contain",flexShrink:0}}/>:<span style={{width:s,height:s,borderRadius:3,background:teamColors(t)[0],color:"#14181E",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:s>30?13:9,fontWeight:800,flexShrink:0}}>{teamAbbr(t).slice(0,3)}</span>;};
@@ -6558,6 +6564,110 @@ function ChampSimple({bets=[],allPlayers={}}){const {data,ver,loading}=useChampD
    <span style={{flex:1,minWidth:0}}><b style={{display:"block",fontSize:14,color:"#eef1f7"}}>{a.c}</b><span style={{display:"block",height:4,borderRadius:2,background:"rgba(255,255,255,.06)",marginTop:5,overflow:"hidden"}}><span style={{display:"block",height:"100%",width:((m==="k"?a.avg:m==="kda"?a.kda:a.n)/mx*100)+"%",background:"#a78bfa",borderRadius:2}}/></span></span>
    <span style={{fontSize:11.5,color:"#6b7280",minWidth:30,textAlign:"right"}}>{a.n}g</span><b style={{fontSize:15,color:"#fff",minWidth:40,textAlign:"right"}}>{val(a)}</b></div>)}
   {L.length>n&&<button onClick={()=>setN(n+10)} style={{width:"100%",height:40,border:"none",borderTop:"1px solid rgba(255,255,255,.05)",background:"transparent",color:"#a78bfa",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Voir plus</button>}</>;}
+
+// ══ SIMULATION (Labo d'edge) : paris fictifs pré-match pris par le bot (table pot_bets), réglés par les scores saisis ══
+function SimulationTab({allPlayers={},teamLogos={}}){
+ const [rows,setRows]=useState(null);const [tab,setTab]=useState("apercu");const [g,setG]=useState("all");const [closed,setClosed]=useState({});const [openDay,setOpenDay]=useState({});const [res,setRes]=useState("all");
+ const load=useCallback(()=>{setRows(null);cloudDb("pot_bets?select=key,pkey,player,game,stat,side,map,line,odds,edge,stake,stake_pct,result,value,profit,day,match,team,start,at,tournament&order=day.desc&limit=40000")
+  .then(r=>setRows(Array.isArray(r)?r:[])).catch(e=>setRows({err:String(e.message||e)}));},[]);
+ useEffect(()=>{load();},[load]);
+ const GN=x=>GNORM(x)||x;
+ const fmtMonth=mk=>{try{const [y,m]=String(mk).split("-").map(Number);return FR_MONTHS[m-1]+" "+y;}catch(e){return mk;}};
+ const pre=x=>{const t=rsTs(x.start),a=x.at?new Date(x.at).getTime():NaN;return isNaN(t)||isNaN(a)||a<=t+5*60e3;};
+ const all=useMemo(()=>Array.isArray(rows)?rows.filter(pre).filter(x=>g==="all"||GN(x.game)===g):[],[rows,g]);
+ const done=all.filter(x=>x.result==="won"||x.result==="lost"||x.result==="void");
+ const wait=all.filter(x=>!x.result);
+ const agg=L=>{const S=L.filter(x=>x.result==="won"||x.result==="lost");const w=S.filter(x=>x.result==="won").length;const st=S.reduce((t,x)=>t+(Number(x.stake)||0),0);const p=L.reduce((t,x)=>t+(Number(x.profit)||0),0);
+  const od=S.length?S.reduce((t,x)=>t+(Number(x.odds)||0),0)/S.length:0;return {n:S.length,w,l:S.length-w,st,p,roi:st?p/st*100:0,wr:S.length?w/S.length*100:0,need:od?100/od:0};};
+ const T=agg(done);const pc=v=>v>=0?"#22C55E":"#EF4444";const pct=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(1).replace(".",",")+" %";
+ const m2=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2).replace(".",",")+" $";
+ const card={background:"#111827",border:"1px solid #1F2937",borderRadius:16};
+ const H=t=><div style={{fontSize:16,fontWeight:800,color:"#eef1f7",margin:"18px 0 10px"}}>{t}</div>;
+ const now=Date.now();
+ // matchs à régler : paris en attente dont le match a commencé, groupés par match
+ const todo=useMemo(()=>{const o={};wait.forEach(x=>{const t=rsTs(x.start);if(!isNaN(t)&&t>now)return;const m=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"");const k=m+"|"+x.day;const z=o[k]=o[k]||{m,day:x.day,game:GN(x.game),n:0,maps:new Set(),start:x.start};z.n++;z.maps.add(x.map);});
+  return Object.values(o).sort((a,b)=>String(b.day).localeCompare(String(a.day)));},[wait]);
+ const openMatch=z=>{const teams=z.m.split(/\s+vs\.?\s+/i).map(s=>s.trim()).filter(Boolean);try{window.dispatchEvent(new CustomEvent("emeieks-open-result",{detail:{day:z.day,teams}}));}catch(e){}};
+ // courbe
+ const pts=useMemo(()=>{let r=0;return [{v:0,dt:""}].concat([...done].sort((a,b)=>String(a.start||a.day).localeCompare(String(b.start||b.day))).map(x=>{r+=Number(x.profit)||0;return {v:r,dt:String(x.day)};}));},[done]);
+ const Seg=({v,set,opts})=><div style={{display:"flex",gap:4,padding:4,background:"#111827",border:"1px solid #1F2937",borderRadius:14,marginBottom:12}}>{opts.map(([k,l])=><button key={k} onClick={()=>set(k)} aria-pressed={v===k} style={{flex:1,height:42,border:"none",borderRadius:10,background:v===k?"#7c3aed":"transparent",color:v===k?"#fff":"#9ca3af",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>;
+ // mois → jours → matchs
+ const months=useMemo(()=>{const L=(tab==="paris"?all:done).filter(x=>res==="all"||(res==="wait"?!x.result:x.result===res));const o={};L.forEach(x=>{const mk=String(x.day).slice(0,7);const M=o[mk]=o[mk]||{mk,days:{}};const dk=String(x.day)+"|"+String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"");(M.days[dk]=M.days[dk]||[]).push(x);});
+  return Object.values(o).sort((a,b)=>b.mk.localeCompare(a.mk));},[all,done,tab,res]);
+ if(rows===null)return <div style={{padding:20,color:"#9ca3af",fontSize:13,textAlign:"center"}}>Chargement de la simulation…</div>;
+ if(rows.err)return <div style={{...card,padding:14,color:"#fca5a5",fontSize:13}}>Impossible de lire les paris fictifs ({rows.err.slice(0,80)}). Lance edge_lab.sql dans Supabase.</div>;
+ const av=n=>{const P=allPlayers[String(n||"").toLowerCase().trim()];const src=getAvatarSrc(P);return <span style={{width:40,height:40,borderRadius:20,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af"}}>{src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:String(n||"?").slice(0,2).toUpperCase()}</span>;};
+ const Bet=({x})=>{const c=x.result==="won"?"#22C55E":x.result==="lost"?"#EF4444":x.result==="void"?"#9ca3af":"#FBBF24";
+  return <div style={{...card,borderLeft:"3px solid "+c,borderRadius:14,padding:"11px 13px",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+   {av(x.player)}
+   <div style={{flex:1,minWidth:0}}>
+    <div style={{display:"flex",alignItems:"center",gap:6}}><b style={{fontSize:15,color:"#f3f4f6",textTransform:"capitalize"}}>{x.player}</b><span style={{fontSize:11,fontWeight:700,color:"#cbd5e1",background:"#1f2937",padding:"2px 6px",borderRadius:5}}>Map {x.map}</span><GameLogo game={GN(x.game)} size={14}/></div>
+    <div style={{fontSize:13,color:"#cbd5e1",marginTop:2}}>{x.side==="under"?"Under":"Over"} {String(x.line).replace(".",",")} {x.stat==="headshots"?"Headshots":"Kills"}</div>
+    <div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>écart {String(x.edge).replace(".",",")} · @{Number(x.odds).toFixed(2)} · mise {String(x.stake_pct??x.edge).replace(".",",")} %{x.value!=null?" · "+x.value+(x.stat==="headshots"?" HS":" kills"):""}</div>
+   </div>
+   <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:15,fontWeight:800,color:c}}>{x.result?m2(Number(x.profit)||0):Math.round(Number(x.stake)||0)+" $"}</div><div style={{fontSize:11,color:"#8b93a7"}}>{x.result==="won"?"gagné":x.result==="lost"?"perdu":x.result==="void"?"remboursé":"en attente"}</div></div>
+  </div>;};
+ const Month=({M})=>{const L=Object.values(M.days).flat();const a=agg(L);const isC=!!closed[M.mk];const wn=L.filter(x=>!x.result).length;
+  return <div style={{marginBottom:12}}>
+   <button onClick={()=>setClosed(o=>({...o,[M.mk]:!isC}))} aria-expanded={!isC} style={{width:"100%",textAlign:"left",...card,borderRadius:isC?16:"16px 16px 0 0",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",fontFamily:"Inter,sans-serif",color:"#F2F4F8"}}>
+    <div style={{flex:1,minWidth:0}}><div style={{fontSize:17,fontWeight:700}}>{fmtMonth(M.mk)}</div><div style={{fontSize:13,color:"#9AA3B2",marginTop:3}}>{L.length} paris fictifs · {a.w}-{a.l} · {Math.round(a.wr)} %{wn?" · "+wn+" en attente":""}</div></div>
+    <div style={{textAlign:"right"}}><div style={{fontSize:19,fontWeight:800,color:pc(a.p)}}>{m2(a.p)}</div><div style={{fontSize:12,color:pc(a.roi)}}>ROI {pct(a.roi)}</div></div>
+    <span style={{color:"#6b7280",display:"inline-block",transition:"transform .2s",transform:isC?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span>
+   </button>
+   {!isC&&<div style={{border:"1px solid #1F2937",borderTop:"none",borderRadius:"0 0 16px 16px",padding:"10px 10px 4px",background:"rgba(17,24,39,.45)"}}>
+    {Object.entries(M.days).sort((p,q)=>q[0].localeCompare(p[0])).map(([dk,B])=>{const [d,m]=dk.split("|");const b=agg(B);const op=openDay[dk]!==false;
+     return <div key={dk} style={{marginBottom:8}}>
+      <button onClick={()=>setOpenDay(o=>({...o,[dk]:!op}))} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 4px 8px",background:"transparent",border:"none",cursor:"pointer",color:"#cbd5e1",fontFamily:"Inter,sans-serif"}}>
+       <span style={{fontSize:13,fontWeight:700,flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{new Date(d+"T12:00:00").toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short"})} · {m}</span>
+       <span style={{fontSize:12,color:"#8b93a7"}}>{B.length}</span><b style={{fontSize:12.5,color:pc(b.p)}}>{m2(b.p)}</b><span style={{color:"#6b7280",fontSize:11,transform:op?"rotate(180deg)":"none"}}>▾</span></button>
+      {op&&[...B].sort((p,q)=>Number(p.map)-Number(q.map)||String(p.player).localeCompare(String(q.player))).map(x=><Bet key={x.key} x={x}/>)}
+     </div>;})}
+   </div>}
+  </div>;};
+ const Bars=({title,groups})=>{const G=groups.filter(([,L])=>agg(L).n>0);if(!G.length)return null;const mx=Math.max(5,...G.map(([,L])=>Math.abs(agg(L).roi)));
+  return <><div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>{H(title)}<span style={{fontSize:12,color:"#8b93a7"}}>ROI</span></div>
+   <div style={{...card,padding:"2px 14px"}}>{G.map(([k,L],i)=>{const a=agg(L);const w=Math.min(50,Math.abs(a.roi)/mx*50);return <div key={k} style={{display:"grid",gridTemplateColumns:"96px minmax(0,1fr) 64px",gap:10,alignItems:"center",padding:"10px 0",borderTop:i?"1px solid #1F2937":"none",opacity:a.n<10?.6:1}}>
+    <div><div style={{fontSize:14,fontWeight:700,color:"#eef1f7"}}>{k}</div><div style={{fontSize:11,color:"#8b93a7"}}>{a.n} paris · {Math.round(a.wr)} %</div></div>
+    <div style={{position:"relative",height:10,background:"#1f2937",borderRadius:5}}><div style={{position:"absolute",left:"50%",top:-3,bottom:-3,width:1,background:"#3A4354"}}/><div style={{position:"absolute",top:0,bottom:0,left:(a.roi>=0?50:50-w)+"%",width:w+"%",background:pc(a.roi),borderRadius:5}}/></div>
+    <div style={{textAlign:"right",fontSize:14,fontWeight:800,color:pc(a.roi)}}>{pct(a.roi)}</div></div>;})}</div></>;};
+ const by=(L,f)=>{const o={};L.forEach(x=>{const k=f(x);if(k==null)return;(o[k]=o[k]||[]).push(x);});return Object.entries(o);};
+ const eb=e=>{e=Number(e);return e>=1.5?"1,50+":e>=1.25?"1,25":e>=1?"1,00":e>=.75?"0,75":"0,50";};
+ const ob=o=>{o=Number(o);return o>=1.9?"1,90 et +":o>=1.8?"1,80 à 1,89":o>=1.7?"1,70 à 1,79":"moins de 1,70";};
+ const segN=x=>(x.stat==="headshots"?"HS ":"Kills ")+(x.side==="under"?"Under":"Over");
+ return(<div>
+  <Seg v={tab} set={setTab} opts={[["apercu","Aperçu"],["paris","Paris"],["stats","Stats"]]}/>
+  <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12}}>{[["all","Tous"],["CS2","CS2"],["LoL","LoL"],["Valorant","Valorant"],["Dota2","Dota 2"]].map(([k,l])=><button key={k} onClick={()=>setG(k)} aria-pressed={g===k} style={{flexShrink:0,height:38,padding:"0 13px",borderRadius:11,border:"1px solid "+(g===k?"#8b5cf6":"#1F2937"),background:g===k?"rgba(124,58,237,.18)":"transparent",color:g===k?"#fff":"#9ca3af",fontWeight:700,fontSize:13,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6}}>{k!=="all"&&<GameLogo game={k} size={14}/>}{l}</button>)}</div>
+  {tab==="apercu"&&<>
+   <div style={{...card,padding:"16px 16px 12px",borderRadius:20}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,color:"#9ca3af"}}>Si tu avais tout joué</span><span style={{fontSize:12,fontWeight:700,color:pc(T.roi),background:T.roi>=0?"rgba(34,197,94,.12)":"rgba(239,68,68,.12)",padding:"4px 9px",borderRadius:8}}>ROI {pct(T.roi)}</span></div>
+    <div style={{fontSize:36,fontWeight:900,color:pc(T.p),letterSpacing:-1,marginTop:6}}>{m2(T.p)}</div>
+    {pts.length>=3&&<div style={{margin:"10px -4px 0"}}><BankrollChart points={pts} h={150}/></div>}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,borderTop:"1px solid #1F2937",marginTop:10,paddingTop:12}}>
+     {[["RÉGLÉS",T.n],["EN ATTENTE",wait.length,"#FBBF24"],["RÉUSSITE",Math.round(T.wr)+" %"],["MISÉ",Math.round(T.st).toLocaleString("fr-CA")+" $"]].map(([l,v,c])=><div key={l}><div style={{fontSize:10.5,fontWeight:800,color:"#8b93a7"}}>{l}</div><div style={{fontSize:16,fontWeight:800,color:c||"#eef1f7"}}>{v}</div></div>)}
+    </div>
+   </div>
+   {H("À régler")}
+   {!todo.length?<div style={{...card,padding:14,fontSize:13,color:"#8b93a7",textAlign:"center"}}>Aucun match en attente de scores.</div>:
+    todo.slice(0,20).map(z=><button key={z.m+z.day} onClick={()=>openMatch(z)} aria-label={"Saisir les scores de "+z.m} style={{width:"100%",textAlign:"left",...card,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,marginBottom:8,cursor:"pointer",fontFamily:"Inter,sans-serif",color:"#F2F4F8",minHeight:60}}>
+     <GameLogo game={z.game} size={26}/>
+     <div style={{flex:1,minWidth:0}}><div style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{z.m}</div><div style={{fontSize:12,color:"#8b93a7",marginTop:2}}>{new Date(z.day+"T12:00:00").toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short"})} · {z.maps.size} map{z.maps.size>1?"s":""}</div></div>
+     <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:800,color:"#FBBF24"}}>{z.n}</div><div style={{fontSize:11,color:"#8b93a7"}}>paris</div></div>
+     <span style={{fontSize:12,fontWeight:800,color:"#c4b5fd"}}>Saisir ›</span></button>)}
+  </>}
+  {tab==="paris"&&<>
+   <div style={{display:"flex",gap:6,marginBottom:12,overflowX:"auto"}}>{[["all","Tous"],["won","Gagnés"],["lost","Perdus"],["wait","En attente"]].map(([k,l])=><button key={k} onClick={()=>setRes(k)} aria-pressed={res===k} style={{flexShrink:0,height:36,padding:"0 12px",borderRadius:10,border:"1px solid "+(res===k?"#8b5cf6":"#1F2937"),background:res===k?"rgba(124,58,237,.18)":"transparent",color:res===k?"#fff":"#9ca3af",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>{l}</button>)}</div>
+   {!months.length?<div style={{...card,padding:14,fontSize:13,color:"#8b93a7",textAlign:"center"}}>Aucun pari fictif pour l'instant. Le bot les prend tout seul à chaque passage.</div>:months.map(M=><Month key={M.mk} M={M}/>)}
+  </>}
+  {tab==="stats"&&<>
+   <Bars title="Par jeu" groups={by(done,x=>GN(x.game))}/>
+   <Bars title="Par type" groups={by(done,segN)}/>
+   <Bars title="Par écart" groups={by(done,x=>eb(x.edge)).sort((p,q)=>p[0].localeCompare(q[0]))}/>
+   <Bars title="Par cote" groups={by(done,x=>ob(x.odds)).sort((p,q)=>p[0].localeCompare(q[0]))}/>
+   <Bars title="Par map" groups={by(done,x=>"Map "+x.map).sort((p,q)=>p[0].localeCompare(q[0]))}/>
+   <Bars title="Par tournoi" groups={by(done,x=>x.tournament||null).sort((p,q)=>agg(q[1]).p-agg(p[1]).p).slice(0,8)}/>
+  </>}
+ </div>);
+}
 // Page complète
 function ChampStats({allPlayers={},bets=[]}){
  const {data,ver,loading,rows,win}=useChampData(bets,allPlayers);
@@ -8439,6 +8549,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const otIds=useRef(new Set());
  useEffect(()=>{cloudDb("bet_match?ot=eq.true&select=id&limit=5000").then(r=>{otIds.current=new Set((r||[]).map(x=>String(x.id)));setBets(p=>p.map(b=>otIds.current.has(String(b.id))&&!b._ot?{...b,_ot:true}:b));}).catch(()=>{});},[]);
  useEffect(()=>{if(!otIds.current.size)return;if(bets.some(b=>otIds.current.has(String(b.id))&&!b._ot))setBets(p=>p.map(b=>otIds.current.has(String(b.id))&&!b._ot?{...b,_ot:true}:b));},[bets]);
+ useEffect(()=>{const h=e=>{setView("players");setSuiviTab("suivi");setSuiviOpen(s=>({...s,res:true}));window.__openResult=e.detail||null;setTimeout(()=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-result-go"));}catch(x){}},350);};
+  window.addEventListener("emeieks-open-result",h);return()=>window.removeEventListener("emeieks-open-result",h);},[setView]);
  useEffect(()=>{const h=e=>{const d=e.detail||{};setView("players");setSuiviTab("suivi");setSuiviOpen(s=>({...s,ev:true}));setEvFocus({player:d.player,teams:d.team?[d.team]:[],live:false,stat:d.hs?"headshots":"kills",t:Date.now()});setEvTab("board");};
   window.addEventListener("emeieks-goto-board",h);return()=>window.removeEventListener("emeieks-goto-board",h);},[setView]);
  const goBoard=a=>{const [x,y]=evTeams(a);setEvFocus({teams:[x,y].filter(Boolean),live:Number(a.map)>=2,stat:a.stat,t:Date.now()});setEvTab("board");};
@@ -11176,7 +11288,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"clubs",l:"Clubs"},{k:"tournois",l:"Tournois"},{k:"cote_bk",l:"Bookmakers"},{k:"labo",l:"Recherche"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"clubs",l:"Clubs"},{k:"tournois",l:"Tournois"},{k:"cote_bk",l:"Bookmakers"},{k:"labo",l:"Recherche"},{k:"sim",l:"Simulation"},{k:"plus",l:"Plus"}].map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} onClick={()=>setStatsTab(t.k)}
@@ -11412,6 +11524,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>);
  })()}
 
+ {statsTab==="sim"&&<SimulationTab allPlayers={allPlayers} teamLogos={teamLogos}/>}
  {statsTab==="apercu"&&<>
  {(()=>{const S=settledFiltered.filter(b=>!isAdjBet(b));if(!S.length)return <div style={{textAlign:"center",color:"#6b7280",padding:30}}>Aucun pari réglé sur cette période</div>;
   const agg=L=>{const w=L.filter(b=>b.status==="won").length,l=L.filter(b=>b.status==="lost").length,st=L.reduce((a,b)=>a+(b.stake||0),0),p=L.reduce((a,b)=>a+(b.profit||0),0);return {n:L.length,w,l,st,p,wr:w+l?w/(w+l)*100:0,roi:st?p/st*100:0};};
