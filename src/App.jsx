@@ -5502,9 +5502,11 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const same=(x,y)=>{const a=teamKey(x),b=teamKey(y);return !!(a&&b&&(a===b||a.includes(b)||b.includes(a)));};
  const [extraP,setExtraP]=useState({});const [hideP,setHideP]=useState({});const addExtra=(ex,pr)=>{if(pr)setHideP(o=>{const n={...o};Object.entries(pr).forEach(([t,ks])=>{if(ks.length>=5)n[t]=ks;});return n;});setExtraP(o=>{const n={...o};ex.forEach(x=>{n[x.team]={...(n[x.team]||{}),[x.k]:x.name};});return n;});};
  const roster=useMemo(()=>{const out={[A]:{},[B]:{}};
-  Object.values(m.players).forEach(p=>{const t=same(p.team,A)?A:same(p.team,B)?B:null;if(t)out[t][p.pkey]=p.name;});
+  // l'équipe du roster (club du joueur dans l'app) passe avant celle de PrizePicks, parfois inversée ; un joueur n'est jamais dans les 2 équipes ; pas de coach
+  const club=k=>Object.values(allPlayers||{}).find(q=>q&&cutNorm(q.name)===k&&GNORM(q.game)===G);
+  Object.values(m.players).forEach(p=>{const c=club(p.pkey);if(c&&/coach|analy|manager|staff/i.test(String(c.role||"")))return;const tm=c&&c.team&&(same(c.team,A)||same(c.team,B))?c.team:p.team;const t=same(tm,A)?A:same(tm,B)?B:null;if(t){const o=t===A?B:A;delete out[o][p.pkey];out[t][p.pkey]=p.name;}});
   [A,B].forEach(t=>Object.entries(extraP[t]||{}).forEach(([k,n])=>{out[t][k]=n;}));
-  Object.values(allPlayers||{}).forEach(p=>{if(!p||!p.team||GNORM(p.game)!==G||/coach|analy|manager|staff|bench|sub/i.test(String(p.role||"")))return;const t=same(p.team,A)?A:same(p.team,B)?B:null;if(t&&Object.keys(out[t]).length<5&&!out[t][cutNorm(p.name)])out[t][cutNorm(p.name)]=p.name;});
+  Object.values(allPlayers||{}).forEach(p=>{if(!p||!p.team||GNORM(p.game)!==G||/coach|analy|manager|staff|bench|sub/i.test(String(p.role||"")))return;const t=same(p.team,A)?A:same(p.team,B)?B:null;if(t&&Object.keys(out[t]).length<5&&!out[t][cutNorm(p.name)]&&!out[t===A?B:A][cutNorm(p.name)])out[t][cutNorm(p.name)]=p.name;});
   if(lol){const RO=["top","jungle","jgl","mid","adc","bot","support","sup"];const rk=k=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===k);const r=String((pl&&pl.role)||"").toLowerCase();const i=RO.findIndex(x=>r.startsWith(x));return i<0?99:i;};
    [A,B].forEach(t=>{out[t]=Object.fromEntries(Object.entries(out[t]).sort((x,y)=>rk(x[0])-rk(y[0])));});}
   [A,B].forEach(t=>{const keep=hideP[t];if(keep)out[t]=Object.fromEntries(Object.entries(out[t]).filter(([k])=>keep.includes(k)));});
