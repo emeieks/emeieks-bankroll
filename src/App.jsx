@@ -6622,7 +6622,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const [msort,setMsort]=useState(()=>{try{return localStorage.getItem("v7_sim_msort")||"edge";}catch(e){return "edge";}});const [tourPick,setTourPick]=useState(null);const [more,setMore]=useState(false);
  const [rows,setRows]=useState(null);const [tab,setTab]=useState("apercu");const [g,setG]=useState("all");const [closed,setClosed]=useState({});const [openM,setOpenM]=useState({});const [res,setRes]=useState("all");
  const [sd,setSd]=useState("all");const [stt,setStt]=useState("all");const [src,setSrc]=useState({sim:true,ev:true,duel:true});const [md,setMd]=useState("all");
- const [uniq,setUniq]=useState(false);const [close,setClose]=useState(0);const [mlF,setMlF]=useState("all");const [evSet,setEvSet]=useState(()=>new Set());const [fOpen,setFOpen]=useState(false);const [live,setLive]=useState(null);const [link,setLink]=useState(null);const [cands,setCands]=useState(null);const [liveDur,setLiveDur]=useState(60);
+ const [uniq,setUniq]=useState(false);const [close,setClose]=useState(0);const [mlF,setMlF]=useState("all");const [evSet,setEvSet]=useState(()=>new Set());const [fOpen,setFOpen]=useState(false);const [live,setLive]=useState(null);const [link,setLink]=useState(null);const [cands,setCands]=useState(null);const [liveDur,setLiveDur]=useState(60);const [delK,setDelK]=useState(null);
  // Scénario : règles à tester
  const SC0={emin:0.5,emax:9,omin:1.6,omax:9,side:"all",stat:"all",map:"all",stake:"edge",mode:"all",tour:"all",role:"all"};const [sc,setSc]=useState(SC0);
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
@@ -6692,8 +6692,9 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const Bet=({x})=>{const c=x.result==="won"?"#22C55E":x.result==="lost"?"#EF4444":x.result==="void"?"#9ca3af":"#FBBF24";const duel=x.kind==="duel";
   const v=Number(x.value),L=Number(x.line);const ratio=duel||isNaN(v)||!L?1:Math.max(0.04,Math.min(1,v/L));
   const bw=!x.result?0:x.result==="void"?100:duel?100:x.side==="over"?(x.result==="won"?100:ratio*100):(x.result==="lost"?100:ratio*100);
+  const del=async()=>{try{await cloudDb("pot_bets?key=eq."+encodeURIComponent(x.key),{method:"DELETE"});setRows(R=>Array.isArray(R)?R.filter(y=>y.key!==x.key):R);setDelK(null);}catch(e){alert("Suppression impossible : "+(e.message||e)+"\nRelance simulation.sql (droit de suppression).");}};
   return <div style={{background:"#111827",border:"1px solid #1F2937",borderLeft:"2.5px solid "+c,borderRadius:12,marginBottom:8,overflow:"hidden"}}>
-   <div style={{padding:"11px 13px 10px 12px",display:"flex",alignItems:"center",gap:11}}>
+   <div onClick={()=>setDelK(k=>k===x.key?null:x.key)} style={{padding:"11px 13px 10px 12px",display:"flex",alignItems:"center",gap:11,cursor:"pointer"}}>
     {av(x.player)}
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
@@ -6712,6 +6713,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
     </div>
     <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:14.5,fontWeight:800,color:c}}>{x.result?m2(pu(x)):f2(su0(x))+" u"}</div>{x.result==="void"&&<div style={{fontSize:11,color:"#8b93a7"}}>remboursé</div>}</div>
    </div>
+   {delK===x.key&&<div style={{display:"flex",gap:8,padding:"0 12px 10px"}}><button onClick={del} style={{flex:1,height:38,borderRadius:10,border:"1px solid #EF444466",background:"rgba(239,68,68,.12)",color:"#F87171",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>🗑 Supprimer ce pari</button><button onClick={()=>setDelK(null)} style={{height:38,padding:"0 14px",borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#9CA3AF",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Annuler</button></div>}
    <div style={{height:4,background:"rgba(255,255,255,.05)"}}><div style={{height:"100%",width:bw+"%",background:c,transition:"width .4s"}}/></div>
   </div>;};
  const Month=({M})=>{const L=Object.values(M.matches).flatMap(z=>z.L);const a=agg(L);const isC=!!closed[M.mk];const wn=L.filter(x=>!x.result).length;
@@ -6766,7 +6768,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
   <Seg v={tab} set={setTab} opts={[["apercu","Aperçu"],["paris","Paris"],["stats","Stats"],["scenario","Scénario"]]}/>
   {tab!=="scenario"&&(()=>{const nAct=(close>0)+(mlF!=="all")+(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+(tab==="paris"&&res!=="all");return <>
   <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
-   {[["all","Tout"],["under","↓ Under"],["over","↑ Over"]].map(([k,l])=><Chip key={k} on={sd===k} onClick={()=>setSd(k)} c={k==="over"?"#22C55E":k==="under"?"#60A5FA":"#8b5cf6"}>{l}</Chip>)}
+   {[["all","Tout"],["under","↓ Under"],["over","↑ Over"],["duel","⚔ Duels"]].map(([k,l])=><Chip key={k} on={sd===k} onClick={()=>setSd(k)} c={k==="duel"?"#F59E0B":k==="over"?"#22C55E":k==="under"?"#60A5FA":"#8b5cf6"}>{l}</Chip>)}
    <div style={{flex:1}}/>
    <button onClick={()=>setFOpen(v=>!v)} aria-expanded={fOpen} aria-label="Filtres" style={{height:36,padding:"0 12px",borderRadius:10,border:"1px solid "+(nAct||fOpen?"#8b5cf6":"#1F2937"),background:nAct||fOpen?"rgba(124,58,237,.18)":"transparent",color:"#e5e7eb",display:"inline-flex",alignItems:"center",gap:6,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>Filtres{nAct?<span style={{background:"#7C3AED",color:"#fff",borderRadius:8,fontSize:10,fontWeight:800,padding:"1px 6px"}}>{nAct}</span>:null}</button>
