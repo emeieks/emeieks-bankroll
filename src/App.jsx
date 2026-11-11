@@ -5460,10 +5460,10 @@ function parseBoard(txt,roster,A,B){const flat=" "+String(txt).replace(/\]\((?:[
  hits.forEach((h,j)=>{const seg=flat.slice(h.pos+h.len,j+1<hits.length?hits[j+1].pos:h.pos+220);const mm=seg.match(/(\d{1,2})\s*[\(\[{]\s*(\d{1,2})\s*[\)\]}]/);if(mm&&+mm[2]<=+mm[1]){out[h.k]={k:mm[1],h:mm[2]};return;}
   const vv=seg.match(/(\d{1,2})\s*[\/|lI]\s*(\d{1,2})\s*[\/|lI]\s*(\d{1,2})/);if(vv){out[h.k]={k:vv[1],h:""};const adv=advOf(seg,vv);if(adv)out[h.k].adv=adv;}if(out[h.k]&&typeof LOL_CHAMPS!=="undefined"){const head=cutNorm(seg.slice(0,40));const ch=LOL_CHAMPS.filter(c=>head.startsWith(cutNorm(c))).sort((a,b)=>b.length-a.length)[0];if(ch)out[h.k].c=ch;}});return out;}
 function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g," ")+" ";const low=flat.toLowerCase();
- const heads=[];[A,B].forEach(t=>{const p=String(t).toLowerCase().slice(0,6);let x=-1;if(p.length>=2)while((x=low.indexOf(p,x+1))>=0)heads.push({t,pos:x});});heads.sort((a,b)=>a.pos-b.pos);
+ const heads=[];[A,B].forEach(t=>{const L=String(t).toLowerCase();const w=L.replace(/\b(team|esports?|gaming|club)\b/g," ").trim().split(/\s+/);const V=[...new Set([L.slice(0,6),L,w.join(" "),w[0]].filter(v=>v&&v.length>=2))];V.forEach(p=>{const re=new RegExp("(^|[^a-z0-9])"+p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z0-9])","g");let q;while((q=re.exec(low)))heads.push({t,pos:q.index});});});heads.sort((a,b)=>a.pos-b.pos);
  const re=/([A-Za-z0-9_\-\.]{2,20})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+[\d.,]+%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)/g;const rows=[];let m;
- while((m=re.exec(flat))){const h=heads.filter(h=>h.pos<m.index).pop();if(h)rows.push({team:h.t,k:cutNorm(m[1]),name:m[1],kills:m[2],hs:m[3]});}
  const keyOf=(t,k)=>Object.keys(roster[t]||{}).find(x=>x===k||x.replace(/0/g,"o")===k.replace(/0/g,"o")||(BET_ALIAS[k]&&x===BET_ALIAS[k])||(k.length>=4&&x.startsWith(k))||(x.length>=4&&k.startsWith(x)));
+ while((m=re.exec(flat))){const k=cutNorm(m[1]);const h=heads.filter(h=>h.pos<m.index).pop();const inA=keyOf(A,k),inB=keyOf(B,k);const t=inA&&!inB?A:inB&&!inA?B:h&&h.t;if(t)rows.push({team:t,k,name:m[1],kills:m[2],hs:m[3]});}
  const extras=[],present={};rows.forEach(r=>{const kk=keyOf(r.team,r.k)||r.k;(present[r.team]=present[r.team]||[]).push(kk);if(!keyOf(r.team,r.k))extras.push(r);});
  return {extras,present,rows};}
 function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss}){const [st,setSt]=useState("");const [txt,setTxt]=useState("");
