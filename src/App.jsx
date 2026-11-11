@@ -6643,7 +6643,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const nearOk=x=>!close||(x.result&&x.value!=null&&x.kind!=="duel"&&Math.abs(Number(x.value)-Number(x.line))<=close+.5);
  const roleOf=x=>{const P=allPlayers[String(x.player||"").toLowerCase().trim()]||allPlayers[String(x.pkey||"")];return (P&&P.role)||null;};
  // 1 seul pari par joueur · map · stat · côté · match : la ligne dont la cote est la plus proche de 1,85 (ligne principale)
- const one=L=>{if(!uniq)return L;const m={};L.forEach(x=>{const k=[x.pkey,x.kind==="duel"?"duel|"+x.vs:x.stat,x.side,x.map,x.day,String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"")].join("|");const o=m[k];if(!o||Math.abs(Number(x.odds)-1.85)<Math.abs(Number(o.odds)-1.85))m[k]=x;});return Object.values(m);};
+ const one=L=>{if(!uniq)return L;const m={};L.forEach(x=>{const k=[x.pkey,x.kind==="duel"?"duel|"+x.vs:x.stat,x.side,x.map,x.day,String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"")].join("|");const o=m[k];const ev=y=>srcOf(y)==="ev"?0:1;if(!o||ev(x)<ev(o)||ev(x)===ev(o)&&Math.abs(Number(x.odds)-1.85)<Math.abs(Number(o.odds)-1.85))m[k]=x;});return Object.values(m);};
  const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq,evSet]);
  const all=useMemo(()=>base.filter(x=>nearOk(x)&&(mlF==="all"||mlB(x)===mlF)&&(sd==="all"||x.side===sd||x.kind==="duel"&&sd==="duel")&&(stt==="all"||(stt==="duel"?x.kind==="duel":x.kind!=="duel"&&(stt==="hs")===(x.stat==="headshots")))),[base,sd,stt,close,mlF,evSet]);
  const done=all.filter(x=>x.result);const wait=all.filter(x=>!x.result);
