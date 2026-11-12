@@ -6747,7 +6747,7 @@ let TOUR_ALIAS=(()=>{try{return JSON.parse(localStorage.getItem("v7_tour_alias")
 const tourAlias=n=>{if(!n)return n;const k=cutNorm(n);return TOUR_ALIAS[k]||n;};
 // ══ SIMULATION (Labo d'edge) : paris fictifs (bot), + bets EV et duels, réglés par les scores saisis ══
 function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={},activeTourneys={},onTour}){
- const [sUnit,setSUnit]=useState("roi");const [clubFix,setClubFix]=useState(null);
+ const [sUnit,setSUnit]=useState("roi");const [onlyMulti,setOnlyMulti]=useState(false);const [clubFix,setClubFix]=useState(null);
  const [clubIgn,setClubIgn]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_club_ign")||"[]");}catch(e){return [];}});
  const ignClub=(nm,t)=>{const k=cutNorm(nm)+"|"+teamKey(t);const n=[...new Set([...clubIgn,k])];setClubIgn(n);try{localStorage.setItem("v7_club_ign",JSON.stringify(n));}catch(e){}cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"club_ignore",value:n}]}).catch(()=>{});};
  useEffect(()=>{cloudDb("settings?key=eq.club_ignore&select=value").then(r=>{const v=r&&r[0]&&r[0].value;if(Array.isArray(v)){setClubIgn(v);try{localStorage.setItem("v7_club_ign",JSON.stringify(v));}catch(e){}}}).catch(()=>{});},[]);
@@ -6777,7 +6777,8 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  // 1 seul pari par joueur · map · stat · côté · match : la ligne dont la cote est la plus proche de 1,85 (ligne principale)
  const one=L=>{if(!uniq)return L;const m={};L.forEach(x=>{const k=[x.pkey,x.kind==="duel"?"duel|"+x.vs:x.stat,x.side,x.map,x.day,String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"")].join("|");const o=m[k];const ev=y=>srcOf(y)==="ev"?0:1;if(!o||ev(x)<ev(o)||ev(x)===ev(o)&&Math.abs(Number(x.odds)-1.85)<Math.abs(Number(o.odds)-1.85))m[k]=x;});return Object.values(m);};
  const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq,evSet]);
- const all=useMemo(()=>base.filter(x=>nearOk(x)&&(mlF==="all"||mlB(x)===mlF)&&(sd==="all"||x.side===sd||x.kind==="duel"&&sd==="duel")&&(stt==="all"||(stt==="duel"?x.kind==="duel":x.kind!=="duel"&&(stt==="hs")===(x.stat==="headshots")))),[base,sd,stt,close,mlF,evSet]);
+ const multiAll=useMemo(()=>{const g={};(Array.isArray(rows)?rows:[]).forEach(x=>{if(x.kind==="duel")return;const tt=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim().split(/\s+(?:vs\.?|-|–)\s+/i).map(t=>teamKey(t||"")).sort().join("~");const kk=[tt,x.pkey||cutNorm(x.player||""),x.map,x.stat,x.side].join("|");(g[kk]=g[kk]||[]).push(x);});const S=new Set();Object.values(g).forEach(L=>{if(new Set(L.map(x=>Number(x.line))).size>=2)L.forEach(x=>S.add(x.key));});return S;},[rows]);
+ const all=useMemo(()=>base.filter(x=>(!onlyMulti||multiAll.has(x.key))&&nearOk(x)&&(mlF==="all"||mlB(x)===mlF)&&(sd==="all"||x.side===sd||x.kind==="duel"&&sd==="duel")&&(stt==="all"||(stt==="duel"?x.kind==="duel":x.kind!=="duel"&&(stt==="hs")===(x.stat==="headshots")))),[base,sd,stt,close,mlF,evSet,onlyMulti,multiAll]);
  const done=all.filter(x=>x.result);const wait=all.filter(x=>!x.result);
  const su0=x=>Number(x.stake_pct??x.edge)||0;
  const agg=(L,stk)=>{const su=stk==="1u"?()=>1:su0;const pu=x=>x.result==="won"?su(x)*((Number(x.odds)||0)-1):x.result==="lost"?-su(x):0;
@@ -6910,7 +6911,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const roles=[...new Set((Array.isArray(rows)?rows:[]).map(roleOf).filter(Boolean))].sort();
  return(<div>
   <Seg v={tab} set={setTab} opts={[["apercu","Aperçu"],["paris","Paris"],["stats","Stats"],["scenario","Scénario"]]}/>
-  {tab!=="scenario"&&(()=>{const nAct=(close>0)+(mlF!=="all")+(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+(tab==="paris"&&res!=="all");return <>
+  {tab!=="scenario"&&(()=>{const nAct=(close>0)+(mlF!=="all")+(g!=="all")+(!src.sim||!src.ev||!src.duel)+(md!=="all")+(stt!=="all")+uniq+onlyMulti+(tab==="paris"&&res!=="all");return <>
   <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
    {[["all","Tout"],["under","↓ Under"],["over","↑ Over"],["duel","⚔ Duels"]].map(([k,l])=><Chip key={k} on={sd===k} onClick={()=>setSd(k)} c={k==="duel"?"#F59E0B":k==="over"?"#22C55E":k==="under"?"#60A5FA":"#8b5cf6"}>{l}</Chip>)}
    <div style={{flex:1}}/>
@@ -6926,14 +6927,14 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
    <Row>{[["all","Tout"],["kills","Kills"],["hs","HS"],["duel","Duels"]].map(([k,l])=><Chip key={k} on={stt===k} onClick={()=>setStt(k)}>{l}</Chip>)}</Row>
    <div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>MOMENT</div>
    <Row>{[["all","Tout"],["pre","Pré-match"],["live","Live"]].map(([k,l])=><Chip key={k} on={md===k} onClick={()=>setMd(k)} c={k==="live"?"#EF4444":"#8b5cf6"}>{l}</Chip>)}
-    <span style={{width:1,background:"#1F2937",margin:"4px 2px",flexShrink:0}}/><Chip on={uniq} onClick={()=>setUniq(v=>!v)} c="#60A5FA">{uniq?"✓ ":""}1 pari / joueur · map</Chip></Row>
+    <span style={{width:1,background:"#1F2937",margin:"4px 2px",flexShrink:0}}/><Chip on={uniq} onClick={()=>setUniq(v=>!v)} c="#60A5FA">{uniq?"✓ ":""}1 pari / joueur · map</Chip><Chip on={onlyMulti} onClick={()=>setOnlyMulti(v=>!v)} c="#38BDF8">{onlyMulti?"✓ ":""}+ BET seulement</Chip></Row>
    <div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>JOUÉS À RIEN</div>
    <Row>{[[0,"Tous"],[1,"À 1 kill près"],[2,"À 2 kills près"],[3,"À 3 kills près"]].map(([k,l])=><Chip key={k} on={close===k} onClick={()=>setClose(k)} c="#F59E0B">{l}</Chip>)}</Row>
    <div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>COTE DE L'ÉQUIPE DU JOUEUR (BETBY, AVANT LE MATCH)</div>
    <Row>{[["all","Toutes"],["fav","Favorite · moins de 1,60"],["mid","1,60 à 2,49"],["out","2,50 à 2,99"],["big","Outsider · 3 et plus"]].map(([k,l])=><Chip key={k} on={mlF===k} onClick={()=>setMlF(k)}>{l}</Chip>)}</Row>
    {tab==="paris"&&<><div style={{fontSize:11,fontWeight:800,color:"#8b93a7",marginBottom:6}}>RÉSULTAT</div>
    <Row>{[["all","Tous"],["won","Gagnés"],["lost","Perdus"],["wait","En attente"]].map(([k,l])=><Chip key={k} on={res===k} onClick={()=>setRes(k)}>{l}</Chip>)}</Row></>}
-   {nAct>0&&<button onClick={()=>{setClose(0);setMlF("all");setG("all");setSrc({sim:true,ev:true,duel:true});setMd("all");setStt("all");setUniq(false);setRes("all");}} style={{width:"100%",height:38,marginBottom:8,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Tout réinitialiser</button>}
+   {nAct>0&&<button onClick={()=>{setClose(0);setMlF("all");setG("all");setSrc({sim:true,ev:true,duel:true});setMd("all");setStt("all");setUniq(false);setOnlyMulti(false);setRes("all");}} style={{width:"100%",height:38,marginBottom:8,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Tout réinitialiser</button>}
   </div>}</>;})()}
   {clubFix&&(()=>{const {x,P}=clubFix;const nm=String(x.player||"");const g=GN(x.game);return <div onClick={()=>setClubFix(null)} style={{position:"fixed",inset:0,zIndex:96,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
    <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#0f1524",borderRadius:"20px 20px 0 0",border:"1px solid #1F2937",padding:"18px 16px 28px",boxSizing:"border-box"}}>
@@ -7004,8 +7005,8 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
    {!months.length?<div style={{...card,padding:14,fontSize:13,color:"#8b93a7",textAlign:"center"}}>Aucun pari pour ces filtres.</div>:months.map(M=><Month key={M.mk} M={M}/>)}
   </>}
   {tab==="stats"&&<>
-   <div style={{display:"flex",gap:4,padding:3,borderRadius:12,background:"#0b1220",border:"1px solid #1F2937",marginBottom:4}}>{[["roi","ROI"],["u","Unités"],["pct","% bankroll"]].map(([k,l])=><button key={k} onClick={()=>setSUnit(k)} aria-pressed={sUnit===k} style={{flex:1,height:36,borderRadius:9,border:"none",background:sUnit===k?"#7c3aed":"transparent",color:sUnit===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>
-   <div style={{fontSize:11.5,color:"#6b7280",margin:"0 2px 4px"}}>{sUnit==="roi"?"Gain ou perte pour 100 u misées.":sUnit==="u"?"Gain ou perte total en unités.":"Progression de la bankroll (1 u = 1 %)."}</div>
+   <div style={{display:"flex",gap:4,padding:3,borderRadius:12,background:"#0b1220",border:"1px solid #1F2937",marginBottom:4}}>{[["roi","ROI"],["u","Unités"]].map(([k,l])=><button key={k} onClick={()=>setSUnit(k)} aria-pressed={sUnit===k} style={{flex:1,height:36,borderRadius:9,border:"none",background:sUnit===k?"#7c3aed":"transparent",color:sUnit===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>
+   <div style={{fontSize:11.5,color:"#6b7280",margin:"0 2px 4px"}}>{sUnit==="roi"?"Gain ou perte pour 100 u misées.":"Gain ou perte total en unités."}</div>
    <Bars title="Par source" groups={by(done,x=>({sim:"Simulation",ev:"Bot",duel:"Duels"})[srcOf(x)])}/>
    <Bars title="Par jeu" groups={by(done,x=>GN(x.game))} icon={k=><GameLogo game={k} size={20}/>}/>
    <Bars title="Par cote de l'équipe (ML)" groups={by(done,x=>({fav:"Favorite < 1,60",mid:"1,60 à 2,49",out:"2,50 à 2,99",big:"Outsider 3+"})[mlB(x)]||null)}/>
