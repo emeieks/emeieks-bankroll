@@ -5165,7 +5165,7 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs .nl.dt{position:absolute;top:-5px;right:-6px;width:12px;height:12px;font-size:8px;margin:0}
 .rs .tl{border:none;background:none;color:inherit;font:inherit;cursor:pointer;display:inline-flex;align-items:center;padding:0;max-width:100%}
 .rs .rl{font:800 9px Inter,sans-serif;letter-spacing:.4px;padding:2px 4px;border-radius:3px;background:var(--pn2);color:var(--sf)}
-.rs .stp{font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--lk);text-transform:uppercase;margin:6px 0 -2px}
+.rs .stp{font-size:17px;font-weight:800;letter-spacing:0;color:#fff;text-transform:none;margin:18px 0 2px;display:flex;align-items:center;gap:10px}.rs .stp::before{content:"";width:6px;height:22px;border-radius:3px;background:linear-gradient(#A59BFF,#7C6CFF);flex-shrink:0}
 .rs .sbd{border-top:3px solid var(--lk)}
 .rs .sep{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--hd);border-bottom:1px solid var(--ln)}
 .rs .sep em{display:inline-flex;align-items:center;gap:7px}
@@ -5218,12 +5218,12 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .rs .st th{background:var(--hd);font:700 11px "Barlow Condensed",Arial,sans-serif;letter-spacing:.5px;text-transform:uppercase;color:var(--sf);padding:6px;text-align:center;white-space:nowrap}
 .rs .st th:first-child{text-align:left;padding-left:10px}
-.rs .st td{padding:4px 6px;border-top:1px solid var(--ln);text-align:center;white-space:nowrap;font-size:13.5px}
-.rs .st td:first-child{text-align:left;padding-left:10px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.rs .st td{padding:8px 6px;border-top:1px solid var(--ln);text-align:center;white-space:nowrap;font-size:13.5px}
+.rs .st td:first-child{text-align:left;padding-left:10px;font-weight:600;max-width:190px;overflow:hidden;text-overflow:ellipsis}
 .rs .st tr.tot td{background:var(--pn2);font-weight:700;color:#fff}.rs .st tr.team td{background:var(--hd);font-weight:700;font-size:13px;color:#fff;text-align:left;padding:6px 10px}
 .rs .num{width:48px;height:30px;border:1px solid var(--ln);border-radius:2px;background:var(--hd);color:#fff;font:700 15px "Barlow Condensed",Arial,sans-serif;text-align:center}
 .rs .cut{font-size:12px;color:var(--sf)}.rs .u{color:var(--wn);font-weight:700}.rs .o{color:var(--ls);font-weight:700}
-.rs .next{width:100%;border:none;border-top:1px solid var(--ln);background:var(--rw);color:var(--lk);font-weight:700;font-size:13px;padding:9px;cursor:pointer}
+.rs .next{width:100%;border:none;border-top:1px solid var(--ln);background:linear-gradient(90deg,#7C6CFF,#9D8FFF);color:#fff;font-weight:800;font-size:15px;padding:14px;cursor:pointer}
 .rs .warn{margin:0 10px 8px;padding:6px 8px;border-radius:2px;background:rgba(232,169,58,.1);border-left:3px solid var(--ot);font-size:12px;color:#F1D39B}
 .rs .bx{background:var(--pn);border-radius:3px;overflow:hidden}
 .rs .bx-h{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--hd);font-weight:700;font-size:13.5px;color:#fff}
@@ -5466,18 +5466,33 @@ function parseBoard(txt,roster,A,B){const flat=" "+String(txt).replace(/\]\((?:[
  hits.forEach((h,j)=>{const seg=flat.slice(h.pos+h.len,j+1<hits.length?hits[j+1].pos:h.pos+220);const mm=seg.match(/(\d{1,2})\s*[\(\[{]\s*(\d{1,2})\s*[\)\]}]/);if(mm&&+mm[2]<=+mm[1]){out[h.k]={k:mm[1],h:mm[2]};return;}
   const vv=seg.match(/(\d{1,2})\s*[\/|lI]\s*(\d{1,2})\s*[\/|lI]\s*(\d{1,2})/);if(vv){out[h.k]={k:vv[1],h:""};const adv=advOf(seg,vv);if(adv)out[h.k].adv=adv;}if(out[h.k]&&typeof LOL_CHAMPS!=="undefined"){const head=cutNorm(seg.slice(0,40));const ch=LOL_CHAMPS.filter(c=>head.startsWith(cutNorm(c))).sort((a,b)=>b.length-a.length)[0];if(ch)out[h.k].c=ch;}});return out;}
 // Colle le résumé HLTV (vetos + maps) : noms des maps, scores, picks, decider
-function parseHltvMaps(text,pool,A,B){const L=String(text||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const nk=x=>String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");
- const mapOf=x=>{const k=nk(x);return (pool||[]).find(m=>nk(m)===k)||null;};const tk=x=>{const k=nk(x).replace(/^team/,"").replace(/(esports?|gaming|club)$/,"");const a=nk(A).replace(/^team/,"").replace(/(esports?|gaming|club)$/,""),b=nk(B).replace(/^team/,"").replace(/(esports?|gaming|club)$/,"");if(!k)return null;if(k===a||a.startsWith(k)||k.startsWith(a))return A;if(k===b||b.startsWith(k)||k.startsWith(b))return B;return null;};
- const picks={};let dec=null;L.forEach(l=>{let q=l.match(/^\d+\.\s*(.+?)\s+picked\s+(.+)$/i);if(q){const mp=mapOf(q[2]),t=tk(q[1]);if(mp&&t)picks[mp]=t;}q=l.match(/^\d+\.\s*(.+?)\s+was left over/i);if(q){const mp=mapOf(q[1]);if(mp)dec=mp;}});
- const out=[];for(let i=0;i<L.length;i++){const mp=/^\d+\./.test(L[i])?null:mapOf(L[i]);if(!mp)continue;const seq=[];for(let j=i+1;j<L.length&&j<i+12&&seq.length<4;j++){if(mapOf(L[j])&&!/^\d+\./.test(L[j]))break;if(/^\d{1,2}$/.test(L[j]))seq.push({n:+L[j]});else{const t=tk(L[j].replace(/\[.*?\]\(.*?\)/g,""));if(t)seq.push({t});}}
-  const t1=seq.find(x=>x.t),i1=seq.indexOf(t1),s1=seq.slice(i1+1).find(x=>x.n!=null),t2=seq.slice(i1+1).find(x=>x.t&&x.t!==(t1&&t1.t)),s2=t2&&seq.slice(seq.indexOf(t2)+1).find(x=>x.n!=null);
-  if(!t1||!s1||!t2||!s2)continue;const sc={[t1.t]:s1.n,[t2.t]:s2.n};out.push({name:mp,a:String(sc[A]),b:String(sc[B]),pick:picks[mp]||(dec===mp?"Decider":"")});}
+function parseHltvMaps(text,pool,A,B){
+ const raw=String(text||"").replace(/\[([^\]]*)\]\([^)]*\)/g," $1 ").replace(/https?:\/\/\S+/g," ").replace(/\u00a0/g," ");
+ const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+ const vars=t=>{const L=String(t||"").trim();const w=L.replace(/\b(team|esports?|gaming|club)\b/gi," ").replace(/\s+/g," ").trim();return [...new Set([L,w,w.split(" ")[0]].filter(v=>v&&v.length>=2))].sort((a,b)=>b.length-a.length);};
+ const tre=t=>new RegExp("(^|[^A-Za-z0-9])("+vars(t).map(esc).join("|")+")(?=$|[^A-Za-z0-9])","gi");
+ const mre=new RegExp("(^|[^A-Za-z0-9])("+(pool||[]).map(m=>esc(m).replace(/(\d)/,"\\s?$1")).join("|")+")(?=$|[^A-Za-z0-9])","gi");
+ const mapOf=x=>{const k=String(x).toLowerCase().replace(/[^a-z0-9]/g,"");return (pool||[]).find(m=>m.toLowerCase().replace(/[^a-z0-9]/g,"")===k)||null;};
+ // vetos
+ const picks={};let dec=null;
+ raw.split(/\r?\n/).forEach(l=>{l=l.trim();let q=l.match(/^(?:\d+\.\s*)?(.+?)\s+picked\s+(.+?)\s*$/i);if(q){const mp=mapOf(q[2]);const t=tre(A).test(q[1])?A:tre(B).test(q[1])?B:null;if(mp&&t)picks[mp]=t;}q=l.match(/^(?:\d+\.\s*)?(.+?)\s+was left over/i);if(q){const mp=mapOf(q[1]);if(mp)dec=mp;}});
+ // scores : on retire les lignes de vetos, on coupe le texte à chaque nom de map
+ const body=raw.split(/\r?\n/).filter(l=>!/(removed|picked|banned|was left over)/i.test(l)).join("\n");
+ const hits=[];let q;mre.lastIndex=0;while((q=mre.exec(body)))hits.push({mp:mapOf(q[2]),pos:q.index+q[1].length,end:q.index+q[0].length});
+ const out=[];const seen=new Set();
+ hits.forEach((h,k)=>{if(seen.has(h.mp))return;const seg=body.slice(h.end,k+1<hits.length?hits[k+1].pos:body.length).replace(/\([^)]*\)/g," ");
+  const ev=[];[[A,tre(A)],[B,tre(B)]].forEach(([t,re])=>{let z;while((z=re.exec(seg)))ev.push({t,pos:z.index+z[1].length});});
+  let z;const nre=/(^|[^0-9:.,])(\d{1,2})(?=$|[^0-9:.,])/g;while((z=nre.exec(seg)))ev.push({n:+z[2],pos:z.index+z[1].length});
+  ev.sort((a,b)=>a.pos-b.pos);const sc={};let cur=null;ev.forEach(e=>{if(e.t){cur=e.t;}else if(cur&&sc[cur]==null){sc[cur]=e.n;cur=null;}});
+  if(sc[A]==null||sc[B]==null)return;seen.add(h.mp);out.push({name:h.mp,a:String(sc[A]),b:String(sc[B]),pick:picks[h.mp]||(dec===h.mp?"Decider":"")});});
  return out;}
-function HltvMapsPaste({pool,A,B,onApply}){const [v,setV]=useState("");const [msg,setMsg]=useState("");
- return <details style={{margin:"6px 0 10px"}}><summary style={{fontSize:13,fontWeight:700,color:"var(--ac,#9D8FFF)",cursor:"pointer"}}>Coller les maps depuis HLTV</summary>
-  <textarea value={v} onChange={e=>setV(e.target.value)} rows={5} placeholder={"Copie sur HLTV le bloc « Maps » (vetos) + les scores de chaque map, puis colle ici"} style={{width:"100%",marginTop:8,padding:10,borderRadius:8,background:"rgba(0,0,0,.25)",color:"inherit",border:"1px solid rgba(255,255,255,.12)",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
-  <div style={{display:"flex",gap:8,alignItems:"center",marginTop:6}}><button type="button" className="sb" onClick={()=>{const r=parseHltvMaps(v,pool,A,B);if(!r.length){setMsg("Aucune map reconnue (il faut le nom de la map, les 2 équipes et les 2 scores).");return;}onApply(r);setMsg(r.length+" map(s) remplie(s) ✓ "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));setV("");}}>Remplir</button><span style={{fontSize:12,color:"var(--dm)"}}>{msg}</span></div>
- </details>;}
+function HltvMapsPaste({pool,A,B,onApply}){const [v,setV]=useState("");const [msg,setMsg]=useState("");const [ok,setOk]=useState(false);
+ const go=t=>{const r=parseHltvMaps(t,pool,A,B);if(!r.length){setOk(false);setMsg("Aucune map reconnue. Équipes cherchées : « "+A+" » et « "+B+" ». Copie sur HLTV le bloc des maps avec les scores.");return;}onApply(r);setOk(true);setMsg(r.length+" map"+(r.length>1?"s":"")+" remplie"+(r.length>1?"s":"")+" ✓  "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));setV("");};
+ return <div style={{margin:"8px 0 12px"}}>
+  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&e.clipboardData.getData("text");if(t){e.preventDefault();go(t);}}} rows={3} placeholder="Colle ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
+  {v&&<button type="button" className="sb" style={{marginTop:6,width:"100%",height:40,fontSize:14,fontWeight:800}} onClick={()=>go(v)}>Remplir les maps</button>}
+  {msg&&<div style={{marginTop:6,fontSize:13,fontWeight:700,color:ok?"#4ADE80":"#FBBF24"}}>{msg}</div>}
+ </div>;}
 function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g," ")+" ";const low=flat.toLowerCase();
  const heads=[];[A,B].forEach(t=>{const L=String(t).toLowerCase();const w=L.replace(/\b(team|esports?|gaming|club)\b/g," ").trim().split(/\s+/);const V=[...new Set([L.slice(0,6),L,w.join(" "),w[0]].filter(v=>v&&v.length>=2))];V.forEach(p=>{const re=new RegExp("(^|[^a-z0-9])"+p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z0-9])","g");let q;while((q=re.exec(low)))heads.push({t,pos:q.index});});});heads.sort((a,b)=>a.pos-b.pos);
  const re=/([A-Za-z0-9_\-\.]{2,20})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+[\d.,]+%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)/g;const rows=[];let m;
@@ -5507,7 +5522,7 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss}){const [st,se
    const {data}=await T.recognize(cv.toDataURL("image/png"),"eng");apply(data.text);setTxt("");}catch(err){setSt("Erreur : "+String(err.message||err).slice(0,60));}};
  if(locked)return <div style={{padding:"12px",borderBottom:"1px solid var(--ln)",fontSize:13,color:"var(--dm)",textAlign:"center"}}>Choisis la carte avant de coller</div>;
  return <div style={{padding:"10px 12px",borderBottom:"1px solid var(--ln)"}}>
-  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={2} placeholder="Coller scoreboard (texte ou capture)" aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px dashed var(--ln)",borderRadius:2,padding:6,fontSize:12.5,resize:"vertical"}}/>
+  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder="Colle ici" aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
 function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const [evM,setEvM]=useState(null);const [forceSave,setForceSave]=useState(false);
@@ -5678,7 +5693,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    <datalist id="rs-tours">{(RS_TOURS||[]).map(t=><option key={t} value={t}/>)}</datalist></div>
   <div className="series"><b>Format</b>{[1,3,5].map(n=><button key={n} className="sb" aria-pressed={bo===n} onClick={()=>setBo(n)}>BO{n}</button>)}
    <span style={{marginLeft:"auto",fontSize:12.5,color:prog.done?"var(--wn)":"var(--dm)",fontWeight:700}}>{prog.n?(prog.wA>prog.wB?teamAbbr(A):prog.wB>prog.wA?teamAbbr(B):"")+" "+Math.max(prog.wA,prog.wB)+"-"+Math.min(prog.wA,prog.wB)+(prog.done?" ✓":" …"):"Remplis les maps : le score se calcule tout seul"}</span></div>
-  {!lol&&<div className="stp">1 · Les maps : carte, score, pick, côté CT</div>}
+  {!lol&&<div className="stp">1. Colle les maps HLTV</div>}
   {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
    return <section className="mp" key={i}>
@@ -5707,16 +5722,16 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    </div>}
    {lol&&W.length>0&&<div className="warn" style={{marginTop:8}}>{W.map((w,j)=><div key={j}><PI n="alert" s={12}/> {w}</div>)}</div>}
   </section>;})}
-  {!lol&&<div className="stp">2 · Les scoreboards : copie-colle chaque map</div>}
+  {!lol&&<div className="stp">2. Colle le scoreboard de chaque map</div>}
   {!lol&&maps.slice(0,shownN).map((x,i)=>{const isO=open===i;const r=rnd(x);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const W=checks(i);
    return <section className="mp sbd" key={"sb"+i}>
    <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></div>
-   {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>Scoreboard</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
+   {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>{kA+kB?"✓ Scoreboard rempli":"👉 Coller le scoreboard de la map "+(i+1)}</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
    {!lol&&isO&&<ScorePaste i={i} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))}/>}
    {!lol&&isO&&<div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>K</th>{hsOn&&<th>HS</th>}<th>K/R</th>{hsOn&&<th>HS %</th>}</tr></thead><tbody>
-    {[A,B].map(t=><React.Fragment key={t}><tr className="team"><td colSpan={hsOn?5:3}>{t}</td></tr>
+    {[A,B].map(t=><React.Fragment key={t}><tr className="team"><td colSpan={hsOn?5:3}><span style={{display:"inline-flex",alignItems:"center",gap:9}}>{L(t,m.game,26)}<span style={{fontSize:15.5,fontWeight:800}}>{t}</span></span></td></tr>
      {Object.entries(roster[t]).map(([k,n])=>{const v=pk[(i+1)+"|"+k]||{};const kv=val(i,k,"k");const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===k&&GNORM(p.game)===G);const ro=String((pl&&pl.role)||"").trim();const unk=!pl&&!m.players[k];const ar=agentRole(v.c);
-      return <tr key={k}><td><span style={{display:"inline-flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>{unk&&<button title="Joueur inconnu : le lier" onClick={()=>setPlFor({k,n,t})} style={{width:10,height:10,borderRadius:5,border:"none",padding:0,background:"#FBBF24",cursor:"pointer"}} aria-label={"Lier "+n}/>}<span role="button" tabIndex={0} onClick={()=>setAdvFor({i,k,n,t})} style={{cursor:"pointer",textDecoration:v.adv?"underline dotted #60A5FA":"none",textUnderlineOffset:3}}>{n}</span>
+      return <tr key={k}><td><span style={{display:"inline-flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>{unk&&<button title="Joueur inconnu : le lier" onClick={()=>setPlFor({k,n,t})} style={{width:10,height:10,borderRadius:5,border:"none",padding:0,background:"#FBBF24",cursor:"pointer"}} aria-label={"Lier "+n}/>}{(()=>{const src=pl?getAvatarSrc(pl):null;return <span style={{width:32,height:32,borderRadius:16,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af",border:"1px solid rgba(255,255,255,.08)"}}>{src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}} onError={ev=>{ev.target.style.display="none";}}/>:(n||"?")[0].toUpperCase()}</span>;})()}<span role="button" tabIndex={0} onClick={()=>setAdvFor({i,k,n,t})} style={{cursor:"pointer",fontSize:15,fontWeight:700,textDecoration:v.adv?"underline dotted #60A5FA":"none",textUnderlineOffset:3}}>{n}</span>
        {ro&&!/player|joueur/i.test(ro)&&<span className="rl">{ro.toUpperCase().slice(0,7)}</span>}
        {G==="Valorant"&&<select value={v.c||""} onChange={e=>setP(i,k,"c",e.target.value)} aria-label={"Agent de "+n} style={{height:22,maxWidth:96,background:ar?VAL_ROLE_C[ar]+"22":"var(--rw)",color:ar?VAL_ROLE_C[ar]:"var(--dm)",border:"1px solid "+(ar?VAL_ROLE_C[ar]:"var(--ln)"),borderRadius:3,fontSize:11,fontWeight:700}}><option value="">Agent</option>{Object.entries(VAL_AGENTS).map(([r,l])=><optgroup key={r} label={r}>{l.map(a=><option key={a}>{a}</option>)}</optgroup>)}</select>}
        {ar&&<span className="rl" style={{background:VAL_ROLE_C[ar],color:"#111"}}>{ar.toUpperCase()}</span>}</span></td>
