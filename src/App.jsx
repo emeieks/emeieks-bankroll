@@ -6795,9 +6795,16 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
   return Object.values(o).sort((a,b)=>String(b.day).localeCompare(String(a.day)));},[wait,tick]);
  const openLink=z=>{setLink(z);setCands(null);const d0=new Date(z.day+"T12:00:00");const f=n=>rsDay(new Date(d0.getTime()+n*864e5));
   cloudDb("match_results?day=gte."+f(-1)+"&day=lte."+f(1)+"&select=key,team1,team2,game,day,score1,score2&order=day.desc&limit=200").then(r=>setCands(Array.isArray(r)?r:[])).catch(()=>setCands([]));};
- const doLink=async(z,c)=>{const nm=c.team1+" vs "+c.team2;const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day);
-  try{for(let i=0;i<L.length;i+=60){const ks=L.slice(i,i+60).map(x=>encodeURIComponent('"'+String(x.key).replace(/"/g,'\\"')+'"')).join(",");const r=await cloudDb("pot_bets?key=in.("+ks+")",{method:"PATCH",prefer:"return=representation",body:{match:nm}});if(Array.isArray(r)&&!r.length)throw new Error("Supabase refuse la modification : relance simulation.sql (droit de modifier).");}
-   await cloudDb("rpc/pot_resettle",{method:"POST",body:{d:c.day}}).catch(()=>{});setLink(null);load();}catch(e){alert("Lien impossible : "+String(e.message||e).slice(0,140));}};
+ const doLink=async(z,c)=>{const nm=c.team1+" vs "+c.team2;const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day&&!x.result);
+  const q=l=>l.map(x=>encodeURIComponent('"'+String(x.key).replace(/"/g,'\\"')+'"')).join(",");setLink(o=>({...o,busy:true}));
+  try{for(let i=0;i<L.length;i+=60){const r=await cloudDb("pot_bets?key=in.("+q(L.slice(i,i+60))+")",{method:"PATCH",prefer:"return=representation",body:{match:nm}});if(Array.isArray(r)&&!r.length)throw new Error("Supabase refuse la modification : relance simulation.sql (droit de modifier).");}
+   await cloudDb("rpc/pot_resettle",{method:"POST",body:{d:c.day}}).catch(()=>{});
+   // vérification : qu'est-ce qui reste en attente, et pourquoi
+   const [after,pr,mp]=await Promise.all([cloudDb("pot_bets?key=in.("+q(L)+")&select=key,player,pkey,map,stat,side,line,result,kind,vs"),cloudDb("player_results?match_key=eq."+encodeURIComponent(c.key)+"&select=pkey,map_no,kills,hs"),cloudDb("map_results?match_key=eq."+encodeURIComponent(c.key)+"&select=map_no")]);
+   const nMaps=c.score1!=null?Number(c.score1)+Number(c.score2):(mp||[]).length;const has=new Set((pr||[]).map(r=>r.pkey+"|"+r.map_no));const pk=new Set((pr||[]).map(r=>r.pkey));
+   const left=(after||[]).filter(x=>!x.result).map(x=>({x,why:nMaps&&Number(x.map)>nMaps?"Map "+x.map+" pas jouée (série en "+nMaps+" maps)":!pk.has(x.pkey)?"Aucune stat pour « "+x.player+" » dans ce match (nom différent dans le scoreboard ?)":!has.has(x.pkey+"|"+x.map)?"Pas de scoreboard pour la map "+x.map:x.kind==="duel"?"Stats de "+(x.vs||"l'adversaire")+" manquantes":"Stat "+(x.stat==="headshots"?"HS":"kills")+" vide"}));
+   setLink(o=>({...o,busy:false,done:{n:L.length,ok:(after||[]).filter(x=>x.result).length,left}}));load();}catch(e){setLink(o=>({...o,busy:false}));alert("Lien impossible : "+String(e.message||e).slice(0,160));}};
+ const voidLeft=async l=>{const q=l.map(y=>encodeURIComponent('"'+String(y.x.key).replace(/"/g,'\\"')+'"')).join(",");try{await cloudDb("pot_bets?key=in.("+q+")",{method:"PATCH",prefer:"return=minimal",body:{result:"void",profit:0,settled_at:new Date().toISOString()}});}catch(e){}setLink(null);load();};
  const editTime=z=>{const st=rsTs(z.start);const cur=isNaN(st)?"":new Date(st).toTimeString().slice(0,5);const v=window.prompt("Heure du match (HH:MM)",cur);if(!v||!/^\d{1,2}:\d{2}$/.test(v.trim()))return;
   const [h,mi]=v.trim().split(":").map(Number);const d=new Date(z.day+"T00:00:00");d.setHours(h,mi,0,0);const iso=d.toISOString();
   const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day);setRows(R=>Array.isArray(R)?R.map(x=>mName(x)===z.m&&x.day===z.day?{...x,start:iso}:x):R);
@@ -6979,9 +6986,18 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
      <div style={{fontSize:12,fontWeight:800,color:"#a78bfa"}}>LIER À UN MATCH DE RÉSULTATS</div>
      <div style={{fontSize:17,fontWeight:900,color:"#fff",margin:"4px 0 4px"}}>{link.m}</div>
      <div style={{fontSize:12.5,color:"#8b93a7",marginBottom:12}}>Choisis le bon match : ses {link.n} paris fictifs prennent ce nom et se règlent avec ses scores.</div>
-     {cands===null?<div style={{color:"#9ca3af",fontSize:13,padding:10}}>Chargement…</div>:!cands.length?<div style={{color:"#9ca3af",fontSize:13,padding:10}}>Aucun match saisi autour du {link.day}. Saisis d'abord ses scores dans Résultats.</div>:
+     {link.busy&&<div style={{padding:12,color:"#a78bfa",fontWeight:800}}>Liaison en cours…</div>}
+     {link.done&&<div style={{marginBottom:12}}>
+      <div style={{padding:"12px",borderRadius:12,background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.4)",color:"#4ADE80",fontWeight:800,fontSize:14,marginBottom:8}}>✅ {link.done.n} paris liés · {link.done.ok} réglés</div>
+      {link.done.left.length>0&&<><div style={{fontSize:13,fontWeight:800,color:"#FBBF24",margin:"6px 0"}}>{link.done.left.length} toujours en attente :</div>
+       {link.done.left.map(({x,why})=><div key={x.key} style={{padding:"9px 11px",borderRadius:10,background:"#111827",border:"1px solid #1F2937",marginBottom:5,fontSize:13}}><b style={{color:"#fff",textTransform:"capitalize"}}>{x.player}</b> <span style={{color:"#9ca3af"}}>· Map {x.map} · {x.kind==="duel"?"duel vs "+x.vs:(x.side==="under"?"Under ":"Over ")+x.line}</span><div style={{color:"#FBBF24",fontSize:12,marginTop:3}}>{why}</div></div>)}
+       <div style={{fontSize:12,color:"#8b93a7",margin:"6px 0 8px"}}>Corrige le scoreboard dans Résultats (bon nom de joueur), ou annule-les.</div>
+       <button onClick={()=>voidLeft(link.done.left)} style={{width:"100%",height:44,borderRadius:12,border:"1px solid #374151",background:"transparent",color:"#e5e7eb",fontWeight:800,cursor:"pointer"}}>Annuler ces {link.done.left.length} paris (void)</button></>}
+      <button onClick={()=>setLink(null)} style={{width:"100%",height:44,borderRadius:12,border:"none",background:"#7c3aed",color:"#fff",fontWeight:900,cursor:"pointer",marginTop:8}}>Fermer</button>
+     </div>}
+     {!link.done&&!link.busy&&(cands===null?<div style={{color:"#9ca3af",fontSize:13,padding:10}}>Chargement…</div>:!cands.length?<div style={{color:"#9ca3af",fontSize:13,padding:10}}>Aucun match saisi autour du {link.day}. Saisis d'abord ses scores dans Résultats.</div>:
       cands.map(c=><button key={c.key} onClick={()=>doLink(link,c)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 12px",marginBottom:6,...card,cursor:"pointer",color:"#e5e7eb",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
-       <span style={{display:"flex",gap:4}}>{TL(c.team1,GN(c.game))}{TL(c.team2,GN(c.game))}</span><span style={{flex:1,minWidth:0}}><b style={{display:"block",fontSize:14}}>{c.team1} vs {c.team2}</b><span style={{fontSize:11.5,color:"#8b93a7"}}>{c.day}{c.score1!=null?" · "+c.score1+"-"+c.score2:""}</span></span><span style={{color:"#a78bfa",fontWeight:800,fontSize:12.5}}>Lier ›</span></button>)}
+       <span style={{display:"flex",gap:4}}>{TL(c.team1,GN(c.game))}{TL(c.team2,GN(c.game))}</span><span style={{flex:1,minWidth:0}}><b style={{display:"block",fontSize:14}}>{c.team1} vs {c.team2}</b><span style={{fontSize:11.5,color:"#8b93a7"}}>{c.day}{c.score1!=null?" · "+c.score1+"-"+c.score2:""}</span></span><span style={{color:"#a78bfa",fontWeight:800,fontSize:12.5}}>Lier ›</span></button>))}
     </div></div>}
   </>}
   {tab==="paris"&&<>
