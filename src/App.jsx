@@ -2223,15 +2223,15 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
      })()}
 
      {/* Game selector */}
-     <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
       {GAMES_R.map(g=>{
        const count=Object.values(players).filter(p=>p.game===g).length;
        const isActive=rosterGame===g;
        return(
         <button key={g} onClick={()=>{setRosterGame(isActive?null:g);setRosterLeague(null);setRosterTeam(null);setSearchQ("");}}
-         style={{padding:"5px 10px",borderRadius:20,border:"1.5px solid "+(isActive?accent:"#1F2937"),background:isActive?"rgba(167,139,250,.12)":"transparent",color:isActive?accent:"#6B7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",gap:5}}>
-         <GameLogo game={g} size={14}/>
-         <span style={{opacity:.6,fontSize:10}}>{count}</span>
+         style={{height:48,padding:"0 10px",borderRadius:14,border:"1.5px solid "+(isActive?accent:"#1F2937"),background:isActive?"rgba(167,139,250,.12)":"#111827",color:isActive?accent:"#9CA3AF",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+         <GameLogo game={g} size={24}/>
+         <span>{count}</span>
         </button>
        );
       })}
@@ -2244,9 +2244,9 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
        value={searchQ}
        onChange={e=>setSearchQ(e.target.value)}
        placeholder="Rechercher un joueur, une équipe ou un tournoi..."
-       style={{...inputStyle,padding:"8px 12px",borderRadius:10,fontSize:12,background:"#111827",border:"1px solid #1F2937"}}
+       style={{...inputStyle,height:50,padding:"0 44px 0 16px",borderRadius:14,fontSize:16,background:"#111827",border:"1px solid #1F2937"}}
       />
-      {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#6B7280",cursor:"pointer",fontSize:14}}>✕</button>}
+      {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:20,padding:6}}>✕</button>}
      </div>
 
      {tourEdit&&<TourEditSheet t={tourEdit} mediaStore={mediaStore} setMediaStore={setMediaStore} tourneyCal={tourneyCal} setTourneyCal={setTourneyCal} showToast={showToast} onClose={()=>setTourEdit(null)}/>}
@@ -2300,12 +2300,12 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
            if(el){el.scrollIntoView({behavior:"smooth",block:"start"});}else if(tries++<20)setTimeout(go,60);};
           setTimeout(go,60);
          }}
-          style={{...cardStyle,marginBottom:4,display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif",width:"100%"}}>
-          <span style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-           {c.logo?<img src={c.logo} alt="" style={{width:30,height:30,objectFit:"contain"}}/>:<span style={{fontSize:11,fontWeight:800,color:"#9ca3af"}}>{c.team.slice(0,3).toUpperCase()}</span>}</span>
+          style={{...cardStyle,marginBottom:6,display:"flex",alignItems:"center",gap:14,padding:"14px 14px",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif",width:"100%"}}>
+          <span style={{width:52,height:52,borderRadius:13,background:"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+           {c.logo?<img src={c.logo} alt="" style={{width:42,height:42,objectFit:"contain"}}/>:<span style={{fontSize:14,fontWeight:800,color:"#9ca3af"}}>{c.team.slice(0,3).toUpperCase()}</span>}</span>
           <span style={{flex:1,minWidth:0}}>
-           <span style={{display:"block",fontWeight:800,fontSize:14,color:"#E5E7EB"}}>{c.team}</span>
-           <span style={{fontSize:11,color:"#6B7280"}}>{[c.game,c.league,c.n+" joueur"+(c.n>1?"s":"")].filter(Boolean).join(" · ")}</span></span>
+           <span style={{display:"block",fontWeight:800,fontSize:17,color:"#E5E7EB"}}>{c.team}</span>
+           <span style={{fontSize:13,color:"#9CA3AF"}}>{[c.game,c.league,c.n+" joueur"+(c.n>1?"s":"")].filter(Boolean).join(" · ")}</span></span>
           <GameLogo game={c.game} size={18}/>
           <span style={{color:"#6B7280",fontSize:16}}>›</span>
          </button>
@@ -2317,15 +2317,15 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
          return(
           <div key={p.id||p.name} style={{...cardStyle,marginBottom:4}}>
            {!isEditing?(
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px"}}>
-             {avatar?<img src={avatar} alt={p.name} style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
-              :<div style={{width:32,height:32,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
-             <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{p.name}</div>
-              <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.team,p.role,p.game],p.role)}</div>
+            <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 14px",flexWrap:"wrap"}}>
+             {avatar?<img src={avatar} alt={p.name} style={{width:60,height:60,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,border:"2px solid rgba(255,255,255,.08)"}}/>
+              :<div style={{width:60,height:60,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:22,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
+             <div style={{flex:1,minWidth:140}}>
+              <div style={{fontWeight:800,fontSize:19,color:"#F3F4F6",textTransform:"capitalize"}}>{p.name}</div>
+              <div style={{display:"flex",alignItems:"center",gap:7,marginTop:3,fontSize:13.5,color:"#9CA3AF"}}>{(()=>{const lg=clubLogo(p.team,p.game,teamLogos,players);return lg?<img src={lg} alt="" style={{width:20,height:20,objectFit:"contain"}}/>:null;})()}<span>{roleLine([p.team,p.role],p.role)}</span><GameLogo game={p.game} size={16}/></div>
              </div>
-             <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
-             <button onClick={e=>{e.stopPropagation();quickPlayerPhoto(p);}} title="Coller une photo (remplace l'ancienne)" style={{padding:"5px 9px",background:"rgba(96,165,250,.08)",border:"1px solid rgba(96,165,250,.25)",borderRadius:6,color:"#93c5fd",fontSize:11,fontWeight:700,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Photo</button>
+             <button onClick={()=>openEdit(p)} style={{height:42,padding:"0 16px",background:"rgba(167,139,250,.12)",border:"1px solid rgba(167,139,250,.35)",borderRadius:11,color:accent,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
+             <button onClick={e=>{e.stopPropagation();quickPlayerPhoto(p);}} title="Coller une photo (remplace l'ancienne)" style={{height:42,padding:"0 14px",background:"rgba(96,165,250,.1)",border:"1px solid rgba(96,165,250,.35)",borderRadius:11,color:"#93c5fd",fontSize:14,fontWeight:800,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/><rect x="8" y="2" width="12" height="14" rx="2"/></svg>Photo</button>
             </div>
            ):(
             <div style={{padding:"10px 12px"}}>
@@ -6749,7 +6749,10 @@ let TOUR_ALIAS=(()=>{try{return JSON.parse(localStorage.getItem("v7_tour_alias")
 const tourAlias=n=>{if(!n)return n;const k=cutNorm(n);return TOUR_ALIAS[k]||n;};
 // ══ SIMULATION (Labo d'edge) : paris fictifs (bot), + bets EV et duels, réglés par les scores saisis ══
 function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={},activeTourneys={},onTour}){
- const [sUnit,setSUnit]=useState("roi");
+ const [sUnit,setSUnit]=useState("roi");const [clubFix,setClubFix]=useState(null);
+ const [clubIgn,setClubIgn]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_club_ign")||"[]");}catch(e){return [];}});
+ const ignClub=(nm,t)=>{const k=cutNorm(nm)+"|"+teamKey(t);const n=[...new Set([...clubIgn,k])];setClubIgn(n);try{localStorage.setItem("v7_club_ign",JSON.stringify(n));}catch(e){}cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"club_ignore",value:n}]}).catch(()=>{});};
+ useEffect(()=>{cloudDb("settings?key=eq.club_ignore&select=value").then(r=>{const v=r&&r[0]&&r[0].value;if(Array.isArray(v)){setClubIgn(v);try{localStorage.setItem("v7_club_ign",JSON.stringify(v));}catch(e){}}}).catch(()=>{});},[]);
  const [msort,setMsort]=useState(()=>{try{return localStorage.getItem("v7_sim_msort")||"edge";}catch(e){return "edge";}});const [tourPick,setTourPick]=useState(null);const [more,setMore]=useState(false);
  const [rows,setRows]=useState(null);const [tab,setTab]=useState("apercu");const [g,setG]=useState("all");const [closed,setClosed]=useState({});const [openM,setOpenM]=useState({});const [res,setRes]=useState("all");
  const [sd,setSd]=useState("all");const [stt,setStt]=useState("all");const [src,setSrc]=useState({sim:true,ev:true,duel:true});const [md,setMd]=useState("all");
@@ -6821,6 +6824,9 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const Tag=({x})=>{const s=srcOf(x);const pl=x.kind!=="duel"&&multiSet.has(x.key)?<span title="Plusieurs lignes du même côté sur ce joueur et cette map" style={{fontSize:10,fontWeight:900,padding:"2px 5px",borderRadius:5,background:"rgba(56,189,248,.16)",color:"#7dd3fc"}}>+ BET</span>:null;return s==="sim"?pl:<span style={{display:"inline-flex",gap:4}}>{pl}<span style={{fontSize:10,fontWeight:900,padding:"2px 5px",borderRadius:5,background:s==="ev"?"rgba(34,197,94,.16)":"rgba(251,191,36,.16)",color:s==="ev"?"#86efac":"#fde68a"}}>{s==="ev"?"BOT":"DUEL"}</span></span>;};
  const av=n=>{const P=allPlayers[String(n||"").toLowerCase().trim()];const sr=getAvatarSrc(P);return <span style={{width:40,height:40,borderRadius:20,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af"}}>{sr?<img src={sr} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:String(n||"?").slice(0,2).toUpperCase()}</span>;};
  const TL=(t,gm,sz=22)=>{const u=findLogo(idx,t,gm);return u?<img src={u} alt="" style={{width:sz,height:sz,objectFit:"contain",flexShrink:0}}/>:<span style={{width:sz,height:sz,borderRadius:6,background:"#1f2937",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#9ca3af",flexShrink:0}}>{String(t||"?").slice(0,3).toUpperCase()}</span>;};
+ const sameT=(a,b)=>{const p=teamKey(a||""),q=teamKey(b||"");return !!(p&&q&&(p===q||p.includes(q)||q.includes(p)));};
+ const clubMis=x=>{if(x.kind==="duel"||!x.team)return null;const g=GN(x.game);const nm=String(x.player||"").toLowerCase().trim();const P=Object.values(allPlayers||{}).find(p=>p&&GN(p.game)===g&&(cutNorm(p.name)===(x.pkey||cutNorm(nm))||String(p.name||"").toLowerCase().trim()===nm));
+  if(!P||!P.team||sameT(P.team,x.team))return null;if(clubIgn.includes(cutNorm(nm)+"|"+teamKey(x.team)))return null;return P;};
  const Bet=({x})=>{const c=x.result==="won"?"#22C55E":x.result==="lost"?"#EF4444":x.result==="void"?"#9ca3af":"#FBBF24";const duel=x.kind==="duel";
   const v=Number(x.value),L=Number(x.line);const ratio=duel||isNaN(v)||!L?1:Math.max(0.04,Math.min(1,v/L));
   const bw=!x.result?0:x.result==="void"?100:duel?100:x.side==="over"?(x.result==="won"?100:ratio*100):(x.result==="lost"?100:ratio*100);
@@ -6831,6 +6837,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
       <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0,textTransform:"capitalize"}}>{x.player}</span>
+      {(()=>{const P=clubMis(x);return P?<button type="button" onClick={e=>{e.stopPropagation();setClubFix({x,P});}} title={"Dans ton app : "+P.team+" · ici : "+x.team} aria-label="Club différent" style={{width:18,height:18,borderRadius:9,border:"none",background:"#8B5CF6",color:"#fff",fontSize:12,fontWeight:900,lineHeight:"18px",padding:0,cursor:"pointer",flexShrink:0,boxShadow:"0 0 0 3px rgba(139,92,246,.25)"}}>!</button>:null;})()}
       {x.mode==="live"&&<span style={{fontSize:8.5,fontWeight:900,padding:"2px 5px",borderRadius:4,background:"#EF4444",color:"#fff",flexShrink:0}}>LIVE</span>}<Tag x={x}/>
       <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {x.map}</span>
       <span style={{color:"#2e3d50",fontSize:10,flexShrink:0}}>-</span>
@@ -6923,6 +6930,16 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
    <Row>{[["all","Tous"],["won","Gagnés"],["lost","Perdus"],["wait","En attente"]].map(([k,l])=><Chip key={k} on={res===k} onClick={()=>setRes(k)}>{l}</Chip>)}</Row></>}
    {nAct>0&&<button onClick={()=>{setClose(0);setMlF("all");setG("all");setSrc({sim:true,ev:true,duel:true});setMd("all");setStt("all");setUniq(false);setRes("all");}} style={{width:"100%",height:38,marginBottom:8,borderRadius:10,border:"1px solid #1F2937",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Tout réinitialiser</button>}
   </div>}</>;})()}
+  {clubFix&&(()=>{const {x,P}=clubFix;const nm=String(x.player||"");const g=GN(x.game);return <div onClick={()=>setClubFix(null)} style={{position:"fixed",inset:0,zIndex:96,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#0f1524",borderRadius:"20px 20px 0 0",border:"1px solid #1F2937",padding:"18px 16px 28px",boxSizing:"border-box"}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>{av(nm)}<div style={{flex:1,minWidth:0}}><div style={{fontSize:18,fontWeight:900,color:"#fff",textTransform:"capitalize"}}>{nm}</div><div style={{fontSize:12.5,color:"#a78bfa",fontWeight:700}}>Club différent</div></div></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+     {[["Dans ton app",P.team],["Dans ce match",x.team]].map(([l,t])=><div key={l} style={{padding:"12px",borderRadius:13,background:"#111827",border:"1px solid #1F2937"}}><div style={{fontSize:11,color:"#9ca3af",fontWeight:700}}>{l}</div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>{TL(t,g,22)}<b style={{fontSize:14.5,color:"#fff"}}>{t}</b></div></div>)}
+    </div>
+    <button onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-player-team",{detail:{name:nm,game:P.game||g,team:x.team,ids:[]}}));}catch(e){}setClubFix(null);}} style={{width:"100%",height:50,borderRadius:13,border:"none",background:"#8B5CF6",color:"#fff",fontWeight:900,fontSize:15,cursor:"pointer",marginBottom:8}}>Mettre {nm} chez {x.team}</button>
+    <button onClick={()=>{setClubFix(null);try{openPlayerSheet(nm);}catch(e){}}} style={{width:"100%",height:46,borderRadius:13,border:"1px solid #374151",background:"transparent",color:"#e5e7eb",fontWeight:800,fontSize:14,cursor:"pointer",marginBottom:8}}>Ouvrir le profil de {nm}</button>
+    <button onClick={()=>{ignClub(nm,x.team);setClubFix(null);}} style={{width:"100%",height:46,borderRadius:13,border:"none",background:"transparent",color:"#9ca3af",fontWeight:700,fontSize:13.5,cursor:"pointer"}}>Refuser · ne plus me le signaler pour {x.team}</button>
+   </div></div>;})()}
   {tourPick&&<div onClick={()=>setTourPick(null)} style={{position:"fixed",inset:0,zIndex:95,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
    <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,maxHeight:"80vh",overflowY:"auto",background:"#0f1524",borderRadius:"20px 20px 0 0",border:"1px solid #1F2937",padding:"16px 14px 26px",boxSizing:"border-box"}}>
     <div style={{fontSize:12,fontWeight:800,color:"#a78bfa"}}>TOURNOI · {tourPick.g}</div>
