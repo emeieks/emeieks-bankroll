@@ -5357,7 +5357,7 @@ function SimBtn(){const [v,setV]=useState(null);
 // Cache partagé : une seule lecture des duels pour toute la page (liste générale + duels dans chaque match)
 const DUEL_CACHE={t:0,rows:null,p:null};
 const loadDuels=()=>{if(DUEL_CACHE.rows&&Date.now()-DUEL_CACHE.t<55000)return Promise.resolve(DUEL_CACHE.rows);if(DUEL_CACHE.p)return DUEL_CACHE.p;
- const since=new Date(Date.now()-20*3600e3).toISOString();DUEL_CACHE.p=cloudDb("duel_alerts?updated_at=gte."+since+"&order=gap.desc&limit=80").then(r=>{DUEL_CACHE.rows=Array.isArray(r)?r:[];DUEL_CACHE.t=Date.now();DUEL_CACHE.p=null;return DUEL_CACHE.rows;}).catch(e=>{DUEL_CACHE.p=null;throw e;});return DUEL_CACHE.p;};
+ const since=new Date(Date.now()-36*3600e3).toISOString();DUEL_CACHE.p=cloudDb("duel_alerts?updated_at=gte."+since+"&order=gap.desc&limit=200").then(r=>{DUEL_CACHE.rows=Array.isArray(r)?r:[];DUEL_CACHE.t=Date.now();DUEL_CACHE.p=null;return DUEL_CACHE.rows;}).catch(e=>{DUEL_CACHE.p=null;throw e;});return DUEL_CACHE.p;};
 const duelSame=(a,b)=>{const x=cutNorm(a||""),y=cutNorm(b||"");return !!x&&!!y&&(x===y||x.includes(y)||y.includes(x));};
 const duelInMatch=(d,t1,t2)=>{const [A,B]=String(d.match||"").split(/\s+vs\.?\s+/i);return (duelSame(A,t1)&&duelSame(B,t2))||(duelSame(A,t2)&&duelSame(B,t1));};
 function DuelAlerts({teamLogos={},allPlayers={},teams=null,map=null,inline=false,exclude=null}){
@@ -5538,12 +5538,19 @@ function parseVetos(text,pool,A,B){const raw=String(text||"").replace(/[\u200b-\
  while((q=re.exec(raw))){const mp=mapOf(q[4]);if(!mp)continue;const t=isT(A,q[2])?A:isT(B,q[2])?B:null;out.push({n:+q[1],team:t,act:/picked/i.test(q[3])?"pick":"ban",map:mp});}
  const lr=/(?:^|\s)(\d)\.\s*([A-Za-z]+(?: ?2(?![.\d]))?)\s+was left over/gi;while((q=lr.exec(raw))){const mp=mapOf(q[2]);if(mp)out.push({n:+q[1],team:null,act:"decider",map:mp});}
  return out.sort((a,b)=>a.n-b.n);}
+// Collage direct depuis la page HLTV (HTML) : blocs .mapholder → map, équipes, scores
+function parseHltvHtml(html,pool,A,B){try{const doc=new DOMParser().parseFromString(html,"text/html");const hs=[...doc.querySelectorAll(".mapholder")];if(!hs.length)return [];
+ const k=x=>String(x||"").toLowerCase().replace(/^team\s+/,"").replace(/\s+(esports?|gaming|club)$/,"").replace(/[^a-z0-9]/g,"");const who=t=>{const x=k(t),a=k(A),b=k(B);if(!x)return null;if(x===a||a.startsWith(x)||x.startsWith(a))return A;if(x===b||b.startsWith(x)||x.startsWith(b))return B;return null;};
+ const mapOf=x=>{const q=String(x).toLowerCase().replace(/[^a-z0-9]/g,"");return (pool||[]).find(m=>m.toLowerCase().replace(/[^a-z0-9]/g,"")===q)||null;};
+ const out=[];hs.forEach(h=>{const mp=mapOf((h.querySelector(".mapname")||{}).textContent);if(!mp)return;const side=c=>{const e=h.querySelector(c);if(!e)return null;return {t:who((e.querySelector(".results-teamname")||{}).textContent),n:parseInt((e.querySelector(".results-team-score")||{}).textContent),pick:!!e.className.match(/pick/)||!!e.querySelector(".pick")};};
+  const L=side(".results-left"),R=side(".results-right");if(!L||!R||!L.t||!R.t||isNaN(L.n)||isNaN(R.n))return;const sc={[L.t]:L.n,[R.t]:R.n};out.push({name:mp,a:String(sc[A]),b:String(sc[B]),pick:L.pick?L.t:R.pick?R.t:""});});
+ return out;}catch(e){return [];}}
 function parseHltvMaps(text,pool,A,B){
  const raw=String(text||"").replace(/[\u200b-\u200f\ufeff]/g,"").replace(/\bde_/gi,"").replace(/\[([^\]]*)\]\([^)]*\)/g," $1 ").replace(/https?:\/\/\S+/g," ").replace(/\u00a0/g," ");
  const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
  const vars=t=>{const L=String(t||"").trim();const w=L.replace(/\b(team|esports?|gaming|club)\b/gi," ").replace(/\s+/g," ").trim();return [...new Set([L,w,w.split(" ")[0]].filter(v=>v&&v.length>=2))].sort((a,b)=>b.length-a.length);};
- const tre=t=>new RegExp("(^|[^A-Za-z0-9])("+vars(t).map(esc).join("|")+")(?=$|[^A-Za-z0-9])","gi");
- const mre=new RegExp("(^|[^A-Za-z0-9])("+(pool||[]).map(m=>esc(m).replace(/(\d)/,"\\s?$1")).join("|")+")(?=$|[^A-Za-z0-9])","gi");
+ const tre=t=>new RegExp("(^|[^A-Za-z])("+vars(t).map(esc).join("|")+")(?=$|[^a-z])","gi");
+ const mre=new RegExp("(^|[^A-Za-z])("+(pool||[]).map(m=>esc(m).replace(/(\d)/,"\\s?$1")).join("|")+")","gi");
  const mapOf=x=>{const k=String(x).toLowerCase().replace(/[^a-z0-9]/g,"");return (pool||[]).find(m=>m.toLowerCase().replace(/[^a-z0-9]/g,"")===k)||null;};
  // vetos
  const picks={};let dec=null;let q0;
@@ -5556,21 +5563,22 @@ function parseHltvMaps(text,pool,A,B){
  const out=[];const seen=new Set();
  hits.forEach((h,k)=>{if(seen.has(h.mp))return;const seg=body.slice(h.end,k+1<hits.length?hits[k+1].pos:body.length).replace(/\([^)]*\)/g," ");
   const ev=[];[[A,tre(A)],[B,tre(B)]].forEach(([t,re])=>{let z;while((z=re.exec(seg)))ev.push({t,pos:z.index+z[1].length});});
-  let z;const nre=/(^|[^0-9:.,])(\d{1,2})(?=$|[^0-9:.,])/g;while((z=nre.exec(seg)))ev.push({n:+z[2],pos:z.index+z[1].length});
+  let z;const nre=/(^|[^0-9:.,;])(\d{1,2})(?=$|[^0-9:.,;])/g;while((z=nre.exec(seg)))ev.push({n:+z[2],pos:z.index+z[1].length});
   ev.sort((a,b)=>a.pos-b.pos);const sc={};let cur=null;ev.forEach(e=>{if(e.t){cur=e.t;}else if(cur&&sc[cur]==null){sc[cur]=e.n;cur=null;}});
   if(sc[A]==null||sc[B]==null)return;seen.add(h.mp);out.push({name:h.mp,a:String(sc[A]),b:String(sc[B]),pick:picks[h.mp]||(dec===h.mp?"Decider":"")});});
  return out;}
 function HltvMapsPaste({pool,A,B,onApply,onVetos,vetos}){const [v,setV]=useState("");const [msg,setMsg]=useState("");const [ok,setOk]=useState(false);
- const go=t=>{let r=parseHltvMaps(t,pool,A,B);const ve=parseVetos(t,pool,A,B);
+ const go=(t,html)=>{let r=parseHltvMaps(t,pool,A,B);const ve=parseVetos(t,pool,A,B);
+  if(html&&(!r.length||r.some(x=>x.a===""))){const h=parseHltvHtml(html,pool,A,B);if(h.length){const P={};r.forEach(x=>{if(x.pick)P[x.name]=x.pick;});ve.forEach(v=>{if(v.act==="pick"&&v.team)P[v.map]=v.team;if(v.act==="decider")P[v.map]="Decider";});r=h.map(x=>({...x,pick:P[x.name]||x.pick}));}}
   if(!r.length&&ve.length){r=ve.filter(x=>x.act!=="ban").map(x=>({name:x.map,a:"",b:"",pick:x.act==="decider"?"Decider":x.team||""}));}
   if(ve.length)onVetos&&onVetos(ve);
   if(!r.length&&ve.length){setOk(true);setMsg("Vetos enregistrés ✓ Maps : "+ve.filter(x=>x.act!=="ban").map(x=>x.map).join(", ")+". Colle aussi les scores des maps.");return;}
-  if(!r.length){setOk(false);setMsg("Aucune map reconnue. Équipes : « "+A+" » / « "+B+" ». Texte lu ("+String(t).length+" car.) : « "+String(t).replace(/\s+/g," ").slice(0,160)+"… »");return;}onApply(r);setOk(true);setMsg(r.length+" map"+(r.length>1?"s":"")+" remplie"+(r.length>1?"s":"")+" ✓  "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));setV("");};
+  if(!r.length){setOk(false);setMsg("Aucune map reconnue. Équipes : « "+A+" » / « "+B+" ». Texte lu ("+String(t).length+" car.) : « "+String(t).replace(/\s+/g," ").slice(0,160)+"… »");return;}onApply(r);const noSc=r.some(x=>x.a===""||x.b==="");setOk(!noSc);setMsg(noSc?"Maps et picks OK, mais scores pas lus. Texte reçu : « "+String(t).replace(/\s+/g," ").slice(0,220)+"… » (envoie-moi ce message)":r.length+" map"+(r.length>1?"s":"")+" remplie"+(r.length>1?"s":"")+" ✓  "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));if(!noSc)setV("");};
  return <div style={{margin:"8px 0 12px"}}>
-  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&(e.clipboardData.getData("text/plain")||e.clipboardData.getData("text"));if(t){e.preventDefault();setV(t);go(t);}}} rows={3} placeholder="Colle ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
+  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&(e.clipboardData.getData("text/plain")||e.clipboardData.getData("text"));const h=e.clipboardData&&e.clipboardData.getData("text/html");if(t||h){e.preventDefault();setV(t||"");go(t||"",h);}}} rows={3} placeholder="Colle ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
   {v&&<button type="button" className="sb" style={{marginTop:6,width:"100%",height:40,fontSize:14,fontWeight:800}} onClick={()=>go(v)}>Remplir les maps</button>}
   {msg&&<div style={{marginTop:6,fontSize:13,fontWeight:700,color:ok?"#4ADE80":"#FBBF24"}}>{msg}</div>}
-  {Array.isArray(vetos)&&vetos.length>0&&<div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+  {false&&Array.isArray(vetos)&&vetos.length>0&&<div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
    {vetos.map((x,k)=>{const c=x.act==="pick"?"#4ADE80":x.act==="ban"?"#F87171":"#FBBF24";return <div key={k} style={{display:"flex",alignItems:"center",gap:7,padding:"8px 10px",borderRadius:10,background:c+"14",border:"1px solid "+c+"40",fontSize:13,gridColumn:x.act==="decider"?"1 / -1":undefined}}>
     <span style={{fontSize:10.5,fontWeight:800,color:c,minWidth:52}}>{x.act==="pick"?"PICK":x.act==="ban"?"BAN":"DECIDER"}</span><b style={{flex:1}}>{x.map}</b><span style={{color:"var(--dm)",fontSize:12,fontWeight:700}}>{x.team?teamAbbr(x.team):""}</span></div>;})}
   </div>}
@@ -8061,7 +8069,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  useEffect(()=>{loadMute();},[loadMute]);
  const isMuted=a=>evMute.some(m=>String(m.map)===String(a.map)&&muteMatch(m.match,a.match));
  useEffect(()=>{const h=()=>loadMute();window.addEventListener("emeieks-mute",h);return()=>window.removeEventListener("emeieks-mute",h);},[loadMute]);
- const loadEv=useCallback(async()=>{try{const r=await cloudDb("ev_alerts?status=eq.new&order=edge.desc&limit=100");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
+ const loadEv=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString();const r=await cloudDb("ev_alerts?or=(status.eq.new,and(status.in.(expired,added),created_at.gte."+since+"))&order=edge.desc&limit=300");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
  useEffect(()=>{loadEv();const i=setInterval(loadEv,60000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
  const evToBet=(a,bk,stake,odds,mapTag,idx=0,silent=false)=>{
@@ -13443,7 +13451,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  </div>}
  <SuiviLabel>BOT</SuiviLabel>
- {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=evIsNew;const nNew=evAlerts.filter(a=>isNew(a)&&!isMuted(a)).length;
+ {(()=>{const GL={"League of Legends":"LoL","Dota 2":"Dota2"};const isNew=evIsNew;const nNew=evAlerts.filter(a=>a.status==="new"&&isNew(a)&&!isMuted(a)).length;
   const running=evRunning;
   const hhmm=t=>t?new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
   return <div style={{marginBottom:8}}>
@@ -13467,7 +13475,6 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
    {evTab==="outils"&&<><MapPhotos showToast={showToast}/><MLStats bets={bets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
    {evTab==="bets"&&<>
-   <DuelAlerts teamLogos={teamLogos} allPlayers={allPlayers} exclude={[...new Set((evAlerts||[]).map(a=>String(a.match||"")))].map(x=>x.split(/\s+vs\.?\s+/i))}/>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
    {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center"}}>
@@ -13481,10 +13488,14 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     </div>
    </div>}
    {(()=>{const tms=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)?9e15:t;};
-    const list=evAlerts.filter(a=>!isMuted(a)&&(evFilter==="all"||isNew(a))).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
+    const list=evAlerts.filter(a=>!isMuted(a)&&(evFilter==="all"||(a.status==="new"&&isNew(a)))).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
     const ORDER=["CS2","Dota2","LoL","Valorant"];const games=[...new Set(list.map(a=>GL[a.game]||a.game))].sort((x,y)=>ORDER.indexOf(x)-ORDER.indexOf(y));
     const NAMES={CS2:"Counter-Strike 2",Dota2:"Dota 2",LoL:"League of Legends",Valorant:"Valorant"};
-    const renderEv=a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=isNew(a);return(
+    // vraies couleurs des jeux : [fond foncé, accent]
+    const GC={CS2:["#0B1F3A","#E8EEF7","#5B8DEF"],Dota2:["#0B0B0B","#E0301E","#E0301E"],LoL:["#091428","#C8AA6E","#0AC8B9"],Valorant:["#2A0F17","#FF4655","#FF4655"]};
+    const tsA=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)?null:t;};
+    const isDone=M=>M.every(a=>a.status!=="new")||M.every(a=>{const t=tsA(a);return t!=null&&t+3*3600e3<Date.now();});
+    const renderEv=a=>{const G=GL[a.game]||a.game;const hs=a.stat==="headshots";const nw=a.status==="new"&&isNew(a);return(
     <div key={a.key} style={{borderBottom:"1px solid rgba(255,255,255,.08)",borderLeft:"2.5px solid "+(nw?"#22C55E":"#60a5fa")}}>
      <div onClick={()=>evSel?setEvSel(l=>l.includes(a.key)?l.filter(k=>k!==a.key):[...l,a.key]):setEvPick(x=>x===a.key?null:a.key)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:11,background:evSel&&evSel.includes(a.key)?"rgba(124,58,237,.12)":"transparent"}}>
       {evSel&&<span style={{width:22,height:22,borderRadius:7,flexShrink:0,border:"2px solid "+(evSel.includes(a.key)?"#7C3AED":"#374151"),background:evSel.includes(a.key)?"#7C3AED":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:900}}>{evSel.includes(a.key)?"✓":""}</span>}
@@ -13518,13 +13529,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     const LG=(t,g,sz=18)=>{if(!t)return null;const u=evLogo(t,g);return u?<img src={u} alt="" style={{width:sz,height:sz,objectFit:"contain",borderRadius:3,flexShrink:0}}/>:<span style={{width:sz,height:sz,borderRadius:4,background:teamColors(t)[0],color:"#111",fontSize:Math.max(7,sz*.38),fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{String(teamAbbr(t)).slice(0,3)}</span>;};
     return games.map(g=>{const L=list.filter(a=>(GL[a.game]||a.game)===g);const mk=[];L.forEach(a=>{const k=mKey(a);if(!mk.includes(k))mk.push(k);});return(
      <div key={g}>
-      <div onClick={()=>evTog("g:"+g)} style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px 8px",background:"rgba(255,255,255,.02)",borderBottom:"1px solid "+SV.line,cursor:"pointer",userSelect:"none"}}>
-       <GameLogo game={g} size={20}/><span style={{fontSize:14,fontWeight:900,color:"#fff",letterSpacing:-.2}}>{NAMES[g]||g}</span><span style={{fontSize:12,color:"#6b7280",fontWeight:700}}>{L.length}</span><span style={{marginLeft:"auto",color:"#6b7280",display:"inline-flex",transform:evHide.includes("g:"+g)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span></div>
-      {!evHide.includes("g:"+g)&&mk.map(k=>{const M=L.filter(a=>mKey(a)===k);const [t1,t2]=String(M[0].match||"").split(/\s+vs\.?\s+/i);const maps=[...new Set(M.map(a=>String(a.map||"?")))].sort();return(
-       <div key={k} style={{marginTop:14,border:"1px solid rgba(167,139,250,.28)",borderRadius:14,overflow:"hidden",background:"rgba(255,255,255,.01)"}}>
-        <div onClick={()=>evTog("m:"+k)} style={{display:"flex",alignItems:"center",gap:7,padding:"13px 14px",background:"linear-gradient(90deg,rgba(124,58,237,.28),rgba(124,58,237,.08))",borderBottom:evHide.includes("m:"+k)?"none":"1px solid rgba(167,139,250,.3)",cursor:"pointer",userSelect:"none"}}>
+      <div onClick={()=>evTog("g:"+g)} style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px 10px",background:"linear-gradient(90deg,"+(GC[g]||GC.CS2)[0]+","+(GC[g]||GC.CS2)[2]+"33)",borderBottom:"2px solid "+(GC[g]||GC.CS2)[1],borderTop:"1px solid "+(GC[g]||GC.CS2)[2]+"55",cursor:"pointer",userSelect:"none"}}>
+       <GameLogo game={g} size={22}/><span style={{fontSize:15,fontWeight:900,color:(GC[g]||GC.CS2)[1],letterSpacing:-.2}}>{NAMES[g]||g}</span><span style={{fontSize:12,color:"#6b7280",fontWeight:700}}>{L.length}</span><span style={{marginLeft:"auto",color:"#6b7280",display:"inline-flex",transform:evHide.includes("g:"+g)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span></div>
+      {!evHide.includes("g:"+g)&&mk.slice().sort((x,y)=>isDone(L.filter(a=>mKey(a)===x))-isDone(L.filter(a=>mKey(a)===y))).map(k=>{const M=L.filter(a=>mKey(a)===k);const done=isDone(M);const gc=GC[g]||GC.CS2;const [t1,t2]=String(M[0].match||"").split(/\s+vs\.?\s+/i);const maps=[...new Set(M.map(a=>String(a.map||"?")))].sort();return(
+       <div key={k} style={{marginTop:14,border:"1px solid "+gc[2]+(done?"30":"66"),borderRadius:14,overflow:"hidden",background:"rgba(255,255,255,.01)",opacity:done?.8:1}}>
+        <div onClick={()=>evTog("m:"+k)} style={{display:"flex",alignItems:"center",gap:7,padding:"13px 14px",background:done?"linear-gradient(90deg,#1a1f2b,#12161f)":"linear-gradient(90deg,"+gc[0]+","+gc[2]+"40)",borderBottom:evHide.includes("m:"+k)?"none":"1px solid "+gc[2]+"55",borderLeft:"3px solid "+(done?"#4b5563":gc[1]),cursor:"pointer",userSelect:"none"}}>
          {LG(t1,g,20)}<b style={{fontSize:14,color:"#fff"}}>{t1||"?"}</b><span style={{color:"#6b7280",fontSize:12,fontWeight:700}}>vs</span>{LG(t2,g,20)}<b style={{fontSize:14,color:"#fff"}}>{t2||""}</b>
-         <span style={{marginLeft:"auto",fontSize:11.5,fontWeight:800,color:"#c4b5fd",background:"rgba(124,58,237,.18)",padding:"3px 8px",borderRadius:7}}>{M.length} pari{M.length>1?"s":""}</span><span style={{color:"#a78bfa",display:"inline-flex",transform:evHide.includes("m:"+k)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span></div>
+         {done&&<span style={{marginLeft:"auto",fontSize:10.5,fontWeight:900,color:"#9ca3af",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",padding:"3px 7px",borderRadius:6,letterSpacing:.4}}>TERMINÉ</span>}<span style={{marginLeft:done?6:"auto",fontSize:11.5,fontWeight:800,color:gc[1],background:gc[2]+"26",padding:"3px 8px",borderRadius:7}}>{M.length} pari{M.length>1?"s":""}</span><span style={{color:gc[1],display:"inline-flex",transform:evHide.includes("m:"+k)?"none":"rotate(180deg)"}}><Ic n="down" s={12}/></span></div>
         {!evHide.includes("m:"+k)&&maps.map(m=>{const MM=M.filter(a=>String(a.map||"?")===m);const teams=[];MM.forEach(a=>{const t=evTeams(a)[0]||"?";if(!teams.includes(t))teams.push(t);});return(
          <div key={m}>
           <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",marginTop:4,background:"rgba(251,191,36,.08)",borderTop:"2px solid rgba(251,191,36,.45)",borderBottom:"1px solid rgba(251,191,36,.2)"}}><span style={{fontSize:12,fontWeight:900,color:"#fbbf24",letterSpacing:.8}}>MAP {m}</span><span style={{flex:1}}/><span style={{fontSize:10.5,color:"#6b7280",fontWeight:700}}>{MM.length}</span></div>
