@@ -5384,7 +5384,13 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
  useEffect(()=>{RS_TOURS=[...new Set([...(RS_TOURS||[]),...(rows||[]).map(r=>r.tournament).filter(Boolean),...Object.values(done).map(x=>x.tournament).filter(Boolean)])].sort();},[rows,done]);
  useEffect(()=>{if(!focusM||!rows)return;const T=(focusM.teams||[]).map(teamKey).filter(Boolean);
   const hit=(matches||[]).find(m=>{const K=Object.keys(m.teams||{});return T.length&&T.every(t=>K.some(k=>k===t||k.includes(t)||t.includes(k)));});
-  if(hit){setSel(hit);setFocusM(null);window.__openResult=null;}else if(focusM.day===day){setFocusM(null);window.__openResult=null;}},[focusM,matches,rows,day]);
+  if(hit){setSel(hit);setFocusM(null);window.__openResult=null;return;}
+  // pas encore trouvé : les matchs du jour chargent peut-être encore → on réessaie, puis on tente la veille / le lendemain, puis on abandonne
+  const age=Date.now()-(focusM.t||0);const sh=n=>{const d=new Date(focusM.day+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+  if(age>2500&&!focusM.tried){setFocusM(f=>({...f,tried:1,t:Date.now()}));setDay(sh(-1));}
+  else if(age>2500&&focusM.tried===1){setFocusM(f=>({...f,tried:2,t:Date.now()}));setDay(sh(1));}
+  else if(age>2500&&focusM.tried===2){setFocusM(null);window.__openResult=null;setDay(focusM.day);}
+  else{const id=setTimeout(()=>setFocusM(f=>f?{...f}:f),700);return()=>clearTimeout(id);}},[focusM,matches,rows,day]);
  const shownM=useMemo(()=>allM?matches:matches.filter(m=>m.bb),[matches,allM]);const hiddenN=matches.length-matches.filter(m=>m.bb).length;
  useEffect(()=>{if(rows)setCnt(c=>({...c,[day]:{n:shownM.length,d:shownM.filter(m=>done[m.key]&&done[m.key].score1!=null).length}}));},[shownM,done]);
  const L=(t,g,s=24)=>{const u=findLogo(idx,t,g);return u?<img src={u} alt="" style={{width:s,height:s,objectFit:"contain",flexShrink:0}}/>:<span style={{width:s,height:s,borderRadius:3,background:teamColors(t)[0],color:"#14181E",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:s>30?13:9,fontWeight:800,flexShrink:0}}>{teamAbbr(t).slice(0,3)}</span>;};
@@ -5459,6 +5465,19 @@ function parseBoard(txt,roster,A,B){const flat=" "+String(txt).replace(/\]\((?:[
  hits.sort((a,b)=>a.pos-b.pos);const out={};
  hits.forEach((h,j)=>{const seg=flat.slice(h.pos+h.len,j+1<hits.length?hits[j+1].pos:h.pos+220);const mm=seg.match(/(\d{1,2})\s*[\(\[{]\s*(\d{1,2})\s*[\)\]}]/);if(mm&&+mm[2]<=+mm[1]){out[h.k]={k:mm[1],h:mm[2]};return;}
   const vv=seg.match(/(\d{1,2})\s*[\/|lI]\s*(\d{1,2})\s*[\/|lI]\s*(\d{1,2})/);if(vv){out[h.k]={k:vv[1],h:""};const adv=advOf(seg,vv);if(adv)out[h.k].adv=adv;}if(out[h.k]&&typeof LOL_CHAMPS!=="undefined"){const head=cutNorm(seg.slice(0,40));const ch=LOL_CHAMPS.filter(c=>head.startsWith(cutNorm(c))).sort((a,b)=>b.length-a.length)[0];if(ch)out[h.k].c=ch;}});return out;}
+// Colle le résumé HLTV (vetos + maps) : noms des maps, scores, picks, decider
+function parseHltvMaps(text,pool,A,B){const L=String(text||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const nk=x=>String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+ const mapOf=x=>{const k=nk(x);return (pool||[]).find(m=>nk(m)===k)||null;};const tk=x=>{const k=nk(x).replace(/^team/,"").replace(/(esports?|gaming|club)$/,"");const a=nk(A).replace(/^team/,"").replace(/(esports?|gaming|club)$/,""),b=nk(B).replace(/^team/,"").replace(/(esports?|gaming|club)$/,"");if(!k)return null;if(k===a||a.startsWith(k)||k.startsWith(a))return A;if(k===b||b.startsWith(k)||k.startsWith(b))return B;return null;};
+ const picks={};let dec=null;L.forEach(l=>{let q=l.match(/^\d+\.\s*(.+?)\s+picked\s+(.+)$/i);if(q){const mp=mapOf(q[2]),t=tk(q[1]);if(mp&&t)picks[mp]=t;}q=l.match(/^\d+\.\s*(.+?)\s+was left over/i);if(q){const mp=mapOf(q[1]);if(mp)dec=mp;}});
+ const out=[];for(let i=0;i<L.length;i++){const mp=/^\d+\./.test(L[i])?null:mapOf(L[i]);if(!mp)continue;const seq=[];for(let j=i+1;j<L.length&&j<i+12&&seq.length<4;j++){if(mapOf(L[j])&&!/^\d+\./.test(L[j]))break;if(/^\d{1,2}$/.test(L[j]))seq.push({n:+L[j]});else{const t=tk(L[j].replace(/\[.*?\]\(.*?\)/g,""));if(t)seq.push({t});}}
+  const t1=seq.find(x=>x.t),i1=seq.indexOf(t1),s1=seq.slice(i1+1).find(x=>x.n!=null),t2=seq.slice(i1+1).find(x=>x.t&&x.t!==(t1&&t1.t)),s2=t2&&seq.slice(seq.indexOf(t2)+1).find(x=>x.n!=null);
+  if(!t1||!s1||!t2||!s2)continue;const sc={[t1.t]:s1.n,[t2.t]:s2.n};out.push({name:mp,a:String(sc[A]),b:String(sc[B]),pick:picks[mp]||(dec===mp?"Decider":"")});}
+ return out;}
+function HltvMapsPaste({pool,A,B,onApply}){const [v,setV]=useState("");const [msg,setMsg]=useState("");
+ return <details style={{margin:"6px 0 10px"}}><summary style={{fontSize:13,fontWeight:700,color:"var(--ac,#9D8FFF)",cursor:"pointer"}}>Coller les maps depuis HLTV</summary>
+  <textarea value={v} onChange={e=>setV(e.target.value)} rows={5} placeholder={"Copie sur HLTV le bloc « Maps » (vetos) + les scores de chaque map, puis colle ici"} style={{width:"100%",marginTop:8,padding:10,borderRadius:8,background:"rgba(0,0,0,.25)",color:"inherit",border:"1px solid rgba(255,255,255,.12)",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+  <div style={{display:"flex",gap:8,alignItems:"center",marginTop:6}}><button type="button" className="sb" onClick={()=>{const r=parseHltvMaps(v,pool,A,B);if(!r.length){setMsg("Aucune map reconnue (il faut le nom de la map, les 2 équipes et les 2 scores).");return;}onApply(r);setMsg(r.length+" map(s) remplie(s) ✓ "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));setV("");}}>Remplir</button><span style={{fontSize:12,color:"var(--dm)"}}>{msg}</span></div>
+ </details>;}
 function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g," ")+" ";const low=flat.toLowerCase();
  const heads=[];[A,B].forEach(t=>{const L=String(t).toLowerCase();const w=L.replace(/\b(team|esports?|gaming|club)\b/g," ").trim().split(/\s+/);const V=[...new Set([L.slice(0,6),L,w.join(" "),w[0]].filter(v=>v&&v.length>=2))];V.forEach(p=>{const re=new RegExp("(^|[^a-z0-9])"+p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z0-9])","g");let q;while((q=re.exec(low)))heads.push({t,pos:q.index});});});heads.sort((a,b)=>a.pos-b.pos);
  const re=/([A-Za-z0-9_\-\.]{2,20})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+[\d.,]+%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)/g;const rows=[];let m;
@@ -5660,6 +5679,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   <div className="series"><b>Format</b>{[1,3,5].map(n=><button key={n} className="sb" aria-pressed={bo===n} onClick={()=>setBo(n)}>BO{n}</button>)}
    <span style={{marginLeft:"auto",fontSize:12.5,color:prog.done?"var(--wn)":"var(--dm)",fontWeight:700}}>{prog.n?(prog.wA>prog.wB?teamAbbr(A):prog.wB>prog.wA?teamAbbr(B):"")+" "+Math.max(prog.wA,prog.wB)+"-"+Math.min(prog.wA,prog.wB)+(prog.done?" ✓":" …"):"Remplis les maps : le score se calcule tout seul"}</span></div>
   {!lol&&<div className="stp">1 · Les maps : carte, score, pick, côté CT</div>}
+  {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
    return <section className="mp" key={i}>
    <div className="ban" style={{background:mapImg[x.name]?"linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,.15)),center/cover no-repeat url("+mapImg[x.name]+")":"linear-gradient(100deg,"+c1+","+c2+")",height:mapImg[x.name]?52:36}}><span className="no">{lol?"GAME":"MAP"} {i+1}</span>{pool?(x.name||"Choisir la carte ▾"):lol?(x.win?<span style={{display:"inline-flex",alignItems:"center",gap:6}}>{L(x.win,m.game,18)}Victoire {teamAbbr(x.win)}</span>:"Game "+(i+1)):"Map "+(i+1)}{ot&&<span className="otb" style={{right:x.name&&pool?84:8}}>OT</span>}
