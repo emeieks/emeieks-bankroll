@@ -4467,6 +4467,69 @@ function ClubBetPicker({pick,setPick,onClose}){
   </div>
  </div>);
 }
+// ── Map pool d'une équipe CS2 : winrate, % joué, picks, bans, rounds… par map ──
+const CS_ACTIVE=["Ancient","Anubis","Dust2","Inferno","Mirage","Nuke","Train"];
+function ClubMapPool({team,game}){
+ const [d,setD]=useState(null);const [sort,setSort]=useState("n");const [open,setOpen]=useState(null);const [mi,setMi]=useState(MAP_IMG||{});useEffect(()=>{loadMapImg().then(x=>x&&setMi(x)).catch(()=>{});},[]);
+ const same=(a,b)=>{const x=teamKey(a),y=teamKey(b);return !!(x&&y&&(x===y||x.includes(y)||y.includes(x)));};
+ useEffect(()=>{let ok=true;(async()=>{try{
+  const mr=(await cloudDb("match_results?game=eq.CS2&select=key,team1,team2,day,vetos,score1,score2&order=day.desc&limit=2000"))||[];
+  const mine=mr.filter(m=>same(m.team1,team)||same(m.team2,team));const ks=mine.map(m=>m.key);let mp=[];
+  for(let i=0;i<ks.length;i+=60){const r=await cloudDb("map_results?match_key=in.("+ks.slice(i,i+60).map(k=>'"'+String(k).replace(/"/g,'')+'"').map(encodeURIComponent).join(",")+")&select=match_key,map_no,map_name,picked_by,first_ct,score1,score2,rounds,ot,winner");if(Array.isArray(r))mp=mp.concat(r);}
+  if(ok)setD({mine,mp});}catch(e){if(ok)setD({mine:[],mp:[],err:String(e.message||e)});}})();return()=>{ok=false;};},[team]);
+ if(game!=="CS2")return null;
+ const box={background:"#111827",border:"1px solid #1F2937",borderRadius:16,overflow:"hidden",marginBottom:14};
+ if(!d)return <div style={{...box,padding:14,fontSize:13,color:"#6b7280"}}>Chargement du map pool…</div>;
+ const MK={};d.mine.forEach(m=>MK[m.key]=m);
+ const S={};const nm=x=>{const k=String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");return CS_ACTIVE.concat(CS_MAPS||[]).find(m=>m.toLowerCase().replace(/[^a-z0-9]/g,"")===k)||x;};
+ const get=n=>S[n]=S[n]||{n:0,w:0,l:0,rd:0,rdN:0,diff:0,ot:0,pick:0,pickW:0,opick:0,opickW:0,dec:0,decW:0,ban:0,oban:0,ct:0,ctW:0,tt:0,ttW:0,last:[]};
+ let tot=0;
+ d.mp.forEach(x=>{const m=MK[x.match_key];if(!m||!x.map_name)return;const me1=same(m.team1,team);const a=Number(me1?x.score1:x.score2),b=Number(me1?x.score2:x.score1);if(isNaN(a)||isNaN(b)||(a===0&&b===0))return;
+  const o=get(nm(x.map_name));const won=x.winner?same(x.winner,team):a>b;tot++;o.n++;won?o.w++:o.l++;o.diff+=a-b;const r=Number(x.rounds)||a+b;if(r){o.rd+=r;o.rdN++;}if(x.ot)o.ot++;
+  const dec=!x.picked_by||/decid/i.test(x.picked_by);if(dec){o.dec++;if(won)o.decW++;}else if(same(x.picked_by,team)){o.pick++;if(won)o.pickW++;}else{o.opick++;if(won)o.opickW++;}
+  if(x.first_ct){if(same(x.first_ct,team)){o.ct++;if(won)o.ctW++;}else{o.tt++;if(won)o.ttW++;}}
+  o.last.push({day:m.day,a,b,won,opp:me1?m.team2:m.team1});});
+ let vN=0;d.mine.forEach(m=>{if(!Array.isArray(m.vetos)||!m.vetos.length)return;vN++;m.vetos.forEach(v=>{if(v.act!=="ban"||!v.map)return;const o=get(nm(v.map));if(v.team&&same(v.team,team))o.ban++;else o.oban++;});});
+ CS_ACTIVE.forEach(get);
+ const rows=Object.entries(S).map(([k,o])=>({k,...o,wr:o.n?o.w/o.n*100:null,pct:tot?o.n/tot*100:0,rdAvg:o.rdN?o.rd/o.rdN:null}));
+ const srt={n:(a,b)=>b.n-a.n||(b.wr||0)-(a.wr||0),wr:(a,b)=>(b.n?b.wr:-1)-(a.n?a.wr:-1)||b.n-a.n,ban:(a,b)=>b.ban-a.ban,rd:(a,b)=>(b.rdAvg||0)-(a.rdAvg||0)}[sort];
+ rows.sort(srt);
+ const pl=rows.filter(r=>r.n>=2);const best=[...pl].sort((a,b)=>b.wr-a.wr||b.n-a.n)[0],worst=[...pl].sort((a,b)=>a.wr-b.wr||b.n-a.n)[0],most=[...rows].sort((a,b)=>b.n-a.n)[0],perma=vN?[...rows].sort((a,b)=>b.ban-a.ban)[0]:null,fav=[...rows].sort((a,b)=>b.pick-a.pick)[0];
+ const wc=v=>v==null?"#6b7280":v>=60?"#22C55E":v>=45?"#FBBF24":"#EF4444";const p0=v=>v==null?"–":Math.round(v)+" %";const f1=v=>v==null?"–":v.toFixed(1).replace(".",",");
+ const nMatch=d.mine.filter(m=>m.score1!=null).length;
+ const Card=({t,r,v,c})=>r?<div style={{flex:"1 1 46%",minWidth:0,padding:"11px 12px",borderRadius:13,background:c+"14",border:"1px solid "+c+"40"}}><div style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{t}</div><div style={{fontSize:16,fontWeight:800,color:"#eef1f7",marginTop:2}}>{r.k}</div><div style={{fontSize:12,fontWeight:700,color:c}}>{v}</div></div>:null;
+ return <div style={{marginBottom:14}}>
+  <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",margin:"4px 2px 8px"}}><span style={{fontSize:17,fontWeight:800,color:"#eef1f7"}}>Map pool</span><span style={{fontSize:12,color:"#9ca3af"}}>{nMatch} match{nMatch>1?"s":""} · {tot} maps{vN?" · "+vN+" vetos":""}</span></div>
+  {tot===0?<div style={{...box,padding:14,fontSize:13,color:"#9ca3af",lineHeight:1.5}}>Aucune map saisie pour {team}. Les stats se remplissent quand tu colles les maps HLTV dans Résultats.</div>:<>
+  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+   <Card t="Meilleure map" r={best} v={best&&p0(best.wr)+" · "+best.w+"-"+best.l} c="#22C55E"/>
+   <Card t="Pire map" r={worst!==best?worst:null} v={worst&&p0(worst.wr)+" · "+worst.w+"-"+worst.l} c="#EF4444"/>
+   <Card t="La plus jouée" r={most} v={most&&p0(most.pct)+" des maps · "+most.n+"×"} c="#A78BFA"/>
+   {fav&&fav.pick>0&&<Card t="Leur pick préféré" r={fav} v={fav.pick+" pick"+(fav.pick>1?"s":"")+" · "+(fav.pick?Math.round(fav.pickW/fav.pick*100):0)+" % gagnés"} c="#60A5FA"/>}
+   {perma&&perma.ban>0&&<Card t="Ban le plus fréquent" r={perma} v={perma.ban+" ban"+(perma.ban>1?"s":"")+" sur "+vN+" vetos"} c="#F87171"/>}
+  </div>
+  <div style={{display:"flex",gap:4,background:"#070b16",border:"1px solid rgba(255,255,255,.07)",borderRadius:12,padding:3,marginBottom:8}}>
+   {[["n","Plus jouées"],["wr","Winrate"],["ban","Bans"],["rd","Rounds"]].map(([k,l])=><button key={k} onClick={()=>setSort(k)} style={{flex:1,padding:"8px 4px",borderRadius:9,border:"none",background:sort===k?"rgba(124,58,237,.25)":"transparent",color:sort===k?"#DDD6FE":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer"}}>{l}</button>)}
+  </div>
+  <div style={box}>
+   {rows.map((r,i)=>{const op=open===r.k;const img=mi[r.k]||null;return <div key={r.k} style={{borderTop:i?"1px solid rgba(255,255,255,.06)":"none"}}>
+    <button onClick={()=>setOpen(op?null:r.k)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"11px 12px",background:img?"linear-gradient(90deg,rgba(17,24,39,.96) 35%,rgba(17,24,39,.75)),center/cover url("+img+")":"transparent",border:"none",color:"#eef1f7",cursor:"pointer",textAlign:"left"}}>
+     <div style={{flex:1,minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}><b style={{fontSize:15.5}}>{r.k}</b>{r.n===0&&<span style={{fontSize:11,color:"#6b7280",fontWeight:700}}>jamais jouée</span>}{r.ban>0&&<span style={{fontSize:10.5,fontWeight:800,color:"#F87171",background:"rgba(248,113,113,.12)",padding:"1px 6px",borderRadius:5}}>BAN ×{r.ban}</span>}{r.pick>0&&<span style={{fontSize:10.5,fontWeight:800,color:"#60A5FA",background:"rgba(96,165,250,.12)",padding:"1px 6px",borderRadius:5}}>PICK ×{r.pick}</span>}</div>
+      <div style={{height:5,borderRadius:3,background:"rgba(255,255,255,.06)",marginTop:7,overflow:"hidden"}}><div style={{width:r.pct+"%",height:"100%",background:"linear-gradient(90deg,#7C6CFF,#A78BFA)",borderRadius:3}}/></div>
+      <div style={{fontSize:11.5,color:"#9ca3af",marginTop:4}}>{r.n} map{r.n>1?"s":""} · {p0(r.pct)} du temps{r.rdAvg?" · "+f1(r.rdAvg)+" rounds":""}</div>
+     </div>
+     <div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:20,fontWeight:800,color:wc(r.wr)}}>{p0(r.wr)}</div><div style={{fontSize:12,color:"#9ca3af",fontWeight:700}}>{r.n?r.w+"-"+r.l:""}</div></div>
+    </button>
+    {op&&r.n>0&&<div style={{padding:"2px 12px 12px",display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6}}>
+     {[["Rounds / map",f1(r.rdAvg)],["Écart moyen",(r.diff>=0?"+":"")+f1(r.diff/r.n)],["Prolongations",r.ot+" ("+p0(r.ot/r.n*100)+")"],
+       ["Leur pick",r.pick?r.pickW+"-"+(r.pick-r.pickW):"–"],["Pick adverse",r.opick?r.opickW+"-"+(r.opick-r.opickW):"–"],["Decider",r.dec?r.decW+"-"+(r.dec-r.decW):"–"],
+       ["Départ CT",r.ct?r.ctW+"-"+(r.ct-r.ctW):"–"],["Départ T",r.tt?r.ttW+"-"+(r.tt-r.ttW):"–"],["Bannie",r.ban+"× / adv. "+r.oban+"×"]].map(([l,v])=><div key={l} style={{padding:"8px 9px",borderRadius:10,background:"rgba(255,255,255,.035)",border:"1px solid rgba(255,255,255,.06)"}}><div style={{fontSize:10.5,color:"#9ca3af",fontWeight:700}}>{l}</div><div style={{fontSize:14,fontWeight:800,marginTop:2}}>{v}</div></div>)}
+     <div style={{gridColumn:"1 / -1",marginTop:4}}>{r.last.slice(0,5).map((g,j)=><div key={j} style={{display:"flex",justifyContent:"space-between",fontSize:12.5,padding:"5px 2px",borderTop:j?"1px solid rgba(255,255,255,.05)":"none"}}><span style={{color:"#9ca3af"}}>{String(g.day||"").slice(5).split("-").reverse().join("/")} · vs {g.opp}</span><b style={{color:g.won?"#22C55E":"#EF4444"}}>{g.a}-{g.b}</b></div>)}</div>
+    </div>}
+   </div>;})}
+  </div></>}
+ </div>;}
 function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
  const [liveMode,setLiveMode]=useState("all");
  const [logoMode,setLogoMode]=useState(()=>{const l=clubLogo(team,game,teamLogos,allPlayers);return (l&&logoOverride()[l])||"";});
@@ -4528,6 +4591,7 @@ function ClubSheet({team,game,bets,allPlayers,teamLogos,onClose}){
       <Stat l="Réussite" v={tot.wr.toFixed(0)+"%"}/>
       <Stat l="ROI" v={tot.roi.toFixed(1)+"%"} c={pcol(tot.roi)}/>
      </div>
+     <ClubMapPool team={team} game={game}/>
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"4px 2px 8px"}}>
       <span style={{fontSize:12,fontWeight:800,letterSpacing:0,textTransform:"none",color:"#9ca3af"}}>Joueurs</span>
       <button onClick={()=>setAdding(v=>!v)} style={{padding:"5px 11px",borderRadius:9,border:"1px solid rgba(167,139,250,.35)",background:"rgba(124,58,237,.12)",color:"#c4b5fd",fontSize:12,fontWeight:800,cursor:"pointer"}}>{adding?"Annuler":"+ Ajouter un joueur"}</button>
@@ -5466,18 +5530,28 @@ function parseBoard(txt,roster,A,B){const flat=" "+String(txt).replace(/\]\((?:[
  hits.forEach((h,j)=>{const seg=flat.slice(h.pos+h.len,j+1<hits.length?hits[j+1].pos:h.pos+220);const mm=seg.match(/(\d{1,2})\s*[\(\[{]\s*(\d{1,2})\s*[\)\]}]/);if(mm&&+mm[2]<=+mm[1]){out[h.k]={k:mm[1],h:mm[2]};return;}
   const vv=seg.match(/(\d{1,2})\s*[\/|lI]\s*(\d{1,2})\s*[\/|lI]\s*(\d{1,2})/);if(vv){out[h.k]={k:vv[1],h:""};const adv=advOf(seg,vv);if(adv)out[h.k].adv=adv;}if(out[h.k]&&typeof LOL_CHAMPS!=="undefined"){const head=cutNorm(seg.slice(0,40));const ch=LOL_CHAMPS.filter(c=>head.startsWith(cutNorm(c))).sort((a,b)=>b.length-a.length)[0];if(ch)out[h.k].c=ch;}});return out;}
 // Colle le résumé HLTV (vetos + maps) : noms des maps, scores, picks, decider
+function parseVetos(text,pool,A,B){const raw=String(text||"").replace(/[\u200b-\u200f\ufeff]/g,"").replace(/\bde_/gi,"");const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+ const vars=t=>{const L=String(t||"").trim();const w=L.replace(/\b(team|esports?|gaming|club)\b/gi," ").replace(/\s+/g," ").trim();return [...new Set([L,w,w.split(" ")[0]].filter(v=>v&&v.length>=2))].sort((a,b)=>b.length-a.length);};
+ const isT=(t,x)=>new RegExp("(^|[^A-Za-z0-9])("+vars(t).map(esc).join("|")+")(?=$|[^A-Za-z0-9])","i").test(" "+x);
+ const mapOf=x=>{const k=String(x).toLowerCase().replace(/[^a-z0-9]/g,"");return (pool||[]).find(m=>m.toLowerCase().replace(/[^a-z0-9]/g,"")===k)||null;};
+ const out=[];let q;const re=/(?:^|\s)(\d)\.\s*([^\n]*?)\s+(removed|picked|banned)\s+([A-Za-z]+(?: ?2(?![.\d]))?)/gi;
+ while((q=re.exec(raw))){const mp=mapOf(q[4]);if(!mp)continue;const t=isT(A,q[2])?A:isT(B,q[2])?B:null;out.push({n:+q[1],team:t,act:/picked/i.test(q[3])?"pick":"ban",map:mp});}
+ const lr=/(?:^|\s)(\d)\.\s*([A-Za-z]+(?: ?2(?![.\d]))?)\s+was left over/gi;while((q=lr.exec(raw))){const mp=mapOf(q[2]);if(mp)out.push({n:+q[1],team:null,act:"decider",map:mp});}
+ return out.sort((a,b)=>a.n-b.n);}
 function parseHltvMaps(text,pool,A,B){
- const raw=String(text||"").replace(/\[([^\]]*)\]\([^)]*\)/g," $1 ").replace(/https?:\/\/\S+/g," ").replace(/\u00a0/g," ");
+ const raw=String(text||"").replace(/[\u200b-\u200f\ufeff]/g,"").replace(/\bde_/gi,"").replace(/\[([^\]]*)\]\([^)]*\)/g," $1 ").replace(/https?:\/\/\S+/g," ").replace(/\u00a0/g," ");
  const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
  const vars=t=>{const L=String(t||"").trim();const w=L.replace(/\b(team|esports?|gaming|club)\b/gi," ").replace(/\s+/g," ").trim();return [...new Set([L,w,w.split(" ")[0]].filter(v=>v&&v.length>=2))].sort((a,b)=>b.length-a.length);};
  const tre=t=>new RegExp("(^|[^A-Za-z0-9])("+vars(t).map(esc).join("|")+")(?=$|[^A-Za-z0-9])","gi");
  const mre=new RegExp("(^|[^A-Za-z0-9])("+(pool||[]).map(m=>esc(m).replace(/(\d)/,"\\s?$1")).join("|")+")(?=$|[^A-Za-z0-9])","gi");
  const mapOf=x=>{const k=String(x).toLowerCase().replace(/[^a-z0-9]/g,"");return (pool||[]).find(m=>m.toLowerCase().replace(/[^a-z0-9]/g,"")===k)||null;};
  // vetos
- const picks={};let dec=null;
- raw.split(/\r?\n/).forEach(l=>{l=l.trim();let q=l.match(/^(?:\d+\.\s*)?(.+?)\s+picked\s+(.+?)\s*$/i);if(q){const mp=mapOf(q[2]);const t=tre(A).test(q[1])?A:tre(B).test(q[1])?B:null;if(mp&&t)picks[mp]=t;}q=l.match(/^(?:\d+\.\s*)?(.+?)\s+was left over/i);if(q){const mp=mapOf(q[1]);if(mp)dec=mp;}});
+ const picks={};let dec=null;let q0;
+ const vre=/(?:^|\s)\d\.\s*([^\n]*?)\s+(removed|picked|banned)\s+([A-Za-z0-9 ]+?)(?=\s+\d\.|\s*\n|\s*$)/gi;
+ while((q0=vre.exec(raw))){if(/picked/i.test(q0[2])){const mp=mapOf(q0[3]);const t=tre(A).test(" "+q0[1])?A:tre(B).test(" "+q0[1])?B:null;if(mp&&t)picks[mp]=t;}}
+ const lre=/(?:^|\s)\d\.\s*([A-Za-z0-9 ]+?)\s+was left over/gi;while((q0=lre.exec(raw))){const mp=mapOf(q0[1]);if(mp)dec=mp;}
  // scores : on retire les lignes de vetos, on coupe le texte à chaque nom de map
- const body=raw.split(/\r?\n/).filter(l=>!/(removed|picked|banned|was left over)/i.test(l)).join("\n");
+ const body=raw.replace(/(?:^|\s)\d\.\s*[^\n]*?\s+(?:removed|picked|banned)\s+[A-Za-z0-9]+(?: 2)?/gi," ").replace(/(?:^|\s)\d\.\s*[A-Za-z0-9 ]+?\s+was left over/gi," ").replace(/Rewatch[\s\S]*$/i," ");
  const hits=[];let q;mre.lastIndex=0;while((q=mre.exec(body)))hits.push({mp:mapOf(q[2]),pos:q.index+q[1].length,end:q.index+q[0].length});
  const out=[];const seen=new Set();
  hits.forEach((h,k)=>{if(seen.has(h.mp))return;const seg=body.slice(h.end,k+1<hits.length?hits[k+1].pos:body.length).replace(/\([^)]*\)/g," ");
@@ -5486,12 +5560,20 @@ function parseHltvMaps(text,pool,A,B){
   ev.sort((a,b)=>a.pos-b.pos);const sc={};let cur=null;ev.forEach(e=>{if(e.t){cur=e.t;}else if(cur&&sc[cur]==null){sc[cur]=e.n;cur=null;}});
   if(sc[A]==null||sc[B]==null)return;seen.add(h.mp);out.push({name:h.mp,a:String(sc[A]),b:String(sc[B]),pick:picks[h.mp]||(dec===h.mp?"Decider":"")});});
  return out;}
-function HltvMapsPaste({pool,A,B,onApply}){const [v,setV]=useState("");const [msg,setMsg]=useState("");const [ok,setOk]=useState(false);
- const go=t=>{const r=parseHltvMaps(t,pool,A,B);if(!r.length){setOk(false);setMsg("Aucune map reconnue. Équipes cherchées : « "+A+" » et « "+B+" ». Copie sur HLTV le bloc des maps avec les scores.");return;}onApply(r);setOk(true);setMsg(r.length+" map"+(r.length>1?"s":"")+" remplie"+(r.length>1?"s":"")+" ✓  "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));setV("");};
+function HltvMapsPaste({pool,A,B,onApply,onVetos,vetos}){const [v,setV]=useState("");const [msg,setMsg]=useState("");const [ok,setOk]=useState(false);
+ const go=t=>{let r=parseHltvMaps(t,pool,A,B);const ve=parseVetos(t,pool,A,B);
+  if(!r.length&&ve.length){r=ve.filter(x=>x.act!=="ban").map(x=>({name:x.map,a:"",b:"",pick:x.act==="decider"?"Decider":x.team||""}));}
+  if(ve.length)onVetos&&onVetos(ve);
+  if(!r.length&&ve.length){setOk(true);setMsg("Vetos enregistrés ✓ Maps : "+ve.filter(x=>x.act!=="ban").map(x=>x.map).join(", ")+". Colle aussi les scores des maps.");return;}
+  if(!r.length){setOk(false);setMsg("Aucune map reconnue. Équipes : « "+A+" » / « "+B+" ». Texte lu ("+String(t).length+" car.) : « "+String(t).replace(/\s+/g," ").slice(0,160)+"… »");return;}onApply(r);setOk(true);setMsg(r.length+" map"+(r.length>1?"s":"")+" remplie"+(r.length>1?"s":"")+" ✓  "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));setV("");};
  return <div style={{margin:"8px 0 12px"}}>
-  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&e.clipboardData.getData("text");if(t){e.preventDefault();go(t);}}} rows={3} placeholder="Colle ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
+  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&(e.clipboardData.getData("text/plain")||e.clipboardData.getData("text"));if(t){e.preventDefault();setV(t);go(t);}}} rows={3} placeholder="Colle ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
   {v&&<button type="button" className="sb" style={{marginTop:6,width:"100%",height:40,fontSize:14,fontWeight:800}} onClick={()=>go(v)}>Remplir les maps</button>}
   {msg&&<div style={{marginTop:6,fontSize:13,fontWeight:700,color:ok?"#4ADE80":"#FBBF24"}}>{msg}</div>}
+  {Array.isArray(vetos)&&vetos.length>0&&<div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+   {vetos.map((x,k)=>{const c=x.act==="pick"?"#4ADE80":x.act==="ban"?"#F87171":"#FBBF24";return <div key={k} style={{display:"flex",alignItems:"center",gap:7,padding:"8px 10px",borderRadius:10,background:c+"14",border:"1px solid "+c+"40",fontSize:13,gridColumn:x.act==="decider"?"1 / -1":undefined}}>
+    <span style={{fontSize:10.5,fontWeight:800,color:c,minWidth:52}}>{x.act==="pick"?"PICK":x.act==="ban"?"BAN":"DECIDER"}</span><b style={{flex:1}}>{x.map}</b><span style={{color:"var(--dm)",fontSize:12,fontWeight:700}}>{x.team?teamAbbr(x.team):""}</span></div>;})}
+  </div>}
  </div>;}
 function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g," ")+" ";const low=flat.toLowerCase();
  const heads=[];[A,B].forEach(t=>{const L=String(t).toLowerCase();const w=L.replace(/\b(team|esports?|gaming|club)\b/g," ").trim().split(/\s+/);const V=[...new Set([L.slice(0,6),L,w.join(" "),w[0]].filter(v=>v&&v.length>=2))];V.forEach(p=>{const re=new RegExp("(^|[^a-z0-9])"+p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z0-9])","g");let q;while((q=re.exec(low)))heads.push({t,pos:q.index});});});heads.sort((a,b)=>a.pos-b.pos);
@@ -5529,7 +5611,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  useEffect(()=>{const t0=rsTs(m.start);const since=new Date((isNaN(t0)?Date.now():t0)-3*864e5).toISOString();
   cloudDb("ev_alerts?created_at=gte."+since+"&select=key,player,game,stat,side,map,book_line,book_odds,edge,match,start&limit=2000").then(r=>setEvM(Array.isArray(r)?r:[])).catch(()=>setEvM([]));},[m.key]);
  const [A0,B0]=Object.values(m.teams);const [lnk,setLnk]=useState({});const [clubFor,setClubFor]=useState(null);const A=lnk[A0]||A0,B=lnk[B0]||B0;
- const [plFor,setPlFor]=useState(null);const [miss,setMiss]=useState({});const [missFor,setMissFor]=useState(null);const [advFor,setAdvFor]=useState(null);const G=GNORM(m.game);const rounds=G==="CS2"||G==="Valorant";const pool=G==="CS2"?CS_MAPS:G==="Valorant"?VAL_MAPS:null;const hsOn=G==="CS2";const lol=G==="LoL";
+ const [plFor,setPlFor]=useState(null);const [vetos,setVetos]=useState([]);const [miss,setMiss]=useState({});const [missFor,setMissFor]=useState(null);const [advFor,setAdvFor]=useState(null);const G=GNORM(m.game);const rounds=G==="CS2"||G==="Valorant";const pool=G==="CS2"?CS_MAPS:G==="Valorant"?VAL_MAPS:null;const hsOn=G==="CS2";const lol=G==="LoL";
  const [mapImg,setMapImg]=useState(MAP_IMG||{});useEffect(()=>{loadMapImg().then(setMapImg);},[]);
  const [s,setS]=useState({s1:null,s2:null});const [bo,setBo]=useState(3);const [maps,setMaps]=useState([]);const [pk,setPk]=useState({});const [open,setOpen]=useState(0);const [msg,setMsg]=useState(null);const [busy,setBusy]=useState(false);const [ver,setVer]=useState(DD_VER);
  useEffect(()=>{if(lol)ddVer().then(setVer);},[lol]);
@@ -5548,7 +5630,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  useEffect(()=>{(async()=>{try{const pair=m.key.split("|")[0];const vs=[-1,0,1].map(n=>pair+"|"+rsDay(new Date(new Date(m.day+"T12:00:00").getTime()+n*864e5)));
   const ex=await cloudDb("match_results?key=in.("+vs.map(encodeURIComponent).join(",")+")&select=key")||[];const K=(ex.find(x=>x.key===m.key)||ex[0]||{}).key||m.key;setMk(K);
   const [mr,mp,pr]=await Promise.all([cloudDb("match_results?key=eq."+encodeURIComponent(K)),cloudDb("map_results?match_key=eq."+encodeURIComponent(K)+"&order=map_no.asc"),cloudDb("player_results?match_key=eq."+encodeURIComponent(K)+"&select=*")]);
-  setPotRows(pr||[]);let flip=false;if(mr&&mr[0]){const x=mr[0];flip=teamKey(x.team1)!==teamKey(A);setS({s1:flip?x.score2:x.score1,s2:flip?x.score1:x.score2});if(x.score1!=null)setBo(Math.max(1,2*Math.max(x.score1||0,x.score2||0)-1));}
+  setPotRows(pr||[]);let flip=false;if(mr&&mr[0]){const x=mr[0];if(Array.isArray(x.vetos))setVetos(x.vetos);flip=teamKey(x.team1)!==teamKey(A);setS({s1:flip?x.score2:x.score1,s2:flip?x.score1:x.score2});if(x.score1!=null)setBo(Math.max(1,2*Math.max(x.score1||0,x.score2||0)-1));}
   if(mp&&mp.length)setMaps(mp.map(x=>{const a=flip?x.score2:x.score1,b=flip?x.score1:x.score2;return {name:x.map_name||"",pick:x.picked_by||"",ct:x.first_ct||"",a:a==null?"":String(a),b:b==null?"":String(b),win:x.winner?(same(x.winner,A)?A:B):(a>b?A:b>a?B:"")};}));
   const o={};(pr||[]).forEach(x=>{o[x.map_no+"|"+x.pkey]={k:x.kills==null?"":String(x.kills),h:x.hs==null?"":String(x.hs),c:x.champion||"",...(x.adv?{adv:x.adv}:{})};});setPk(o);}catch(e){setMsg("Lance resultats.sql dans Supabase");}})();},[m.key]);
  const [mk,setMk]=useState(m.key);const [cp,setCp]=useState(null);const [chg,setChg]=useState(null);const [tourV,setTourV]=useState(m.tour||"");const [tourX,setTourX]=useState(false);useEffect(()=>{setTourV(m.tour||"");},[m.key,m.tour]);const [bm,setBm]=useState({});const [potRows,setPotRows]=useState([]);const [pots,setPots]=useState([]);
@@ -5600,7 +5682,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    const t0=rsTs(m.start);const pre=c=>c.source==="pp"||isNaN(t0)||new Date(c.at).getTime()<=t0+5*60e3;   // Betby : avant le début du match seulement
    const pick=(k,st,mapNo)=>{const C=(ch||[]).filter(c=>c.pkey===k&&c.stat===st&&mine(c)&&pre(c));const fmt=mapNo<=2?"1+2":String(mapNo);
     const pp=C.find(c=>c.source==="pp"&&c.maps===fmt)||(mapNo<=3?C.find(c=>c.source==="pp"&&c.maps==="1+2+3"):null);const bb=C.find(c=>c.source==="betby"&&String(c.maps)===String(mapNo));return {pp,bb};};
-   {const _r={key:mk,game:m.game,day:m.day,team1:A,team2:B,score1:s.s1,score2:s.s2,tournament:tourV.trim()||null,updated_at:now};try{await cloudDb("match_results?on_conflict=key",{method:"POST",body:[_r],prefer:"resolution=merge-duplicates"});}catch(e){if(!/tournament|PGRST204/.test(String(e&&e.message||e)))throw e;delete _r.tournament;await cloudDb("match_results?on_conflict=key",{method:"POST",body:[_r],prefer:"resolution=merge-duplicates"});}}
+   {const _r={key:mk,game:m.game,day:m.day,team1:A,team2:B,score1:s.s1,score2:s.s2,tournament:tourV.trim()||null,updated_at:now};try{await cloudDb("match_results?on_conflict=key",{method:"POST",body:[_r],prefer:"resolution=merge-duplicates"});if(vetos.length)cloudDb("match_results?key=eq."+encodeURIComponent(mk),{method:"PATCH",body:{vetos}}).catch(()=>{});}catch(e){if(!/tournament|PGRST204/.test(String(e&&e.message||e)))throw e;delete _r.tournament;await cloudDb("match_results?on_conflict=key",{method:"POST",body:[_r],prefer:"resolution=merge-duplicates"});}}
    const mr=_ms.map((x,i)=>{let a=parseInt(x.a),b=parseInt(x.b);if(lol){if(isNaN(a)&&_kA(i))a=_kA(i);if(isNaN(b)&&_kB(i))b=_kB(i);}const win=rounds?(a>b?A:b>a?B:null):(x.win||null);
     return {key:mk+"|"+(i+1),match_key:mk,map_no:i+1,map_name:x.name||null,picked_by:x.pick||null,first_ct:x.ct||null,score1:isNaN(a)?null:a,score2:isNaN(b)?null:b,rounds:rounds&&rnd(x)?rnd(x):null,ot:isOT(x),winner:win,updated_at:now};});
    if(mr.length)await cloudDb("map_results?on_conflict=key",{method:"POST",body:mr,prefer:"resolution=merge-duplicates"});
@@ -5694,7 +5776,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   <div className="series"><b>Format</b>{[1,3,5].map(n=><button key={n} className="sb" aria-pressed={bo===n} onClick={()=>setBo(n)}>BO{n}</button>)}
    <span style={{marginLeft:"auto",fontSize:12.5,color:prog.done?"var(--wn)":"var(--dm)",fontWeight:700}}>{prog.n?(prog.wA>prog.wB?teamAbbr(A):prog.wB>prog.wA?teamAbbr(B):"")+" "+Math.max(prog.wA,prog.wB)+"-"+Math.min(prog.wA,prog.wB)+(prog.done?" ✓":" …"):"Remplis les maps : le score se calcule tout seul"}</span></div>
   {!lol&&<div className="stp">1. Colle les maps HLTV</div>}
-  {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
+  {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} vetos={vetos} onVetos={setVetos} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
    return <section className="mp" key={i}>
    <div className="ban" style={{background:mapImg[x.name]?"linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,.15)),center/cover no-repeat url("+mapImg[x.name]+")":"linear-gradient(100deg,"+c1+","+c2+")",height:mapImg[x.name]?52:36}}><span className="no">{lol?"GAME":"MAP"} {i+1}</span>{pool?(x.name||"Choisir la carte ▾"):lol?(x.win?<span style={{display:"inline-flex",alignItems:"center",gap:6}}>{L(x.win,m.game,18)}Victoire {teamAbbr(x.win)}</span>:"Game "+(i+1)):"Map "+(i+1)}{ot&&<span className="otb" style={{right:x.name&&pool?84:8}}>OT</span>}
