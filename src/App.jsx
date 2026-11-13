@@ -5446,14 +5446,14 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
  useEffect(()=>{const h=()=>{const d=window.__openResult;if(d){setFocusM({...d,t:Date.now()});if(d.day)setDay(d.day);}};window.addEventListener("emeieks-open-result-go",h);if(window.__openResult)h();return()=>window.removeEventListener("emeieks-open-result-go",h);},[]);
  useEffect(()=>{const ids=(bets||[]).filter(b=>String(b.datetime||"").slice(0,10)===day).map(b=>String(b.id));if(!ids.length){setLockB(new Set());return;}cloudDb("bet_match?id=in.("+ids.map(encodeURIComponent).join(",")+")&select=id,team1").then(r=>setLockB(new Set((r||[]).filter(x=>x.team1&&x.team1!=="__exclu__").map(x=>String(x.id))))).catch(()=>setLockB(new Set()));},[day,bets]);
  // un match = même paire d'équipes + heures de début à moins de 8 h ; son jour = date LOCALE de son début (le plus tard vu, en cas de report)
- const matches=useMemo(()=>{const cl=[];(rows||[]).forEach(r=>{const A=rsClean(r.team),B=rsClean(r.match);if(!A||!B)return;
+ const matches=useMemo(()=>{const cl=[];(rows||[]).forEach(r=>{const A=rsClean(r.team),B=rsClean(r.match);if(!A||!B)return;if(/[+&\/]/.test(String(r.player||"")))return;
    // lignes « combo » PrizePicks (2 joueurs de 2 matchs : « Aurora/PARIVISION ») ou marchés spéciaux : pas un vrai match
    if(/[\/+&]/.test(String(r.team||"")+String(r.match||""))||/\b(props?\s*\d|winner|outright|combo)\b/i.test(A+" "+B)||teamKey(A)===teamKey(B))return;const pr=rsPair(A,B);const t=rsTs(r.start);if(isNaN(t))return;
    let o=cl.find(c=>c.pair===pr&&Math.abs(c.t-t)<8*3600e3);if(!o){o={pair:pr,t,game:r.game,start:r.start,teams:{},players:{},tc:{}};cl.push(o);}if(t>o.t){o.t=t;o.start=r.start;}
    o.teams[teamKey(A)]=o.teams[teamKey(A)]||tlName(r.game,A);o.teams[teamKey(B)]=o.teams[teamKey(B)]||tlName(r.game,B);o.players[r.pkey]={name:r.player,pkey:r.pkey,team:A};if(r.tournament)o.tc[r.tournament]=(o.tc[r.tournament]||0)+1;});
   const g={};cl.forEach(o=>{const d=rsDay(new Date(o.t));if(d!==day)return;const k=o.pair+"|"+d;g[k]={...o,key:k,day:d};});
   // matchs créés à la main (sans cut PrizePicks) : seulement dans match_results
-  Object.values(done).forEach(x=>{if(!x||x.day!==day||!x.team1||!x.team2||g[x.key])return;const pair=x.key.split("|")[0];if(Object.values(g).some(o=>o.pair===pair))return;g[x.key]={manual:true,pair,t:new Date(day+"T12:00:00").getTime(),game:x.game||"CS2",start:day+"T12:00:00",teams:{[teamKey(x.team1)]:x.team1,[teamKey(x.team2)]:x.team2},players:{},tc:x.tournament?{[x.tournament]:1}:{},key:x.key,day,manual:1};});
+  Object.values(done).forEach(x=>{if(!x||x.day!==day||!x.team1||!x.team2||g[x.key])return;if(/[\/+&]/.test(x.team1+x.team2))return;const pair=x.key.split("|")[0];if(Object.values(g).some(o=>o.pair===pair))return;g[x.key]={manual:true,pair,t:new Date(day+"T12:00:00").getTime(),game:x.game||"CS2",start:day+"T12:00:00",teams:{[teamKey(x.team1)]:x.team1,[teamKey(x.team2)]:x.team2},players:{},tc:x.tournament?{[x.tournament]:1}:{},key:x.key,day,manual:1};});
   return Object.values(g).filter(m=>Object.keys(m.teams).length>=2).map(m=>{const near=r=>{const t=rsTs(r.start);return isNaN(t)||Math.abs(t-m.t)<12*3600e3;};const hit=(bb||[]).filter(r=>{const [x,y]=String(r.match||"").split(/\s+vs\.?\s+/i).map(rsClean);if(x&&y&&rsPair(x,y)===m.pair&&near(r))return true;return !!m.players[r.pkey]&&near(r);});
    const bt={};hit.forEach(r=>{if(r.tournament)bt[r.tournament]=(bt[r.tournament]||0)+1;});const btour=Object.keys(bt).sort((a,b)=>bt[b]-bt[a])[0];
    return {...m,bb:m.manual||!bb?true:hit.length>0,tour:(done[m.pair+"|"+m.day]&&done[m.pair+"|"+m.day].tournament)||btour||Object.keys(m.tc).sort((a,b)=>m.tc[b]-m.tc[a])[0]||""};}).sort((a,b)=>String(a.start).localeCompare(String(b.start)));},[rows,day,done,bb,tlv]);
@@ -6794,7 +6794,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
  const load=useCallback(()=>{setRows(null);const Q="pot_bets?select=key,base,pkey,player,game,stat,side,map,line,odds,edge,stake,stake_pct,pp_line,pp_maps,result,value,profit,day,match,team,vs,start,at,tournament,mode,kind,is_ev";
   cloudDb(Q+",team_ml,opp_ml&order=day.desc&limit=40000").catch(()=>cloudDb(Q+"&order=day.desc&limit=40000"))
-  .then(r=>setRows(Array.isArray(r)?r:[])).catch(e=>setRows({err:String(e.message||e)}));
+  .then(r=>setRows(Array.isArray(r)?r.filter(x=>!/[+&/]/.test(String(x.player||""))):[])).catch(e=>setRows({err:String(e.message||e)}));
   cloudDb("ev_alerts?created_at=gte."+new Date(Date.now()-60*864e5).toISOString()+"&select=player,stat,side,map,book_line,match&limit=20000").then(r=>{const S=new Set();(r||[]).forEach(a=>S.add([cutNorm(a.player),a.stat,a.side,String(a.map),Number(a.book_line),String(a.match||"").toLowerCase().replace(/[^a-z0-9]/g,"")].join("|")));setEvSet(S);}).catch(()=>{});
   cloudDb("settings?select=value&key=eq.sim_live").then(r=>{let v=r&&r[0]&&r[0].value;if(typeof v==="string")try{v=JSON.parse(v);}catch(e){}setLive(v||{on:false});}).catch(()=>setLive({on:false}));},[]);
  useEffect(()=>{load();},[load]);
