@@ -5000,17 +5000,18 @@ function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foo
  </div></div>);}
 
 // Dos de carte : lignes Betby compactes, map par map (Under), écart vs PrizePicks
-function BetbyMini({rows,stat,per}){const L=rows.filter(r=>r.stat===stat);if(!L.length)return <div style={{padding:16,fontSize:12,color:"#6b7280",textAlign:"center"}}>Pas de ligne Betby</div>;
+function BetbyMini({rows,stat,per,tg}){const L=rows.filter(r=>r.stat===stat);if(!L.length)return <div style={{padding:16,fontSize:12,color:"#6b7280",textAlign:"center"}}>Pas de ligne Betby</div>;
  const ev=L.reduce((a,r)=>(!a||String(r.start||"")>String(a.start||""))?r:a,null).event_id;const cur=L.filter(r=>r.event_id===ev);
  const maps=[...new Set(cur.map(r=>r.map))].sort();
  // Lignes retirées par Betby : on garde seulement celles du dernier passage (±45 min). En live, Betby n'est plus enregistré → dernière ligne d'avant-match.
- const tm=r=>Date.parse(r.updated_at||"")||0;const fresh=a=>{const mx=Math.max(0,...a.map(tm));return a.filter(r=>mx-tm(r)<=45*6e4);};
- const st0=Date.parse((cur[0]||{}).start||"");const started=!!st0&&st0<=Date.now();
+ const tm=r=>Date.parse(r.updated_at||"")||0;const st0=Date.parse((cur[0]||{}).start||"");const started=!!st0&&st0<=Date.now();
+ const fresh=a=>{const mx=Math.max(0,...a.map(tm));return a.filter(r=>mx-tm(r)<=(started?15:45)*6e4);};
+ const preOnly=started&&Math.max(0,...cur.map(tm))<st0;
  return <div>{maps.map(m=><div key={m} style={{marginBottom:10}}>
-  <div style={{fontSize:10.5,fontWeight:900,color:"#9aa3b2",letterSpacing:.6,margin:"0 2px 5px"}}>MAP {m}{started&&<span style={{color:"#f59e0b",marginLeft:6}}>· AVANT-MATCH</span>}</div>
+  <div style={{fontSize:10.5,fontWeight:900,color:"#9aa3b2",letterSpacing:.6,margin:"0 2px 5px"}}>MAP {m}{preOnly&&<span style={{color:"#f59e0b",marginLeft:6}}>· AVANT-MATCH</span>}</div>
   {fresh(cur.filter(r=>r.map===m)).sort((a,b)=>a.line-b.line).map(r=>{const v=per==null?null:Math.round((r.line-per)*100)/100;const bad=v!=null&&v<=0;return(
    <div key={r.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 9px",marginBottom:4,borderRadius:8,background:"#1d2733",fontSize:12.5,fontWeight:700,color:"#e5e7eb",opacity:bad?.4:1,textDecoration:bad?"line-through":"none"}}>
-    <span>U {r.line}{v!=null&&<span style={{color:"#9aa3b2",marginLeft:5}}>({v>0?"+":""}{v})</span>}</span><span>{r.odds_under}</span></div>);})}
+    <span>U {r.line}{v!=null&&<span style={{color:"#9aa3b2",marginLeft:5}}>({v>0?"+":""}{v})</span>}{(()=>{const t=tg&&tg[[r.pkey,r.stat,String(r.map),Number(r.line)].join("|")];return t?<span style={{marginLeft:6,fontSize:9.5,fontWeight:900,padding:"1px 5px",borderRadius:5,textDecoration:"none",display:"inline-block",background:t==="bot"?"rgba(34,197,94,.18)":"rgba(124,58,237,.22)",color:t==="bot"?"#86efac":"#c4b5fd"}}>{t==="bot"?"BOT":"SIM"}</span>:null;})()}</span><span>{r.odds_under}</span></div>);})}
  </div>)}</div>;}
 // Fenêtre « lignes Betby » d'un joueur (ouverte depuis une carte)
 function BetbyModal({rows,stat,player,per,onClose}){return(<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:620,background:"rgba(0,0,0,.72)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
@@ -5088,9 +5089,10 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
    else{await cloudDb("ev_mute?on_conflict=key",{method:"POST",body:[{key:k,match:mt,map:String(mp),created_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});setMutes(l=>[...l,{key:k,match:mt,map:String(mp)}]);}
    try{window.dispatchEvent(new Event("emeieks-mute"));}catch(e){}setMNote(null);}
   catch(e){setMNote("Erreur Supabase · lance ev_mute.sql");}};
- const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [openK,setOpenK]=useState(null);const [det,setDet]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
+ const [rows,setRows]=useState(null);const [bb,setBb]=useState([]);const [bbTag,setBbTag]=useState({});const [openK,setOpenK]=useState(null);const [det,setDet]=useState(null);const [stat,setStat]=useState("kills");const [fmtSel,setFmtSel]=useState({});
  const load=useCallback(async()=>{try{const since=new Date(Date.now()-4*864e5).toISOString().slice(0,19)+"Z";
-  const [r,b,mv]=await Promise.all([cloudDb("cut_history?source=eq.pp&at=gte."+since+"&order=at.desc&limit=12000"),cloudDb("betby_props?order=updated_at.desc&limit=3000").catch(()=>[]),cloudDb("cut_moves?at=gte."+since+"&select=cut_key,old,new,at&order=at.asc&limit=3000").catch(()=>[])]);
+  const [r,b,mv,pb]=await Promise.all([cloudDb("cut_history?source=eq.pp&at=gte."+since+"&order=at.desc&limit=12000"),cloudDb("betby_props?order=updated_at.desc&limit=3000").catch(()=>[]),cloudDb("cut_moves?at=gte."+since+"&select=cut_key,old,new,at&order=at.asc&limit=3000").catch(()=>[]),cloudDb("pot_bets?day=gte."+since.slice(0,10)+"&side=eq.under&select=pkey,stat,map,line,is_ev,kind&limit=5000").catch(()=>[])]);
+  const T={};(Array.isArray(pb)?pb:[]).forEach(x=>{if(x.kind==="duel")return;const k=[x.pkey,x.stat,String(x.map),Number(x.line)].join("|");if(x.is_ev)T[k]="bot";else if(!T[k])T[k]="sim";});setBbTag(T);
   setRows(Array.isArray(r)?r:[]);setBb(Array.isArray(b)?b:[]);const o={};(mv||[]).forEach(x=>{(o[x.cut_key]=o[x.cut_key]||[]).push(x);});setMoves(o);}catch(e){setRows([]);}},[]);
  const [moves,setMoves]=useState({});const [q,setQ]=useState("");const [avg,setAvg]=useState({});
  // moyenne réelle du joueur (tes résultats saisis, 10 dernières maps)
@@ -5160,7 +5162,7 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
     {P.map(r=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===r.pkey);
      const bm=(bb.find(x=>x.pkey===r.pkey&&x.match)||{}).match;const sides=bm?String(bm).split(/\s+vs\.?\s+/i):[];
      const wrong=pl&&pl.team&&(!same(pl.team,t)||(sides.length===2&&!sides.some(x=>same(x,pl.team))));
-     return <CutCard key={r.key} warn={wrong?{site:pl.team,pp:t,onClick:()=>openPlayerSheet(r.player)}:null} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t,m.game)} opp={t===A?B:A} when={m.live?"LIVE":(tsOf(m.start)&&tsOf(m.start)<=Date.now()?"Terminé":fmtT(r.start))} tag={null} game={m.game} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length}/>}>
+     return <CutCard key={r.key} warn={wrong?{site:pl.team,pp:t,onClick:()=>openPlayerSheet(r.player)}:null} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t,m.game)} opp={t===A?B:A} when={m.live?"LIVE":(tsOf(m.start)&&tsOf(m.start)<=Date.now()?"Terminé":fmtT(r.start))} tag={null} game={m.game} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length} tg={bbTag}/>}>
      <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div>
      {(()=>{const mv=moves[r.key];const a=avg[r.pkey];const L=a?(stat==="headshots"?a.h:a.k):[];const n=r.maps.split("+").length;
       return <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:3,fontSize:11,fontWeight:700,flexWrap:"wrap"}}>
