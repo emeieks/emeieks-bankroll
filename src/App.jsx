@@ -5295,6 +5295,14 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs .save{height:44px;border:none;border-radius:3px;background:var(--lk);color:#11161D;font-weight:700;font-size:15px;cursor:pointer}.rs .save:disabled{background:var(--pn);color:var(--dm);cursor:default}
 .rs .msg{font-weight:600;font-size:13px;min-height:16px}
 /* LoL : scoreboard façon broadcast, bleu à gauche, rouge à droite */
+.rs.dota{--pg:#0B0B0D;--pn:#141416;--pn2:#1C1B1F;--hd:#100E10;--rw:#17161A;--ln:#2A2528;--fg:#EDE9E6;--sf:#B9AFAB;--dm:#857A76;--lk:#FF5A3C;--wn:#5BD38A;--ls:#E0301E;font-family:Inter,Arial,sans-serif}
+.rs.dota .ban{background:linear-gradient(100deg,#3A0C08,#120808 70%)!important;border-bottom:2px solid #E0301E}
+.rs.dota .ban .no{color:#FF8A70}
+.rs.dota .stp::before{background:linear-gradient(#FF5A3C,#B81D13)!important}
+.rs.dota .mp{border:1px solid #3A1F1A!important;box-shadow:0 10px 30px -18px rgba(224,48,30,.45)}
+.rs.dota .st tr.team td{background:linear-gradient(90deg,rgba(224,48,30,.18),transparent 60%)!important}
+.rs.dota .next{background:linear-gradient(90deg,#B81D13,#E0301E)!important}
+.rs.dota .tog{color:#FF8A70!important}
 .rs.lx{--pg:#0A0C10;--pn:#111419;--pn2:#1A1F27;--hd:#0D1015;--rw:#151920;--ln:#252B35;--fg:#E8EAED;--sf:#A3ABB8;--dm:#6B7380;--lk:#0AC8B9;--wn:#0AC8B9;--ls:#FF4E50;font-family:Inter,Arial,sans-serif}
 .rs.lx .mh,.rs.lx .series,.rs.lx .mp,.rs.lx .bx{border-radius:12px}
 .rs.lx .ban{height:34px!important;background:linear-gradient(90deg,#123A6B,#0D1015 45%,#0D1015 55%,#6B1A20)!important;font:800 13px Inter,sans-serif;letter-spacing:.6px;text-shadow:none}
@@ -5456,7 +5464,7 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
  const shownM=useMemo(()=>allM?matches:matches.filter(m=>m.bb),[matches,allM]);const hiddenN=matches.length-matches.filter(m=>m.bb).length;
  useEffect(()=>{if(rows)setCnt(c=>({...c,[day]:{n:shownM.length,d:shownM.filter(m=>done[m.key]&&done[m.key].score1!=null).length}}));},[shownM,done]);
  const L=(t,g,s=24)=>{const u=findLogo(idx,t,g);return u?<img src={u} alt="" style={{width:s,height:s,objectFit:"contain",flexShrink:0}}/>:<span style={{width:s,height:s,borderRadius:3,background:teamColors(t)[0],color:"#14181E",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:s>30?13:9,fontWeight:800,flexShrink:0}}>{teamAbbr(t).slice(0,3)}</span>;};
- return(<div className={"rs"+(sel&&GNORM(sel.game)==="Valorant"?" val":"")+(sel&&GNORM(sel.game)==="LoL"?" lx":"")}><style>{RS_CSS}</style>
+ return(<div className={"rs"+(sel&&GNORM(sel.game)==="Valorant"?" val":"")+(sel&&GNORM(sel.game)==="LoL"?" lx":"")+(sel&&GNORM(sel.game)==="Dota2"?" dota":"")}><style>{RS_CSS}</style>
   {sel?<ResultForm m={sel} allPlayers={allPlayers} clubs={clubL[GNORM(sel.game)]||[]} tours={tours[GNORM(sel.game)]||[]} L={L} bets={bets} setBets={setBets} onClose={()=>{setSel(null);load();}}/>:<>
   <div className="days">{days.map((d,i)=>{const c=cnt[d];return <button key={d} aria-pressed={d===day} onClick={()=>setDay(d)}>{i===2?"Aujourd'hui":i===1?"Hier":i===3?"Demain":new Date(d+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"})}<small>{i>2?(c?c.n+" à venir":"à venir"):c?c.d+"/"+c.n+" saisis":" "}</small></button>;})}
    <button aria-label="Jour précédent" onClick={()=>setDay(d=>rsDay(new Date(new Date(d+"T12:00:00Z").getTime()-864e5)))} style={{flex:"0 0 40px"}}>‹</button></div>
@@ -5484,7 +5492,7 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
       <span className="sc">{r?<><span className={s1>s2?"w":"l"}>{s1}</span><span className="p"> - </span><span className={s2>s1?"w":"l"}>{s2}</span></>:<span className="p">vs</span>}</span>
       <span className="t2"><span>{B}</span><span style={{position:"relative",display:"inline-flex",flexShrink:0}}>{L(B,m.game)}{!clubKnown(B,clubL[GNORM(m.game)]||[])&&<span title="Club non lié" className="nl dt">!</span>}</span></span><span style={{display:"inline-flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>{(()=>{const mm=mpOf[m.key]||[];const nOT=mm.filter(x=>x.ot).length;const noMap=r&&["CS2","Valorant"].includes(GNORM(m.game))&&(mm.length===0||mm.some(x=>!x.map_name));
         const pk=new Set(Object.keys(m.players));const pend=!!lockB&&(bets||[]).some(b=>GNORM(b.game)===GNORM(m.game)&&pk.has(aliasOf(b.player))&&String(b.datetime||"").slice(0,10)===m.day&&!lockB.has(String(b.id)));
-        const gg=GNORM(m.game);const site=gg==="CS2"?["HLTV","https://www.hltv.org/search?query="+encodeURIComponent(A),"#2D6DA3"]:gg==="Valorant"?["VLR","https://www.vlr.gg/search/?q="+encodeURIComponent(A),"#E34A4A"]:null;
+        const gg=GNORM(m.game);const site=gg==="CS2"?["HLTV","https://www.hltv.org/search?query="+encodeURIComponent(A),"#2D6DA3"]:gg==="Valorant"?["VLR","https://www.vlr.gg/search/?q="+encodeURIComponent(A),"#E34A4A"]:gg==="Dota2"?["DOTABUFF","https://www.dotabuff.com/esports/search?q="+encodeURIComponent(A),"#B81D13"]:null;
         return <>{site&&<span role="link" tabIndex={0} title={"Ouvrir sur "+site[0]} onClick={e=>{e.stopPropagation();window.open(site[1],"_blank","noopener");}} style={{font:"900 9px Inter,sans-serif",letterSpacing:.3,padding:"2px 5px",borderRadius:3,background:site[2],color:"#fff",cursor:"pointer"}}>{site[0]}</span>}{Array.from({length:nOT}).map((_,j)=><span key={j} style={{font:"800 10px Inter,sans-serif",background:"var(--ot)",color:"#2A1C05",padding:"1px 5px",borderRadius:3}}>OT</span>)}
          {noMap&&<span title="Carte non assignée" style={{width:16,height:16,borderRadius:"50%",background:"#E0533F",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
          {pend&&<span title="Paris pas verrouillés" style={{width:16,height:16,borderRadius:"50%",background:"#3B82F6",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
@@ -5679,6 +5687,8 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const rnd=x=>(parseInt(x.a)||0)+(parseInt(x.b)||0);const isOT=x=>rounds&&rnd(x)>24;
  const val=(i,k,f)=>{const v=(pk[(i+1)+"|"+k]||{})[f];return v===""||v==null?null:parseInt(v);};
  const tot=(i,t,f)=>Object.keys(roster[t]).reduce((a,k)=>a+(val(i,k,f)||0),0);
+ // Dota 2 : le score de chaque game = kills de chaque équipe, vainqueur = plus de kills (si rien n'est saisi)
+ useEffect(()=>{if(G!=="Dota2")return;setMaps(l=>{let ch=false;const n=l.map((x,i)=>{const ka=tot(i,A,"k"),kb=tot(i,B,"k");if(!(ka>0||kb>0))return x;const y={...x};if(y.a===""||y.a==null){y.a=String(ka);ch=true;}if(y.b===""||y.b==null){y.b=String(kb);ch=true;}if(!y.win&&ka!==kb){y.win=ka>kb?A:B;ch=true;}return y;});return ch?n:l;});},[pk]);
  const setP=(i,k,f,v)=>setPk(o=>({...o,[(i+1)+"|"+k]:{...(o[(i+1)+"|"+k]||{}),[f]:v}}));
  // saisie rapide : Entrée passe à la case suivante
  const nextField=e=>{if(e.key!=="Enter")return;e.preventDefault();const all=[...document.querySelectorAll(".rs [data-q]")];const i=all.indexOf(e.target);if(i>=0&&all[i+1]){all[i+1].focus();all[i+1].select&&all[i+1].select();}else e.target.blur();};
@@ -5693,11 +5703,11 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const save=async()=>{const _G=GNORM(m.game);const _n=s.s1==null?0:Number(s.s1)+Number(s.s2);if(!_n){setMsg("Score de la série manquant");return;}const _ms=maps.slice(0,_n);
   if(_ms.length<_n){setMsg("Maps manquantes");return;}
   if(["CS2","Valorant"].includes(_G)){const bad=_ms.findIndex(x=>!String(x.name||"").trim()||x.a===""||x.b==="");if(bad>=0){setMsg("Map "+(bad+1)+" incomplète (carte ou score)");return;}}
-  else{const bad=_ms.findIndex(x=>!x.win);if(bad>=0){setMsg((_G==="LoL"?"Game ":"Map ")+(bad+1)+" : vainqueur manquant");return;}}
+  else{const bad=_ms.findIndex(x=>!x.win);if(bad>=0){setMsg((_G==="LoL"||_G==="Dota2"?"Game ":"Map ")+(bad+1)+" : vainqueur manquant");return;}}
   // scoreboard de chaque map jouée (ex. 2-0 → 2 scoreboards) : sinon on prévient, 2e appui = enregistrer quand même
   {const miss=_ms.map((x,i)=>(tot(i,A,"k")>0&&tot(i,B,"k")>0)?null:i+1).filter(Boolean);
    const IK="v7_res_incomplete";let S={};try{S=JSON.parse(localStorage.getItem(IK)||"{}");}catch(e){}
-   if(miss.length&&!forceSave){setForceSave(true);setMsg("⚠️ Scoreboard manquant : "+(_G==="LoL"?"Game ":"Map ")+miss.join(", ")+". Appuie encore pour enregistrer quand même.");return;}
+   if(miss.length&&!forceSave){setForceSave(true);setMsg("⚠️ Scoreboard manquant : "+(_G==="LoL"||_G==="Dota2"?"Game ":"Map ")+miss.join(", ")+". Appuie encore pour enregistrer quand même.");return;}
    if(miss.length)S[m.key]=miss;else delete S[m.key];try{localStorage.setItem(IK,JSON.stringify(S));}catch(e){}setForceSave(false);}
   setBusy(true);setMsg(null);const now=new Date().toISOString();
   const _kA=i=>tot(i,A,"k"),_kB=i=>tot(i,B,"k");
@@ -5779,7 +5789,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
       <div style={{flex:1}}><div style={{color:"#fff",fontWeight:900,fontSize:17}}>{advFor.n}</div><div style={{color:"#0AC8B9",fontSize:12.5,fontWeight:700}}>{lol?(v.c||"Champion ?")+" · Game ":(v.c?v.c+" · ":"")+"Map "}{advFor.i+1}</div></div>
       <button onClick={()=>setAdvFor(null)} aria-label="Fermer" style={{border:"none",background:"none",color:"#8A94A3",fontSize:22,cursor:"pointer"}}>×</button></div>
      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:1,background:"#252B35"}}>{S.map(([l,x])=><div key={l} style={{background:"#0D1015",padding:"12px 6px",textAlign:"center"}}><div style={{fontSize:10.5,color:"#6B7380",fontWeight:800,letterSpacing:.5}}>{l}</div><div style={{fontSize:17,fontWeight:900,color:"#fff",marginTop:3}}>{x}</div></div>)}</div>
-     {!v.adv&&<div style={{padding:12,fontSize:12.5,color:"#8A94A3"}}>{lol?"Colle le tableau Liquipedia de la game":G==="Valorant"?"Colle le tableau vlr.gg de la map":"Colle le tableau HLTV de la map"} pour avoir les stats avancées.</div>}</div></div>;})()}
+     {!v.adv&&<div style={{padding:12,fontSize:12.5,color:"#8A94A3"}}>{lol?"Colle le tableau Liquipedia de la game":G==="Valorant"?"Colle le tableau vlr.gg de la map":G==="Dota2"?"Colle la page Dotabuff de la game":"Colle le tableau HLTV de la map"} pour avoir les stats avancées.</div>}</div></div>;})()}
   {clubFor&&<ClubPick g={m.game} name={clubFor} list={clubs} logo={c=>L(c,m.game,22)} onClose={()=>setClubFor(null)} onPick={c=>{saveTeamLink(m.game,clubFor,c);setLnk(o=>({...o,[clubFor]:c}));setClubFor(null);}}/>}
   {plFor&&(()=>{const pool=Object.values(allPlayers||{}).filter(p=>p&&p.name&&GNORM(p.game)===G&&same(p.team,plFor.t)).map(p=>p.name);return <ClubPick g={m.game} name={plFor.n} list={[...new Set(pool)]} onClose={()=>setPlFor(null)} onPick={async nm=>{const to=cutNorm(nm),from=plFor.k;
    try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:[{pkey:from,alias:to,updated_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});}catch(e){}BET_ALIAS={...BET_ALIAS,[from]:to};
@@ -5804,7 +5814,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} vetos={vetos} onVetos={setVetos} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
    return <section className="mp" key={i}>
-   <div className="ban" style={{background:mapImg[x.name]?"linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,.15)),center/cover no-repeat url("+mapImg[x.name]+")":"linear-gradient(100deg,"+c1+","+c2+")",height:mapImg[x.name]?52:36}}><span className="no">{lol?"GAME":"MAP"} {i+1}</span>{pool?(x.name||"Choisir la carte ▾"):lol?(x.win?<span style={{display:"inline-flex",alignItems:"center",gap:6}}>{L(x.win,m.game,18)}Victoire {teamAbbr(x.win)}</span>:"Game "+(i+1)):"Map "+(i+1)}{ot&&<span className="otb" style={{right:x.name&&pool?84:8}}>OT</span>}
+   <div className="ban" style={{background:mapImg[x.name]?"linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,.15)),center/cover no-repeat url("+mapImg[x.name]+")":"linear-gradient(100deg,"+c1+","+c2+")",height:mapImg[x.name]?52:36}}><span className="no">{lol||G==="Dota2"?"GAME":"MAP"} {i+1}</span>{pool?(x.name||"Choisir la carte ▾"):(lol||G==="Dota2")?(x.win?<span style={{display:"inline-flex",alignItems:"center",gap:6}}>{L(x.win,m.game,18)}Victoire {teamAbbr(x.win)}</span>:"Game "+(i+1)):"Map "+(i+1)}{ot&&<span className="otb" style={{right:x.name&&pool?84:8}}>OT</span>}
     {pool&&!x.name&&<select value={x.name} onChange={e=>upd(i,"name",e.target.value)} aria-label={"Carte de la map "+(i+1)}><option value="">Choisir…</option>{pool.map(n=><option key={n}>{n}</option>)}</select>}
     {pool&&x.name&&chg!==i&&<button className="chg" onClick={()=>setChg(i)}>Changer</button>}
     {pool&&x.name&&chg===i&&<div className="cf">Changer {x.name} ?<button className="y" onClick={()=>{upd(i,"name","");setChg(null);}}>Oui</button><button onClick={()=>setChg(null)}>Non</button></div>}</div>
@@ -5829,7 +5839,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    </div>}
    {lol&&W.length>0&&<div className="warn" style={{marginTop:8}}>{W.map((w,j)=><div key={j}><PI n="alert" s={12}/> {w}</div>)}</div>}
   </section>;})}
-  {!lol&&<div className="stp">2. Colle le scoreboard de chaque map</div>}
+  {!lol&&<div className="stp">{G==="Dota2"?"Colle le scoreboard Dotabuff de chaque game":"2. Colle le scoreboard de chaque map"}</div>}
   {!lol&&maps.slice(0,shownN).map((x,i)=>{const isO=open===i;const r=rnd(x);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const W=checks(i);
    return <section className="mp sbd" key={"sb"+i}>
    <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></div>
