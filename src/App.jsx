@@ -5518,7 +5518,23 @@ function boardRows(txt){const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]
  const rh=/([A-Za-z0-9_.\-]{2,20})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+([\d.]+)%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)\s+(\d{1,2})\s*\(\d{1,2}\)\s+(\d{1,2})\s*\(\d{1,2}\)\s+([\d.]+)\s+[+\-]?[\d.]+%\s+([\d.]+)/g;
  while((m=rh.exec(flat)))out.push({name:m[1],k:cutNorm(m[1]),kills:m[3],hs:m[4],adv:{kast:+m[2],a:+m[5],d:+m[6],adr:+m[7],rating:+m[8]}});
  return out;}
-function parseBoard(txt,roster,A,B){const flat=" "+String(txt).replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ")+" ";const low=flat.toLowerCase();const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+// Dotabuff (Dota 2) : une ligne par joueur « Lane  Joueur  K  D  A  NET … », le héros 2 lignes au-dessus
+function parseDotabuff(txt,roster,A,B){const L=String(txt).split(/\r?\n/);const out={};const keys=[];[A,B].forEach(t=>Object.entries(roster[t]||{}).forEach(([k,n])=>keys.push({k,n:cutNorm(n)})));
+ const strip=x=>cutNorm(String(x).replace(/^[^.\s]{1,12}\./,""));
+ L.forEach((l,i)=>{const m=l.match(/^\s*(?:Top|Middle|Mid|Bottom|Jungle|Roaming|Off|Safe)[^\t]*\t([^\t]+)\t(\d+|-)\t(\d+|-)\t(\d+|-)\t/i);if(!m)return;
+  const raw=m[1].trim();const a=strip(raw),b=cutNorm(raw);const hit=keys.find(x=>x.n===a||x.n===b)||keys.find(x=>x.n.length>=3&&(a.startsWith(x.n)||x.n.startsWith(a)));
+  const hero=(L[i-2]||"").trim();const o={k:m[2]==="-"?"0":m[2],h:"",d:m[3]==="-"?"0":m[3],as:m[4]==="-"?"0":m[4]};if(hero&&!/^\d+$/.test(hero)&&hero.length<30)o.c=hero;
+  out[hit?hit.k:"?"+raw]=o;});
+ return out;}
+function isDotabuff(t){return /Lane Outcome|Hero\tR\tL\tPlayer/.test(String(t));}
+// STRATZ (Dota 2) : « K / D / A », valeur nette, puis le pseudo (sous la stat)
+function parseStratz(txt,roster,A,B){const t=String(txt).replace(/\]\([^)]*\)/g,"").replace(/[\[\]]/g,"").replace(/\u00a0/g," ");const keys=[];[A,B].forEach(tm=>Object.entries(roster[tm]||{}).forEach(([k,n])=>keys.push({k,n:cutNorm(n)})));
+ const out={};const re=/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\n\s*(\d{1,3}(?:[ ,.]\d{3})?)\s*\n\s*([^\n]+)/g;let m;
+ while((m=re.exec(t))){const raw=m[5].trim();const a=cutNorm(raw.replace(/^[^.\s]{1,12}\./,""));const hit=keys.find(x=>x.n===a)||keys.find(x=>x.n.length>=3&&a.length>=3&&(a.startsWith(x.n)||x.n.startsWith(a)));
+  out[hit?hit.k:"?"+raw]={k:m[1],h:"",d:m[2],as:m[3]};}
+ return out;}
+function isStratz(t){return /stratz\.com|Confrontation/i.test(String(t))||/\d\s*\n\s*\/\s*\n\s*\d+\s*\n\s*\/\s*\n/.test(String(t));}
+function parseBoard(txt,roster,A,B){if(isStratz(txt)){const d=parseStratz(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}if(isDotabuff(txt)){const d=parseDotabuff(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}const flat=" "+String(txt).replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ")+" ";const low=flat.toLowerCase();const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
  const hits=[];[A,B].forEach(t=>Object.entries(roster[t]).forEach(([k,n])=>{const nm=String(n).toLowerCase();const tries=[nm,nm.replace(/0/g,"o"),nm.slice(0,6),nm.slice(0,4)].filter((x,i,a)=>(x.length>=3||(x===nm&&x.length===2))&&a.indexOf(x)===i);
   for(const q of tries){const re=new RegExp("(^|[^a-z0-9])"+esc(q)+(q.length<3?"(?=[^a-z0-9])":""),"g");let mm,best=-1;
    // plusieurs fois le même nom (ex. « On ») : on garde celui suivi de stats (K/D/A ou kills (HS))
