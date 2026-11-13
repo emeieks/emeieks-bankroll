@@ -5003,9 +5003,12 @@ function CutCard({player,team,club,role,opp,logo,photo,when,hot,tag,children,foo
 function BetbyMini({rows,stat,per}){const L=rows.filter(r=>r.stat===stat);if(!L.length)return <div style={{padding:16,fontSize:12,color:"#6b7280",textAlign:"center"}}>Pas de ligne Betby</div>;
  const ev=L.reduce((a,r)=>(!a||String(r.start||"")>String(a.start||""))?r:a,null).event_id;const cur=L.filter(r=>r.event_id===ev);
  const maps=[...new Set(cur.map(r=>r.map))].sort();
+ // Lignes retirées par Betby : on garde seulement celles du dernier passage (±45 min). En live, Betby n'est plus enregistré → dernière ligne d'avant-match.
+ const tm=r=>Date.parse(r.updated_at||"")||0;const fresh=a=>{const mx=Math.max(0,...a.map(tm));return a.filter(r=>mx-tm(r)<=45*6e4);};
+ const st0=Date.parse((cur[0]||{}).start||"");const started=!!st0&&st0<=Date.now();
  return <div>{maps.map(m=><div key={m} style={{marginBottom:10}}>
-  <div style={{fontSize:10.5,fontWeight:900,color:"#9aa3b2",letterSpacing:.6,margin:"0 2px 5px"}}>MAP {m}</div>
-  {cur.filter(r=>r.map===m).sort((a,b)=>a.line-b.line).map(r=>{const v=per==null?null:Math.round((r.line-per)*100)/100;const bad=v!=null&&v<=0;return(
+  <div style={{fontSize:10.5,fontWeight:900,color:"#9aa3b2",letterSpacing:.6,margin:"0 2px 5px"}}>MAP {m}{started&&<span style={{color:"#f59e0b",marginLeft:6}}>· AVANT-MATCH</span>}</div>
+  {fresh(cur.filter(r=>r.map===m)).sort((a,b)=>a.line-b.line).map(r=>{const v=per==null?null:Math.round((r.line-per)*100)/100;const bad=v!=null&&v<=0;return(
    <div key={r.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 9px",marginBottom:4,borderRadius:8,background:"#1d2733",fontSize:12.5,fontWeight:700,color:"#e5e7eb",opacity:bad?.4:1,textDecoration:bad?"line-through":"none"}}>
     <span>U {r.line}{v!=null&&<span style={{color:"#9aa3b2",marginLeft:5}}>({v>0?"+":""}{v})</span>}</span><span>{r.odds_under}</span></div>);})}
  </div>)}</div>;}
