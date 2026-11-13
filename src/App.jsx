@@ -5733,6 +5733,13 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
     pr.push({key:mk+"|"+(i+1)+"|"+k,match_key:mk,map_no:i+1,player:n,pkey:k,team:t,game:m.game,day:m.day,kills:kv,hs:val(i,k,"h"),champion:((pk[(i+1)+"|"+k]||{}).c)||null,...(((pk[(i+1)+"|"+k]||{}).adv)?{adv:(pk[(i+1)+"|"+k]||{}).adv}:{}),rounds:rounds&&rnd(x)?rnd(x):null,map_name:x.name||null,ot:isOT(x),
      pp_line:K.pp?Number(K.pp.line):null,pp_maps:K.pp?K.pp.maps:null,bb_line:K.bb?Number(K.bb.line):null,bb_over:K.bb?K.bb.odds_over:null,bb_under:K.bb?K.bb.odds_under:null,
      pp_hs_line:H.pp?Number(H.pp.line):null,pp_hs_maps:H.pp?H.pp.maps:null,bb_hs_line:H.bb?Number(H.bb.line):null,bb_hs_over:H.bb?H.bb.odds_over:null,bb_hs_under:H.bb?H.bb.odds_under:null,updated_at:now});})));
+   // lien explicite pari fictif → ce match (avant les scores) : mêmes 2 équipes ET début à moins de 8 h ; le règlement ne se fera QUE avec ce match
+   try{const ks=[...new Set(pr.map(x=>x.pkey))];const d0=new Date(m.day+"T12:00:00");const f=n=>{const d=new Date(d0);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+    const cand=ks.length?await cloudDb("pot_bets?pkey=in.("+ks.map(k=>encodeURIComponent('"'+k+'"')).join(",")+")&day=gte."+f(-1)+"&day=lte."+f(1)+"&select=key,match,start,result_key"):[];
+    const tm=x=>{const n=String(x||"").replace(/\s*MAPS?\s*\d.*$/i,"");const L=n.split(/\s+(?:vs\.?|-|–)\s+/i).map(t=>teamKey(t));return L;};const near=x=>{const t=rsTs(x.start);return isNaN(t)||!m.t||Math.abs(t-m.t)<8*3600e3;};
+    const okT=x=>{const L=tm(x.match);const has=t=>{const k=teamKey(t);return L.some(y=>y&&k&&(y===k||y.includes(k)||k.includes(y)||(k.length<=3&&new RegExp("^"+k.split("").join(".*")).test(y))));};return has(A)&&has(B);};
+    const mine=(Array.isArray(cand)?cand:[]).filter(x=>(!x.result_key||x.result_key===mk)&&okT(x)&&near(x)).map(x=>x.key);
+    for(let i=0;i<mine.length;i+=60)await cloudDb("pot_bets?key=in.("+mine.slice(i,i+60).map(k=>encodeURIComponent('"'+String(k).replace(/"/g,'\\"')+'"')).join(",")+")",{method:"PATCH",prefer:"return=minimal",body:{result_key:mk}});}catch(e){}
    if(pr.length){const hasAdv=pr.some(x=>x.adv);if(hasAdv)pr.forEach(x=>{if(!("adv" in x))x.adv=null;});
     try{await cloudDb("player_results?on_conflict=key",{method:"POST",body:pr,prefer:"resolution=merge-duplicates"});}
     catch(e){if(!hasAdv||!/adv|PGRST204|column/i.test(String(e&&e.message||e)))throw e;pr.forEach(x=>delete x.adv);await cloudDb("player_results?on_conflict=key",{method:"POST",body:pr,prefer:"resolution=merge-duplicates"});setTimeout(()=>setMsg(m=>(m||"")+" · stats avancées non gardées : lance adv.sql"),50);}}
@@ -6832,7 +6839,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
   cloudDb("match_results?day=gte."+f(-1)+"&day=lte."+f(1)+"&select=key,team1,team2,game,day,score1,score2&order=day.desc&limit=200").then(r=>setCands(Array.isArray(r)?r:[])).catch(()=>setCands([]));};
  const doLink=async(z,c)=>{const nm=c.team1+" vs "+c.team2;const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day&&!x.result);
   const q=l=>l.map(x=>encodeURIComponent('"'+String(x.key).replace(/"/g,'\\"')+'"')).join(",");setLink(o=>({...o,busy:true}));
-  try{for(let i=0;i<L.length;i+=60){const r=await cloudDb("pot_bets?key=in.("+q(L.slice(i,i+60))+")",{method:"PATCH",prefer:"return=representation",body:{match:nm}});if(Array.isArray(r)&&!r.length)throw new Error("Supabase refuse la modification : relance simulation.sql (droit de modifier).");}
+  try{for(let i=0;i<L.length;i+=60){const r=await cloudDb("pot_bets?key=in.("+q(L.slice(i,i+60))+")",{method:"PATCH",prefer:"return=representation",body:{match:nm,result_key:c.key}});if(Array.isArray(r)&&!r.length)throw new Error("Supabase refuse la modification : relance simulation.sql (droit de modifier).");}
    await cloudDb("rpc/pot_resettle",{method:"POST",body:{d:c.day}}).catch(()=>{});
    // vérification : qu'est-ce qui reste en attente, et pourquoi
    const [after,pr,mp]=await Promise.all([cloudDb("pot_bets?key=in.("+q(L)+")&select=key,player,pkey,map,stat,side,line,result,kind,vs"),cloudDb("player_results?match_key=eq."+encodeURIComponent(c.key)+"&select=pkey,map_no,kills,hs"),cloudDb("map_results?match_key=eq."+encodeURIComponent(c.key)+"&select=map_no")]);
@@ -13575,7 +13582,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    </div>}
    {(()=>{const tms=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)?9e15:t;};
     const today=new Date().toDateString();const dayOf=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):(a.start||a.created_at));return isNaN(t)?today:t.toDateString();};
-    const list=evAlerts.filter(a=>!isMuted(a)&&dayOf(a)===today&&(evFilter==="all"||(a.status==="new"&&isNew(a)))).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
+    const list=evAlerts.filter(a=>!isMuted(a)&&(dayOf(a)===today||(a.status==="new"&&(()=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)||t>Date.now()-3*3600e3;})()))&&(evFilter==="all"||(a.status==="new"&&isNew(a)))).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
     const ORDER=["CS2","Dota2","LoL","Valorant"];const games=[...new Set(list.map(a=>GL[a.game]||a.game))].sort((x,y)=>ORDER.indexOf(x)-ORDER.indexOf(y));
     const NAMES={CS2:"Counter-Strike 2",Dota2:"Dota 2",LoL:"League of Legends",Valorant:"Valorant"};
     // vraies couleurs des jeux : [fond foncé, accent]
