@@ -5512,7 +5512,8 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
  useEffect(()=>{RS_TOURS=[...new Set([...(RS_TOURS||[]),...(rows||[]).map(r=>r.tournament).filter(Boolean),...Object.values(done).map(x=>x.tournament).filter(Boolean)])].sort();},[rows,done]);
  useEffect(()=>{if(!focusM||!rows)return;const T=(focusM.teams||[]).map(teamKey).filter(Boolean);
   // les 2 équipes doivent correspondre (avant : une seule suffisait parfois → « GamerLegion vs CyberHero » ouvrait « BetBoom vs GamerLegion »)
-  const eq=(k,t)=>k===t||(Math.min(k.length,t.length)>=4&&(k.includes(t)||t.includes(k)));
+  const ab=(sh,lg)=>sh.length>=2&&sh.length<=4&&lg.length>sh.length&&lg[0]===sh[0]&&new RegExp("^"+sh.split("").join(".*")).test(lg);   // « yes » ↔ « yellowsubmarine »
+  const eq=(k,t)=>k===t||(Math.min(k.length,t.length)>=4&&(k.includes(t)||t.includes(k)))||ab(k,t)||ab(t,k);
   const hit=(matches||[]).find(m=>{const K=Object.keys(m.teams||{});return T.length>=2&&T.every(t=>K.some(k=>eq(k,t)))&&K.every(k=>T.some(t=>eq(k,t)));});
   if(hit){setSel(hit);setFocusM(null);window.__openResult=null;return;}
   // pas encore trouvé : les matchs du jour chargent peut-être encore → on réessaie, puis on tente la veille / le lendemain, puis on abandonne
@@ -5779,6 +5780,30 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
    <button type="button" disabled={odBusy} onClick={loadOD} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:"#E0301E",color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",whiteSpace:"nowrap"}}>{odBusy?"…":"Charger"}</button></div>}
   <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder={dota?"…ou colle Dotabuff / OpenDota ici":"Colle ici"} aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");setAgain(false);}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
+// Paris fictifs (Simulation) reliés à ce match + bouton pour en relier d'autres (noms d'équipe différents selon la source)
+function SimLinkBox({mk,m,G}){const [lk,setLk]=useState(null);const [open,setOpen]=useState(false);const [cand,setCand]=useState(null);const [busy,setBusy]=useState("");const [msg,setMsg]=useState("");
+ const d0=new Date(m.day+"T12:00:00");const f=n=>{const d=new Date(d0);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+ const load=useCallback(async()=>{try{const r=await cloudDb("pot_bets?result_key=eq."+encodeURIComponent(mk)+"&select=key,result,profit&limit=2000");setLk(Array.isArray(r)?r:[]);}catch(e){setLk([]);}},[mk]);
+ useEffect(()=>{load();},[load]);
+ const openList=async()=>{setOpen(true);setCand(null);try{const r=await cloudDb("pot_bets?day=gte."+f(-1)+"&day=lte."+f(1)+"&select=key,match,day,game,result_key,result&limit=5000");
+  const g={};(Array.isArray(r)?r:[]).filter(x=>GNORM(x.game||G)===G&&x.result_key!==mk&&!/[+&\/]/.test(String(x.match||""))).forEach(x=>{const k=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim()+"|"+x.day;(g[k]=g[k]||{name:k.split("|")[0],day:x.day,keys:[],other:0,pend:0}).keys.push(x.key);if(x.result_key)g[k].other++;if(!x.result)g[k].pend++;});
+  setCand(Object.values(g).sort((a,b)=>b.pend-a.pend||b.keys.length-a.keys.length));}catch(e){setCand([]);}};
+ const linkG=async c=>{setBusy(c.name);setMsg("");try{const ex=await cloudDb("match_results?key=eq."+encodeURIComponent(mk)+"&select=key").catch(()=>[]);if(!Array.isArray(ex)||!ex.length){setMsg("Enregistre d'abord le match (bouton plus bas), puis relie les paris.");setBusy("");return;}
+  for(let i=0;i<c.keys.length;i+=60)await cloudDb("pot_bets?key=in.("+c.keys.slice(i,i+60).map(k=>encodeURIComponent('"'+String(k).replace(/"/g,'\\"')+'"')).join(",")+")",{method:"PATCH",prefer:"return=minimal",body:{result_key:mk}});
+  await cloudDb("rpc/pot_resettle",{method:"POST",body:{d:m.day}}).catch(()=>{});setMsg("✓ "+c.keys.length+" paris de « "+c.name+" » reliés à ce match");setOpen(false);load();}catch(e){setMsg("Lien impossible : "+String(e.message||e).slice(0,120));}setBusy("");};
+ const n=(lk||[]).length,ok=(lk||[]).filter(x=>x.result).length,u=(lk||[]).reduce((a,x)=>a+(Number(x.profit)||0),0);
+ return <section className="mp" style={{marginTop:10}}><div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderBottom:"1px solid var(--ln)"}}>
+  <b style={{fontSize:14}}>Paris Simulation</b><span style={{color:"var(--dm)",fontSize:13}}>{lk==null?"…":n?n+" reliés · "+ok+" réglés"+(ok?" · "+(u>=0?"+":"")+u.toFixed(2)+" u":""):"aucun relié"}</span>
+  <button type="button" onClick={openList} style={{marginLeft:"auto",height:30,padding:"0 10px",borderRadius:6,border:"1px solid var(--lk)",background:"transparent",color:"var(--lk)",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>🔗 Lier des paris</button></div>
+  {msg&&<div style={{padding:"8px 12px",fontSize:12.5,color:msg.startsWith("✓")?"#4ADE80":"#FBBF24"}}>{msg}</div>}
+  {open&&<div role="dialog" aria-label="Lier des paris de la Simulation" onClick={()=>setOpen(false)} style={{position:"fixed",inset:0,zIndex:230,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"60px 12px"}}>
+   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:460,maxHeight:"75vh",display:"flex",flexDirection:"column",background:"#12161D",border:"1px solid #2A3240",borderRadius:10,overflow:"hidden",fontFamily:"Inter,sans-serif"}}>
+    <div style={{padding:"12px 14px 4px",color:"#fff",fontSize:14,fontWeight:800}}>Lier des paris Simulation à ce match</div>
+    <div style={{padding:"0 14px 10px",color:"#8A94A3",fontSize:12}}>Matchs de la Simulation du {f(-1).slice(5)} au {f(1).slice(5)} ({G}). Touche celui qui correspond.</div>
+    <div style={{overflow:"auto",borderTop:"1px solid #2A3240"}}>{cand==null?<div style={{padding:14,color:"#8A94A3",fontSize:13}}>Chargement…</div>:!cand.length?<div style={{padding:14,color:"#8A94A3",fontSize:13}}>Aucun autre pari fictif ces jours-là.</div>:
+     cand.map(c=><button key={c.name+c.day} type="button" disabled={!!busy} onClick={()=>linkG(c)} style={{display:"flex",justifyContent:"space-between",gap:10,width:"100%",textAlign:"left",padding:"10px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"transparent",color:"#E5E7EB",fontSize:14,cursor:"pointer"}}>
+      <span><b>{c.name}</b><span style={{color:"#8A94A3",fontSize:12}}> · {c.day.slice(5)}</span>{c.other?<span style={{color:"#FBBF24",fontSize:11.5}}> · {c.other} déjà liés ailleurs</span>:null}</span><span style={{color:"#8A94A3",fontSize:12.5,whiteSpace:"nowrap"}}>{busy===c.name?"…":c.keys.length+" paris"+(c.pend?" · "+c.pend+" en attente":"")}</span></button>)}</div></div></div>}
+ </section>;}
 function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const [evM,setEvM]=useState(null);const [forceSave,setForceSave]=useState(false);
  useEffect(()=>{const t0=rsTs(m.start);const since=new Date((isNaN(t0)?Date.now():t0)-3*864e5).toISOString();
@@ -5872,10 +5897,14 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
      pp_hs_line:H.pp?Number(H.pp.line):null,pp_hs_maps:H.pp?H.pp.maps:null,bb_hs_line:H.bb?Number(H.bb.line):null,bb_hs_over:H.bb?H.bb.odds_over:null,bb_hs_under:H.bb?H.bb.odds_under:null,updated_at:now});})));
    // lien explicite pari fictif → ce match (avant les scores) : mêmes 2 équipes ET début à moins de 8 h ; le règlement ne se fera QUE avec ce match
    try{const ks=[...new Set(pr.map(x=>x.pkey))];const d0=new Date(m.day+"T12:00:00");const f=n=>{const d=new Date(d0);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
-    const cand=ks.length?await cloudDb("pot_bets?pkey=in.("+ks.map(k=>encodeURIComponent('"'+k+'"')).join(",")+")&day=gte."+f(-1)+"&day=lte."+f(1)+"&select=key,match,start,result_key"):[];
+    const cand=ks.length?await cloudDb("pot_bets?pkey=in.("+ks.map(k=>encodeURIComponent('"'+k+'"')).join(",")+")&day=gte."+f(-1)+"&day=lte."+f(1)+"&select=key,pkey,match,start,result_key"):[];
     const tm=x=>{const n=String(x||"").replace(/\s*MAPS?\s*\d.*$/i,"");const L=n.split(/\s+(?:vs\.?|-|–)\s+/i).map(t=>teamKey(t));return L;};const near=x=>{const t=rsTs(x.start);return isNaN(t)||!m.t||Math.abs(t-m.t)<8*3600e3;};
     const okT=x=>{const L=tm(x.match);const has=t=>{const k=teamKey(t);return L.some(y=>y&&k&&(y===k||y.includes(k)||k.includes(y)||(k.length<=3&&new RegExp("^"+k.split("").join(".*")).test(y))));};return has(A)&&has(B);};
-    const mine=(Array.isArray(cand)?cand:[]).filter(x=>(!x.result_key||x.result_key===mk)&&okT(x)&&near(x)).map(x=>x.key);
+    // noms différents selon la source (« PARIVISION vs Yellow Submarine » ≠ « Vision vs YeS ») : si au moins 3 joueurs de CE match ont des paris
+    // sur un même nom de match, à moins de 8 h, c'est le même match (un joueur ne joue pas 2 matchs en 8 h)
+    const C=(Array.isArray(cand)?cand:[]).filter(x=>(!x.result_key||x.result_key===mk)&&near(x));const byM={};C.forEach(x=>{const k=String(x.match||"");(byM[k]=byM[k]||new Set()).add(x.pkey);});
+    const mine=C.filter(x=>okT(x)||(byM[String(x.match||"")]||new Set()).size>=3).map(x=>x.key);
+    window.__lastLinked=mine.length;
     for(let i=0;i<mine.length;i+=60)await cloudDb("pot_bets?key=in.("+mine.slice(i,i+60).map(k=>encodeURIComponent('"'+String(k).replace(/"/g,'\\"')+'"')).join(",")+")",{method:"PATCH",prefer:"return=minimal",body:{result_key:mk}});}catch(e){}
    if(pr.length){const hasAdv=pr.some(x=>x.adv);if(hasAdv)pr.forEach(x=>{if(!("adv" in x))x.adv=null;});
     try{await cloudDb("player_results?on_conflict=key",{method:"POST",body:pr,prefer:"resolution=merge-duplicates"});}
@@ -6067,6 +6096,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
       <button onClick={()=>link(x.b,false)} aria-label={"Retirer ce pari du match"} title="Ce pari n'est pas sur ce match" style={{marginLeft:6,border:"none",background:"none",color:"var(--dm)",cursor:"pointer",fontSize:14}}>×</button></td></tr>;})}</tbody></table></div></>}
    {!mineB.length&&!addOpen&&<div style={{padding:"10px 12px",fontSize:12.5,color:"var(--dm)"}}>Aucun pari relié à ce match.</div>}
   </section>
+  <SimLinkBox mk={mk} m={m} G={G}/>
   {(()=>{// lignes Betby au-dessus du seuil pour ce match, réglées avec ce que tu viens de taper
    const live=[];maps.forEach((x,i)=>[A,B].forEach(t=>Object.entries(roster[t]).forEach(([k])=>{const kv=val(i,k,"k");if(kv==null)return;live.push({pkey:k,map_no:i+1,day:m.day,team:t,match_key:mk,kills:kv,hs:val(i,k,"h"),ot:isOT(x)});})));
    const P=potJoin(pots.filter(x=>hsOn||x.stat!=="headshots"),live).map(x=>({...x,hs:x.stat==="headshots",n:x.player,ot:x.r.ot})).filter(x=>x.res!=="void");
