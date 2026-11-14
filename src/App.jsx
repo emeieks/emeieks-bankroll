@@ -5601,17 +5601,61 @@ function boardRows(txt){const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]
  while((m=rh.exec(flat)))out.push({name:m[1],k:cutNorm(m[1]),kills:m[3],hs:m[4],adv:{kast:+m[2],a:+m[5],d:+m[6],adr:+m[7],rating:+m[8]}});
  return out;}
 // Dotabuff (Dota 2) : une ligne par joueur « Lane  Joueur  K  D  A  NET … », le héros 2 lignes au-dessus
+// nom d'équipe Dotabuff → A ou B (« PARIVISION » = Vision, « Yellow Submarine » = YeS ; Dotabuff écrit souvent le nom 2 fois)
+function dbTeam(h,A,B){let w=String(h||"").trim();const hh=w.length/2;if(w.length%2===0&&w.slice(0,hh)===w.slice(hh))w=w.slice(0,hh);const c=cutNorm(w);if(!c)return null;
+ const ini=w.split(/\s+/).filter(Boolean).map(x=>x[0]).join("").toLowerCase();
+ const ok=t=>{const x=cutNorm(t);if(!x)return false;return x===c||teamKey(t)===teamKey(w)||(Math.min(x.length,c.length)>=3&&(c.includes(x)||x.includes(c)))||(ini.length>=2&&x===ini)||(x.length<=4&&ini.length>=2&&x.replace(/[^a-z]/g,"")===ini);};
+ const a=ok(A),b=ok(B);return a&&!b?A:b&&!a?B:null;}
+// en-tête Dotabuff « 1832:3247 » = score 18, durée 32:32, score 47 (équipe du 1er tableau à gauche)
+function dbScore(t){const L=String(t||"").split(/\r?\n/).map(x=>x.trim());const i=L.findIndex(x=>/Victory!/.test(x));if(i<0)return null;const l=L[i+1]||"";
+ const m=l.match(/^(\d{1,3}?)([1-9]\d?:\d{2}:\d{2})(\d{1,3})$/)||l.match(/^(\d{1,3}?)(\d{1,2}:\d{2})(\d{1,3})$/);return m?{l:+m[1],r:+m[3],dur:m[2]}:null;}
 function parseDotabuff(txt,roster,A,B){const L=String(txt).split(/\r?\n/);const out={};const keys=[];let curT=null;
- const teamOfHdr=h=>{let w=String(h||"").trim();const hh=w.length/2;if(w.length%2===0&&w.slice(0,hh)===w.slice(hh))w=w.slice(0,hh);const c=cutNorm(w);return [A,B].find(t=>{const x=cutNorm(t);return x&&(x===c||teamKey(t)===teamKey(w)||c.startsWith(x)||x.startsWith(c));})||null;};[A,B].forEach(t=>Object.entries(roster[t]||{}).forEach(([k,n])=>keys.push({k,n:cutNorm(n)})));
+ const teamOfHdr=h=>dbTeam(h,A,B);[A,B].forEach(t=>Object.entries(roster[t]||{}).forEach(([k,n])=>keys.push({k,n:cutNorm(n)})));
  const strip=x=>cutNorm(String(x).replace(/^[^.\s]{1,12}\./,""));
  const usedT=[];L.forEach((l,i)=>{if(/^Hero\tR\tL\tPlayer/.test(l)){curT=teamOfHdr(L[i-1]);if(!curT&&usedT.length===1)curT=usedT[0]===A?B:A;if(curT)usedT.push(curT);return;}const m=l.match(/^\s*(?:Top|Middle|Mid|Bottom|Jungle|Roaming|Off|Safe)[^\t]*\t([^\t]+)\t(\d+|-)\t(\d+|-)\t(\d+|-)\t/i);if(!m)return;
-  const raw=m[1].trim();const a=strip(raw),b=cutNorm(raw);const hit=keys.find(x=>x.n===a||x.n===b)||keys.find(x=>x.n.length>=3&&(a.startsWith(x.n)||x.n.startsWith(a)));
+  const raw=m[1].trim();const a=strip(raw),b=cutNorm(raw);const hit=!a&&!b?null:keys.find(x=>x.n&&(x.n===a||x.n===b))||keys.find(x=>x.n.length>=3&&a.length>=3&&(a.startsWith(x.n)||x.n.startsWith(a)));   /* pseudo vide (japonais, « ~ ») ou trop court : jamais relié au hasard */
   let hero="";for(let j=i-1;j>=Math.max(0,i-7);j--){if(/^\d{1,2}$/.test((L[j]||"").trim())){hero=(L[j+1]||"").trim();break;}}if(!hero)hero=(L[i-2]||"").trim();/* niveau (« 24 ») puis le héros ; Lone Druid a « Summon Spirit Bear / D » en plus */const o={k:m[2]==="-"?"0":m[2],h:"",d:m[3]==="-"?"0":m[3],as:m[4]==="-"?"0":m[4]};if(hero&&!/^\d+$/.test(hero)&&hero.length<30)o.c=hero;
-  if(!hit&&BET_ALIAS[b]){const ak=keys.find(x=>x.k===BET_ALIAS[b]||x.n===BET_ALIAS[b]);if(ak){out[ak.k]=o;return;}}
+  {const ab=BET_ALIAS[b||raw.toLowerCase().replace(/\s+/g,"")];if(!hit&&ab){const ak=keys.find(x=>x.k===ab||x.n===ab);if(ak){out[ak.k]=o;return;}}}
   if(!hit){o.raw=raw;o.t=curT;o.blk=usedT.length;}
   out[hit?hit.k:"?"+raw]=o;});
  if(usedT.length===1){const other=usedT[0]===A?B:A;Object.values(out).forEach(o=>{if(o.raw&&!o.t)o.t=other;});}
  return out;}
+// OpenDota (page du match copiée) : « Yellow Submarine - Overview », pseudo, rang, POS, niveau, puis « K D A LH / DN … »
+function isOpenDota(t){return /- Overview\s*\n(?:\s*Winner\s*\n)?\s*Player\s*\n\s*POS/.test(String(t));}
+const OD_RANK=/^(immortal|divine|ancient|legend|archon|crusader|guardian|herald|uncalibrated|unranked)$/i;
+function parseOpenDota(txt,roster,A,B){const L=String(txt).split(/\r?\n/).map(x=>x.replace(/\u00a0/g," "));const out={};const keys=[];[A,B].forEach(t=>Object.entries(roster[t]||{}).forEach(([k,n])=>keys.push({k,n:cutNorm(n)})));
+ const hd=[];let curT=null;
+ L.forEach((l,i)=>{const h=l.match(/^\s*(.+?)\s+-\s+Overview\s*$/);if(h){curT=dbTeam(h[1],A,B);hd.push({t:curT,win:/^\s*Winner\s*$/.test(L[i+1]||"")});return;}
+  const m=l.match(/^\s*(\d+|-)\t(\d+|-)\t(\d+|-)\t\d+\t\/\t/);if(!m)return;
+  let j=i-1,raw="";while(j>=0&&j>i-8){const x=L[j].trim();if(!x||/^\d+\s*$/.test(x)||OD_RANK.test(x)){j--;continue;}raw=x;break;}
+  if(!raw)return;const a=cutNorm(raw);const rawK=a||raw.toLowerCase().replace(/\s+/g,"");
+  const o={k:m[1]==="-"?"0":m[1],h:"",d:m[2]==="-"?"0":m[2],as:m[3]==="-"?"0":m[3]};
+  let hit=a?keys.find(x=>x.n===a)||keys.find(x=>x.n.length>=3&&a.length>=3&&(a.startsWith(x.n)||x.n.startsWith(a))):null;
+  if(!hit&&BET_ALIAS[rawK])hit=keys.find(x=>x.k===BET_ALIAS[rawK]||x.n===BET_ALIAS[rawK]);
+  if(hit){out[hit.k]=o;return;}o.raw=raw;o.t=curT;out["?"+raw]=o;});
+ // une seule équipe reconnue → l'autre section est l'autre équipe
+ const known=hd.filter(x=>x.t).map(x=>x.t);if(known.length===1){const other=known[0]===A?B:A;hd.forEach(x=>{if(!x.t)x.t=other;});Object.values(out).forEach(o=>{if(o.raw&&!o.t)o.t=other;});}
+ return out;}
+// score officiel + vainqueur : les 2 premiers nombres seuls (avant / après la durée) = équipe du 1er tableau / du 2e
+function odMeta(txt,A,B){const L=String(txt).split(/\r?\n/).map(x=>x.trim());const hd=[];L.forEach((l,i)=>{const h=l.match(/^(.+?)\s+-\s+Overview$/);if(h)hd.push({t:dbTeam(h[1],A,B),win:L[i+1]==="Winner"});});
+ if(hd.length===2){if(!hd[0].t&&hd[1].t)hd[0].t=hd[1].t===A?B:A;if(!hd[1].t&&hd[0].t)hd[1].t=hd[0].t===A?B:A;}
+ const top=L.slice(0,12);const di=top.findIndex(x=>/^\d{1,2}:\d{2}(:\d{2})?$/.test(x));let l=null,r=null;
+ if(di>0){for(let k=di-1;k>=0;k--)if(/^\d{1,3}$/.test(top[k])){l=+top[k];break;}for(let k=di+1;k<top.length;k++)if(/^\d{1,3}$/.test(top[k])){r=+top[k];break;}}
+ const w=(hd.find(x=>x.win)||{}).t||"";return {win:w,kills:hd.length===2&&hd[0].t&&hd[1].t&&l!=null&&r!=null?{[hd[0].t]:l,[hd[1].t]:r}:null};}
+// API OpenDota (gratuite) : un ID de match (ou le lien opendota / dotabuff / stratz) → tout le scoreboard, héros compris
+let OD_HEROES=null;
+async function fetchOpenDota(id,roster,A,B){
+ const j=await (await fetch("https://api.opendota.com/api/matches/"+id)).json();if(!j||!Array.isArray(j.players))throw new Error(j&&j.error?j.error:"match introuvable");
+ if(!OD_HEROES){try{const h=await (await fetch("https://api.opendota.com/api/heroes")).json();OD_HEROES={};(h||[]).forEach(x=>OD_HEROES[x.id]=x.localized_name);}catch(e){OD_HEROES={};}}
+ const keys=[];[A,B].forEach(t=>Object.entries(roster[t]||{}).forEach(([k,n])=>keys.push({k,n:cutNorm(n)})));
+ const rN=(j.radiant_team&&(j.radiant_team.name||j.radiant_team.tag))||"",dN=(j.dire_team&&(j.dire_team.name||j.dire_team.tag))||"";
+ let rT=dbTeam(rN,A,B),dT=dbTeam(dN,A,B);if(rT&&!dT)dT=rT===A?B:A;if(dT&&!rT)rT=dT===A?B:A;
+ const out={};j.players.forEach(p=>{const raw=String(p.name||p.personaname||("Joueur "+(p.account_id||p.player_slot))).trim();const a=cutNorm(raw);const acc=p.account_id?"acc"+p.account_id:"";
+  let hit=(acc&&BET_ALIAS[acc]&&keys.find(x=>x.k===BET_ALIAS[acc]))||(a?keys.find(x=>x.n===a)||keys.find(x=>x.n.length>=3&&a.length>=3&&(a.startsWith(x.n)||x.n.startsWith(a))):null)||(BET_ALIAS[a]&&keys.find(x=>x.k===BET_ALIAS[a]));
+  const o={k:String(p.kills||0),h:"",d:String(p.deaths||0),as:String(p.assists||0)};const hero=OD_HEROES&&OD_HEROES[p.hero_id];if(hero)o.c=hero;
+  if(hit){out[hit.k]=o;}else{o.raw=raw;o.acc=acc;o.t=p.isRadiant!=null?(p.isRadiant?rT:dT):(p.player_slot<128?rT:dT);out["?"+raw+(acc||"")]=o;}});
+ const win=j.radiant_win==null?"":(j.radiant_win?rT:dT)||"";const kills=rT&&dT?{[rT]:j.radiant_score,[dT]:j.dire_score}:null;
+ return {out,win,kills,radiant:rT};}
 function isDotabuff(t){return /Lane Outcome|Hero\tR\tL\tPlayer/.test(String(t));}
 // Plusieurs games Dotabuff collés d'un coup : on coupe à chaque « X Victory! » (Dotabuff écrit le nom 2 fois : « GamerLegionGamerLegion Victory! »)
 function dotaGames(t){const s=String(t||"");const re=/([^\n,]*?)\s*Victory!/g;const hits=[];let m;while((m=re.exec(s))){let w=m[1].trim();const h=w.length/2;if(w.length%2===0&&w.slice(0,h)===w.slice(h))w=w.slice(0,h);hits.push({pos:m.index,win:w});}
@@ -5623,7 +5667,7 @@ function parseStratz(txt,roster,A,B){const t=String(txt).replace(/\]\([^)]*\)/g,
   out[hit?hit.k:"?"+raw]={k:m[1],h:"",d:m[2],as:m[3]};}
  return out;}
 function isStratz(t){return /stratz\.com|Confrontation/i.test(String(t))||/\d\s*\n\s*\/\s*\n\s*\d+\s*\n\s*\/\s*\n/.test(String(t));}
-function parseBoard(txt,roster,A,B){if(isStratz(txt)){const d=parseStratz(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}if(isDotabuff(txt)){const d=parseDotabuff(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}const flat=" "+String(txt).replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ")+" ";const low=flat.toLowerCase();const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+function parseBoard(txt,roster,A,B){if(isOpenDota(txt)){const d=parseOpenDota(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}if(isStratz(txt)){const d=parseStratz(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}if(isDotabuff(txt)){const d=parseDotabuff(txt,roster,A,B);const o={};Object.entries(d).forEach(([k,v])=>{if(!k.startsWith("?"))o[k]=v;});if(Object.keys(o).length)return o;}const flat=" "+String(txt).replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/[\r\n\t]+/g," ").replace(/\s+/g," ")+" ";const low=flat.toLowerCase();const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
  const hits=[];[A,B].forEach(t=>Object.entries(roster[t]).forEach(([k,n])=>{const nm=String(n).toLowerCase();const tries=[nm,nm.replace(/0/g,"o"),nm.slice(0,6),nm.slice(0,4)].filter((x,i,a)=>(x.length>=3||(x===nm&&x.length===2))&&a.indexOf(x)===i);
   for(const q of tries){const re=new RegExp("(^|[^a-z0-9])"+esc(q)+(q.length<3?"(?=[^a-z0-9])":""),"g");let mm,best=-1;
    // plusieurs fois le même nom (ex. « On ») : on garde celui suivi de stats (K/D/A ou kills (HS))
@@ -5694,11 +5738,19 @@ function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g,"
  while((m=re.exec(flat))){const k=cutNorm(m[1]);const h=heads.filter(h=>h.pos<m.index).pop();const inA=keyOf(A,k),inB=keyOf(B,k);const t=inA&&!inB?A:inB&&!inA?B:h&&h.t;if(t)rows.push({team:t,k,name:m[1],kills:m[2],hs:m[3]});}
  const extras=[],present={};rows.forEach(r=>{const kk=keyOf(r.team,r.k)||r.k;(present[r.team]=present[r.team]||[]).push(kk);if(!keyOf(r.team,r.k))extras.push(r);});
  return {extras,present,rows};}
-function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,filled=false}){const [st,setSt]=useState("");const [txt,setTxt]=useState("");const [again,setAgain]=useState(false);
+function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,dota=false,filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
+ const loadOD=async()=>{const id=(String(odId).match(/(\d{8,12})/)||[])[1];if(!id){setSt("Mets l'ID du match (ex. 8088267544) ou le lien OpenDota / Dotabuff");return;}setOdBusy(true);setSt("Lecture OpenDota…");
+  try{const r=await fetchOpenDota(id,roster,A,B);let n=0;Object.entries(r.out).forEach(([k,v])=>{if(k.startsWith("?"))return;n++;setP(i,k,"k",v.k);setP(i,k,"d",v.d);setP(i,k,"as",v.as);if(v.c)setP(i,k,"c",v.c);});
+   if(onWin)onWin(i,r.win,r.kills,r.radiant);if(onUnknown)onUnknown(i,Object.entries(r.out).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));
+   const u=Object.keys(r.out).length-n;setSt("✓ OpenDota : "+n+" joueurs reconnus"+(u?" · "+u+" à attribuer (⚙)":"")+(r.kills?" · score "+Object.values(r.kills).join("-"):""));}
+  catch(e){setSt("OpenDota : "+(e.message||e)+" (match pas encore analysé ? réessaie dans quelques minutes)");}setOdBusy(false);};const [txt,setTxt]=useState("");const [again,setAgain]=useState(false);
  const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
  const apply=(t,ii=i)=>{
   if(ii===i&&isDotabuff(t)){const gs=dotaGames(t);if(gs.length>1){gs.forEach((g,j)=>apply(g.text,i+j));setSt("✓ "+gs.length+" games Dotabuff remplis (games "+(i+1)+" à "+(i+gs.length)+") — vérifie les chiffres");return;}}
-  if(isDotabuff(t)&&onWin){const w=dotaGames(t)[0].win;if(w)onWin(ii,w);}
+  if(isDotabuff(t)&&onWin){const w=dotaGames(t)[0].win;const sc=dbScore(t);const Ls=String(t).split(/\r?\n/);const hd=[];Ls.forEach((l,j)=>{if(/^Hero\tR\tL\tPlayer/.test(l))hd.push(dbTeam(Ls[j-1],A,B));});
+   if(hd.length===2&&!hd[0]&&hd[1])hd[0]=hd[1]===A?B:A;if(hd.length===2&&!hd[1]&&hd[0])hd[1]=hd[0]===A?B:A;
+   const kills=sc&&hd[0]&&hd[1]?{[hd[0]]:sc.l,[hd[1]]:sc.r}:null;onWin(ii,w,kills);}
+  if(isOpenDota(t)){const md=odMeta(t,A,B);if(onWin&&(md.win||md.kills))onWin(ii,md.win,md.kills);if(onUnknown){const d=parseOpenDota(t,roster,A,B);onUnknown(ii,Object.entries(d).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));}}
   if(isDotabuff(t)&&onUnknown){const d=parseDotabuff(t,roster,A,B);onUnknown(ii,Object.entries(d).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));}
   const r=parseBoard(t,roster,A,B);let TK=null,RN="";
   // tableau structuré reconnu (Liquipedia / vlr / HLTV) → il prime : nom exact, sans risque de prendre un autre endroit du texte
@@ -5723,7 +5775,9 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
   <div style={{flex:1,display:"flex",alignItems:"center",gap:10,padding:"14px",borderRadius:12,background:"rgba(34,197,94,.12)",border:"2px solid rgba(34,197,94,.5)",fontSize:16,fontWeight:800,color:"#4ADE80"}}>✅ Collé{st&&<span style={{fontSize:12,fontWeight:600,color:"var(--dm)"}}>{st.replace(/^✓\s*/,"")}</span>}</div>
   <button type="button" onClick={()=>setAgain(true)} style={{height:48,padding:"0 12px",borderRadius:12,border:"1px solid var(--ln)",background:"transparent",color:"var(--dm)",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Recoller</button></div>;
  return <div style={{padding:"10px 12px",borderBottom:"1px solid var(--ln)"}}>
-  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder="Colle ici" aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
+  {dota&&<div style={{display:"flex",gap:8,marginBottom:8}}><input value={odId} onChange={e=>setOdId(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadOD();}} inputMode="numeric" placeholder="ID du match (ou lien OpenDota / Dotabuff)" aria-label="ID du match Dota" style={{flex:1,minWidth:0,height:42,boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:10,padding:"0 12px",fontSize:14}}/>
+   <button type="button" disabled={odBusy} onClick={loadOD} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:"#E0301E",color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",whiteSpace:"nowrap"}}>{odBusy?"…":"Charger"}</button></div>}
+  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder={dota?"…ou colle Dotabuff / OpenDota ici":"Colle ici"} aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");setAgain(false);}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
 function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const [evM,setEvM]=useState(null);const [forceSave,setForceSave]=useState(false);
@@ -5776,7 +5830,8 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const tot=(i,t,f)=>Object.keys(roster[t]).reduce((a,k)=>a+(val(i,k,f)||0),0)+(f==="k"?(unkR[i]||[]).filter(u=>u.t===t).reduce((a,u)=>a+(parseInt(u.k)||0),0):0);
  // stats d'une ligne inconnue (pseudo Dotabuff) → attribuées à un joueur, et pseudo mémorisé pour les prochains collages
  const assignUnk=async(i,u,k)=>{setP(i,k,"k",u.k);if(u.c)setP(i,k,"c",u.c);if(u.d!=null)setP(i,k,"d",u.d);if(u.as!=null)setP(i,k,"as",u.as);
-  setUnkR(o=>({...o,[i]:(o[i]||[]).filter(x=>x.id!==u.id)}));const from=cutNorm(u.raw||"");if(from&&from!==k){BET_ALIAS={...BET_ALIAS,[from]:k};try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:[{pkey:from,alias:k,updated_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});}catch(e){}}};
+  setUnkR(o=>({...o,[i]:(o[i]||[]).filter(x=>x.id!==u.id)}));if(u.acc){BET_ALIAS={...BET_ALIAS,[u.acc]:k};cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:[{pkey:u.acc,alias:k,updated_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"}).catch(()=>{});}
+  const from=cutNorm(u.raw||"")||String(u.raw||"").toLowerCase().replace(/\s+/g,"");if(from&&from!==k){BET_ALIAS={...BET_ALIAS,[from]:k};try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:[{pkey:from,alias:k,updated_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});}catch(e){}}};
  // Dota 2 : le score de chaque game = kills de chaque équipe, vainqueur = plus de kills (si rien n'est saisi)
  useEffect(()=>{if(G!=="Dota2")return;setMaps(l=>{let ch=false;const n=l.map((x,i)=>{const ka=tot(i,A,"k"),kb=tot(i,B,"k");if(!(ka>0||kb>0))return x;const y={...x};if(y.a===""||y.a==null){y.a=String(ka);ch=true;}if(y.b===""||y.b==null){y.b=String(kb);ch=true;}if(!y.win&&ka!==kb){y.win=ka>kb?A:B;ch=true;}return y;});return ch?n:l;});},[pk]);
  const setP=(i,k,f,v)=>setPk(o=>({...o,[(i+1)+"|"+k]:{...(o[(i+1)+"|"+k]||{}),[f]:v}}));
@@ -5959,9 +6014,9 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    return <section className="mp sbd" key={"sb"+i}>
    <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></div>
    {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>{kA+kB?"✓ Scoreboard rempli":"👉 Coller le scoreboard de la map "+(i+1)}</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
-   {!lol&&isO&&<ScorePaste i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>setUnkR(o=>({...o,[ii]:l}))}
-     onWin={G==="Dota2"?(ii,w)=>setMaps(l=>{const n=[...l];while(n.length<=ii)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});const k=cutNorm(w);const t=[A,B].find(tt=>{const c=cutNorm(tt);return c===k||teamKey(tt)===teamKey(w)||(c.length>=2&&k.startsWith(c))||(k.length>=2&&c.startsWith(k));});
-      n[ii]={...n[ii],a:"",b:"",...(t?{win:t}:{})};return n;}):undefined}/>}
+   {!lol&&isO&&<ScorePaste i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>setUnkR(o=>({...o,[ii]:l}))} dota={G==="Dota2"}
+     onWin={G==="Dota2"?(ii,w,kills,rad)=>setMaps(l=>{const n=[...l];while(n.length<=ii)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});const t=dbTeam(w,A,B);
+      n[ii]={...n[ii],a:kills&&kills[A]!=null?String(kills[A]):"",b:kills&&kills[B]!=null?String(kills[B]):"",...(t?{win:t}:{}),...(rad?{ct:rad}:{})};return n;}):undefined}/>}
    {!lol&&isO&&<div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>K</th>{hsOn&&<th>HS</th>}<th>K/R</th>{hsOn&&<th>HS %</th>}</tr></thead><tbody>
     {[A,B].map(t=><React.Fragment key={t}><tr className="team"><td colSpan={hsOn?5:3}><span style={{display:"flex",alignItems:"center",gap:9}}><label title="Changer le logo de l'équipe" style={{cursor:"pointer",display:"inline-flex"}}>{L(t,m.game,26)}<input type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;try{const u=await supaUploadPhoto(f,"teams");await cloudDb("players?team=eq."+encodeURIComponent(t)+"&game=eq."+encodeURIComponent(m.game),{method:"PATCH",body:{team_logo_url:u}});try{window.dispatchEvent(new CustomEvent("emeieks-team-logo",{detail:{team:t,game:m.game,url:u}}));}catch(_){}alert("Logo de "+t+" changé ✓ (visible partout au prochain chargement)");}catch(err){alert("Envoi impossible : "+(err.message||err));}}}/></label><span style={{fontSize:15.5,fontWeight:800}}>{t}</span>{Object.values(allPlayers||{}).some(p=>p&&GNORM(p.game)===G&&p.team&&teamKey0(p.team)===teamKey0(t))?<CheckIc title={"Club enregistré ("+G+")"}/>:null}
      {teamKey(t)!==teamKey0(t)&&<button type="button" title="Équipe liée à une autre : délier" onClick={()=>{if(window.confirm("Délier « "+t+" » de l'équipe à laquelle elle a été liée ?")){unlinkTeam(t);setTeqV(v=>v+1);}}} style={{height:24,padding:"0 8px",borderRadius:6,border:"1px solid #F59E0B",background:"rgba(245,158,11,.12)",color:"#FBBF24",fontSize:11,fontWeight:800,cursor:"pointer"}}>🔗 Délier</button>}<button type="button" onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-roster",{detail:{team:t,game:G}}));}catch(e){}}} style={{marginLeft:"auto",height:30,padding:"0 12px",borderRadius:9,border:"1px solid rgba(167,139,250,.45)",background:"rgba(124,108,255,.14)",color:"#c4b5fd",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Équipe ›</button></span></td></tr>
