@@ -5383,8 +5383,11 @@ if(typeof window!=="undefined")setTimeout(async()=>{try{const r=await cloudDb("m
  if(Object.keys(n).length>Object.keys(ROLE_SB).length){ROLE_SB=n;await cloudDb("media_store?on_conflict=key",{method:"POST",body:[{key:"role_icons",value:JSON.stringify(n),updated_at:Date.now()}],prefer:"resolution=merge-duplicates"}).catch(()=>{});}}catch(e){}},1500);
 if(typeof window!=="undefined"&&Object.keys(ROLE_DATA).length<5)setTimeout(()=>{Object.keys(ROLE_CD).forEach(async r=>{if(ROLE_DATA[r])return;try{const b=await (await fetch(ROLE_SB[r]||roleUrl(r))).blob();const d=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(b);});
  if(String(d).startsWith("data:image")){ROLE_DATA={...ROLE_DATA,[r]:d};try{localStorage.setItem("role_ic_v1",JSON.stringify(ROLE_DATA));}catch(e){}}}catch(e){}});},0);
-function RoleIc({r,s=18}){const [bad,setBad]=useState(false);
- if(ROLE_CD[r]&&!bad)return <img src={ROLE_DATA[r]||ROLE_SB[r]||roleUrl(r)} alt={r} title={({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]} width={s} height={s} loading="lazy" onError={()=>setBad(true)} style={{flexShrink:0,verticalAlign:"-3px",objectFit:"contain"}}/>;
+// fichiers fixes dans ton Supabase : photos/roles/top.png, jungle.png, middle.png, bottom.png, utility.png
+const roleFixed=r=>SUPA_URL+"/storage/v1/object/public/photos/roles/"+ROLE_CD[r]+".png";
+function RoleIc({r,s=18}){const [lv,setLv]=useState(0);
+ const srcs=ROLE_CD[r]?[ROLE_DATA[r],ROLE_SB[r],roleFixed(r),roleUrl(r)].filter(Boolean):[];const bad=lv>=srcs.length;
+ if(ROLE_CD[r]&&!bad)return <img key={lv} src={srcs[lv]} alt={r} title={({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]} width={s} height={s} onError={()=>setLv(v=>v+1)} style={{flexShrink:0,verticalAlign:"-3px",objectFit:"contain"}}/>;
  return <RoleIcSvg r={r} s={s}/>;}
 function RoleIcSvg({r,s=18}){const id="rg"+r;const G=<linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#E8C062"/><stop offset="1" stopColor="#B07A1E"/></linearGradient>;
  const f="url(#"+id+")";
