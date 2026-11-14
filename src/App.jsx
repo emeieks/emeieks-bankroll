@@ -5815,6 +5815,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   cloudDb("ev_alerts?created_at=gte."+since+"&select=key,player,game,stat,side,map,book_line,book_odds,edge,match,start&limit=2000").then(r=>setEvM(Array.isArray(r)?r:[])).catch(()=>setEvM([]));},[m.key]);
  const [A0,B0]=Object.values(m.teams);const [lnk,setLnk]=useState({});const [clubFor,setClubFor]=useState(null);const A=lnk[A0]||A0,B=lnk[B0]||B0;
  const [unkR,setUnkR]=useState({});const [,setTeqV]=useState(0);const [clubAlways,setClubAlways]=useState(false);
+ const [serTxt,setSerTxt]=useState("");const [serMsg,setSerMsg]=useState("");const [serPend,setSerPend]=useState(null);
  const [plFor,setPlFor]=useState(null);const [vetos,setVetos]=useState([]);const [miss,setMiss]=useState({});const [missFor,setMissFor]=useState(null);const [advFor,setAdvFor]=useState(null);const G=GNORM(m.game);const rounds=G==="CS2"||G==="Valorant";const pool=G==="CS2"?CS_MAPS:G==="Valorant"?VAL_MAPS:null;const hsOn=G==="CS2";const lol=G==="LoL";
  const [mapImg,setMapImg]=useState(MAP_IMG||{});useEffect(()=>{loadMapImg().then(setMapImg);},[]);
  const [s,setS]=useState({s1:null,s2:null});const [bo,setBo]=useState(3);const [maps,setMaps]=useState([]);const [pk,setPk]=useState({});const [open,setOpen]=useState(0);const [msg,setMsg]=useState(null);const [busy,setBusy]=useState(false);const [ver,setVer]=useState(DD_VER);
@@ -5865,6 +5866,23 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  // Dota 2 : le score de chaque game = kills de chaque équipe, vainqueur = plus de kills (si rien n'est saisi)
  useEffect(()=>{if(G!=="Dota2")return;setMaps(l=>{let ch=false;const n=l.map((x,i)=>{const ka=tot(i,A,"k"),kb=tot(i,B,"k");if(!(ka>0||kb>0))return x;const y={...x};if(y.a===""||y.a==null){y.a=String(ka);ch=true;}if(y.b===""||y.b==null){y.b=String(kb);ch=true;}if(!y.win&&ka!==kb){y.win=ka>kb?A:B;ch=true;}return y;});return ch?n:l;});},[pk]);
  const setP=(i,k,f,v)=>setPk(o=>({...o,[(i+1)+"|"+k]:{...(o[(i+1)+"|"+k]||{}),[f]:v}}));
+ // ── Dota : page « série » OpenDota collée → équipes remplacées si besoin, puis chaque game chargé à sa place ──
+ const serIds=t=>[...new Set([...String(t||"").matchAll(/matches\/(\d{8,12})/g)].map(x=>x[1]))];
+ const serTeams=t=>[...String(t||"").matchAll(/\[([^\]\n]{1,40})\]\(https?:\/\/(?:www\.)?opendota\.com\/teams\/\d+\)/g)].map(x=>x[1].trim()).filter((v,i,a)=>a.indexOf(v)===i).slice(0,2);
+ const runSeries=async ids=>{setBo(ids.length>=4?5:ids.length>=2?3:1);const rep=[];
+  for(let j=0;j<ids.length;j++){setSerMsg("Lecture OpenDota… game "+(j+1)+"/"+ids.length);
+   try{const r=await fetchOpenDota(ids[j],roster,A,B);let n=0;Object.entries(r.out).forEach(([k,v])=>{if(k.startsWith("?"))return;n++;setP(j,k,"k",v.k);setP(j,k,"d",v.d);setP(j,k,"as",v.as);if(v.c)setP(j,k,"c",v.c);});
+    setMaps(l=>{const nn=[...l];while(nn.length<=j)nn.push({name:"",pick:"",ct:"",a:"",b:"",win:""});nn[j]={...nn[j],a:r.kills&&r.kills[A]!=null?String(r.kills[A]):"",b:r.kills&&r.kills[B]!=null?String(r.kills[B]):"",...(r.win?{win:r.win}:{}),...(r.radiant?{ct:r.radiant}:{})};return nn;});
+    setUnkR(o=>({...o,[j]:Object.entries(r.out).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k}))}));
+    const u=Object.keys(r.out).length-n;rep.push("G"+(j+1)+" "+(r.win?teamAbbr(r.win):"?")+(r.kills?" "+r.kills[A]+"-"+r.kills[B]:"")+(u?" ("+u+" à attribuer ⚙)":""));}
+   catch(e){rep.push("G"+(j+1)+" : "+(e.message||e));}}
+  setSerMsg("✓ "+rep.join(" · "));};
+ const pasteSeries=t=>{const ids=serIds(t);if(!ids.length){setSerMsg("Aucun game trouvé : colle la page de la série OpenDota (avec les liens « Game 1 #… »)");return;}
+  const tm=serTeams(t);const ch={};if(tm.length===2){const hit=tm.map(x=>dbTeam(x,A,B));
+   tm.forEach((x,k)=>{if(!hit[k]){const other=hit[1-k];const rep=other?(other===A?B0:A0):(k===0?A0:B0);if(!other&&hit.every(h=>!h)){ch[k===0?A0:B0]=x;}else ch[rep]=x;}});}
+  if(Object.keys(ch).length){setLnk(o=>({...o,...ch}));setSerPend(ids);setSerMsg("Équipes remplacées par celles de la série ("+Object.values(ch).join(", ")+")… chargement");}
+  else runSeries(ids);};
+ useEffect(()=>{if(!serPend)return;const ids=serPend;setSerPend(null);runSeries(ids);},[A,B]);
  // saisie rapide : Entrée passe à la case suivante
  const nextField=e=>{if(e.key!=="Enter")return;e.preventDefault();const all=[...document.querySelectorAll(".rs [data-q]")];const i=all.indexOf(e.target);if(i>=0&&all[i+1]){all[i+1].focus();all[i+1].select&&all[i+1].select();}else e.target.blur();};
  // vérifications d'une map
@@ -6007,6 +6025,12 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   <div className="series"><b>Format</b>{[1,3,5].map(n=><button key={n} className="sb" aria-pressed={bo===n} onClick={()=>setBo(n)}>BO{n}</button>)}
    <span style={{marginLeft:"auto",fontSize:12.5,color:prog.done?"var(--wn)":"var(--dm)",fontWeight:700}}>{prog.n?(prog.wA>prog.wB?teamAbbr(A):prog.wB>prog.wA?teamAbbr(B):"")+" "+Math.max(prog.wA,prog.wB)+"-"+Math.min(prog.wA,prog.wB)+(prog.done?" ✓":" …"):"Remplis les maps : le score se calcule tout seul"}</span></div>
   {!lol&&<div className="stp">{G==="Dota2"?"1. Résultat de chaque game":"1. Colle les maps HLTV"}</div>}
+  {G==="Dota2"&&<div style={{margin:"0 0 12px"}}>
+   <textarea value={serTxt} onChange={e=>setSerTxt(e.target.value)} onPaste={e=>{const t=e.clipboardData&&e.clipboardData.getData("text/plain");if(t&&/opendota\.com\/matches\//.test(t)){e.preventDefault();setSerTxt("");pasteSeries(t);}}} rows={2}
+    placeholder="Colle la page de la série OpenDota (Game 1 #…, Game 2 #…) : tout se remplit, game par game" aria-label="Coller la série OpenDota"
+    style={{width:"100%",boxSizing:"border-box",background:"rgba(224,48,30,.07)",color:"var(--fg)",border:"2px dashed rgba(224,48,30,.55)",borderRadius:12,padding:"14px",fontSize:14.5,fontWeight:600,textAlign:"center",resize:"vertical"}}/>
+   {serTxt.trim()&&<button type="button" className="go" onClick={()=>{pasteSeries(serTxt);setSerTxt("");}} style={{marginTop:6}}>Charger la série</button>}
+   {serMsg&&<div style={{marginTop:6,fontSize:12.5,fontWeight:700,color:serMsg.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{serMsg}</div>}</div>}
   {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} vetos={vetos} onVetos={setVetos} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
    return <section className="mp" key={i}>
