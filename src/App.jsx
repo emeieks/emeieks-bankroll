@@ -5740,13 +5740,18 @@ function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g,"
  const extras=[],present={};rows.forEach(r=>{const kk=keyOf(r.team,r.k)||r.k;(present[r.team]=present[r.team]||[]).push(kk);if(!keyOf(r.team,r.k))extras.push(r);});
  return {extras,present,rows};}
 function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,dota=false,filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
- const loadOD=async()=>{const id=(String(odId).match(/(\d{8,12})/)||[])[1];if(!id){setSt("Mets l'ID du match (ex. 8088267544) ou le lien OpenDota / Dotabuff");return;}setOdBusy(true);setSt("Lecture OpenDota…");
-  try{const r=await fetchOpenDota(id,roster,A,B);let n=0;Object.entries(r.out).forEach(([k,v])=>{if(k.startsWith("?"))return;n++;setP(i,k,"k",v.k);setP(i,k,"d",v.d);setP(i,k,"as",v.as);if(v.c)setP(i,k,"c",v.c);});
-   if(onWin)onWin(i,r.win,r.kills,r.radiant);if(onUnknown)onUnknown(i,Object.entries(r.out).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));
-   const u=Object.keys(r.out).length-n;setSt("✓ OpenDota : "+n+" joueurs reconnus"+(u?" · "+u+" à attribuer (⚙)":"")+(r.kills?" · score "+Object.values(r.kills).join("-"):""));}
-  catch(e){setSt("OpenDota : "+(e.message||e)+" (match pas encore analysé ? réessaie dans quelques minutes)");}setOdBusy(false);};const [txt,setTxt]=useState("");const [again,setAgain]=useState(false);
+ // un ID, un lien, ou la page « série » OpenDota collée (Game 1 #…, Game 2 #…) → chaque game dans l'ordre
+ const odIds=t=>{const s=String(t||"");const L=[...s.matchAll(/matches\/(\d{8,12})/g)].map(m=>m[1]);const ids=L.length?L:[...s.matchAll(/(?:^|[^\d])(\d{9,12})(?!\d)/g)].map(m=>m[1]);return [...new Set(ids)];};
+ const loadOD=async(src)=>{const ids=odIds(src!=null?src:odId);if(!ids.length){setSt("Mets l'ID du match (ex. 8088267544), le lien, ou colle la page de la série OpenDota");return;}setOdBusy(true);
+  const rep=[];for(let j=0;j<ids.length;j++){const ii=i+j;setSt("Lecture OpenDota… game "+(ii+1));
+   try{const r=await fetchOpenDota(ids[j],roster,A,B);let n=0;Object.entries(r.out).forEach(([k,v])=>{if(k.startsWith("?"))return;n++;setP(ii,k,"k",v.k);setP(ii,k,"d",v.d);setP(ii,k,"as",v.as);if(v.c)setP(ii,k,"c",v.c);});
+    if(onWin)onWin(ii,r.win,r.kills,r.radiant,ids.length);if(onUnknown)onUnknown(ii,Object.entries(r.out).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));
+    const u=Object.keys(r.out).length-n;rep.push("G"+(ii+1)+" ✓ "+(r.kills?Object.values(r.kills).join("-"):"")+(u?" ("+u+" à attribuer)":""));}
+   catch(e){rep.push("G"+(ii+1)+" : "+(e.message||e));}}
+  setSt((ids.length>1?"✓ Série : ":"✓ OpenDota : ")+rep.join(" · "));setOdBusy(false);};const [txt,setTxt]=useState("");const [again,setAgain]=useState(false);
  const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
  const apply=(t,ii=i)=>{
+  if(dota&&ii===i&&/opendota\.com\/matches\/\d+/.test(t)&&!isOpenDota(t)&&!isDotabuff(t)){loadOD(t);return;}
   if(ii===i&&isDotabuff(t)){const gs=dotaGames(t);if(gs.length>1){gs.forEach((g,j)=>apply(g.text,i+j));setSt("✓ "+gs.length+" games Dotabuff remplis (games "+(i+1)+" à "+(i+gs.length)+") — vérifie les chiffres");return;}}
   if(isDotabuff(t)&&onWin){const w=dotaGames(t)[0].win;const sc=dbScore(t);const Ls=String(t).split(/\r?\n/);const hd=[];Ls.forEach((l,j)=>{if(/^Hero\tR\tL\tPlayer/.test(l))hd.push(dbTeam(Ls[j-1],A,B));});
    if(hd.length===2&&!hd[0]&&hd[1])hd[0]=hd[1]===A?B:A;if(hd.length===2&&!hd[1]&&hd[0])hd[1]=hd[0]===A?B:A;
@@ -5776,8 +5781,8 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
   <div style={{flex:1,display:"flex",alignItems:"center",gap:10,padding:"14px",borderRadius:12,background:"rgba(34,197,94,.12)",border:"2px solid rgba(34,197,94,.5)",fontSize:16,fontWeight:800,color:"#4ADE80"}}>✅ Collé{st&&<span style={{fontSize:12,fontWeight:600,color:"var(--dm)"}}>{st.replace(/^✓\s*/,"")}</span>}</div>
   <button type="button" onClick={()=>setAgain(true)} style={{height:48,padding:"0 12px",borderRadius:12,border:"1px solid var(--ln)",background:"transparent",color:"var(--dm)",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>Recoller</button></div>;
  return <div style={{padding:"10px 12px",borderBottom:"1px solid var(--ln)"}}>
-  {dota&&<div style={{display:"flex",gap:8,marginBottom:8}}><input value={odId} onChange={e=>setOdId(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadOD();}} inputMode="numeric" placeholder="ID du match (ou lien OpenDota / Dotabuff)" aria-label="ID du match Dota" style={{flex:1,minWidth:0,height:42,boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:10,padding:"0 12px",fontSize:14}}/>
-   <button type="button" disabled={odBusy} onClick={loadOD} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:"#E0301E",color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",whiteSpace:"nowrap"}}>{odBusy?"…":"Charger"}</button></div>}
+  {dota&&<div style={{display:"flex",gap:8,marginBottom:8}}><input value={odId} onChange={e=>setOdId(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadOD();}} inputMode="numeric" placeholder="ID du match, lien, ou page de la série OpenDota" aria-label="ID du match Dota" style={{flex:1,minWidth:0,height:42,boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:10,padding:"0 12px",fontSize:14}}/>
+   <button type="button" disabled={odBusy} onClick={()=>loadOD()} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:"#E0301E",color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",whiteSpace:"nowrap"}}>{odBusy?"…":"Charger"}</button></div>}
   <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder={dota?"…ou colle Dotabuff / OpenDota ici":"Colle ici"} aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");setAgain(false);}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
 // Paris fictifs (Simulation) reliés à ce match + bouton pour en relier d'autres (noms d'équipe différents selon la source)
@@ -6044,8 +6049,8 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></div>
    {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>{kA+kB?"✓ Scoreboard rempli":"👉 Coller le scoreboard de la map "+(i+1)}</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
    {!lol&&isO&&<ScorePaste i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>setUnkR(o=>({...o,[ii]:l}))} dota={G==="Dota2"}
-     onWin={G==="Dota2"?(ii,w,kills,rad)=>setMaps(l=>{const n=[...l];while(n.length<=ii)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});const t=dbTeam(w,A,B);
-      n[ii]={...n[ii],a:kills&&kills[A]!=null?String(kills[A]):"",b:kills&&kills[B]!=null?String(kills[B]):"",...(t?{win:t}:{}),...(rad?{ct:rad}:{})};return n;}):undefined}/>}
+     onWin={G==="Dota2"?(ii,w,kills,rad,nG)=>{if(nG>1)setBo(nG>=4?5:nG>=2?3:1);setMaps(l=>{const n=[...l];while(n.length<=ii)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});const t=dbTeam(w,A,B);
+      n[ii]={...n[ii],a:kills&&kills[A]!=null?String(kills[A]):"",b:kills&&kills[B]!=null?String(kills[B]):"",...(t?{win:t}:{}),...(rad?{ct:rad}:{})};return n;});}:undefined}/>}
    {!lol&&isO&&<div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>K</th>{hsOn&&<th>HS</th>}<th>K/R</th>{hsOn&&<th>HS %</th>}</tr></thead><tbody>
     {[A,B].map(t=><React.Fragment key={t}><tr className="team"><td colSpan={hsOn?5:3}><span style={{display:"flex",alignItems:"center",gap:9}}><label title="Changer le logo de l'équipe" style={{cursor:"pointer",display:"inline-flex"}}>{L(t,m.game,26)}<input type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;try{const u=await supaUploadPhoto(f,"teams");await cloudDb("players?team=eq."+encodeURIComponent(t)+"&game=eq."+encodeURIComponent(m.game),{method:"PATCH",body:{team_logo_url:u}});try{window.dispatchEvent(new CustomEvent("emeieks-team-logo",{detail:{team:t,game:m.game,url:u}}));}catch(_){}alert("Logo de "+t+" changé ✓ (visible partout au prochain chargement)");}catch(err){alert("Envoi impossible : "+(err.message||err));}}}/></label><span style={{fontSize:15.5,fontWeight:800}}>{t}</span>{Object.values(allPlayers||{}).some(p=>p&&GNORM(p.game)===G&&p.team&&teamKey0(p.team)===teamKey0(t))?<CheckIc title={"Club enregistré ("+G+")"}/>:null}
      {teamKey(t)!==teamKey0(t)&&<button type="button" title="Équipe liée à une autre : délier" onClick={()=>{if(window.confirm("Délier « "+t+" » de l'équipe à laquelle elle a été liée ?")){unlinkTeam(t);setTeqV(v=>v+1);}}} style={{height:24,padding:"0 8px",borderRadius:6,border:"1px solid #F59E0B",background:"rgba(245,158,11,.12)",color:"#FBBF24",fontSize:11,fontWeight:800,cursor:"pointer"}}>🔗 Délier</button>}<button type="button" onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-roster",{detail:{team:t,game:G}}));}catch(e){}}} style={{marginLeft:"auto",height:30,padding:"0 12px",borderRadius:9,border:"1px solid rgba(167,139,250,.45)",background:"rgba(124,108,255,.14)",color:"#c4b5fd",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Équipe ›</button></span></td></tr>
@@ -8358,6 +8363,9 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const loadMute=useCallback(async()=>{try{const since=new Date(Date.now()-12*3600e3).toISOString().slice(0,19)+"Z";const r=await cloudDb("ev_mute?select=key,match,map&created_at=gte."+since);setEvMute(Array.isArray(r)?r:[]);}catch(e){}},[]);
  useEffect(()=>{loadMute();},[loadMute]);
  const isMuted=a=>evMute.some(m=>String(m.map)===String(a.map)&&muteMatch(m.match,a.match));
+ // mêmes règles que la liste : aujourd'hui, ou encore ouvert jusqu'à 3 h après le début ; pas en silence
+ const evTs=a=>new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();
+ const evVis=a=>{if(isMuted(a))return false;const t=evTs(a);if(!isNaN(t)&&new Date(t).toDateString()===new Date().toDateString())return true;return a.status==="new"&&(isNaN(t)||t>Date.now()-3*3600e3);};
  useEffect(()=>{const h=()=>loadMute();window.addEventListener("emeieks-mute",h);return()=>window.removeEventListener("emeieks-mute",h);},[loadMute]);
  const loadEv=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString();const r=await cloudDb("ev_alerts?or=(status.eq.new,and(status.in.(expired,added),created_at.gte."+since+"))&order=edge.desc&limit=300");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
  useEffect(()=>{loadEv();const i=setInterval(loadEv,60000);return()=>clearInterval(i);},[loadEv]);
@@ -13751,7 +13759,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   const hhmm=t=>t?new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"";
   return <div style={{marginBottom:8}}>
   <SuiviHead img={_B64_PP_LOGO_B64} color="#22C55E" title="Bot EV" badge={nNew?<span style={{fontSize:10,fontWeight:900,color:"#05231A",background:"#22C55E",padding:"2px 6px",borderRadius:6}}>{nNew} NEW</span>:null}
-   sub={evAlerts.length+" bet"+(evAlerts.length>1?"s":"")}
+   sub={evAlerts.filter(evVis).length+" bet"+(evAlerts.filter(evVis).length>1?"s":"")+" aujourd'hui"}
    open={suiviOpen.ev} onClick={()=>{setSuiviOpen(s=>({...s,ev:!s.ev}));try{localStorage.setItem("ev_seen",String(Date.now()));}catch(e){}}}/>
   {suiviOpen.ev&&<div style={{...SV_BODY,padding:0}}>
    <div style={{padding:"12px 14px 10px",display:"flex",gap:6,alignItems:"center"}}>
@@ -13764,7 +13772,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    {botSt&&<div style={{display:"flex",gap:14,padding:"0 14px 10px",fontSize:11.5,color:"#6b7280",fontWeight:700}}><span>Betby <b style={{color:"#cbd5e1"}}>{hhmm(botSt.betby_at)}</b></span><span>Apify <b style={{color:"#cbd5e1"}}>{hhmm(botSt.apify_at)}</b></span>{evRun&&evRun.status==="error"&&<span style={{color:"#f87171"}}>Erreur</span>}</div>}
    {evRun&&evRun.log&&evRunning&&<div style={{padding:"0 14px 10px"}}><EvConsole text={evRun.log} live={evRunning}/></div>}
    <div style={{display:"flex",gap:4,margin:"0 14px 10px",padding:3,borderRadius:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
-    {[["bets","Bets"+(evAlerts.length?" "+evAlerts.length:"")],["board","Board"],["joueur","Joueur"],["outils","Outils"]].map(([k,l])=><button key={k} onClick={()=>setEvTab(k)} style={{flex:1,height:34,borderRadius:9,border:"none",background:evTab===k?"#7c3aed":"transparent",color:evTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
+    {[["bets","Bets"+(evAlerts.filter(evVis).length?" "+evAlerts.filter(evVis).length:"")],["board","Board"],["joueur","Joueur"],["outils","Outils"]].map(([k,l])=><button key={k} onClick={()=>setEvTab(k)} style={{flex:1,height:34,borderRadius:9,border:"none",background:evTab===k?"#7c3aed":"transparent",color:evTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
    </div>
    {evTab==="board"&&<PPBoard allPlayers={allPlayers} teamLogos={teamLogos} focus={evFocus}/>}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
@@ -13773,7 +13781,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
    {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center"}}>
-    {[["all","Tous"],["new","NEW"]].map(([k,l])=>{const on=evFilter===k;const n=k==="all"?evAlerts.length:evAlerts.filter(isNew).length;return(
+    {[["all","Tous"],["new","NEW"]].map(([k,l])=>{const on=evFilter===k;const n=k==="all"?evAlerts.filter(evVis).length:evAlerts.filter(a=>evVis(a)&&a.status==="new"&&isNew(a)).length;return(
      <button key={k} onClick={()=>setEvFilter(k)} style={{display:"flex",alignItems:"center",gap:5,height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(on?"#22C55E":"rgba(255,255,255,.08)"),background:on?"rgba(34,197,94,.14)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}<span style={{color:on?"#86efac":"#6b7280"}}>{n}</span></button>);})}
     <button onClick={()=>setEvSel(x=>x?null:[])} style={{height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(evSel?"#7C3AED":"rgba(255,255,255,.08)"),background:evSel?"rgba(124,58,237,.2)":"transparent",color:evSel?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{evSel?"Annuler":"Sél"}</button>
     <SimBtn/>
