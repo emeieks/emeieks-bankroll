@@ -5867,8 +5867,12 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  useEffect(()=>{if(G!=="Dota2")return;setMaps(l=>{let ch=false;const n=l.map((x,i)=>{const ka=tot(i,A,"k"),kb=tot(i,B,"k");if(!(ka>0||kb>0))return x;const y={...x};if(y.a===""||y.a==null){y.a=String(ka);ch=true;}if(y.b===""||y.b==null){y.b=String(kb);ch=true;}if(!y.win&&ka!==kb){y.win=ka>kb?A:B;ch=true;}return y;});return ch?n:l;});},[pk]);
  const setP=(i,k,f,v)=>setPk(o=>({...o,[(i+1)+"|"+k]:{...(o[(i+1)+"|"+k]||{}),[f]:v}}));
  // ── Dota : page « série » OpenDota collée → équipes remplacées si besoin, puis chaque game chargé à sa place ──
- const serIds=t=>[...new Set([...String(t||"").matchAll(/matches\/(\d{8,12})/g)].map(x=>x[1]))];
- const serTeams=t=>[...String(t||"").matchAll(/\[([^\]\n]{1,40})\]\(https?:\/\/(?:www\.)?opendota\.com\/teams\/\d+\)/g)].map(x=>x[1].trim()).filter((v,i,a)=>a.indexOf(v)===i).slice(0,2);
+ // texte copié : liens (« matches/123 ») OU texte seul (« Game 1 #9088001992 », « Game 2\n#9088… »)
+ const serIds=t=>{const s0=String(t||"");let L=[...s0.matchAll(/matches\/(\d{8,12})/g)].map(x=>x[1]);if(!L.length)L=[...s0.matchAll(/Game\s*\d+\s*#\s*(\d{8,12})/gi)].map(x=>x[1]);if(!L.length)L=[...s0.matchAll(/#\s*(\d{9,12})(?!\d)/g)].map(x=>x[1]);return [...new Set(L)];};
+ const serTeams=t=>{const s0=String(t||"");let L=[...s0.matchAll(/\[([^\]\n]{1,40})\]\(https?:\/\/(?:www\.)?opendota\.com\/teams\/\d+\)/g)].map(x=>x[1].trim());
+  if(!L.length)L=[...s0.matchAll(/<a[^>]+href="[^"]*\/teams\/\d+"[^>]*>([\s\S]{1,80}?)<\/a>/gi)].map(x=>x[1].replace(/<[^>]+>/g,"").trim()).filter(Boolean);
+  if(!L.length){const ls=s0.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const k=ls.findIndex(x=>/BEST OF\s*\d/i.test(x));if(k>=0){const a=ls[k].replace(/BEST OF[\s\S]*$/i,"").trim()||ls[k-1]||"";const m=ls[k].match(/\d\s*:\s*\d\s*(.+)$/);const b=(m&&m[1].trim())||(/^\d\s*:\s*\d$/.test(ls[k+1]||"")?ls[k+2]:ls[k+1])||"";L=[a,b];}}
+  return L.filter((v,i,a)=>v&&a.indexOf(v)===i).slice(0,2);};
  const runSeries=async ids=>{setBo(ids.length>=4?5:ids.length>=2?3:1);const rep=[];
   for(let j=0;j<ids.length;j++){setSerMsg("Lecture OpenDota… game "+(j+1)+"/"+ids.length);
    try{const r=await fetchOpenDota(ids[j],roster,A,B);let n=0;Object.entries(r.out).forEach(([k,v])=>{if(k.startsWith("?"))return;n++;setP(j,k,"k",v.k);setP(j,k,"d",v.d);setP(j,k,"as",v.as);if(v.c)setP(j,k,"c",v.c);});
@@ -6026,10 +6030,10 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    <span style={{marginLeft:"auto",fontSize:12.5,color:prog.done?"var(--wn)":"var(--dm)",fontWeight:700}}>{prog.n?(prog.wA>prog.wB?teamAbbr(A):prog.wB>prog.wA?teamAbbr(B):"")+" "+Math.max(prog.wA,prog.wB)+"-"+Math.min(prog.wA,prog.wB)+(prog.done?" ✓":" …"):"Remplis les maps : le score se calcule tout seul"}</span></div>
   {!lol&&<div className="stp">{G==="Dota2"?"1. Résultat de chaque game":"1. Colle les maps HLTV"}</div>}
   {G==="Dota2"&&<div style={{margin:"0 0 12px"}}>
-   <textarea value={serTxt} onChange={e=>setSerTxt(e.target.value)} onPaste={e=>{const t=e.clipboardData&&e.clipboardData.getData("text/plain");if(t&&/opendota\.com\/matches\//.test(t)){e.preventDefault();setSerTxt("");pasteSeries(t);}}} rows={2}
+   <textarea value={serTxt} onChange={e=>setSerTxt(e.target.value)} onPaste={e=>{const cd=e.clipboardData;const h=cd&&cd.getData("text/html")||"";const t=cd&&cd.getData("text/plain")||"";const src=/matches\/\d{8,12}/.test(h)?h:t;if(serIds(src).length){e.preventDefault();setSerTxt("");pasteSeries(src);}}} rows={2}
     placeholder="Colle la page de la série OpenDota (Game 1 #…, Game 2 #…) : tout se remplit, game par game" aria-label="Coller la série OpenDota"
     style={{width:"100%",boxSizing:"border-box",background:"rgba(224,48,30,.07)",color:"var(--fg)",border:"2px dashed rgba(224,48,30,.55)",borderRadius:12,padding:"14px",fontSize:14.5,fontWeight:600,textAlign:"center",resize:"vertical"}}/>
-   {serTxt.trim()&&<button type="button" className="go" onClick={()=>{pasteSeries(serTxt);setSerTxt("");}} style={{marginTop:6}}>Charger la série</button>}
+   {serTxt.trim()&&<button type="button" onClick={()=>{pasteSeries(serTxt);setSerTxt("");}} style={{marginTop:6,height:38,padding:"0 16px",borderRadius:10,border:"none",background:"#E0301E",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"}}>Charger la série</button>}
    {serMsg&&<div style={{marginTop:6,fontSize:12.5,fontWeight:700,color:serMsg.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{serMsg}</div>}</div>}
   {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} vetos={vetos} onVetos={setVetos} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
