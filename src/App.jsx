@@ -2403,6 +2403,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               </div>
               {needLeague&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,fontSize:12,color:"#9ca3af",fontWeight:600}}>{league!=="(Sans ligue)"&&<LeagueLogo league={league} size={16}/>}{league}</div>}
              </div>
+             {GNORM(rosterGame)==="LoL"&&tPlayers.length>0&&(()=>{const miss=["TOP","JGL","MID","ADC","SUP"].filter(r=>!tPlayers.some(p=>ROLE_OF(p.role)===r));return miss.length?<span title={"Poste(s) manquant(s) : "+miss.map(r=>({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]).join(", ")} style={{width:18,height:18,borderRadius:9,background:"#EF4444",color:"#fff",fontSize:12,fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>:null;})()}
              <span style={{fontSize:12.5,color:"#9ca3af",fontWeight:700}}>{tPlayers.length} joueurs</span>
              <button onClick={e=>{e.stopPropagation();deleteTeam(team,rosterGame,tPlayers);}}
               style={{padding:"3px 7px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer",flexShrink:0}}><Ic n="trash" s={12}/></button>
@@ -2480,18 +2481,24 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                )}
               </div>
               {/* Players */}
-              {tPlayers.sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
+              {(()=>{const isL=GNORM(rosterGame)==="LoL";const RO=["TOP","JGL","MID","ADC","SUP"];const ri=p=>{const x=RO.indexOf(ROLE_OF(p.role));return x<0?9:x;};
+               const sorted=[...tPlayers].sort((a,b)=>isL?(ri(a)-ri(b))||a.name.localeCompare(b.name):a.name.localeCompare(b.name));
+               if(!isL)return sorted;const out=[];RO.forEach(r=>{const l=sorted.filter(p=>ROLE_OF(p.role)===r);if(l.length)out.push(...l);else out.push({__empty:r,name:"",id:"empty-"+r});});out.push(...sorted.filter(p=>!ROLE_OF(p.role)));return out;})().map(p=>{
+               if(p.__empty)return <div key={p.id} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)",display:"flex",alignItems:"center",gap:12,opacity:.75}}>
+                <RoleIc r={p.__empty} s={24}/><div style={{width:52,height:52,borderRadius:"50%",border:"2px dashed #374151",flexShrink:0}}/>
+                <span style={{fontSize:14,fontWeight:700,color:"#F59E0B"}}>{({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[p.__empty]} manquant</span></div>;
                const isEditing=editP&&editP.id===p.id;
                const avatar=p.photo_url||p.avatar_url||null;
                return(
                 <div key={p.id||p.name} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)"}}>
                  {!isEditing?(
                   <div style={{display:"flex",alignItems:"center",gap:12}}>
+                   {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={24}/>:null}
                    {avatar?<img src={avatar} alt={p.name} style={{width:52,height:52,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,background:"#1f2937"}}/>
                     :<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:19,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
                    <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
-                     {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={20}/>:null}{p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
+                     {p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
                     {!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
@@ -5365,8 +5372,13 @@ const LOL_ROLES=["TOP","JGL","MID","ADC","SUP"];
 const ROLE_OF=r=>{const x=String(r||"").toLowerCase();return /^top/.test(x)?"TOP":/^(jun|jgl|jng)/.test(x)?"JGL":/^mid/.test(x)?"MID":/^(adc|bot|ad )/.test(x)?"ADC":/^sup/.test(x)?"SUP":null;};
 // Icônes officielles de Riot, chargées depuis Community Dragon (comme les images de champions) ; si elles ne chargent pas → dessin de secours
 const ROLE_CD={TOP:"top",JGL:"jungle",MID:"middle",ADC:"bottom",SUP:"utility"};
+const roleUrl=r=>"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-"+ROLE_CD[r]+".png";
+// gardées dans le navigateur (localStorage) après le 1er chargement → affichage immédiat ensuite
+let ROLE_DATA=(()=>{try{return JSON.parse(localStorage.getItem("role_ic_v1")||"{}");}catch(e){return {};}})();
+if(typeof window!=="undefined"&&Object.keys(ROLE_DATA).length<5)setTimeout(()=>{Object.keys(ROLE_CD).forEach(async r=>{if(ROLE_DATA[r])return;try{const b=await (await fetch(roleUrl(r))).blob();const d=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(b);});
+ if(String(d).startsWith("data:image")){ROLE_DATA={...ROLE_DATA,[r]:d};try{localStorage.setItem("role_ic_v1",JSON.stringify(ROLE_DATA));}catch(e){}}}catch(e){}});},0);
 function RoleIc({r,s=18}){const [bad,setBad]=useState(false);
- if(ROLE_CD[r]&&!bad)return <img src={"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-"+ROLE_CD[r]+".png"} alt={r} title={({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]} width={s} height={s} loading="lazy" onError={()=>setBad(true)} style={{flexShrink:0,verticalAlign:"-3px",objectFit:"contain"}}/>;
+ if(ROLE_CD[r]&&!bad)return <img src={ROLE_DATA[r]||roleUrl(r)} alt={r} title={({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]} width={s} height={s} loading="lazy" onError={()=>setBad(true)} style={{flexShrink:0,verticalAlign:"-3px",objectFit:"contain"}}/>;
  return <RoleIcSvg r={r} s={s}/>;}
 function RoleIcSvg({r,s=18}){const id="rg"+r;const G=<linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#E8C062"/><stop offset="1" stopColor="#B07A1E"/></linearGradient>;
  const f="url(#"+id+")";
