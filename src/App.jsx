@@ -2484,14 +2484,15 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                const isEditing=editP&&editP.id===p.id;
                const avatar=p.photo_url||p.avatar_url||null;
                return(
-                <div key={p.id||p.name} style={{padding:"8px 14px",borderTop:"1px solid rgba(255,255,255,.03)"}}>
+                <div key={p.id||p.name} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)"}}>
                  {!isEditing?(
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                   {avatar?<img src={avatar} alt={p.name} style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
-                    :<div style={{width:32,height:32,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
-                   <div style={{flex:1}}>
-                    <div style={{fontWeight:700,fontSize:13,color:"#E5E7EB"}}>{p.name}</div>
-                    <div style={{fontSize:10,color:"#6B7280"}}>{roleLine([p.role,p.league],p.role)}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                   {avatar?<img src={avatar} alt={p.name} style={{width:52,height:52,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,background:"#1f2937"}}/>
+                    :<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:19,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
+                   <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+                     {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={20}/>:null}{p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
+                    {!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
                    </div>
                    <button onClick={()=>openEdit(p)} style={{padding:"5px 10px",background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:6,color:accent,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
                    {p.team&&<button onClick={async e=>{e.stopPropagation();freezeTeam(p,"");const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
