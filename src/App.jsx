@@ -16,6 +16,8 @@ let _B64_PGL=null;
 let _B64_THEINTERNATIONAL=null;
 let _B64_CHAMPIONS=null;
 
+const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
+const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 function normalizeDT(dt,id){
  const p=v=>String(v).padStart(2,"0");
  const tsToStr=ts=>{
@@ -547,10 +549,6 @@ function JHd({a}){return(<div style={{display:"grid",gridTemplateColumns:JG,gap:
   {[a,"N","WR","Profit"].map((h,i)=><span key={h} style={{fontSize:10,color:"#6B7280",fontWeight:800,textTransform:"none",letterSpacing:0,textAlign:i===0?"left":i===3?"right":"center"}}>{h}</span>)}</div>);}
 
 // Interrupteur style iOS
-function Toggle({on,onClick,label}){return(<button onClick={onClick} role="switch" aria-checked={on} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",padding:"10px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
- <span style={{fontSize:14,fontWeight:600,color:"#e5e7eb"}}>{label}</span>
- <span style={{width:46,height:28,borderRadius:14,background:on?"#22C55E":"#374151",position:"relative",transition:"background .2s",flexShrink:0}}><span style={{position:"absolute",top:3,left:on?21:3,width:22,height:22,borderRadius:11,background:"#fff",boxShadow:"0 1px 3px rgba(0,0,0,.4)",transition:"left .2s"}}/></span>
-</button>);}
 function JRow({l,r,col,onClick,icon}){const wr=r.wr!=null?r.wr:(r.count?r.won/r.count*100:0);const nn=r.count!=null?r.count:r.n;return(<div onClick={onClick} style={{display:"grid",gridTemplateColumns:JG,gap:4,padding:"9px 14px",borderTop:"1px solid #1F2937",alignItems:"center",cursor:onClick?"pointer":"default",opacity:nn!=null&&nn<5?.45:1}}>
   <span style={{fontSize:13.5,fontWeight:700,color:col||"#E5E7EB",display:"flex",alignItems:"center",gap:6,minWidth:0}}>{icon}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>{onClick&&<span style={{fontSize:11,color:"#4B5563"}}>›</span>}</span>
   <span style={{fontSize:13,color:"#9CA3AF",textAlign:"center"}}>{r.count}</span>
@@ -899,8 +897,6 @@ function toDateKey(dt){
  try{const s=String(dt).slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(s)?s:"";}
  catch{return "";}
 }
-const EMPTY_FORM={player:"",overUnder:"Under",description:"",odds:"",stake:"",bookmaker:"",status:"pending",autoInfo:null,datetime:"",isHeadshot:false,mapTag:"Map 1",isLive:false,mapLocked:false,ppMapType:"",ppDescription:"",calcBkLine:"",calcPPLine:"",calcMapType:"Map 1+2",calcOU:"Over"};
-const EMPTY_MAP_ROW={odds:"",stake:"",status:"pending",enabled:true};
 function nowDT(){
  // heure locale de l'appareil (l'ancien passage par toLocaleString "en-CA" donnait "NaN-NaN-NaN" sur iPhone)
  const p=v=>String(v).padStart(2,"0");
@@ -1642,59 +1638,6 @@ const NavIconAnalyse=memo(function NavIconAnalyse({active}){
  <line x1="8" y1="10" x2="12" y2="10"/><line x1="10" y1="8" x2="10" y2="12"/>
  </svg>);
 });
-
-function QuickUnitsEditor({quickUnits,setQuickUnits}){
- const [open,setOpen]=useState(false);
- const [editing,setEditing]=useState(null);
- const [tempVal,setTempVal]=useState("");
- const save=(i,val)=>{
-  const n=parseFloat(val);
-  if(isNaN(n)||n<=0||n>10)return;
-  const next=[...quickUnits];next[i]=Math.round(n*100)/100;
-  setQuickUnits(next);setEditing(null);
- };
- const reset=()=>setQuickUnits([0.75,1,1.25,1.5,1.75,2]);
- return(
-  <div style={{marginBottom:8}}>
-   <SuiviHead n="trendUp" color="#f59e0b" title="Mises rapides" sub={quickUnits.join(" · ")+" unités"} open={open} onClick={()=>setOpen(o=>!o)}/>
-   {open&&(
-    <div style={SV_BODY}>
-     <div style={{fontSize:10,color:"#6B7280",marginBottom:10,lineHeight:1.5}}>
-      Les 6 multiplicateurs utilisés dans les boutons de mise rapide du formulaire.<br/>
-      <span style={{color:"#A78BFA"}}>Le montant en $ s'adapte automatiquement à ton palier de bankroll.</span>
-     </div>
-     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-      {quickUnits.map((u,i)=>(
-       <div key={i} style={{background:"#111827",border:"1px solid "+(editing===i?"rgba(139,92,246,.5)":"#1F2937"),borderRadius:10,padding:"8px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:4,transition:"border-color .2s"}}>
-        <div style={{fontSize:9,color:"#4a5a6e",fontWeight:700,textTransform:"none",letterSpacing:0}}>Bouton {i+1}</div>
-        {editing===i?(
-         <div style={{display:"flex",gap:4,alignItems:"center",width:"100%"}}>
-          <input autoFocus type="number" value={tempVal} step="0.25" min="0.25" max="10"
-           onChange={e=>setTempVal(e.target.value)}
-           onKeyDown={e=>{if(e.key==="Enter")save(i,tempVal);if(e.key==="Escape")setEditing(null);}}
-           style={{width:"100%",background:"#0D0F1E",border:"1px solid rgba(139,92,246,.4)",borderRadius:6,color:"#A78BFA",fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:700,padding:"3px 6px",textAlign:"center",outline:"none"}}/>
-          <button onClick={()=>save(i,tempVal)} style={{background:"rgba(139,92,246,.2)",border:"none",borderRadius:5,color:"#A78BFA",cursor:"pointer",fontSize:12,padding:"3px 6px",fontFamily:"'Inter',sans-serif"}}>✓</button>
-         </div>
-        ):(
-         <button onClick={()=>{setEditing(i);setTempVal(String(u));}}
-          style={{background:"transparent",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",width:"100%",textAlign:"center"}}>
-          <span style={{fontSize:16,fontWeight:800,color:"#c4b5fd"}}>{u}</span>
-          <span style={{fontSize:11,color:"#6B7280"}}>u</span>
-         </button>
-        )}
-       </div>
-      ))}
-     </div>
-     <button onClick={reset}
-      style={{width:"100%",padding:"7px",background:"transparent",border:"1px solid #1F2937",borderRadius:8,color:"#6B7280",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
-      Réinitialiser (0.75 · 1 · 1.25 · 1.5 · 1.75 · 2u)
-     </button>
-    </div>
-   )}
-  </div>
- );
-}
-
 
 const DaysTab=memo(function DaysTab({settledFiltered}){
  const [open,setOpen]=useState(null);
@@ -2497,7 +2440,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                    {avatar?<img src={avatar} alt={p.name} style={{width:52,height:52,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,background:"#1f2937"}}/>
                     :<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:19,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
                    <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</span>
+                    <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{flex:"0 1 auto",minWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name||"(sans nom)"}</span>
                      {p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
                     {!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
                    </div>
@@ -5217,7 +5160,6 @@ const rsClean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
 const rsPair=(a,b)=>[a,b].map(teamKey).sort().join("~");
 const rsDay=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};   // date LOCALE (ton fuseau)
 const rsTs=v=>{if(v==null||v==="")return NaN;if(/^\d+(\.\d+)?$/.test(String(v))){const n=Number(v);return n>1e12?n:n*1000;}return new Date(v).getTime();};
-const rsChip=(on,t,fn,key,c="#7C3AED")=><button key={key||t} onClick={fn} aria-pressed={on} style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid "+(on?c:"rgba(255,255,255,.08)"),background:on?c+"33":"transparent",color:on?"#fff":"#9ca3af",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}}>{t}</button>;
 function ResultsTab({allPlayers={},teamLogos={},bets=[],setBets,tours={}}){
  const [view,setView]=useState("saisie");const [,setAl]=useState(0);
  useEffect(()=>{cloudDb("bet_alias?select=pkey,alias").then(r=>{const o={};(r||[]).forEach(x=>o[x.pkey]=x.alias);BET_ALIAS=o;setAl(n=>n+1);}).catch(()=>{});},[]);
@@ -5366,21 +5308,15 @@ const LOL_ROLES=["TOP","JGL","MID","ADC","SUP"];
 const ROLE_OF=r=>{const x=String(r||"").toLowerCase();return /^top/.test(x)?"TOP":/^(jun|jgl|jng)/.test(x)?"JGL":/^mid/.test(x)?"MID":/^(adc|bot|ad )/.test(x)?"ADC":/^sup/.test(x)?"SUP":null;};
 // Icônes officielles de Riot, chargées depuis Community Dragon (comme les images de champions) ; si elles ne chargent pas → dessin de secours
 const ROLE_CD={TOP:"top",JGL:"jungle",MID:"middle",ADC:"bottom",SUP:"utility"};
-const roleUrl=r=>"https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-"+ROLE_CD[r]+".png";
+const roleFixed=r=>SUPA_URL+"/storage/v1/object/public/photos/roles/"+ROLE_CD[r]+".png";   // tes fichiers Supabase
 // gardées dans le navigateur (localStorage) après le 1er chargement → affichage immédiat ensuite
 let ROLE_DATA=(()=>{try{return JSON.parse(localStorage.getItem("role_ic_v1")||"{}");}catch(e){return {};}})();
 // stockage Supabase (comme logos et photos) : media_store « role_icons » = {TOP:url,…}, copiées une seule fois puis servies par ton Supabase
-let ROLE_SB={};
-if(typeof window!=="undefined")setTimeout(async()=>{try{const r=await cloudDb("media_store?key=eq.role_icons&select=value");let v=r&&r[0]&&r[0].value;try{v=JSON.parse(v);}catch(e){}ROLE_SB=v&&typeof v==="object"?v:{};
- const miss=Object.keys(ROLE_CD).filter(k=>!ROLE_SB[k]);if(!miss.length)return;const n={...ROLE_SB};
- for(const k of miss){try{const u=await supaUploadPhotoFromUrl(roleUrl(k),"roles");if(u&&u.includes("/storage/v1/object/public/"))n[k]=u;}catch(e){}}
- if(Object.keys(n).length>Object.keys(ROLE_SB).length){ROLE_SB=n;await cloudDb("media_store?on_conflict=key",{method:"POST",body:[{key:"role_icons",value:JSON.stringify(n),updated_at:Date.now()}],prefer:"resolution=merge-duplicates"}).catch(()=>{});}}catch(e){}},1500);
-if(typeof window!=="undefined"&&Object.keys(ROLE_DATA).length<5)setTimeout(()=>{Object.keys(ROLE_CD).forEach(async r=>{if(ROLE_DATA[r])return;try{const b=await (await fetch(ROLE_SB[r]||roleUrl(r))).blob();const d=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(b);});
+/* copie auto retirée : les fichiers sont dans photos/roles (top, jungle, middle, bottom, utility) */
+if(typeof window!=="undefined"&&Object.keys(ROLE_DATA).length<5)setTimeout(()=>{Object.keys(ROLE_CD).forEach(async r=>{if(ROLE_DATA[r])return;try{const rs=await fetch(roleFixed(r));if(!rs.ok)return;const b=await rs.blob();if(!/^image\//.test(b.type))return;const d=await new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(f.result);f.readAsDataURL(b);});
  if(String(d).startsWith("data:image")){ROLE_DATA={...ROLE_DATA,[r]:d};try{localStorage.setItem("role_ic_v1",JSON.stringify(ROLE_DATA));}catch(e){}}}catch(e){}});},0);
-// fichiers fixes dans ton Supabase : photos/roles/top.png, jungle.png, middle.png, bottom.png, utility.png
-const roleFixed=r=>SUPA_URL+"/storage/v1/object/public/photos/roles/"+ROLE_CD[r]+".png";
 function RoleIc({r,s=18}){const [lv,setLv]=useState(0);
- const srcs=ROLE_CD[r]?[ROLE_DATA[r],ROLE_SB[r],roleFixed(r),roleUrl(r)].filter(Boolean):[];const bad=lv>=srcs.length;
+ const srcs=ROLE_CD[r]?[ROLE_DATA[r],roleFixed(r)].filter(Boolean):[];const bad=lv>=srcs.length;
  if(ROLE_CD[r]&&!bad)return <img key={lv} src={srcs[lv]} alt={r} title={({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]} width={s} height={s} onError={()=>setLv(v=>v+1)} style={{flexShrink:0,verticalAlign:"-3px",objectFit:"contain"}}/>;
  return <RoleIcSvg r={r} s={s}/>;}
 function RoleIcSvg({r,s=18}){const id="rg"+r;const G=<linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#E8C062"/><stop offset="1" stopColor="#B07A1E"/></linearGradient>;
@@ -5412,7 +5348,7 @@ function MapPhotos({showToast}){
 let RS_TOURS=[];
 // Bouton SIM : au prochain passage du bot, la simulation prend aussi les cuts PP Map 3 / Map 5 en live (entre les maps), puis s'éteint
 function SimBtn(){const [v,setV]=useState(null);
- useEffect(()=>{let st=false;const ld=()=>cloudDb("settings?select=value&key=eq.sim_live").then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(!st)setV(x||{on:false});}).catch(()=>{});ld();const i=setInterval(ld,30000);return()=>{st=true;clearInterval(i);};},[]);
+ useEffect(()=>{let st=false;const ld=()=>cloudDb("settings?select=value&key=eq.sim_live").then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(!st)setV(x||{on:false});}).catch(()=>{});ld();const i=setInterval(()=>{if(!document.hidden)ld();},30000);return()=>{st=true;clearInterval(i);};},[]);
  const on=!!(v&&v.on&&(!v.until||new Date(v.until).getTime()>Date.now()));
  const set=x=>{setV(x);cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"sim_live",value:x}]}).catch(()=>{});};
  return <button onClick={()=>set(on?{on:false}:{on:true,once:true,until:new Date(Date.now()+3*3600e3).toISOString()})} aria-pressed={on} title={on?"SIM actif : le prochain passage du bot prend les cuts Map 3 / 5 live":"Prendre les cuts Map 3 / 5 live au prochain passage du bot"}
@@ -5426,7 +5362,7 @@ const duelInMatch=(d,t1,t2)=>{const [A,B]=String(d.match||"").split(/\s+vs\.?\s+
 function DuelAlerts({teamLogos={},allPlayers={},teams=null,map=null,inline=false,exclude=null}){
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
  const [rows0,setRows]=useState(null);
- useEffect(()=>{let stop=false;const ld=()=>loadDuels().then(r=>{if(!stop)setRows(r);}).catch(()=>{if(!stop)setRows([]);});ld();const t=setInterval(ld,60000);return()=>{stop=true;clearInterval(t);};},[]);
+ useEffect(()=>{let stop=false;const ld=()=>loadDuels().then(r=>{if(!stop)setRows(r);}).catch(()=>{if(!stop)setRows([]);});ld();const t=setInterval(()=>{if(!document.hidden)ld();},60000);return()=>{stop=true;clearInterval(t);};},[]);
  const rows=(rows0||[]).map(d=>({...d,gap:(d.pp_me!=null&&d.pp_vs!=null)?Math.round((Number(d.pp_me)-Number(d.pp_vs))*100)/100:d.gap}))
   .filter(d=>!teams||(duelInMatch(d,teams[0],teams[1])&&(map==null||String(d.map)===String(map))))
   .filter(d=>!exclude||!exclude.some(([a,b])=>duelInMatch(d,a,b)));
@@ -5570,7 +5506,7 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
   const cl=[];(r||[]).forEach(x=>{const A=rsClean(x.team),B=rsClean(x.match);if(!A||!B||/[\/+&]/.test(String(x.player||"")+A+B)||/\b(props?\s*\d|winner|outright|combo)\b/i.test(A+" "+B)||teamKey(A)===teamKey(B))return;
    const t=rsTs(x.start);if(isNaN(t)||t>Date.now()-3*3600e3)return;const pr=rsPair(A,B);let o=cl.find(c=>c.pair===pr&&Math.abs(c.t-t)<8*3600e3);if(!o){o={pair:pr,t};cl.push(o);}if(t>o.t)o.t=t;});
   const T={};cl.forEach(o=>{const d=rsDay(new Date(o.t));const k=o.pair+"|"+d;const near=[-1,0,1].some(n=>okK.has(o.pair+"|"+rsDay(new Date(new Date(d+"T12:00:00").getTime()+n*864e5))));if(!near)T[d]=(T[d]||0)+1;});
-  if(!off)setTodo(T);}catch(e){}})();return()=>{off=true;};},[sel,done]);
+  if(!off)setTodo(T);}catch(e){}})();return()=>{off=true;};},[sel,Object.keys(done||{}).length]);
  const todoOld=Object.entries(todo).filter(([d])=>d<days[0]).reduce((a,[,n])=>a+n,0);
  const L=(t,g,s=24)=>{const u=findLogo(idx,t,g);return u?<img src={u} alt="" style={{width:s,height:s,objectFit:"contain",flexShrink:0}}/>:<span style={{width:s,height:s,borderRadius:3,background:teamColors(t)[0],color:"#14181E",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:s>30?13:9,fontWeight:800,flexShrink:0}}>{teamAbbr(t).slice(0,3)}</span>;};
  return(<div className={"rs"+(sel&&GNORM(sel.game)==="Valorant"?" val":"")+(sel&&GNORM(sel.game)==="LoL"?" lx":"")+(sel&&GNORM(sel.game)==="Dota2"?" dota":"")}><style>{RS_CSS}</style>
@@ -6688,54 +6624,9 @@ function CutSearch({allPlayers={},teamLogos={}}){
 }
 
 // ── Quoi jouer : cut PrizePicks → Under par map à jouer (Map 1+2 / Map 1+2+3) ──
-function CutGuide(){
- const [open,setOpen]=useState(false);
- const [maps,setMaps]=useState(2);
- const [game,setGame]=useState("CS2");
- const [ev,setEv]=useState(1.25);
- const R={CS2:[20,88],"CS2 HS":[8,60],Valorant:[20,88],LoL:[1,30],Dota2:[3,45]};
- const COL={CS2:"#f97316","CS2 HS":"#fb923c",Valorant:"#EF4444",LoL:"#6366f1",Dota2:"#EF4444"};
- const EVS=game==="LoL"?[0.75,1,1.25,1.5,1.75,2]:[1.25,1.5,1.75,2,2.25,2.5];
- const col=COL[game];
- const [lo0,hi0]=R[game];const lo=maps===3?lo0*1.5:lo0,hi=maps===3?hi0*1.5:hi0;
- const rows=[];
- for(let p=Math.ceil(lo*2)/2;p<=hi+1e-9;p+=0.5){
-  if(maps===2&&Math.abs(p%1-0.5)>1e-9&&p%1!==0)continue;
-  const per=p/maps;const need=per+ev*2/maps;
-  const u=Math.ceil(need-0.5-1e-9)+0.5; // plus petite ligne en .5 ≥ need
-  const real=(u-per)*maps/2;
-  rows.push({p,per,u,real});
- }
- const G="1fr 1.2fr 1fr";
- return(<div style={{marginBottom:8}}>
-  <SuiviHead img={_B64_PP_LOGO_B64} color="#a78bfa" title="Quoi jouer" sub="Cut PrizePicks → Under à jouer par map" open={open} onClick={()=>setOpen(v=>!v)}/>
-  {open&&<div style={SV_BODY}>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,padding:4,borderRadius:12,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",marginBottom:8}}>
-    {[[2,"Map 1+2"],[3,"Map 1+2+3"]].map(([k,l])=><button key={k} onClick={()=>setMaps(k)} style={{padding:"9px 0",borderRadius:9,border:"none",background:maps===k?"rgba(167,139,250,.18)":"transparent",color:maps===k?"#c4b5fd":"#6b7280",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
-   </div>
-   <div style={{display:"flex",gap:5,marginBottom:8}}>{["CS2","CS2 HS","Valorant","LoL","Dota2"].map(g=>{const on=game===g;return(
-    <button key={g} onClick={()=>{setGame(g);if(g==="LoL"?ev>2:ev<1.25)setEv(1.25);}} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"7px 2px",borderRadius:8,border:"1px solid "+(on?COL[g]+"88":"rgba(255,255,255,.07)"),background:on?COL[g]+"1f":"transparent",color:on?"#fff":"#6b7280",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-     <GameLogo game={g==="CS2 HS"?"CS2":g} size={13}/>{g==="CS2"?"Kills":g==="CS2 HS"?"HS":g==="Valorant"?"Valo":g==="Dota2"?"Dota":g}</button>);})}</div>
-   <div style={{display:"flex",gap:5,marginBottom:6}}>{EVS.map(v=><button key={v} onClick={()=>setEv(v)} style={{flex:1,padding:"7px 0",borderRadius:8,border:"1px solid "+(ev===v?"#22C55E":"rgba(255,255,255,.07)"),background:ev===v?"rgba(34,197,94,.12)":"transparent",color:ev===v?"#22C55E":"#6b7280",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>+{v}</button>)}</div>
-   <div style={{fontSize:11,color:"#8b93a7",margin:"0 2px 10px"}}>{maps===3?"Seuil en équivalent Map 1+2 · +"+ev+" = +"+(ev*2/3).toFixed(2)+" par map":"Seuil par map"}</div>
-   <div style={{borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.06)"}}>
-    <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.4)"}}>{["Cut PP "+(maps===3?"1+2+3":"1+2"),"Joue (par map)","Écart réel"].map(h=><div key={h} style={{padding:"8px 4px",fontSize:9.5,fontWeight:700,color:col,textTransform:"none",letterSpacing:0,textAlign:"center"}}>{h}</div>)}</div>
-    {rows.map((x,i)=><div key={x.p} style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"1px solid rgba(255,255,255,.04)",background:i%2?"rgba(255,255,255,.01)":"transparent"}}>
-     <div style={{padding:"9px 4px",textAlign:"center",fontSize:14,fontWeight:700,color:"#fbbf24"}}>{x.p.toFixed(1)}<div style={{fontSize:9.5,color:"#6b7280",fontWeight:600}}>{x.per.toFixed(2)} / map</div></div>
-     <div style={{padding:"9px 4px",textAlign:"center",fontSize:15,fontWeight:800,color:"#60a5fa"}}>Under {x.u.toFixed(1)}</div>
-     <div style={{padding:"9px 4px",textAlign:"center",fontSize:13,fontWeight:800,color:Math.abs(x.real-ev)<0.01?"#22C55E":"#a3e635"}}>+{x.real.toFixed(2)}</div>
-    </div>)}
-   </div>
-   
-  </div>}
- </div>);
-}
-
 // ── Compte impôt : ce que tu as mis de côté (en $ CA) comparé à l'impôt estimé ──
 // ── Ancien historique Bet-Analytix (widgets intégrés) ──
-const BA_ID="1565281";
 // ── Opportunités : lignes PrizePicks (Apify) × Unders Betby ──
-const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
 const ADJ_DESC="Ajustement";
 const isAdjBet=b=>b&&b.description===ADJ_DESC;
 const adjToBet=({id,date,amount,note,bookmaker})=>{const v=Math.abs(Number(amount)||0);return{id:id||Date.now(),player:note||ADJ_DESC,description:ADJ_DESC,overUnder:"",odds:2,stake:v,bookmaker:bookmaker||"",status:amount<0?"lost":"won",profit:Math.round((Number(amount)||0)*100)/100,game:"",league:"",role:"",team:"",datetime:(date||localYMD(new Date()))+"T12:00",isHeadshot:false,isLive:false,mapTag:"",tournament:"",updatedAt:Date.now()};};
@@ -6786,10 +6677,7 @@ function Adjustments({bets,setBets,bookmakers}){
   </div>}
  </div>);
 }
-const CRYPTOS=[["SOL","Solana","solana","Solana"],["USDT","Tether","tether","Tron"],["USDC","USD Coin","usd-coin","Solana"],["BTC","Bitcoin","bitcoin","Bitcoin"],["ETH","Ethereum","ethereum","Ethereum"],["LTC","Litecoin","litecoin","Litecoin"],["TRX","Tron","tron","Tron"],["BNB","BNB","binancecoin","BSC"],["DOGE","Dogecoin","dogecoin","Dogecoin"],["XRP","XRP","ripple","XRP"]];
-const NETS=["Solana","Ethereum","Tron","BSC","Bitcoin","Litecoin","Polygon","Base","Arbitrum","Dogecoin","XRP"];
 function txLink(net,tx){if(!tx)return null;const t=encodeURIComponent(tx);return {Solana:"https://solscan.io/tx/",Ethereum:"https://etherscan.io/tx/",Tron:"https://tronscan.org/#/transaction/",BSC:"https://bscscan.com/tx/",Bitcoin:"https://mempool.space/tx/",Litecoin:"https://litecoinspace.org/tx/",Polygon:"https://polygonscan.com/tx/",Base:"https://basescan.org/tx/",Arbitrum:"https://arbiscan.io/tx/",Dogecoin:"https://dogechain.info/tx/",XRP:"https://xrpscan.com/tx/"}[net]?({Solana:"https://solscan.io/tx/",Ethereum:"https://etherscan.io/tx/",Tron:"https://tronscan.org/#/transaction/",BSC:"https://bscscan.com/tx/",Bitcoin:"https://mempool.space/tx/",Litecoin:"https://litecoinspace.org/tx/",Polygon:"https://polygonscan.com/tx/",Base:"https://basescan.org/tx/",Arbitrum:"https://arbiscan.io/tx/",Dogecoin:"https://dogechain.info/tx/",XRP:"https://xrpscan.com/tx/"}[net]+t):null;}
-const FLOW_T={depot:["Dépôt","#3B82F6"],retrait:["Retrait","#22C55E"],bloque:["Bloqué / banni","#EF4444"]};
 function BkFlows({flows=[],setFlows,bookmakers=[],bets=[],season="all",cap=500,setCap=()=>{},bal={}}){
  const [open,setOpen]=useState(false);const [type,setType]=useState("depot");const [bk,setBk]=useState("");const [qty,setQty]=useState("");
  const [date,setDate]=useState(()=>localYMD(new Date()));const [del,setDel]=useState(null);const [px,setPx]=useState(null);
@@ -6929,9 +6817,6 @@ function BkSettings({bk,onClose,upd,onDelete,quickUnits,setQuickUnits,bookmakers
    {tab==="imp"&&String(tax)!==String(bk.taxPct??"")&&<button onClick={()=>upd({taxPct:tax===""?null:num(tax)})} style={{width:"100%",height:50,marginTop:16,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7c3aed,#6366f1)",color:"#fff",fontWeight:900,fontSize:15,cursor:"pointer"}}>Enregistrer le taux</button>}
   </div></div>;
 }
-function SeasonPick({season,setSeason,years}){return(<div style={{display:"flex",gap:4,padding:3,borderRadius:11,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
- {[...years.map(y=>[y,"Saison "+y]),["all","Tout"]].map(([k,l])=><button key={k} onClick={()=>setSeason(k)} style={{flex:1,height:34,padding:"0 10px",borderRadius:9,border:"none",background:season===k?"#7c3aed":"transparent",color:season===k?"#fff":"#9ca3af",fontWeight:800,fontSize:12.5,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>{l}</button>)}
-</div>);}
 // ── Champions LoL : classes, kills, part d'équipe, et MES paris par champion ──
 let DD_TAGS=null;const ddTags=()=>DD_TAGS?Promise.resolve(DD_TAGS):ddVer().then(v=>v?fetch("https://ddragon.leagueoflegends.com/cdn/"+v+"/data/fr_FR/champion.json").then(r=>r.json()).then(j=>{const o={};Object.values(j.data||{}).forEach(c=>{o[c.name]=c.tags||[];o[c.id]=c.tags||[];});DD_TAGS=o;return o;}):{}).catch(()=>({}));
 const CH_SUB={Hypercarry:["Jinx","Kog'Maw","Vayne","Twitch","Aphelios","Zeri","Kai'Sa","Smolder","Tristana","Kayle","Kassadin","Jax","Gangplank"],
@@ -6965,15 +6850,6 @@ function useChampData(bets,allPlayers){
 const chAgg=L=>{const w=L.filter(b=>b.status==="won").length,l=L.length-w,st=L.reduce((t,b)=>t+(Number(b.stake)||0),0),p=L.reduce((t,b)=>t+(Number(b.profit)||0),0);return {n:L.length,w,l,p,wr:L.length?w/L.length*100:0,roi:st?p/st*100:0};};
 function ChampIcon({c,ver,size=28}){const im=champImg(c,ver);return im?<img src={im} alt="" style={{width:size,height:size,borderRadius:7,flexShrink:0}}/>:<span style={{width:size,height:size,borderRadius:7,background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:size*.38,fontWeight:800,color:"#9ca3af"}}>{String(c||"?").slice(0,2)}</span>;}
 // Top 5 dans Stats › Jeux › LoL
-function ChampTop5({bets,allPlayers,onMore}){const {data,ver}=useChampData(bets,allPlayers);
- const L=(data||[]).map(a=>({...a,m:chAgg(a.bets)})).filter(a=>a.m.n>=2).sort((x,y)=>y.m.p-x.m.p).slice(0,5);
- return <><JSec t="Champions" right={<button onClick={onMore} style={{background:"none",border:"none",color:"#a78bfa",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Tout voir →</button>}/>
-  {!data?<div style={{padding:"4px 14px 12px",fontSize:12.5,color:"#6b7280"}}>Chargement…</div>:!L.length?<div style={{padding:"4px 14px 12px",fontSize:12.5,color:"#6b7280"}}>Pas encore assez de paris liés à un champion (saisis les champions dans Résultats).</div>:
-  L.map((a,i)=><button key={a.c} onClick={onMore} style={{width:"100%",display:"grid",gridTemplateColumns:"20px 30px minmax(0,1fr) 54px 46px 76px",gap:8,alignItems:"center",padding:"9px 14px",border:"none",borderTop:"1px solid #1F2937",background:"transparent",color:"#e5e7eb",cursor:"pointer",fontFamily:"Inter,sans-serif",fontSize:13.5,textAlign:"left"}}>
-   <span style={{fontWeight:800,color:i<3?"#fbbf24":"#6b7280",textAlign:"center"}}>{i+1}</span><ChampIcon c={a.c} ver={ver}/>
-   <span style={{minWidth:0}}><b style={{display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.c}</b><span style={{fontSize:11,color:"#9ca3af"}}>{a.cls}</span></span>
-   <span style={{textAlign:"right",color:"#9ca3af"}}>{a.m.w}-{a.m.l}</span><span style={{textAlign:"right",fontWeight:700,color:a.m.wr>=55?"#22C55E":a.m.wr<50?"#EF4444":"#e5e7eb"}}>{Math.round(a.m.wr)}%</span>
-   <b style={{textAlign:"right",color:a.m.p>=0?"#22C55E":"#EF4444"}}>{fmtM(a.m.p)}</b></button>)}</>;}
 // Champions d'un joueur (fiche joueur + page Champions) — switch Kills / KDA
 const kdaF=v=>v==null?"–":(Math.round(v*100)/100).toFixed(2).replace(".",",");
 const f1c=v=>v==null?"–":(Math.round(v*10)/10).toLocaleString("fr-CA");
@@ -7424,7 +7300,6 @@ function ChampStats({allPlayers={},bets=[]}){
  </div>);
 }
 // ── Mise conseillée : 25 / 37,5 / 50 $ selon ton ROI réel sur ce type de pari ──
-const STAKE_TIERS=[25,37.5,50];
 // Tes règles de mise (% de bankroll) — mêmes règles que le bot
 const evPerMap=a=>{if(a.pp_per_map!=null)return Number(a.pp_per_map);const n=String(a.pp_maps||"1").replace(/[^0-9+]/g,"").split("+").filter(Boolean).length||1;const l=parseFloat(a.pp_line);return isNaN(l)?null:l/n;};
 const OVER_T={LoL:[[1,2,1],[1.5,1.9,1.25],[1.75,1.75,1.5]],CS2:[[2,1.8,1],[2.25,1.75,1.75]],Valorant:[[2,1.8,1],[2.25,1.75,1.75]],Dota2:[[2,1.8,1],[2.25,1.75,1.25]]};
@@ -7532,67 +7407,6 @@ function BetDupes({bets,setBets,showToast}){
 }
 
 // ── VÉRIF D'UN BET : je choisis le cut de mon book + le jeu → quels cuts PrizePicks m'ont le plus rapporté ──
-function EvCheck({bets}){
- const [open,setOpen]=useState(false);
- const [bk,setBk]=useState("");
- const [game,setGame]=useState("CS2");
- const [mtF,setMtF]=useState("all");
- const num=v=>parseFloat(String(v||"").replace(",",".").replace(/[^0-9.\-]/g,""));
- const hs=b=>!!b.isHeadshot||/headshot/i.test(b.description||"");
- const GAMES=[["CS2","CS2","Kills"],["CS2 HS","CS2","Headshots"],["LoL","LoL","LoL"],["Dota2","Dota2","Dota"],["Valorant","Valorant","Valo"]];
- const bkOpts=[];for(let v=0.5;v<=40.5;v+=1)bkOpts.push(v.toFixed(1));
- const real=game==="CS2 HS"?"CS2":game;
- const B=num(bk);
- const pool=!bk?[]:bets.filter(b=>b.game===real&&(real!=="CS2"||(game==="CS2 HS")===hs(b))&&(b.status==="won"||b.status==="lost")&&!b.isLive&&b.overUnder==="Under"&&Math.abs(num(b.description)-B)<0.001&&b.ppMapType&&num(b.ppLine)&&(mtF==="all"||b.ppMapType===mtF));
- const groups={};
- pool.forEach(b=>{const k=b.ppMapType+"|"+num(b.ppLine);(groups[k]=groups[k]||{mt:b.ppMapType,pp:num(b.ppLine),l:[]}).l.push(b);});
- const rows=Object.values(groups).map(g=>{const n=g.l.length,w=g.l.filter(b=>b.status==="won").length,st=g.l.reduce((t,b)=>t+(b.stake||0),0),pr=g.l.reduce((t,b)=>t+(b.profit||0),0);
-  const per=g.mt==="Map 1+2"?g.pp/2:g.mt==="Map 1+2+3"?g.pp/3:g.pp;
-  return {...g,n,w,wr:n?w/n*100:0,pr,roi:st?pr/st*100:0,ev:+((B-per)*(g.mt==="Map 1+2+3"?1.5:1)).toFixed(2)};})
-  .sort((a,z)=>(z.n>=3)-(a.n>=3)||z.pr-a.pr);
- const best=rows.find(r=>r.n>=3&&r.pr>0);
- const tot=rows.reduce((a,r)=>({n:a.n+r.n,pr:a.pr+r.pr}),{n:0,pr:0});
- const pc=v=>v>0?"#22C55E":v<0?"#EF4444":"#9ca3af";
- const G="1.25fr .7fr .55fr .7fr 1fr";
- return(<div style={{marginBottom:8}}>
-  <SuiviHead n="target" color="#a78bfa" title="Vérifier un bet" sub="Ton cut + le jeu → tes meilleurs cuts PrizePicks" open={open} onClick={()=>setOpen(o=>!o)}/>
-  {open&&<div style={{padding:"12px 4px 4px"}}>
-   <div style={{fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"}}>Jeu</div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:12}}>{GAMES.map(([k,g,l])=>
-    <button key={k} onClick={()=>setGame(k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"8px 2px",borderRadius:10,border:"1px solid "+(game===k?"#7C3AED":"#1F2937"),background:game===k?"rgba(124,58,237,.18)":"#0b1120",color:game===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}><GameLogo game={g} size={13}/>{l}</button>)}</div>
-   <div style={{fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"}}>Format PrizePicks</div>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:12}}>{[["all","Tous"],["Map 1+2","Map 1+2"],["Map 1+2+3","Map 1-2-3"],["Map 3","Map 3"]].map(([k,l])=>
-    <button key={k} onClick={()=>setMtF(k)} style={{padding:"9px 2px",borderRadius:10,border:"1px solid "+(mtF===k?"#7C3AED":"#1F2937"),background:mtF===k?"rgba(124,58,237,.18)":"transparent",color:mtF===k?"#DDD6FE":"#9CA3AF",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>
-   <div style={{fontSize:12,fontWeight:700,color:"#8b93a7",margin:"0 2px 6px"}}>Cut de mon book (Under, par map)</div>
-   <select value={bk} onChange={e=>setBk(e.target.value)} style={{width:"100%",height:48,borderRadius:12,border:"1px solid #1F2937",background:"#0b1120",color:bk?"#fff":"#6b7280",fontSize:20,fontWeight:800,padding:"0 12px",fontFamily:"Inter,sans-serif",colorScheme:"dark"}}>
-    <option value="">Choisir</option>{bkOpts.map(v=><option key={v} value={v} style={{fontSize:15}}>Under {v}</option>)}</select>
-   {bk&&<>
-    {best?<div style={{marginTop:12,padding:"12px 14px",borderRadius:14,border:"1px solid #22C55E55",background:"rgba(34,197,94,.08)"}}>
-      <div style={{fontSize:11.5,fontWeight:800,letterSpacing:.8,color:"#9ca3af"}}>Ton meilleur cut PrizePicks</div>
-      <div style={{fontSize:22,fontWeight:900,color:"#fff",marginTop:2}}>{best.mt} {best.pp.toFixed(1)} <span style={{fontSize:15,color:"#22C55E"}}>(EV {(best.ev>=0?"+":"")+best.ev.toFixed(2)})</span></div>
-      <div style={{fontSize:13,color:"#cbd5e1",marginTop:2}}>{best.n} paris · {best.wr.toFixed(0)} % réussite · <b style={{color:pc(best.pr)}}>{(best.pr>=0?"+":"")+best.pr.toFixed(2)}$</b> · ROI {(best.roi>=0?"+":"")+best.roi.toFixed(0)}%</div>
-     </div>
-    :<div style={{marginTop:12,fontSize:13,color:"#9ca3af",textAlign:"center"}}>{rows.length?"Pas encore de cut gagnant avec au moins 3 paris.":"Aucun Under "+bk+" joué sur ce jeu avec une ligne PrizePicks enregistrée."}</div>}
-    {rows.length>0&&<div style={{marginTop:10,borderRadius:12,overflow:"hidden",border:"1px solid #1F2937"}}>
-     <div style={{display:"grid",gridTemplateColumns:G,background:"rgba(0,0,0,.35)"}}>{["Cut PP","EV","Paris","Réussite","Profit"].map(h=><div key={h} style={{padding:"8px 4px",fontSize:10,fontWeight:800,color:"#a78bfa",textTransform:"none",textAlign:"center"}}>{h}</div>)}</div>
-     {rows.map((r,i)=><div key={r.mt+r.pp} style={{display:"grid",gridTemplateColumns:G,alignItems:"center",borderTop:"1px solid rgba(255,255,255,.04)",background:r===best?"rgba(34,197,94,.08)":i%2?"rgba(255,255,255,.01)":"transparent",opacity:r.n<3?.5:1}}>
-      <div style={{padding:"9px 4px",textAlign:"center"}}><div style={{fontSize:14,fontWeight:800,color:"#fbbf24"}}>{r.pp.toFixed(1)}</div><div style={{fontSize:9.5,color:"#6b7280"}}>{r.mt}</div></div>
-      <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:pc(r.ev)}}>{(r.ev>=0?"+":"")+r.ev.toFixed(2)}</div>
-      <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#e5e7eb"}}>{r.n}</div>
-      <div style={{textAlign:"center",fontSize:13,color:"#cbd5e1"}}>{r.wr.toFixed(0)}%</div>
-      <div style={{textAlign:"center",fontSize:13.5,fontWeight:800,color:pc(r.pr)}}>{(r.pr>=0?"+":"")+r.pr.toFixed(0)}$<div style={{fontSize:10,fontWeight:600,color:"#8b93a7"}}>{(r.roi>=0?"+":"")+r.roi.toFixed(0)}%</div></div>
-     </div>)}
-     <div style={{display:"grid",gridTemplateColumns:G,borderTop:"2px solid #7C3AED55",background:"rgba(0,0,0,.3)"}}>
-      <div style={{padding:"9px 4px",textAlign:"center",fontSize:11.5,fontWeight:900,color:"#fff",gridColumn:"1 / 3"}}>Total Under {bk}</div>
-      <div style={{textAlign:"center",fontSize:13,fontWeight:900,color:"#fff",alignSelf:"center"}}>{tot.n}</div><div/>
-      <div style={{textAlign:"center",fontSize:13.5,fontWeight:900,color:pc(tot.pr),alignSelf:"center"}}>{(tot.pr>=0?"+":"")+tot.pr.toFixed(0)}$</div>
-     </div>
-    </div>}
-    
-   </>}
-  </div>}
- </div>);
-}
 // ── LABO EDGE : à partir de quel Edge PrizePicks je gagne ? (simple) ─────────
 function openPlayerSheet(name){try{window.dispatchEvent(new CustomEvent("emeieks-open-player",{detail:name}));}catch(e){}}
 
@@ -8403,7 +8217,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const evVis=a=>{if(isMuted(a))return false;const t=evTs(a);if(!isNaN(t)&&new Date(t).toDateString()===new Date().toDateString())return true;return a.status==="new"&&(isNaN(t)||t>Date.now()-3*3600e3);};
  useEffect(()=>{const h=()=>loadMute();window.addEventListener("emeieks-mute",h);return()=>window.removeEventListener("emeieks-mute",h);},[loadMute]);
  const loadEv=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString();const r=await cloudDb("ev_alerts?or=(status.eq.new,and(status.in.(expired,added),created_at.gte."+since+"))&order=edge.desc&limit=300");setEvAlerts(Array.isArray(r)?r:[]);setEvErr("");}catch(e){setEvErr(String(e.message||e).slice(0,120));}},[]);
- useEffect(()=>{loadEv();const i=setInterval(loadEv,60000);return()=>clearInterval(i);},[loadEv]);
+ useEffect(()=>{loadEv();const i=setInterval(()=>{if(!document.hidden)loadEv();},60000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
  const evToBet=(a,bk,stake,odds,mapTag,idx=0,silent=false)=>{
   const info=findPlayer(a.player)||{game:a.game,league:"?",role:"?",team:"?"};
@@ -8432,7 +8246,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
   setEvSnap(s0=>{const cur={};evAlerts.forEach(a=>{cur[a.key]=Number(a.book_odds);});const n=s0.at!==at?{at,prev:s0.at?s0.keys:null,keys:cur}:{...s0,keys:{...s0.keys,...cur}};try{localStorage.setItem("ev_snap",JSON.stringify(n));}catch(e){}return n;});},[evAlerts,botSt]);
  const evIsNew=a=>!!(evSnap.prev&&!(a.key in evSnap.prev));
  const evOddsFrom=a=>{const p=evSnap.prev&&evSnap.prev[a.key];return p!=null&&Math.abs(p-Number(a.book_odds))>=0.01?p:null;};
- useEffect(()=>{loadEvRun();const i=setInterval(()=>{loadEvRun();},20000);return()=>clearInterval(i);},[loadEvRun]);
+ useEffect(()=>{loadEvRun();const i=setInterval(()=>{if(!document.hidden)loadEvRun();},20000);return()=>clearInterval(i);},[loadEvRun]);
  const evRunning=!!(evRun&&(evRun.status==="pending"||evRun.status==="running")&&!(evRun.created_at&&Date.now()-new Date(evRun.created_at).getTime()>15*60e3));
  useEffect(()=>{if(!evRunning)return;const i=setInterval(loadEvRun,2000);return()=>clearInterval(i);},[evRunning,loadEvRun]);
  useEffect(()=>{if(evRun&&evRun.status==="done")loadEv();},[evRun&&evRun.status,evRun&&evRun.id]);
