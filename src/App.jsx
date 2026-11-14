@@ -5229,6 +5229,7 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
  font-family:"Barlow",Arial,Helvetica,sans-serif;color:var(--fg);display:flex;flex-direction:column;gap:10px}
 .rs button{font-family:inherit}
 .rs .nl{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#E0533F;color:#fff;font:900 10px Inter,sans-serif;margin:0 4px;flex-shrink:0}
+.rs .swp{margin-top:6px;height:26px;padding:0 10px;border-radius:6px;border:1px solid var(--ln);background:var(--pn2);color:var(--sf);font:700 11.5px Inter,sans-serif;cursor:pointer}
 .rs .ok2{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#22C55E;color:#04130a;font:900 10px Inter,sans-serif;margin-left:5px;flex-shrink:0}
 .rs .qm{width:42px;height:32px;border:none;border-radius:8px;background:#FBBF24;color:#1a1300;font:900 17px Inter,sans-serif;cursor:pointer;flex-shrink:0}
 .rs .nl.dt{position:absolute;top:-5px;right:-6px;width:12px;height:12px;font-size:8px;margin:0}
@@ -5510,13 +5511,17 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
    return {...m,bb:m.manual||!bb?true:hit.length>0,tour:(done[m.pair+"|"+m.day]&&done[m.pair+"|"+m.day].tournament)||btour||Object.keys(m.tc).sort((a,b)=>m.tc[b]-m.tc[a])[0]||""};}).sort((a,b)=>String(a.start).localeCompare(String(b.start)));},[rows,day,done,bb,tlv]);
  useEffect(()=>{RS_TOURS=[...new Set([...(RS_TOURS||[]),...(rows||[]).map(r=>r.tournament).filter(Boolean),...Object.values(done).map(x=>x.tournament).filter(Boolean)])].sort();},[rows,done]);
  useEffect(()=>{if(!focusM||!rows)return;const T=(focusM.teams||[]).map(teamKey).filter(Boolean);
-  const hit=(matches||[]).find(m=>{const K=Object.keys(m.teams||{});return T.length&&T.every(t=>K.some(k=>k===t||k.includes(t)||t.includes(k)));});
+  // les 2 équipes doivent correspondre (avant : une seule suffisait parfois → « GamerLegion vs CyberHero » ouvrait « BetBoom vs GamerLegion »)
+  const eq=(k,t)=>k===t||(Math.min(k.length,t.length)>=4&&(k.includes(t)||t.includes(k)));
+  const hit=(matches||[]).find(m=>{const K=Object.keys(m.teams||{});return T.length>=2&&T.every(t=>K.some(k=>eq(k,t)))&&K.every(k=>T.some(t=>eq(k,t)));});
   if(hit){setSel(hit);setFocusM(null);window.__openResult=null;return;}
   // pas encore trouvé : les matchs du jour chargent peut-être encore → on réessaie, puis on tente la veille / le lendemain, puis on abandonne
   const age=Date.now()-(focusM.t||0);const sh=n=>{const d=new Date(focusM.day+"T12:00:00");d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
   if(age>2500&&!focusM.tried){setFocusM(f=>({...f,tried:1,t:Date.now()}));setDay(sh(-1));}
   else if(age>2500&&focusM.tried===1){setFocusM(f=>({...f,tried:2,t:Date.now()}));setDay(sh(1));}
-  else if(age>2500&&focusM.tried===2){setFocusM(null);window.__openResult=null;setDay(focusM.day);}
+  else if(age>2500&&focusM.tried===2){const tm=focusM.teams||[];setDay(focusM.day);
+   if(tm.length>=2){const st=focusM.start||focusM.day+"T12:00:00";setSel({manual:true,pair:rsPair(tm[0],tm[1]),key:rsPair(tm[0],tm[1])+"|"+focusM.day,day:focusM.day,t:rsTs(st)||Date.now(),game:focusM.game||"CS2",start:st,teams:{[teamKey(tm[0])]:tm[0],[teamKey(tm[1])]:tm[1]},players:{},tc:{},tour:"",bb:true});}
+   setFocusM(null);window.__openResult=null;}
   else{const id=setTimeout(()=>setFocusM(f=>f?{...f}:f),700);return()=>clearTimeout(id);}},[focusM,matches,rows,day]);
  // marchés spéciaux Betby (« Aurora/PARIVISION vs GL/DO KONCA », « Props 1 », « Winner »…) : ce ne sont pas des matchs
  const isFake=m=>{const T=m.teams||{};const nm=(Array.isArray(T)?T:[...Object.keys(T),...Object.values(T).filter(v=>typeof v==="string")]).join(" ")+" "+String(m.pair||"").replace(/~/g," ");const t=nm+" "+String(m.name||m.match||"");return /\//.test(nm)||/\b(props?\s*\d|winner|outright)\b/i.test(t);};
@@ -5748,7 +5753,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   setPotRows(pr||[]);let flip=false;if(mr&&mr[0]){const x=mr[0];if(Array.isArray(x.vetos))setVetos(x.vetos);flip=teamKey(x.team1)!==teamKey(A);setS({s1:flip?x.score2:x.score1,s2:flip?x.score1:x.score2});if(x.score1!=null)setBo(Math.max(1,2*Math.max(x.score1||0,x.score2||0)-1));}
   if(mp&&mp.length)setMaps(mp.map(x=>{const a=flip?x.score2:x.score1,b=flip?x.score1:x.score2;return {name:x.map_name||"",pick:x.picked_by||"",ct:x.first_ct||"",a:a==null?"":String(a),b:b==null?"":String(b),win:x.winner?(same(x.winner,A)?A:B):(a>b?A:b>a?B:"")};}));
   const o={};(pr||[]).forEach(x=>{o[x.map_no+"|"+x.pkey]={k:x.kills==null?"":String(x.kills),h:x.hs==null?"":String(x.hs),c:x.champion||"",...(x.adv?{adv:x.adv}:{})};});setPk(o);}catch(e){setMsg("Lance resultats.sql dans Supabase");}})();},[m.key]);
- const [mk,setMk]=useState(m.key);const [cp,setCp]=useState(null);const [chg,setChg]=useState(null);const [tourV,setTourV]=useState(m.tour||"");const [tourX,setTourX]=useState(false);useEffect(()=>{setTourV(m.tour||"");},[m.key,m.tour]);const [bm,setBm]=useState({});const [potRows,setPotRows]=useState([]);const [pots,setPots]=useState([]);
+ const [mk,setMk]=useState(m.key);useEffect(()=>{if(Object.keys(lnk).length)setMk(rsPair(A,B)+"|"+m.day);},[A,B]);const [cp,setCp]=useState(null);const [chg,setChg]=useState(null);const [tourV,setTourV]=useState(m.tour||"");const [tourX,setTourX]=useState(false);useEffect(()=>{setTourV(m.tour||"");},[m.key,m.tour]);const [bm,setBm]=useState({});const [potRows,setPotRows]=useState([]);const [pots,setPots]=useState([]);
  useEffect(()=>{const keys=[...new Set(Object.values(m.players).map(p=>p.pkey))];if(!keys.length)return;const d0=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()-864e5)),d2=rsDay(new Date(new Date(m.day+"T12:00:00Z").getTime()+864e5));
   cloudDb("pot_bets?pkey=in.("+keys.map(encodeURIComponent).join(",")+")&day=gte."+d0+"&day=lte."+d2+"&select=pkey,player,stat,side,map,line,odds,edge,day,match,start,at&limit=2000").then(r=>setPots(Array.isArray(r)?r:[])).catch(()=>{});},[m.key]);
  useEffect(()=>{const ids=(bets||[]).filter(b=>GNORM(b.game)===G).map(b=>String(b.id)).slice(0,400);if(!ids.length)return;
@@ -5860,9 +5865,9 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   catch(e){setMsg("Erreur : "+String(e.message||e).slice(0,90));setDelStep(0);}};
  return(<>
   <div className="mh"><button className="back" onClick={onClose} aria-label="Retour">‹</button>
-   <div className="tn">{L(A,m.game,48)}<button className="tl" onClick={()=>setClubFor(A0)}><span>{A}</span>{clubKnown(A,clubs)?<CheckIc title="Club enregistré"/>:<span className="nl">!</span>}</button></div>
+   <div className="tn">{L(A,m.game,48)}<button className="tl" onClick={()=>setClubFor(A0)}><span>{A}</span>{clubKnown(A,clubs)?<CheckIc title="Club enregistré"/>:<span className="nl">!</span>}</button><button type="button" className="swp" onClick={()=>setClubFor(A0)}>⇄ Remplacer</button></div>
    <div className="big">{s.s1==null?<span style={{color:"var(--dm)"}}>– : –</span>:<><span className={s.s1>s.s2?"w":"l"}>{s.s1}</span>:<span className={s.s2>s.s1?"w":"l"}>{s.s2}</span></>}<small>{m.tour?m.tour+" · ":""}{new Date(m.day+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</small></div>
-   <div className="tn">{L(B,m.game,48)}<button className="tl" onClick={()=>setClubFor(B0)}><span>{B}</span>{clubKnown(B,clubs)?<CheckIc title="Club enregistré"/>:<span className="nl">!</span>}</button></div></div>
+   <div className="tn">{L(B,m.game,48)}<button className="tl" onClick={()=>setClubFor(B0)}><span>{B}</span>{clubKnown(B,clubs)?<CheckIc title="Club enregistré"/>:<span className="nl">!</span>}</button><button type="button" className="swp" onClick={()=>setClubFor(B0)}>⇄ Remplacer</button></div></div>
   {missFor&&<div role="dialog" aria-label="Attribuer" onClick={()=>setMissFor(null)} style={{position:"fixed",inset:0,zIndex:220,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"80px 12px"}}>
    <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:420,background:"#12161D",border:"1px solid #2A3240",borderRadius:12,overflow:"hidden",fontFamily:"Inter,sans-serif"}}>
     <div style={{padding:"12px 14px",color:"#fff",fontWeight:800,fontSize:14}}>Qui est {missFor.n} dans le collage ?</div>
@@ -6961,7 +6966,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
   const [h,mi]=v.trim().split(":").map(Number);const d=new Date(z.day+"T00:00:00");d.setHours(h,mi,0,0);const iso=d.toISOString();
   const L=(Array.isArray(rows)?rows:[]).filter(x=>mName(x)===z.m&&x.day===z.day);setRows(R=>Array.isArray(R)?R.map(x=>mName(x)===z.m&&x.day===z.day?{...x,start:iso}:x):R);
   (async()=>{for(let i=0;i<L.length;i+=60){const ks=L.slice(i,i+60).map(x=>encodeURIComponent('"'+String(x.key).replace(/"/g,'\\"')+'"')).join(",");await cloudDb("pot_bets?key=in.("+ks+")",{method:"PATCH",prefer:"return=minimal",body:{start:iso}}).catch(()=>{});}})();};
- const openMatch=z=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-result",{detail:{day:z.day,teams:teamsOf(z.m)}}));}catch(e){}};
+ const openMatch=z=>{const r0=(Array.isArray(rows)?rows:[]).find(x=>mName(x)===z.m&&x.day===z.day)||{};try{window.dispatchEvent(new CustomEvent("emeieks-open-result",{detail:{day:z.day,teams:teamsOf(z.m),game:r0.game||z.game,start:r0.start||z.start}}));}catch(e){}};
  const curve=(L,stk)=>{const A=agg([],stk);let r=0;return [{v:0,dt:""}].concat([...L].filter(x=>x.result).sort((a,b)=>String(a.start||a.day).localeCompare(String(b.start||b.day))).map(x=>{r+=A.pu(x);return {v:r,dt:String(x.day)};}));};
  const pts=useMemo(()=>curve(done),[done]);
  // mois → matchs
