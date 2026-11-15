@@ -5375,8 +5375,8 @@ function SimBtn(){const [v,setV]=useState(null);
  useEffect(()=>{let st=false;const ld=()=>cloudDb("settings?select=value&key=eq.sim_live").then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(!st)setV(x||{on:false});}).catch(()=>{});ld();const i=setInterval(()=>{if(!document.hidden)ld();},30000);return()=>{st=true;clearInterval(i);};},[]);
  const on=!!(v&&v.on&&(!v.until||new Date(v.until).getTime()>Date.now()));
  const set=x=>{setV(x);cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"sim_live",value:x}]}).catch(()=>{});};
- return <button onClick={()=>set(on?{on:false}:{on:true,once:true,until:new Date(Date.now()+3*3600e3).toISOString()})} aria-pressed={on} title={on?"SIM actif : le prochain passage du bot prend les cuts Map 3 / 5 live":"Prendre les cuts Map 3 / 5 live au prochain passage du bot"}
-  style={{height:32,padding:"0 12px",borderRadius:9,border:"1.5px solid #39FF14",background:on?"#39FF14":"rgba(57,255,20,.08)",color:on?"#06210a":"#39FF14",fontSize:12.5,fontWeight:900,letterSpacing:.6,cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:on?"0 0 14px rgba(57,255,20,.55)":"none"}}>SIM{on?" ✓":""}</button>;}
+ return <button onClick={()=>set(on?{on:false}:{on:true,until:new Date(Date.now()+5*60e3).toISOString()})} aria-pressed={on} title={on?"SIM actif 5 min (paris live entre les maps + bets du bot) · touche pour arrêter":"Allumer SIM pendant 5 min : paris live entre les maps"}
+  style={{height:32,padding:"0 12px",borderRadius:9,border:"1.5px solid #39FF14",background:on?"#39FF14":"rgba(57,255,20,.08)",color:on?"#06210a":"#39FF14",fontSize:12.5,fontWeight:900,letterSpacing:.6,cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:on?"0 0 14px rgba(57,255,20,.55)":"none"}}>SIM{on?" "+Math.max(0,Math.ceil((new Date(v.until).getTime()-Date.now())/60e3))+" min":""}</button>;}
 // Cache partagé : une seule lecture des duels pour toute la page (liste générale + duels dans chaque match)
 const DUEL_CACHE={t:0,rows:null,p:null};
 const loadDuels=()=>{if(DUEL_CACHE.rows&&Date.now()-DUEL_CACHE.t<55000)return Promise.resolve(DUEL_CACHE.rows);if(DUEL_CACHE.p)return DUEL_CACHE.p;
@@ -7201,6 +7201,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
    <div style={{fontSize:11.5,color:"#6b7280",margin:"0 2px 4px"}}>{sUnit==="roi"?"Gain ou perte pour 100 u misées.":"Gain ou perte total en unités."}</div>
    <Bars title="Par source" groups={by(done,x=>({sim:"Simulation",ev:"Bot",duel:"Duels"})[srcOf(x)])}/>
    <Bars title="Par jeu" groups={by(done,x=>GN(x.game))} icon={k=><GameLogo game={k} size={20}/>}/>
+   <Bars title="Map en prolongation (OT) ou non" groups={by(done.filter(x=>x.kind!=="duel"||true),x=>isOTb(x)?"Map en OT":"Pas d'OT")}/>
    <Bars title="Par cote de l'équipe (ML)" groups={by(done,x=>({fav:"Favorite < 1,60",mid:"1,60 à 2,49",out:"2,50 à 2,99",big:"Outsider 3+"})[mlB(x)]||null)}/>
    <Bars title="Joués à rien (1 ou 2 kills d'écart)" groups={by(done.filter(x=>x.kind!=="duel"&&x.value!=null),x=>{const d=Math.abs(Number(x.value)-Number(x.line));return d<=1.5?"À 1 kill":d<=2.5?"À 2 kills":"Plus de 2"})}/>
    <Bars title="Par type" groups={by(done,segN)}/>
