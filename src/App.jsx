@@ -14761,4 +14761,17 @@ class ErrorBoundary extends React.Component{
  }
 }
 
+// ── Réglages du navigateur sauvegardés dans Supabase (settings « ui_sync », une seule petite ligne JSON) ──
+// au démarrage : si Supabase a une version plus récente → on la remet dans le navigateur et on recharge une fois ; ensuite : envoi toutes les 15 s si quelque chose a changé
+const UI_SYNC_KEYS=["v7_bkrolls","v7_bk_flows","v7_bk_cap","v7_hidden_bks","v7_split_lock",   // bankroll (important)
+ "v7_season","stat_filt","ev_sort","v7_sim_msort","v7_duels_open","emeieks_hide_over","emeieks_roster_open","emeieks_pp_open","emeieks_logo_mode","v7_recent_players","ev_seen","dark_logos_v2"];
+if(typeof window!=="undefined"&&!window.__uiSync){window.__uiSync=1;
+ const snap=()=>{const o={};UI_SYNC_KEYS.forEach(k=>{try{let v=localStorage.getItem(k);if(v==null)return;if(k==="ev_seen"&&v.length>8000)v=v.slice(-8000).replace(/^[^,]*,/,"[");o[k]=v;}catch(e){}});return o;};
+ let last=JSON.stringify(snap());
+ setTimeout(async()=>{try{const r=await cloudDb("settings?key=eq.ui_sync&select=value");let v=r&&r[0]&&r[0].value;if(typeof v==="string")try{v=JSON.parse(v);}catch(e){}
+   const lt=+(localStorage.getItem("ui_sync_at")||0);
+   if(v&&v.data&&(v.at||0)>lt){let ch=false;Object.entries(v.data).forEach(([k,x])=>{if(UI_SYNC_KEYS.includes(k)&&localStorage.getItem(k)!==x){localStorage.setItem(k,x);ch=true;}});localStorage.setItem("ui_sync_at",String(v.at));last=JSON.stringify(snap());
+    if(ch&&!sessionStorage.getItem("ui_sync_reloaded")){sessionStorage.setItem("ui_sync_reloaded","1");location.reload();return;}}}catch(e){}
+  setInterval(()=>{const cur=JSON.stringify(snap());if(cur===last||document.hidden)return;last=cur;const at=Date.now();try{localStorage.setItem("ui_sync_at",String(at));}catch(e){}
+   cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"ui_sync",value:{at,data:JSON.parse(cur)}}]}).catch(()=>{});},15000);},2000);}
 export default function App(){return <ErrorBoundary><AppMain/></ErrorBoundary>;}
