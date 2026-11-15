@@ -5313,7 +5313,12 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs.lx .lol-p,.rs.lx .lol-p.r{flex-direction:row!important;text-align:left!important;border:none!important}
 .rs.lx .lol-p.r .nm{align-items:flex-start!important}
 .rs.lx .lol-p .ic{box-shadow:0 0 0 2px #2b6ed6!important}.rs.lx .lol-p.r .ic{box-shadow:0 0 0 2px #d63333!important}
-.rs.lx .lol-p .kda{font:700 11px Inter,sans-serif;color:#c8b98e;min-width:44px;text-align:center}
+.rs.lx .lol-p .kda{font:800 16px Inter,sans-serif;color:#f0e6d2;min-width:62px;text-align:center;margin-left:auto}
+.rs.lx .lol-p:has(.kda) .kk{position:absolute;width:1px!important;height:1px!important;opacity:0;pointer-events:none}
+.rs.lx .lol-p{position:relative}
+.rs.lx .lol-r .ro{position:relative;display:flex;align-items:center;justify-content:center;align-self:stretch}
+.rs.lx .lol-r .ro:before,.rs.lx .lol-r .ro:after{content:"";position:absolute;top:18%;bottom:18%;width:1px;background:#C8AA6E;opacity:.55}
+.rs.lx .lol-r .ro:before{left:0}.rs.lx .lol-r .ro:after{right:0}
 .rs.lx .lol-w.top{display:flex;gap:8px;justify-content:center;padding:8px 10px;border-bottom:1px solid #1f2a36;background:#0f151c}
 .rs.lx .lol-w.top button{flex:1;max-width:200px}
 .rs.lx .lol-r{background:#0c1117;border-top:1px solid #18212b}
@@ -5775,7 +5780,9 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
    catch(e){rep.push("G"+(ii+1)+" : "+(e.message||e));}}
   setSt((ids.length>1?"✓ Série : ":"✓ OpenDota : ")+rep.join(" · "));setOdBusy(false);};const [txt,setTxt]=useState("");const [again,setAgain]=useState(false);
  const total=Object.keys(roster[A]).length+Object.keys(roster[B]).length;
- const apply=(t,ii=i)=>{
+ const apply=(t0,ii=i)=>{
+  // Liquipedia : le bloc « Team Stats » (4/19/12, 19/4/61…) ne doit jamais être lu comme un joueur → joueurs lus à partir de « Player Performance »
+  const tsTxt=t0;const t=/Player Performance/i.test(t0)?t0.slice(t0.search(/Player Performance/i)):t0;
   if(ii===i&&isDotabuff(t)){const gs=dotaGames(t);if(gs.length>1){gs.forEach((g,j)=>apply(g.text,i+j));setSt("✓ "+gs.length+" games Dotabuff remplis (games "+(i+1)+" à "+(i+gs.length)+") — vérifie les chiffres");return;}}
   if(isDotabuff(t)&&onWin){const w=dotaGames(t)[0].win;const sc=dbScore(t);const Ls=String(t).split(/\r?\n/);const hd=[];Ls.forEach((l,j)=>{if(/^Hero\tR\tL\tPlayer/.test(l))hd.push(dbTeam(Ls[j-1],A,B));});
    if(hd.length===2&&!hd[0]&&hd[1])hd[0]=hd[1]===A?B:A;if(hd.length===2&&!hd[1]&&hd[0])hd[1]=hd[0]===A?B:A;
@@ -5789,7 +5796,7 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
    const tests=[(x,k)=>x.k===k||x.k===nm(k),(x,k)=>BET_ALIAS[x.k]===k,(x,k)=>x.k.replace(/0/g,"o")===nm(k).replace(/0/g,"o"),(x,k)=>(x.k.length>=4&&nm(k).startsWith(x.k))||(nm(k).length>=4&&x.k.startsWith(nm(k))),(x,k)=>!!x.ctx&&nm(k).length>=2&&x.ctx.endsWith(nm(k))];
    const got={};tests.forEach(f=>all.forEach(k=>{if(got[k])return;const x=pick(k,f);if(x){taken.add(x);got[k]=x;}}));TK=new Set([...taken].map(x=>x.name+"|"+x.kills));
    if(Object.keys(got).length<3){TK=null;RN=rows0.slice(0,4).map(x=>x.name).join(", ");}else all.forEach(k=>{if(got[k]){const x=got[k];r[k]={k:x.kills,h:x.hs!=null?x.hs:"",...(x.champ?{c:x.champ}:{}),...(x.adv?{adv:x.adv}:{})};}else delete r[k];});}}const bx=boardExtras(t,roster,A,B),ex=bx.extras;
-  if(onTeamStats&&/Team Stats/i.test(t)){try{const ts=lolTeamStats(t);if(ts){const br=boardRows(t);const inT=k=>[A,B].find(tt=>Object.keys(roster[tt]||{}).some(z=>z===k));const c={};br.slice(0,5).forEach(x=>{const tt=inT(x.k);if(tt)c[tt]=(c[tt]||0)+1;});
+  if(onTeamStats&&/Team Stats/i.test(tsTxt)){try{const ts=lolTeamStats(tsTxt);if(ts){const br=boardRows(t);const inT=k=>[A,B].find(tt=>Object.keys(roster[tt]||{}).some(z=>z===k));const c={};br.slice(0,5).forEach(x=>{const tt=inT(x.k);if(tt)c[tt]=(c[tt]||0)+1;});
    const first=Object.keys(c).sort((p,q)=>c[q]-c[p])[0]||A;const second=first===A?B:A;onTeamStats(ii,{[first]:ts.l,[second]:ts.r});}}catch(e){}}
   // LoL (Liquipedia) : un joueur du collage absent du match (ex. un support FA dans ta base) est ajouté à son équipe et rempli
   // équipe = celle des autres joueurs du même bloc (les 5 premiers / les 5 suivants)
@@ -6094,7 +6101,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
         {plL?<CheckIc s={14} title={"Associé à "+plL.name+" ("+G+")"}/>:<button type="button" title="Associer ce joueur" aria-label={"Associer "+n} onClick={()=>setPlFor({k,n,t})} style={{border:"none",background:"rgba(245,158,11,.14)",borderRadius:5,color:"#FBBF24",cursor:"pointer",fontSize:12,padding:"0 4px"}}>⚙</button>}</span><button type="button" onClick={()=>setCp({i,k,n,q:"",s:true})} aria-label={"Rechercher un champion pour "+n} style={{display:"flex",alignItems:"center",gap:4,marginTop:2,padding:0,border:"none",background:"none",color:v.c?"#E5E7EB":"#8A94A3",fontSize:11.5,cursor:"pointer"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>{v.c||"Champion"}</button></span>
        {(v.k===undefined||v.k==="")&&(miss[i]||[]).length>0?<button type="button" className="qm" onClick={()=>setMissFor({i,k,n,t})} aria-label={"Attribuer les stats de "+n}>?</button>
        :<input className="kk" type="number" inputMode="numeric" enterKeyHint="next" data-q value={v.k||""} onChange={ev=>setP(i,k,"k",ev.target.value)} onKeyDown={nextField} placeholder="K" aria-label={"Kills "+n}/>}
-       {v.adv&&v.adv.d!=null?<span className="kda" title="K / D / A">{(v.k||0)+"/"+v.adv.d+"/"+v.adv.a}</span>:null}</div>;};
+       {v.adv&&v.adv.d!=null?<span className="kda" title="K / D / A (kills = 1er chiffre)">{(v.k||0)+"/"+v.adv.d+"/"+v.adv.a}</span>:null}</div>;};
      return <div className="lol-r" key={j}>{side(A,"")}<span className="ro"><RoleIc r={LOL_ROLES[j]} s={18}/></span>{side(B,"r")}</div>;})}
     <ScorePaste i={i} roster={roster} A={A} B={B} setP={setP} hsOn={false} srcName="Liquipedia" onTeamStats={(ii,ts)=>{setTeamSt(o=>({...o,[ii]:ts}));const ka=ts[A]&&ts[A].k,kb=ts[B]&&ts[B].k;if(ka!=null||kb!=null)setMaps(l=>{const n=[...l];if(n[ii])n[ii]={...n[ii],a:ka!=null?String(ka):n[ii].a,b:kb!=null?String(kb):n[ii].b};return n;});}} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))}/>
    </div>}
