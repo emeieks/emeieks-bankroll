@@ -5800,7 +5800,7 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
    const kills=sc&&hd[0]&&hd[1]?{[hd[0]]:sc.l,[hd[1]]:sc.r}:null;onWin(ii,w,kills);}
   if(isOpenDota(t)){const md=odMeta(t,A,B);if(onWin&&(md.win||md.kills))onWin(ii,md.win,md.kills);if(onUnknown){const d=parseOpenDota(t,roster,A,B);onUnknown(ii,Object.entries(d).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));}}
   if(isDotabuff(t)&&onUnknown){const d=parseDotabuff(t,roster,A,B);onUnknown(ii,Object.entries(d).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));}
-  const r=parseBoard(t,roster,A,B);let TK=null,RN="";
+  const r=parseBoard(t,roster,A,B);let TK=null,RN="",addN=0;
   // tableau structuré reconnu (Liquipedia / vlr / HLTV) → il prime : nom exact, sans risque de prendre un autre endroit du texte
   {const rows0=boardRows(t);if(rows0.length>=4){const nm=k=>cutNorm(roster[A][k]||roster[B][k]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const taken=new Set();
    const pick=(k,f)=>rows0.find(x=>!taken.has(x)&&f(x,k));
@@ -5815,13 +5815,13 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
    const blk=[br.slice(0,5),br.slice(5,10)];const tm=blk.map(b=>{const c={};b.forEach(x=>{const tt=inT(x.k);if(tt)c[tt]=(c[tt]||0)+1;});return Object.keys(c).sort((p,q)=>c[q]-c[p])[0]||null;});
    if(tm[0]&&!tm[1])tm[1]=tm[0]===A?B:A;if(tm[1]&&!tm[0])tm[0]=tm[1]===A?B:A;
    const add=[];blk.forEach((b,bi)=>b.forEach(x=>{if(!inT(x.k)&&tm[bi])add.push({team:tm[bi],k:x.k,name:x.name,kills:x.kills,champ:x.champ,adv:x.adv});}));
-   if(add.length){onExtra(add);add.forEach(x=>{setP(ii,x.k,"k",x.kills);if(x.champ)setP(ii,x.k,"c",x.champ);if(x.adv)setP(ii,x.k,"adv",x.adv);});}}}catch(e){}}
-  if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(ii,kk,"k",x.kills);if(hsOn)setP(ii,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length);Object.entries(r).forEach(([k,v])=>{setP(ii,k,"k",v.k);if(v.c)setP(ii,k,"c",v.c);if(v.adv)setP(ii,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(ii,k,"h",v.h);});
+   if(add.length){addN=add.length;onExtra(add);add.forEach(x=>{setP(ii,x.k,"k",x.kills);if(x.champ)setP(ii,x.k,"c",x.champ);if(x.adv)setP(ii,x.k,"adv",x.adv);});}}}catch(e){}}
+  if(onExtra&&bx.rows.length){onExtra(ex,bx.present);bx.rows.forEach(x=>{const kk=Object.keys(roster[x.team]||{}).find(z=>z===x.k)||x.k;setP(ii,kk,"k",x.kills);if(hsOn)setP(ii,kk,"h",x.hs);});}const n=Math.max(Object.keys(r).length,bx.rows.length)+addN;const tot=Math.max(total+addN,n);Object.entries(r).forEach(([k,v])=>{setP(ii,k,"k",v.k);if(v.c)setP(ii,k,"c",v.c);if(v.adv)setP(ii,k,"adv",v.adv);if(hsOn&&v.h!=="")setP(ii,k,"h",v.h);});
   {const got=new Set([...Object.keys(r),...bx.rows.map(x=>x.k)]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const nm=k=>cutNorm(roster[A][k]||roster[B][k]);
    const hit=(x,k)=>k===x.k||nm(k)===x.k||BET_ALIAS[x.k]===k||(x.k.length>=4&&k.startsWith(x.k))||(k.length>=4&&x.k.startsWith(k));
    const rows=boardRows(t);const used=new Set();
    all.forEach(k=>{if(!got.has(k))return;const x=rows.find(y=>!used.has(y)&&hit(y,k));if(x){used.add(x);if(x.adv)setP(ii,k,"adv",{...((r[k]&&r[k].adv)||{}),...x.adv});}});
-   if(onMiss)onMiss(ii,TK?rows.filter(x=>!TK.has(x.name+"|"+x.kills)&&!bx.rows.some(y=>y.k===x.k)):rows.filter(x=>!used.has(x)&&!got.has(x.k)));}setSt(n?"✓ "+n+"/"+total+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu"+(RN?" (lu : "+RN+")":""));};
+   if(onMiss)onMiss(ii,TK?rows.filter(x=>!TK.has(x.name+"|"+x.kills)&&!bx.rows.some(y=>y.k===x.k)):rows.filter(x=>!used.has(x)&&!got.has(x.k)));}setSt(n?"✓ "+n+"/"+tot+" joueurs remplis — vérifie les chiffres":"Aucun joueur reconnu"+(RN?" (lu : "+RN+")":""));};
  const onPaste=async e=>{const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith("image/"));if(!it){const t=e.clipboardData&&e.clipboardData.getData("text/plain");if(t&&t.trim()){e.preventDefault();apply(t);setTxt("");setAgain(false);}return;}e.preventDefault();setSt("Lecture de l'image…");
   try{const T=await loadTess();const f=it.getAsFile();const url=URL.createObjectURL(f);const im=await new Promise((ok,ko)=>{const x=new Image();x.onload=()=>ok(x);x.onerror=()=>ko(new Error("image illisible"));x.src=url;});
    const cv=document.createElement("canvas");const z=im.width<1400?2:1;cv.width=im.width*z;cv.height=im.height*z;const cx=cv.getContext("2d");cx.drawImage(im,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
