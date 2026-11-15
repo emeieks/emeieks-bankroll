@@ -5313,7 +5313,17 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs.lx .lol-p,.rs.lx .lol-p.r{flex-direction:row!important;text-align:left!important;border:none!important}
 .rs.lx .lol-p.r .nm{align-items:flex-start!important}
 .rs.lx .lol-p .ic{box-shadow:0 0 0 2px #2b6ed6!important}.rs.lx .lol-p.r .ic{box-shadow:0 0 0 2px #d63333!important}
-.rs.lx .lol-p .kda{font:800 16px Inter,sans-serif;color:#f0e6d2;min-width:62px;text-align:center;margin-left:auto}
+/* lignes LoL proportionnelles : champion | joueur (nom entier, champion dessous) | K/D/A — tout s'adapte à la largeur */
+.rs.lx .lol-r{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important}
+.rs.lx .lol-p{display:grid!important;grid-template-columns:clamp(30px,8.5vw,40px) minmax(0,1fr) auto;align-items:center;column-gap:clamp(5px,1.4vw,9px);padding:7px clamp(5px,1.6vw,10px)!important;min-height:52px}
+.rs.lx .lol-p .ic{width:clamp(30px,8.5vw,40px)!important;height:clamp(30px,8.5vw,40px)!important}
+.rs.lx .lol-p .nm{min-width:0}
+.rs.lx .lol-p .nm b{font-size:clamp(11.5px,3vw,14px)!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rs.lx .lol-p .nm b>span:first-child{width:clamp(16px,4.4vw,22px)!important;height:clamp(16px,4.4vw,22px)!important}
+.rs.lx .lol-p .nm button{font-size:clamp(10px,2.6vw,11.5px)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.rs.lx .lol-p .nm b span[style*="border-radius: 3px"]{display:none}
+.rs.lx .lol-p .kda{font:800 clamp(12px,3.6vw,16px) Inter,sans-serif;color:#f0e6d2;text-align:right;white-space:nowrap;letter-spacing:-.2px}
+.rs.lx .lol-r .ro svg,.rs.lx .lol-r .ro img{width:clamp(13px,3.6vw,18px)!important;height:clamp(13px,3.6vw,18px)!important}
 .rs.lx .lol-p:has(.kda) .kk{position:absolute;width:1px!important;height:1px!important;opacity:0;pointer-events:none}
 .rs.lx .lol-p{position:relative}
 .rs.lx .lol-r .ro{position:relative;display:flex;align-items:center;justify-content:center;align-self:stretch}
