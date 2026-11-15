@@ -2999,6 +2999,15 @@ if(typeof document!=="undefined"&&!document.getElementById("kf-spin")){const st=
 function checkImage(url){return new Promise(res=>{if(!url)return res(false);const im=new Image();const t=setTimeout(()=>res(false),8000);im.onload=()=>{clearTimeout(t);res(im.naturalWidth>0);};im.onerror=()=>{clearTimeout(t);res(false);};im.src=url;});}
 
 // Zone d'envoi d'image : glisser-déposer, coller (Ctrl+V), fichier ou lien — avec état visible à chaque étape
+// Logos des sites de stats (HLTV, vlr.gg, OpenDota, Liquipedia) : collés par toi dans Réglages, gardés dans media_store « src_logo_… »
+const SRC_SITES=[["hltv","HLTV","CS2"],["vlr","vlr.gg","Valorant"],["opendota","OpenDota","Dota 2"],["liquipedia","Liquipedia","LoL"]];
+const srcKeyOf=g=>({Dota2:"opendota",Valorant:"vlr",LoL:"liquipedia"})[g]||"hltv";
+function SrcBadge({g,s=16}){const k=srcKeyOf(g);const nm=(SRC_SITES.find(x=>x[0]===k)||[])[1];let u=null;try{u=_GLOBAL_MEDIA_STORE&&_GLOBAL_MEDIA_STORE["src_logo_"+k];}catch(e){}
+ return <span style={{display:"inline-flex",alignItems:"center",gap:5,verticalAlign:"middle"}}>{u&&!String(u).includes("__FAILED__")?<img src={u} alt="" style={{height:s,maxWidth:s*3,objectFit:"contain"}}/>:null}{nm}</span>;}
+function SourceLogos({mediaStore,setMediaStore,showToast}){return <div style={{padding:"12px 14px",border:"1px solid #1F2937",borderRadius:12,margin:"10px 0"}}>
+ <div style={{fontWeight:800,fontSize:14,marginBottom:4}}>Logos des sites de stats</div><div style={{fontSize:12,color:"#8b93a7",marginBottom:10}}>Colle le logo de chaque site : il s'affiche dans Résultats à côté du nom.</div>
+ <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>{SRC_SITES.map(([k,nm,gm])=><div key={k}><div style={{fontSize:12,fontWeight:700,marginBottom:4}}>{nm} <span style={{color:"#8b93a7",fontWeight:500}}>· {gm}</span></div>
+  <ImageInput value={(mediaStore||{})["src_logo_"+k]||""} folder="sources" size={40} showToast={showToast} placeholder="Coller le logo" onChange={u=>setMediaStore(o=>({...(o||{}),["src_logo_"+k]:u}))}/></div>)}</div></div>;}
 function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px", showToast, onVerify}){
  const [phase,setPhase]=useState("idle"); // idle · upload · check · saved · ok · local · error
  const [msg,setMsg]=useState("");const [drag,setDrag]=useState(false);const [showUrl,setShowUrl]=useState(false);const [url,setUrl]=useState("");
@@ -5234,6 +5243,21 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs .st th:first-child{text-align:left;padding-left:10px}
 .rs .st td{padding:8px 6px;border-top:1px solid var(--ln);text-align:center;white-space:nowrap;font-size:13.5px}
 .rs .st td:first-child{text-align:left;padding-left:10px;font-weight:600;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+/* Dota : tableau bleu nuit, en-tête de colonnes en bandeau, équipe en titre */
+.rs.dota .st{background:#141c30;border-radius:8px;overflow:hidden}
+.rs.dota .st th{background:#1c2a47;color:#c8d3e6;font:600 12px Inter,sans-serif;letter-spacing:.3px;padding:10px 6px}
+.rs.dota .st td{border-top:1px solid #22304f;background:#141c30;padding:11px 6px}
+.rs.dota .st tr:hover td{background:#192440}
+.rs.dota .st tr.team td{background:transparent;color:#e6ecf7;font:600 15px Inter,sans-serif;padding:14px 10px 8px;border-top:none}
+.rs.dota .st tr.tot td{background:#1a2440;color:#9fb0cf;font-weight:600}
+.rs.dota .st .kk,.rs.dota .st input{background:transparent!important;border:none!important;color:#7bd88f!important;font-weight:700}
+/* Valorant : lignes grises, chaque chiffre dans une petite case */
+.rs.val .st{background:#2a2f38;border-radius:6px;overflow:hidden}
+.rs.val .st th{background:#2a2f38;color:#9aa4b2;font:600 11.5px Inter,sans-serif;text-transform:none;padding:10px 4px}
+.rs.val .st td{background:#2a2f38;border-top:1px solid #343a45;padding:7px 4px}
+.rs.val .st td:not(:first-child)>*,.rs.val .st td:not(:first-child) input{background:#3a404b!important;border:none!important;border-radius:3px;padding:5px 8px;color:#e8ecf1;display:inline-block;min-width:30px}
+.rs.val .st tr.team td{background:#232830;color:#e8ecf1;font-size:13.5px}
+.rs.val .st tr.tot td{background:#232830;color:#c5ccd6}
 .rs .st tr.tot td{background:var(--pn2);font-weight:700;color:#fff}.rs .st tr.team td{background:var(--hd);font-weight:700;font-size:13px;color:#fff;text-align:left;padding:6px 10px}
 .rs .num{width:48px;height:30px;border:1px solid var(--ln);border-radius:2px;background:var(--hd);color:#fff;font:700 15px "Barlow Condensed",Arial,sans-serif;text-align:center}
 .rs .cut{font-size:12px;color:var(--sf)}.rs .u{color:var(--wn);font-weight:700}.rs .o{color:var(--ls);font-weight:700}
@@ -5694,7 +5718,7 @@ function HltvMapsPaste({pool,A,B,onApply,onVetos,vetos}){const [v,setV]=useState
   if(!r.length&&ve.length){setOk(true);setMsg("Vetos enregistrés ✓ Maps : "+ve.filter(x=>x.act!=="ban").map(x=>x.map).join(", ")+". Colle aussi les scores des maps.");return;}
   if(!r.length){setOk(false);setMsg("Aucune map reconnue. Équipes : « "+A+" » / « "+B+" ». Texte lu ("+String(t).length+" car.) : « "+String(t).replace(/\s+/g," ").slice(0,160)+"… »");return;}onApply(r);const noSc=r.some(x=>x.a===""||x.b==="");setOk(!noSc);setMsg(noSc?"Maps et picks OK, mais scores pas lus. Texte reçu : « "+String(t).replace(/\s+/g," ").slice(0,220)+"… » (envoie-moi ce message)":r.length+" map"+(r.length>1?"s":"")+" remplie"+(r.length>1?"s":"")+" ✓  "+r.map(x=>x.name+" "+x.a+"-"+x.b).join(" · "));if(!noSc)setV("");};
  return <div style={{margin:"8px 0 12px"}}>
-  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&(e.clipboardData.getData("text/plain")||e.clipboardData.getData("text"));const h=e.clipboardData&&e.clipboardData.getData("text/html");if(t||h){e.preventDefault();setV(t||"");go(t||"",h);}}} rows={3} placeholder="Colle ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
+  <textarea value={v} onChange={e=>setV(e.target.value)} onPaste={e=>{const t=e.clipboardData&&(e.clipboardData.getData("text/plain")||e.clipboardData.getData("text"));const h=e.clipboardData&&e.clipboardData.getData("text/html");if(t||h){e.preventDefault();setV(t||"");go(t||"",h);}}} rows={3} placeholder="Colle les maps ici" aria-label="Coller les maps HLTV" style={{width:"100%",padding:"18px 14px",borderRadius:12,background:"rgba(124,108,255,.07)",color:"inherit",border:"2px dashed rgba(165,155,255,.55)",fontSize:16,fontWeight:600,textAlign:"center",fontFamily:"inherit",boxSizing:"border-box",minHeight:84,resize:"vertical"}}/>
   {v&&<button type="button" className="sb" style={{marginTop:6,width:"100%",height:40,fontSize:14,fontWeight:800}} onClick={()=>go(v)}>Remplir les maps</button>}
   {msg&&<div style={{marginTop:6,fontSize:13,fontWeight:700,color:ok?"#4ADE80":"#FBBF24"}}>{msg}</div>}
   {false&&Array.isArray(vetos)&&vetos.length>0&&<div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
@@ -5709,7 +5733,7 @@ function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g,"
  while((m=re.exec(flat))){const k=cutNorm(m[1]);const h=heads.filter(h=>h.pos<m.index).pop();const inA=keyOf(A,k),inB=keyOf(B,k);const t=inA&&!inB?A:inB&&!inA?B:h&&h.t;if(t)rows.push({team:t,k,name:m[1],kills:m[2],hs:m[3]});}
  const extras=[],present={};rows.forEach(r=>{const kk=keyOf(r.team,r.k)||r.k;(present[r.team]=present[r.team]||[]).push(kk);if(!keyOf(r.team,r.k))extras.push(r);});
  return {extras,present,rows};}
-function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,dota=false,filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
+function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,dota=false,srcName="",filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
  // un ID, un lien, ou la page « série » OpenDota collée (Game 1 #…, Game 2 #…) → chaque game dans l'ordre
  const odIds=t=>{const s=String(t||"");const L=[...s.matchAll(/matches\/(\d{8,12})/g)].map(m=>m[1]);const ids=L.length?L:[...s.matchAll(/(?:^|[^\d])(\d{9,12})(?!\d)/g)].map(m=>m[1]);return [...new Set(ids)];};
  const loadOD=async(src)=>{const ids=odIds(src!=null?src:odId);if(!ids.length){setSt("Mets l'ID du match (ex. 8088267544), le lien, ou colle la page de la série OpenDota");return;}setOdBusy(true);
@@ -5752,7 +5776,7 @@ function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknow
  return <div style={{padding:"10px 12px",borderBottom:"1px solid var(--ln)"}}>
   {dota&&<div style={{display:"flex",gap:8,marginBottom:8}}><input value={odId} onChange={e=>setOdId(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadOD();}} inputMode="numeric" placeholder="ID du match (ex. 9088001992)" aria-label="ID du match Dota" style={{flex:1,minWidth:0,height:42,boxSizing:"border-box",background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:10,padding:"0 12px",fontSize:14}}/>
    <button type="button" disabled={odBusy} onClick={()=>loadOD()} style={{height:42,padding:"0 14px",borderRadius:10,border:"none",background:"#E0301E",color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",whiteSpace:"nowrap"}}>{odBusy?"…":"Charger"}</button></div>}
-  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder={dota?"…ou colle Dotabuff / OpenDota ici":"Colle ici"} aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
+  <textarea value={txt} onChange={e=>setTxt(e.target.value)} onPaste={onPaste} rows={3} placeholder={dota?"…ou colle la page OpenDota ici":"Colle le scoreboard "+(srcName||"")+" ici"} aria-label="Coller le scoreboard" style={{width:"100%",boxSizing:"border-box",background:"rgba(124,108,255,.07)",color:"var(--fg)",border:"2px dashed rgba(165,155,255,.55)",borderRadius:12,padding:"16px 14px",fontSize:16,fontWeight:600,textAlign:"center",resize:"vertical",minHeight:84}}/>
   <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}><button className="go" onClick={()=>{apply(txt);setTxt("");setAgain(false);}} disabled={!txt.trim()}>Remplir</button><span style={{fontSize:12,color:st.startsWith("✓")?"var(--wn)":"var(--dm)"}}>{st}</span></div></div>;}
 // Paris fictifs (Simulation) reliés à ce match + bouton pour en relier d'autres (noms d'équipe différents selon la source)
 function SimLinkBox({mk,m,G}){const [lk,setLk]=useState(null);const [open,setOpen]=useState(false);const [cand,setCand]=useState(null);const [busy,setBusy]=useState("");const [msg,setMsg]=useState("");
@@ -5834,6 +5858,11 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  // Dota 2 : le score de chaque game = kills de chaque équipe, vainqueur = plus de kills (si rien n'est saisi)
  useEffect(()=>{if(G!=="Dota2")return;setMaps(l=>{let ch=false;const n=l.map((x,i)=>{const ka=tot(i,A,"k"),kb=tot(i,B,"k");if(!(ka>0||kb>0))return x;const y={...x};if(y.a===""||y.a==null){y.a=String(ka);ch=true;}if(y.b===""||y.b==null){y.b=String(kb);ch=true;}if(!y.win&&ka!==kb){y.win=ka>kb?A:B;ch=true;}return y;});return ch?n:l;});},[pk]);
  const setP=(i,k,f,v)=>setPk(o=>({...o,[(i+1)+"|"+k]:{...(o[(i+1)+"|"+k]||{}),[f]:v}}));
+ // association automatique d'un joueur du match au joueur de ta base (même jeu) : nom exact > pseudo mémorisé > début de nom unique dans le même club
+ const findPlG=(k,t)=>{const P=Object.values(allPlayers||{}).filter(p=>p&&p.name&&GNORM(p.game)===G);let p=P.find(x=>cutNorm(x.name)===k);if(p)return p;
+  const al=BET_ALIAS[k];if(al){p=P.find(x=>cutNorm(x.name)===al);if(p)return p;}
+  if(k&&k.length>=3){const c=P.filter(x=>{const n=cutNorm(x.name);return n.length>=3&&(n.startsWith(k)||k.startsWith(n));});const sameT=c.filter(x=>teamKey(x.team||"")===teamKey(t||""));if(sameT.length===1)return sameT[0];if(c.length===1)return c[0];}
+  return null;};
  // saisie rapide : Entrée passe à la case suivante
  const nextField=e=>{if(e.key!=="Enter")return;e.preventDefault();const all=[...document.querySelectorAll(".rs [data-q]")];const i=all.indexOf(e.target);if(i>=0&&all[i+1]){all[i+1].focus();all[i+1].select&&all[i+1].select();}else e.target.blur();};
  // vérifications d'une map
@@ -5883,7 +5912,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
    if(pr.length){const hasAdv=pr.some(x=>x.adv);if(hasAdv)pr.forEach(x=>{if(!("adv" in x))x.adv=null;});
     try{await cloudDb("player_results?on_conflict=key",{method:"POST",body:pr,prefer:"resolution=merge-duplicates"});}
     catch(e){if(!hasAdv||!/adv|PGRST204|column/i.test(String(e&&e.message||e)))throw e;pr.forEach(x=>delete x.adv);await cloudDb("player_results?on_conflict=key",{method:"POST",body:pr,prefer:"resolution=merge-duplicates"});setTimeout(()=>setMsg(m=>(m||"")+" · stats avancées non gardées : lance adv.sql"),50);}}
-   setPotRows(pr);const nb=pr.filter(x=>x.bb_line!=null).length;setMsg("✓ Enregistré · "+mr.length+" map(s) · "+pr.length+" joueur(s) · "+nb+" ligne(s) Betby retrouvée(s)");}catch(e){setMsg("Erreur : "+String(e.message||e).slice(0,90));}setBusy(false);};
+   setPotRows(pr);const nb=pr.filter(x=>x.bb_line!=null).length;setMsg("✓ Enregistré · "+mr.length+" map(s) · "+pr.length+" joueur(s) · "+nb+" ligne(s) Betby retrouvée(s)");setTimeout(()=>{try{onClose&&onClose();}catch(_){}},1200);}catch(e){setMsg("Erreur : "+String(e.message||e).slice(0,90));}setBusy(false);};
  const SC=[[2,0],[2,1],[1,2],[0,2],[1,0],[0,1],[3,0],[3,1],[3,2],[2,3],[1,3],[0,3]];
  const cutOf=(k,i,f)=>{const pl=m.players[k];return null;};
  // paris du match
@@ -5956,7 +5985,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
     roster={Object.entries(roster[plFor.t]||{}).map(([k,n])=>({k,n,has:val(mi,k,"k")!=null}))}
     unk={plFor.unk?[]:(unkR[mi]||[]).filter(u=>!u.t||u.t===plFor.t)} onAssign={u=>{assignUnk(mi,u,plFor.k);setPlFor(null);}}
     onRoster={plFor.unk?(k=>{assignUnk(plFor.unk.i,plFor.unk.u,k);setPlFor(null);}):undefined}
-    onClose={()=>setPlFor(null)} onPick={async nm=>{const to=cutNorm(nm),from=plFor.k;if(plFor.unk){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setHideP(o=>o[plFor.t]?{...o,[plFor.t]:[...o[plFor.t],to]}:o);assignUnk(plFor.unk.i,plFor.unk.u,to);setPlFor(null);return;}if(to===from){setPlFor(null);return;}
+    onClose={()=>setPlFor(null)} onPick={async nm=>{const to=cutNorm(nm),from=plFor.k;if(plFor.add){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setPlFor(null);return;}if(plFor.unk){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setHideP(o=>o[plFor.t]?{...o,[plFor.t]:[...o[plFor.t],to]}:o);assignUnk(plFor.unk.i,plFor.unk.u,to);setPlFor(null);return;}if(to===from){setPlFor(null);return;}
    try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:[{pkey:from,alias:to,updated_at:new Date().toISOString()}],prefer:"resolution=merge-duplicates"});}catch(e){}BET_ALIAS={...BET_ALIAS,[from]:to};
    setPk(o=>{const n={...o};Object.keys(o).forEach(key=>{const [mn,kk]=key.split("|");if(kk===from){n[mn+"|"+to]={...(o[mn+"|"+to]||{}),...o[key]};delete n[key];}});return n;});
    setExtraP(o=>{const n={...o};Object.keys(n).forEach(t=>{if(n[t]&&n[t][from]){const x={...n[t]};delete x[from];x[to]=nm;n[t]=x;}});return n;});setHideP(o=>{const n={...o};Object.keys(n).forEach(t=>{n[t]=(n[t]||[]).map(k=>k===from?to:k);});return n;});setPlFor(null);}}/>;})()}
@@ -5969,13 +5998,13 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
      {LOL_CHAMPS.filter(c=>!cp.q||cutNorm(c).includes(cutNorm(cp.q))).map(c=><button key={c} onClick={()=>{setP(cp.i,cp.k,"c",c);setCp(null);}} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:4,border:"1px solid transparent",borderRadius:6,background:"#171C25",color:"#E7EBF0",fontSize:10.5,cursor:"pointer"}}>
       {champImg(c,ver)?<img src={champImg(c,ver)} alt="" loading="lazy" style={{width:44,height:44,borderRadius:4}}/>:<span style={{width:44,height:44,borderRadius:4,background:"#232A35"}}/>}<span style={{maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c}</span></button>)}
     </div></div></div>}
-  <div className="series"><b>Tournoi</b>{tourX?<input autoFocus value={tourV} onChange={e=>setTourV(e.target.value)} list="rs-tours" placeholder="Nom du tournoi" aria-label="Tournoi" style={{flex:1,minWidth:160,height:32,background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:4,padding:"0 8px",fontSize:13}}/>
+  <div className="series"><b>Tournoi</b>{(()=>{const lg=tourV&&anyTourLogo(tourV,m.game);return tourV?<span style={{display:"inline-flex",alignItems:"center",gap:4,flexShrink:0}}>{lg?<img src={lg} alt="" style={{width:26,height:26,objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>:null}{lg||(tours||[]).includes(tourV)?<CheckIc title="Tournoi enregistré"/>:<span className="nl" title="Tournoi inconnu dans ta base">!</span>}</span>:null;})()}{tourX?<input autoFocus value={tourV} onChange={e=>setTourV(e.target.value)} list="rs-tours" placeholder="Nom du tournoi" aria-label="Tournoi" style={{flex:1,minWidth:160,height:32,background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:4,padding:"0 8px",fontSize:13}}/>
    :<select value={tourV} onChange={e=>{const v=e.target.value;if(v==="__x"){setTourX(true);setTourV("");}else setTourV(v);}} aria-label="Tournoi" style={{flex:1,minWidth:160,height:32,background:"var(--rw)",color:"var(--fg)",border:"1px solid var(--ln)",borderRadius:4,padding:"0 6px",fontSize:13}}>
     <option value="">Sans tournoi</option>{[...new Set([...(tours||[]),tourV].filter(Boolean))].map(t=><option key={t} value={t}>{t}</option>)}<option value="__x">Autre…</option></select>}
    <datalist id="rs-tours">{(RS_TOURS||[]).map(t=><option key={t} value={t}/>)}</datalist></div>
   <div className="series"><b>Format</b>{[1,3,5].map(n=><button key={n} className="sb" aria-pressed={bo===n} onClick={()=>setBo(n)}>BO{n}</button>)}
    <span style={{marginLeft:"auto",fontSize:12.5,color:prog.done?"var(--wn)":"var(--dm)",fontWeight:700}}>{prog.n?(prog.wA>prog.wB?teamAbbr(A):prog.wB>prog.wA?teamAbbr(B):"")+" "+Math.max(prog.wA,prog.wB)+"-"+Math.min(prog.wA,prog.wB)+(prog.done?" ✓":" …"):"Remplis les maps : le score se calcule tout seul"}</span></div>
-  {!lol&&<div className="stp">{G==="Dota2"?"1. Résultat de chaque game":"1. Colle les maps HLTV"}</div>}
+  {!lol&&<div className="stp">{G==="Dota2"?"1. Résultat de chaque game":"1. Colle les maps"} · <SrcBadge g={G}/></div>}
   {!lol&&pool&&<HltvMapsPaste pool={pool} A={A} B={B} vetos={vetos} onVetos={setVetos} onApply={r=>{setMaps(l=>{const n=[...l];while(n.length<r.length)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});r.forEach((x,i)=>{n[i]={...n[i],name:x.name,a:x.a,b:x.b,pick:x.pick||n[i].pick};});return n;});setBo(r.length>=4?5:r.length>=2?3:Math.max(1,bo));}}/>}
   {maps.slice(0,shownN).map((x,i)=>{const ot=isOT(x);const isO=open===i;const r=rnd(x);const a=parseInt(x.a),b=parseInt(x.b);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const [c1,c2]=MAPC[x.name]||(lol?["#163654","#3A1418"]:["#55606C","#3A434D"]);const W=checks(i);
    return <section className="mp" key={i}>
@@ -6001,25 +6030,29 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
     <div className="lol-h"><span className="s">{L(A,m.game,22)}{teamAbbr(A)}</span>
      <span className="k"><input type="number" inputMode="numeric" enterKeyHint="next" data-q value={x.a!==""?x.a:(kA?String(kA):"")} onChange={e=>upd(i,"a",e.target.value)} onKeyDown={nextField} placeholder="–" aria-label={"Kills équipe "+A}/><span style={{fontSize:14,color:"#6B7C90"}}>⚔</span><input type="number" inputMode="numeric" enterKeyHint="next" data-q value={x.b!==""?x.b:(kB?String(kB):"")} onChange={e=>upd(i,"b",e.target.value)} onKeyDown={nextField} placeholder="–" aria-label={"Kills équipe "+B}/></span>
      <span className="s r">{teamAbbr(B)}{L(B,m.game,22)}</span></div>
-    {Array.from({length:Math.max(Object.keys(roster[A]).length,Object.keys(roster[B]).length,5)}).map((_,j)=>{const side=(t,cls)=>{const e=Object.entries(roster[t])[j];if(!e)return <div className={"lol-p "+cls}/>;const [k,n]=e;const v=pk[(i+1)+"|"+k]||{};const img=champImg(v.c,ver);
-      const plL=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===k&&GNORM(p.game)===G);const rl=ROLE_OF(plL&&plL.role)||["TOP","JGL","MID","ADC","SUP"][j];const ph=plL?getAvatarSrc(plL):null;
+    {Array.from({length:Math.max(Object.keys(roster[A]).length,Object.keys(roster[B]).length,5)}).map((_,j)=>{const side=(t,cls)=>{const e=Object.entries(roster[t])[j];
+      if(!e)return <div className={"lol-p "+cls}><button type="button" onClick={()=>setPlFor({k:null,n:({0:"Top",1:"Jungle",2:"Mid",3:"Bot",4:"Support"})[j]+" · "+t,t,add:true})} style={{height:34,padding:"0 12px",borderRadius:8,border:"1px dashed #F59E0B",background:"rgba(245,158,11,.08)",color:"#FBBF24",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>＋ Ajouter le joueur</button></div>;
+      const [k,n]=e;const v=pk[(i+1)+"|"+k]||{};const img=champImg(v.c,ver);
+      const plL=findPlG(k,t);const ph=plL?getAvatarSrc(plL):null;
       return <div className={"lol-p "+cls}><button type="button" className="ic" onClick={()=>setCp({i,k,n,q:"",s:false})} aria-label={"Choisir le champion de "+n} style={{border:"none",padding:0,cursor:"pointer"}}>{img?<img src={img} alt={v.c} onError={ev=>{ev.target.style.display="none";}}/>:"?"}</button>
-       <span className="nm"><b role="button" tabIndex={0} onClick={()=>setAdvFor({i,k,n,t})} style={{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>
-        <span style={{width:22,height:22,borderRadius:11,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#9ca3af"}}>{ph?<img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}} onError={ev=>{ev.target.style.display="none";}}/>:String(n||"?")[0].toUpperCase()}</span>{n}<RoleIc r={rl} s={15}/>{v.adv?<span style={{width:5,height:5,borderRadius:3,background:"#0AC8B9"}}/>:null}</b><button type="button" title="Associer ce joueur" aria-label={"Associer "+n} onClick={()=>setPlFor({k,n,t})} style={{border:"none",background:"transparent",color:"#8A94A3",cursor:"pointer",fontSize:13,padding:"0 2px"}}>⚙</button><button type="button" onClick={()=>setCp({i,k,n,q:"",s:true})} aria-label={"Rechercher un champion pour "+n} style={{display:"flex",alignItems:"center",gap:4,marginTop:2,padding:0,border:"none",background:"none",color:v.c?"#E5E7EB":"#8A94A3",fontSize:11.5,cursor:"pointer"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>{v.c||"Champion"}</button></span>
+       <span className="nm"><span style={{display:"flex",alignItems:"center",gap:4,flexWrap:"nowrap",minWidth:0}}><b role="button" tabIndex={0} onClick={()=>setAdvFor({i,k,n,t})} style={{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,minWidth:0}}>
+        <span style={{width:22,height:22,borderRadius:11,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#9ca3af"}}>{ph?<img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}} onError={ev=>{ev.target.style.display="none";}}/>:String(n||"?")[0].toUpperCase()}</span>{plL?plL.name:n}{v.adv?<span style={{width:5,height:5,borderRadius:3,background:"#0AC8B9"}}/>:null}</b>
+        {plL&&plL.team?<span title={"Club dans ta base : "+plL.team} style={{display:"inline-flex"}}>{L(plL.team,m.game,16)}</span>:null}
+        {plL?<CheckIc s={14} title={"Associé à "+plL.name+" ("+G+")"}/>:<button type="button" title="Associer ce joueur" aria-label={"Associer "+n} onClick={()=>setPlFor({k,n,t})} style={{border:"none",background:"rgba(245,158,11,.14)",borderRadius:5,color:"#FBBF24",cursor:"pointer",fontSize:12,padding:"0 4px"}}>⚙</button>}</span><button type="button" onClick={()=>setCp({i,k,n,q:"",s:true})} aria-label={"Rechercher un champion pour "+n} style={{display:"flex",alignItems:"center",gap:4,marginTop:2,padding:0,border:"none",background:"none",color:v.c?"#E5E7EB":"#8A94A3",fontSize:11.5,cursor:"pointer"}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>{v.c||"Champion"}</button></span>
        {(v.k===undefined||v.k==="")&&(miss[i]||[]).length>0?<button type="button" className="qm" onClick={()=>setMissFor({i,k,n,t})} aria-label={"Attribuer les stats de "+n}>?</button>
        :<input className="kk" type="number" inputMode="numeric" enterKeyHint="next" data-q value={v.k||""} onChange={ev=>setP(i,k,"k",ev.target.value)} onKeyDown={nextField} placeholder="K" aria-label={"Kills "+n}/>}</div>;};
      return <div className="lol-r" key={j}>{side(A,"")}<span className="ro"><RoleIc r={LOL_ROLES[j]} s={18}/></span>{side(B,"r")}</div>;})}
-    <ScorePaste i={i} roster={roster} A={A} B={B} setP={setP} hsOn={false} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))}/>
+    <ScorePaste i={i} roster={roster} A={A} B={B} setP={setP} hsOn={false} srcName="Liquipedia" onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))}/>
     <div className="lol-w">{[A,B].map(t=><button key={t} aria-pressed={x.win===t} onClick={()=>upd(i,"win",t)}>Victoire {teamAbbr(t)}</button>)}</div>
    </div>}
    {lol&&W.length>0&&<div className="warn" style={{marginTop:8}}>{W.map((w,j)=><div key={j}><PI n="alert" s={12}/> {w}</div>)}</div>}
   </section>;})}
-  {!lol&&<div className="stp">{G==="Dota2"?"Colle le scoreboard Dotabuff de chaque game":"2. Colle le scoreboard de chaque map"}</div>}
+  {!lol&&<div className="stp">{G==="Dota2"?"2. ID du match de chaque game":"2. Colle le scoreboard de chaque map"} · <SrcBadge g={G}/></div>}
   {!lol&&maps.slice(0,shownN).map((x,i)=>{const isO=open===i;const r=rnd(x);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const W=checks(i);
    return <section className="mp sbd" key={"sb"+i}>
    <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></div>
    {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>{kA+kB?"✓ Scoreboard rempli":"👉 Coller le scoreboard de la map "+(i+1)}</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
-   {!lol&&isO&&<ScorePaste i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>setUnkR(o=>({...o,[ii]:l}))} dota={G==="Dota2"}
+   {!lol&&isO&&<ScorePaste i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>setUnkR(o=>({...o,[ii]:l}))} dota={G==="Dota2"} srcName={(G==="Dota2"?"OpenDota":G==="Valorant"?"vlr.gg":G==="LoL"?"Liquipedia":"HLTV")}
      onWin={G==="Dota2"?(ii,w,kills,rad,nG)=>{if(nG>1)setBo(nG>=4?5:nG>=2?3:1);setMaps(l=>{const n=[...l];while(n.length<=ii)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});const t=dbTeam(w,A,B);
       n[ii]={...n[ii],a:kills&&kills[A]!=null?String(kills[A]):"",b:kills&&kills[B]!=null?String(kills[B]):"",...(t?{win:t}:{}),...(rad?{ct:rad}:{})};return n;});}:undefined}/>}
    {!lol&&isO&&<div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>K</th>{hsOn&&<th>HS</th>}<th>K/R</th>{hsOn&&<th>HS %</th>}</tr></thead><tbody>
@@ -13584,7 +13617,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   setBets={setBets} supaPushBets={supaPushBets}
  />
 
- <TourneyLogos {...(()=>{const m={},st={};const add=(g,n)=>{(m[g]=m[g]||new Set()).add(n);};bets.forEach(b=>{if(!b.game)return;
+ <SourceLogos mediaStore={mediaStore} setMediaStore={setMediaStore} showToast={showToast}/>
+<TourneyLogos {...(()=>{const m={},st={};const add=(g,n)=>{(m[g]=m[g]||new Set()).add(n);};bets.forEach(b=>{if(!b.game)return;
    if(b.tournament)add(b.game,b.tournament);if(b.league&&(b.game==="LoL"||b.game==="Valorant"))add(b.game,b.league);
    if(b.status==="won"||b.status==="lost")[b.tournament,b.league].filter(Boolean).forEach(n=>{const k=b.game+"||"+n;const x=st[k]||(st[k]={w:0,l:0});b.status==="won"?x.w++:x.l++;});});
    const o={};Object.keys(m).forEach(g=>o[g]=[...m[g]]);return {leagues:o,stats:st};})()}
