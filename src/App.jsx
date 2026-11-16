@@ -5990,7 +5990,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  // saisie rapide : Entrée passe à la case suivante
  const nextField=e=>{if(e.key!=="Enter")return;e.preventDefault();const all=[...document.querySelectorAll(".rs [data-q]")];const i=all.indexOf(e.target);if(i>=0&&all[i+1]){all[i+1].focus();all[i+1].select&&all[i+1].select();}else e.target.blur();};
  // vérifications d'une map
- const checks=i=>{const x=maps[i];if(!x)return [];const w=[];const r=rnd(x);const n=[A,B].reduce((t,tm)=>t+Object.keys(roster[tm]).filter(k=>val(i,k,"k")!=null).length,0);const all=[A,B].reduce((t,tm)=>t+Object.keys(roster[tm]).length,0);
+ const checks=i=>{const x=maps[i];if(!x)return [];const w=[];const r=rnd(x);const n=[A,B].reduce((t,tm)=>t+Object.keys(roster[tm]).filter(k=>val(i,k,"k")!=null).length,0);const all=[A,B].reduce((t,tm)=>t+Math.min(5,Object.keys(roster[tm]).length),0);/* 5 joueurs par équipe et par map : les remplaçants non joués ne comptent pas */
   if(n&&n<all)w.push((all-n)+" joueur(s) sans kills");
   if(rounds){const k=tot(i,A,"k")+tot(i,B,"k");if(r&&k&&n===all&&(k/r<5.2||k/r>8.6))w.push("Total "+k+" kills pour "+r+" rounds ("+(k/r).toFixed(2)+"/round) : à vérifier");
    const a=parseInt(x.a),b=parseInt(x.b);if(!isNaN(a)&&!isNaN(b)&&Math.max(a,b)<13)w.push("Score incomplet : une équipe doit atteindre 13");
