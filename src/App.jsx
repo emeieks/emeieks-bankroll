@@ -789,12 +789,12 @@ async function supaUpsertPlayer(data) {
    throw e;
   }
  } else {
-  // New player — POST without id
+  // New player — POST without id (marqué « créé depuis le site » si la colonne origin existe : players_origine.sql)
   try {
-   const rows = await _playerFetch(
-    "players",
-    { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify(payload) }
-   );
+   let rows;
+   try { rows = await _playerFetch("players", { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify({...payload, origin: "site"}) }); }
+   catch(e0) { if (!/origin|PGRST204|column/i.test(String(e0 && e0.message))) throw e0;
+    rows = await _playerFetch("players", { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify(payload) }); }
    return Array.isArray(rows) ? rows[0] : rows;
   } catch(e) {
    if (e.message.includes("23505")) {
@@ -1958,7 +1958,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
  const GAMES_R=["CS2","LoL","Dota2","Valorant"];
  const accent="#A78BFA";
  const [searchQ,setSearchQ]=useState("");
- const [clubEdit,setClubEdit]=useState(null);const [pick5,setPick5]=useState(null);
+ const [clubEdit,setClubEdit]=useState(null);const [mine,setMine]=useState(null);const [pick5,setPick5]=useState(null);
  // enregistre l'effectif choisi : chaque joueur → ce club + son poste ; ceux retirés d'une case → FA (l'historique des paris garde l'ancienne équipe)
  const savePick5=async(slots,init)=>{const {team,game,league}=pick5;const ups=[];
   Object.entries(slots).forEach(([r,p])=>{if(!p)return;if(p.team!==team||p.role!==r||(league&&p.league!==league)){if(p.team!==team)freezeTeam(p,team);ups.push({...p,team,role:r,...(league?{league}:{})});}});
@@ -2240,6 +2240,12 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
       />
       {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:20,padding:6}}>✕</button>}
      </div>
+     <div style={{display:"flex",gap:6,marginBottom:10}}><button type="button" aria-pressed={!!mine} onClick={async()=>{if(mine){setMine(null);return;}setMine("load");try{const r=await cloudDb("players?origin=eq.site&select=id,name,game,team,role,league,created_at&order=created_at.desc&limit=2000");setMine(Array.isArray(r)?r:[]);}catch(e){setMine("err");}}} style={{height:34,padding:"0 12px",borderRadius:10,border:"1px solid "+(mine?"#a78bfa":"#1F2937"),background:mine?"rgba(167,139,250,.15)":"#111827",color:mine?"#ddd6fe":"#9CA3AF",fontSize:12.5,fontWeight:800,cursor:"pointer"}}>👤 Créés par moi{Array.isArray(mine)?" · "+mine.filter(p=>!rosterGame||p.game===rosterGame).length:""}</button></div>
+     {mine&&<div style={{marginBottom:12}}>{mine==="load"?<div style={{fontSize:12,color:"#6B7280",padding:6}}>Chargement…</div>:mine==="err"?<div style={{fontSize:12.5,color:"#FBBF24",padding:6}}>Lance players_origine.sql dans Supabase pour activer ce filtre.</div>:
+      (()=>{const L=mine.filter(p=>!rosterGame||p.game===rosterGame);if(!L.length)return <div style={{fontSize:12.5,color:"#6B7280",padding:6}}>Aucun joueur créé depuis le site{rosterGame?" en "+rosterGame:""}.</div>;
+       return L.map(p=>{const full=players[(p.name||"").toLowerCase().trim()]||p;return <button key={p.id} onClick={()=>openEdit(full)} style={{...cardStyle,marginBottom:5,width:"100%",display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",textAlign:"left",fontFamily:"Inter,sans-serif"}}>
+        <GameLogo game={p.game} size={16}/><span style={{flex:1,minWidth:0}}><b style={{display:"block",fontSize:14,color:"#E5E7EB"}}>{p.name}</b><span style={{fontSize:11.5,color:"#9CA3AF"}}>{[p.team||"FA",p.role,p.league].filter(Boolean).join(" · ")}</span></span>
+        <span style={{fontSize:11,color:"#6B7280"}}>{p.created_at?new Date(p.created_at).toLocaleDateString("fr-CA"):""}</span></button>;});})()}</div>}
 
      {tourEdit&&<TourEditSheet t={tourEdit} mediaStore={mediaStore} setMediaStore={setMediaStore} tourneyCal={tourneyCal} setTourneyCal={setTourneyCal} showToast={showToast} onClose={()=>setTourEdit(null)}/>}
      {/* Tournois trouvés */}
@@ -2313,7 +2319,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
              {avatar?<img src={avatar} alt={p.name} style={{width:60,height:60,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,border:"2px solid rgba(255,255,255,.08)"}}/>
               :<div style={{width:60,height:60,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:22,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
              <div style={{flex:1,minWidth:140}}>
-              <div style={{fontWeight:800,fontSize:19,color:"#F3F4F6",textTransform:"capitalize"}}>{p.name}</div>
+              <div style={{fontWeight:800,fontSize:19,color:"#F3F4F6",textTransform:"capitalize"}}>{p.name}<TwinMark p={p} all={players}/></div>
               <div style={{display:"flex",alignItems:"center",gap:7,marginTop:3,fontSize:13.5,color:"#9CA3AF"}}>{(()=>{const lg=clubLogo(p.team,p.game,teamLogos,players);return lg?<img src={lg} alt="" style={{width:20,height:20,objectFit:"contain"}}/>:null;})()}<span>{roleLine([p.team,p.role],p.role)}</span><GameLogo game={p.game} size={16}/></div>
              </div>
              <button onClick={()=>openEdit(p)} style={{height:42,padding:"0 16px",background:"rgba(167,139,250,.12)",border:"1px solid rgba(167,139,250,.35)",borderRadius:11,color:accent,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
@@ -3120,6 +3126,12 @@ function ImageInput({value, onChange, folder, placeholder, size=28, radius="6px"
  </div>);
 }
 
+// Doublon probable : autre joueur du MÊME club (même jeu) au pseudo presque identique (Masvai / MaSvAl, l↔i, 0↔o, 1 lettre d'écart)
+const _twN=x=>String(x||"").toLowerCase().replace(/[l1|]/g,"i").replace(/0/g,"o").replace(/[^a-z0-9]/g,"");
+const _lev1=(a,b)=>{if(a===b)return true;if(Math.abs(a.length-b.length)>1)return false;let i=0,j=0,d=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;continue;}if(++d>1)return false;if(a.length>b.length)i++;else if(b.length>a.length)j++;else{i++;j++;}}return d+(a.length-i)+(b.length-j)<=1;};
+function twinOf(p,all){if(!p||!p.team)return null;const n=_twN(p.name);if(n.length<3)return null;const tk=String(p.team).toLowerCase().trim();
+ return Object.values(all||{}).find(q=>q&&q!==p&&(q.id==null||q.id!==p.id)&&q.game===p.game&&String(q.team||"").toLowerCase().trim()===tk&&String(q.name)!==String(p.name)&&(()=>{const m=_twN(q.name);return m===n||(n.length>=4&&_lev1(m,n));})())||null;}
+const TwinMark=({p,all})=>{const t=twinOf(p,all);return t?<span title={"Doublon possible : "+t.name+" (même club)"} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:10,background:"#F59E0B",color:"#111",fontSize:13,fontWeight:900,marginLeft:6,verticalAlign:"2px",textTransform:"none"}}>!</span>:null;};
 const PlayerCard=memo(function PlayerCard({p, bets, teamLogos, allPlayers, showToast, onEdit, onClose, onDelete, onFA, editMode:editModeProp, editP, editPForm, setEditPForm, editPPhotoUrl, setEditPPhotoUrl, editPSaving, savePlayer, closeEdit, inputStyle, accent}){
  const [editMode, setEditMode] = useState(editModeProp||false);
  // Compute stats for this player
@@ -3254,7 +3266,7 @@ const PlayerCard=memo(function PlayerCard({p, bets, teamLogos, allPlayers, showT
       :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
     </div>
     <div style={{flex:1,minWidth:0}}>
-     <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:-.3}}>{p.name}</div>
+     <div style={{fontSize:18,fontWeight:800,color:"#E5E7EB",letterSpacing:-.3}}>{p.name}<TwinMark p={p} all={allPlayers}/></div>
      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,flexWrap:"wrap"}}>
       {teamLogo&&<img src={teamLogo.replace('__FAILED__','')} alt={p.team} style={{width:16,height:16,objectFit:"contain",borderRadius:2}} onError={e=>e.target.style.display="none"}/>}
       {p.team&&<span style={{fontSize:11,color:"#c8d4e8",fontWeight:600}}>{p.team}</span>}
@@ -5528,36 +5540,30 @@ function ClubPick({g,name,list,onPick,onClose,logo,top}){const [q,setQ]=useState
    <div style={{overflow:"auto",borderTop:"1px solid #2A3240"}}>{f.slice(0,80).map(c=><button key={c} onClick={()=>onPick(c)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",padding:"9px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"transparent",color:"#E5E7EB",fontSize:14,cursor:"pointer"}}>{logo?<span style={{width:24,display:"inline-flex",justifyContent:"center"}}>{logo(c)}</span>:null}{c}</button>)}
     {!f.length&&<div style={{padding:14,color:"#8A94A3",fontSize:13}}>Rien trouvé. Ajoute-le d'abord dans tes clubs.</div>}</div></div></div>;}
 // ⚙ Associer un joueur du scoreboard (pseudo Dotabuff bizarre, etc.) à un joueur existant — ou le créer
-function PlayerLinkSheet({name,team,game,players,onPick,onClose,roster=[],unk=[],onAssign,onRoster,onUnlink}){const [q,setQ]=useState("");const [busy,setBusy]=useState(false);const [err,setErr]=useState("");
- const G=GNORM(game);const qq=cutNorm(q);
- // recherche intelligente : début du pseudo > dans le pseudo > lettres dans l'ordre (« gum » → Gumayusi, « fkr » → Faker) ; même jeu seulement
+function PlayerLinkSheet({name,team,game,players,onPick,onClose}){const [q,setQ]=useState("");
+ const G=GNORM(game);const qq=cutNorm(q);const nn=cutNorm(String(name||"").split("·")[0]);
  const sub=(a,b)=>{let j=0;for(const c of a){if(c===b[j])j++;if(j===b.length)return true;}return !b.length;};
- const score=p=>{const n=cutNorm(p.name),tm=cutNorm(p.team||"");if(!qq)return 1;if(n===qq)return 5;if(n.startsWith(qq))return 4;if(n.includes(qq))return 3;if(tm.startsWith(qq))return 2;return qq.length>=3&&sub(n,qq)?1:0;};
- const same=p=>teamKey(p.team||"")===teamKey(team||"")?1:0;
- const list=Object.values(players||{}).filter(p=>p&&p.name&&GNORM(p.game)===G).map(p=>({p,sc:score(p)})).filter(x=>x.sc>0)
-  .sort((a,b)=>b.sc-a.sc||same(b.p)-same(a.p)||String(a.p.name).localeCompare(String(b.p.name))).map(x=>x.p);
- const exact=list.some(p=>cutNorm(p.name)===qq);
- const create=async()=>{const nm=q.trim();if(!nm)return;setBusy(true);setErr("");
-  try{await cloudDb("players",{method:"POST",body:{name:nm,game:game,team:team||null},prefer:"return=minimal"});onPick(nm);}catch(e){setErr("Création impossible : "+(e.message||e));}setBusy(false);};
- return <div role="dialog" aria-label="Associer le joueur" onClick={onClose} style={{position:"fixed",inset:0,zIndex:230,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"60px 12px"}}>
-  <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:460,maxHeight:"75vh",display:"flex",flexDirection:"column",background:"#12161D",border:"1px solid #2A3240",borderRadius:10,overflow:"hidden",fontFamily:"Inter,sans-serif"}}>
-   <div style={{padding:"12px 12px 2px",color:"#fff",fontSize:14,fontWeight:800}}>Associer « {name} »</div>
-   <div style={{padding:"0 12px 8px",color:"#8A94A3",fontSize:12}}>Ce pseudo sera relié au joueur choisi pour les prochains collages.</div>
-   {onUnlink&&<div style={{padding:"0 12px 10px"}}><button type="button" onClick={()=>{if(window.confirm("Désattribuer « "+name+" » de ce match ? Ses stats de ce match sont retirées et le pseudo du collage ne sera plus relié à lui."))onUnlink();}} style={{width:"100%",height:38,borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"rgba(239,68,68,.08)",color:"#F87171",fontWeight:800,fontSize:13.5,cursor:"pointer"}}>Désattribuer (ce n'est pas lui)</button><div style={{fontSize:11.5,color:"#8A94A3",marginTop:6}}>Ou choisis le bon joueur ci-dessous : ses stats lui seront transférées.</div></div>}
-   <div style={{padding:"0 12px 10px"}}><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher un joueur" aria-label="Rechercher un joueur" style={{width:"100%",boxSizing:"border-box",height:38,background:"#0B0E13",color:"#fff",border:"1px solid #2A3240",borderRadius:8,padding:"0 10px",fontSize:15}}/></div>
-   <div style={{overflow:"auto",borderTop:"1px solid #2A3240"}}>
-    {!q&&unk.length>0&&onAssign&&<div style={{padding:"8px 14px 4px",color:"#FBBF24",fontSize:11.5,fontWeight:800}}>ATTRIBUER UNE LIGNE DU SCOREBOARD</div>}
-    {!q&&onAssign&&unk.map(u=><button key={u.id} type="button" onClick={()=>onAssign(u)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",padding:"8px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"transparent",color:"#E5E7EB",fontSize:14,cursor:"pointer"}}>
-     {u.c?<img src={heroImg(u.c)} alt="" style={{width:40,height:23,objectFit:"cover",borderRadius:4}} onError={e=>{e.target.style.display="none";}}/>:null}<span style={{flex:1}}>{u.c||"Héros ?"} <span style={{color:"#8A94A3",fontSize:12}}>· {u.raw}</span></span><b>{u.k} K</b></button>)}
-    {!q&&onRoster&&roster.length>0&&<div style={{padding:"8px 14px 4px",color:"#8A94A3",fontSize:11.5,fontWeight:800}}>JOUEURS DE L'ÉQUIPE</div>}
-    {!q&&onRoster&&roster.map(r=><button key={r.k} type="button" onClick={()=>onRoster(r.k)} style={{display:"flex",justifyContent:"space-between",width:"100%",textAlign:"left",padding:"9px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"transparent",color:"#E5E7EB",fontSize:14,cursor:"pointer"}}><span>{r.n}</span><span style={{color:r.has?"#8A94A3":"#4ADE80",fontSize:12}}>{r.has?"déjà rempli":"pas encore rempli"}</span></button>)}
-    {q.trim()&&!exact&&<button type="button" disabled={busy} onClick={create} style={{display:"block",width:"100%",textAlign:"left",padding:"11px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"rgba(124,58,237,.14)",color:"#C4B5FD",fontSize:14,fontWeight:800,cursor:"pointer"}}>{busy?"Création…":"＋ Créer « "+q.trim()+" »"+(team?" · "+team:"")}</button>}
-    {err&&<div style={{padding:"8px 14px",color:"#F87171",fontSize:12.5}}>{err}</div>}
-    {list.slice(0,80).map(p=>{const ph=getAvatarSrc(p);const lg=p.team_logo_url||(typeof getTeamLogo==="function"?getTeamLogo(p.team):null);return <button key={p.id||p.name+p.team} type="button" onClick={()=>onPick(p.name)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",padding:"8px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"transparent",color:"#E5E7EB",fontSize:14,cursor:"pointer"}}>
+ const sim=(n,k)=>{if(!k)return 0;if(n===k)return 5;if(n.startsWith(k)||k.startsWith(n))return 4;if(n.includes(k)||k.includes(n))return 3;return k.length>=3&&(sub(n,k)||sub(k,n))?2:0;};
+ const same=p=>teamKey(p.team||"")===teamKey(team||"")&&!!team;
+ const all=Object.values(players||{}).filter(p=>p&&p.name&&GNORM(p.game)===G);
+ // joueurs potentiels : pseudo identique ou proche du nom du collage, puis les joueurs du club
+ const pot=(qq?all.map(p=>({p,sc:sim(cutNorm(p.name),qq)*2+(same(p)?1:0)})):all.map(p=>({p,sc:(nn.length>=2?sim(cutNorm(p.name),nn)*2:0)+(same(p)?1:0)})))
+  .filter(x=>x.sc>(qq?1:0)).sort((a,b)=>b.sc-a.sc||String(a.p.name).localeCompare(String(b.p.name))).slice(0,12).map(x=>x.p);
+ const inPot=new Set(pot.map(p=>p.id||p.name));
+ const rest=all.filter(p=>!inPot.has(p.id||p.name)&&(!qq||cutNorm(p.name).includes(qq)||cutNorm(p.team||"").startsWith(qq))).sort((a,b)=>String(a.name).localeCompare(String(b.name),"fr",{sensitivity:"base"})).slice(0,300);
+ const Row=p=>{const ph=getAvatarSrc(p);const lg=p.team_logo_url||(typeof getTeamLogo==="function"?getTeamLogo(p.team):null);return <button key={p.id||p.name+p.team} type="button" onClick={()=>onPick(p.name)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",padding:"8px 14px",border:"none",borderBottom:"1px solid #1E242E",background:"transparent",color:"#E5E7EB",fontSize:14,cursor:"pointer"}}>
      <span style={{width:32,height:32,borderRadius:16,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af"}}>{ph?<img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}} onError={e=>{e.target.style.display="none";}}/>:String(p.name||"?")[0].toUpperCase()}</span>
      <span style={{flex:1,fontWeight:700}}>{p.name}</span>
-     <span style={{display:"inline-flex",alignItems:"center",gap:6,color:"#8A94A3",fontSize:12}}>{lg?<img src={lg} alt="" style={{width:20,height:20,objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>:null}{p.team||""}</span></button>;})}
-    {!list.length&&!q.trim()&&<div style={{padding:14,color:"#8A94A3",fontSize:13}}>Tape un pseudo pour chercher ou créer le joueur.</div>}</div></div></div>;}
+     <span style={{display:"inline-flex",alignItems:"center",gap:6,color:"#8A94A3",fontSize:12}}>{lg?<img src={lg} alt="" style={{width:20,height:20,objectFit:"contain"}} onError={e=>{e.target.style.display="none";}}/>:null}{p.team||"FA"}</span></button>;};
+ const H=t=><div style={{padding:"8px 14px 4px",color:"#8A94A3",fontSize:11.5,fontWeight:800}}>{t}</div>;
+ return <div role="dialog" aria-label="Choisir le joueur" onClick={onClose} style={{position:"fixed",inset:0,zIndex:230,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"60px 12px"}}>
+  <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:460,maxHeight:"75vh",display:"flex",flexDirection:"column",background:"#12161D",border:"1px solid #2A3240",borderRadius:10,overflow:"hidden",fontFamily:"Inter,sans-serif"}}>
+   <div style={{padding:"12px 12px 8px",color:"#fff",fontSize:14,fontWeight:800}}>{name}</div>
+   <div style={{padding:"0 12px 10px"}}><input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher" aria-label="Rechercher un joueur" style={{width:"100%",boxSizing:"border-box",height:38,background:"#0B0E13",color:"#fff",border:"1px solid #2A3240",borderRadius:8,padding:"0 10px",fontSize:15}}/></div>
+   <div style={{overflow:"auto",borderTop:"1px solid #2A3240"}}>
+    {pot.length>0&&H("JOUEURS POTENTIELS")}{pot.map(Row)}
+    {rest.length>0&&H("TOUS LES JOUEURS "+String(G||"").toUpperCase())}{rest.map(Row)}
+    {!pot.length&&!rest.length&&<div style={{padding:14,color:"#8A94A3",fontSize:13}}>Aucun joueur.</div>}</div></div></div>;}
 let BET_ALIAS={};const aliasOf=n=>{const k=cutNorm(n);return BET_ALIAS[k]||k;};
 const PI=({n,s=14,c="currentColor"})=>{const P={trophy:<><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></>,globe:<><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></>,lock:<><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></>,alert:<><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></>,check:<path d="m5 12 5 5 9-10"/>,search:<><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></>};
  return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0,verticalAlign:"-2px"}}>{P[n]}</svg>;};
@@ -5669,7 +5675,9 @@ function advOf(seg,vv){const o={d:+vv[2],a:+vv[3]};let tail=seg.slice(vv.index+v
  const kp=tail.match(/KP%?\s*([\d.]+)\s*%/i);if(kp)o.kp=+kp[1];const cs=tail.match(/\bCS\s*(\d{1,4})\b/i);if(cs)o.cs=+cs[1];
  const gd=tail.match(/Gold\s*([\d.]+)\s*(k)?/i);if(gd)o.gold=Math.round(+gd[1]*(gd[2]?1000:1));const dm=tail.match(/Damage\s*([\d,]+)/i);if(dm)o.dmg=+dm[1].replace(/,/g,"");return o;}
 // lignes « Nom Champion KDA k/d/a » du collage (pour les joueurs que l'app n'a pas reconnus)
-function boardRows(txt){const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]/g,"'").replace(/[\u00A0\u2000-\u200D\uFEFF]/g," ").replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/\s+/g," ")+" ";const out=[];let m;
+// HLTV : pseudo avec espace (« enkay J ») sur sa ligne juste avant « 0 : 5 » → espace remplacé par « ~ » pour le lire d'un bloc
+const hltvJoin=t=>String(t||"").replace(/(^|\n)([^\n\t]{1,24}?)[ \u00a0]+([^\n\t]{1,12})(?=\r?\n\s*\d{1,2}\s*:\s*\d{1,2}\s)/g,(m,a,b,c)=>/^\d|%|:/.test(b+c)?m:a+b.replace(/[ \u00a0]+/g,"~")+"~"+c);
+function boardRows(txt){txt=hltvJoin(txt);const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]/g,"'").replace(/[\u00A0\u2000-\u200D\uFEFF]/g," ").replace(/\]\((?:[^()]|\([^)]*\))*\)/g," ").replace(/[\[\]]/g," ").replace(/\s+/g," ")+" ";const out=[];let m;
  // LoL (Liquipedia) : Nom Champion KDA k/d/a …
  const re=/KDA\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/g;
  const CH=(typeof LOL_CHAMPS!=="undefined"?LOL_CHAMPS:[]).slice().sort((a,b)=>b.length-a.length);
@@ -5684,8 +5692,8 @@ function boardRows(txt){const flat=" "+String(txt).replace(/[\u2018\u2019\u02BC]
  const rv=/([A-Za-z0-9_.\-]{2,20})\s+[A-Za-z0-9]{2,5}\s+(\d\.\d{2})\s+(\d{2,3})\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\s+[+\-]?\d+\s+(\d{1,3})%\s+(\d{2,3})\s+(\d{1,3})%/g;
  while((m=rv.exec(flat)))out.push({name:m[1],k:cutNorm(m[1]),kills:m[4],adv:{rating:+m[2],acs:+m[3],d:+m[5],a:+m[6],kast:+m[7],adr:+m[8],hsp:+m[9]}});
  // CS2 (HLTV) : Nom K:D MKs KAST% 1vsX K (hs) A (f) D (t) ADR Swing Rating
- const rh=/([A-Za-z0-9_.\-]{2,20})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+([\d.]+)%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)\s+(\d{1,2})\s*\(\d{1,2}\)\s+(\d{1,2})\s*\(\d{1,2}\)\s+([\d.]+)\s+[+\-]?[\d.]+%\s+([\d.]+)/g;
- while((m=rh.exec(flat)))out.push({name:m[1],k:cutNorm(m[1]),kills:m[3],hs:m[4],adv:{kast:+m[2],a:+m[5],d:+m[6],adr:+m[7],rating:+m[8]}});
+ const rh=/([A-Za-z0-9_.\-~]{2,24})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+([\d.]+)%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)\s+(\d{1,2})\s*\(\d{1,2}\)\s+(\d{1,2})\s*\(\d{1,2}\)\s+([\d.]+)\s+[+\-]?[\d.]+%\s+([\d.]+)/g;
+ while((m=rh.exec(flat)))out.push({name:m[1].replace(/~/g," "),k:cutNorm(m[1]),kills:m[3],hs:m[4],adv:{kast:+m[2],a:+m[5],d:+m[6],adr:+m[7],rating:+m[8]}});
  return out;}
 // Dotabuff (Dota 2) : une ligne par joueur « Lane  Joueur  K  D  A  NET … », le héros 2 lignes au-dessus
 // nom d'équipe Dotabuff → A ou B (« PARIVISION » = Vision, « Yellow Submarine » = YeS ; Dotabuff écrit souvent le nom 2 fois)
@@ -5829,11 +5837,11 @@ function lolTeamStats(txt){const L=String(txt).split(/\r?\n/).map(x=>x.trim()).f
  const l={},r={};for(let j=i0+1;j<L.length-1&&!/^Player Performance$/i.test(L[j]);j++){const key=MAP[L[j]];if(!key)continue;const a=L[j-1],b=L[j+1];
   if(key==="kda"){const pa=a.split("/"),pb=b.split("/");l.k=+pa[0];r.k=+pb[0];l.d=+pa[1];r.d=+pb[1];l.a=+pa[2];r.a=+pb[2];}else{l[key]=num(a);r[key]=num(b);}}
  return Object.keys(l).length?{l,r}:null;}
-function boardExtras(txt,roster,A,B){const flat=" "+String(txt).replace(/\s+/g," ")+" ";const low=flat.toLowerCase();
- const heads=[];[A,B].forEach(t=>{const L=String(t).toLowerCase();const w=L.replace(/\b(team|esports?|gaming|club)\b/g," ").trim().split(/\s+/);const V=[...new Set([L.slice(0,6),L,w.join(" "),w[0]].filter(v=>v&&v.length>=2))];V.forEach(p=>{const re=new RegExp("(^|[^a-z0-9])"+p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z0-9])","g");let q;while((q=re.exec(low)))heads.push({t,pos:q.index});});});heads.sort((a,b)=>a.pos-b.pos);
- const re=/([A-Za-z0-9_\-\.]{2,20})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+[\d.,]+%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)/g;const rows=[];let m;
+function boardExtras(txt,roster,A,B){txt=hltvJoin(txt);const flat=" "+String(txt).replace(/\s+/g," ")+" ";const low=flat.toLowerCase();
+ const heads=[];[A,B].forEach(t=>{const L=String(t).toLowerCase();const w=L.replace(/\b(team|esports?|gaming|club)\b/g," ").trim().split(/\s+/);const V=[...new Set([L.slice(0,6),L,w.join(" "),w[0]].filter(v=>v&&v.length>=2))];V.forEach(p=>{const pe=p.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");const re=new RegExp("(^|[^a-z0-9])"+pe+"(?:"+pe+")?($|[^a-z0-9])","g");/* HLTV écrit le nom 2 fois : « FaZeFaZe » */let q;while((q=re.exec(low)))heads.push({t,pos:q.index});});});heads.sort((a,b)=>a.pos-b.pos);
+ const re=/([A-Za-z0-9_\-\.~]{2,24})\s+\d{1,2}\s*:\s*\d{1,2}\s+\d+\s+[\d.,]+%\s+\d+\s+(\d{1,2})\s*\((\d{1,2})\)/g;const rows=[];let m;
  const keyOf=(t,k)=>Object.keys(roster[t]||{}).find(x=>x===k||x.replace(/0/g,"o")===k.replace(/0/g,"o")||(BET_ALIAS[k]&&x===BET_ALIAS[k])||(k.length>=4&&x.startsWith(k))||(x.length>=4&&k.startsWith(x)));
- while((m=re.exec(flat))){const k=cutNorm(m[1]);const h=heads.filter(h=>h.pos<m.index).pop();const inA=keyOf(A,k),inB=keyOf(B,k);const t=inA&&!inB?A:inB&&!inA?B:h&&h.t;if(t)rows.push({team:t,k,name:m[1],kills:m[2],hs:m[3]});}
+ while((m=re.exec(flat))){const k=cutNorm(m[1]);const h=heads.filter(h=>h.pos<m.index).pop();const inA=keyOf(A,k),inB=keyOf(B,k);const t=inA&&!inB?A:inB&&!inA?B:h&&h.t;if(t)rows.push({team:t,k,name:m[1].replace(/~/g," "),kills:m[2],hs:m[3]});}
  const extras=[],present={};rows.forEach(r=>{const kk=keyOf(r.team,r.k)||r.k;(present[r.team]=present[r.team]||[]).push(kk);if(!keyOf(r.team,r.k))extras.push(r);});
  return {extras,present,rows};}
 function ScorePaste({i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,onTeamStats,dota=false,srcName="",filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
@@ -6120,8 +6128,11 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
     onClose={()=>setPlFor(null)} onPick={async nm=>{const to=cutNorm(nm),from=plFor.k;if(plFor.add){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setHideP(o=>o[plFor.t]?{...o,[plFor.t]:[...o[plFor.t],to]}:o);setPlFor(null);return;}if(plFor.unk){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setHideP(o=>o[plFor.t]?{...o,[plFor.t]:[...o[plFor.t],to]}:o);assignUnk(plFor.unk.i,plFor.unk.u,to);setPlFor(null);return;}if(to===from){setPlFor(null);return;}
    // joueur déjà reconnu (ex. masvai pris pour lattykk) : on redirige seulement les pseudos du collage reliés à lui, sans faire de « masvai » un alias
    {const known=Object.values(allPlayers||{}).some(p=>p&&cutNorm(p.name)===from&&GNORM(p.game)===G);const bad=Object.entries(BET_ALIAS).filter(([f,x])=>x===from&&f!==from).map(([f])=>f);
-    const keys=known&&bad.length?bad:[from];const now=new Date().toISOString();
-    try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:keys.map(f=>({pkey:f,alias:to,updated_at:now})),prefer:"resolution=merge-duplicates"});}catch(e){}const nA={...BET_ALIAS};keys.forEach(f=>{nA[f]=to;});BET_ALIAS=nA;}
+    // joueur connu remplacé (ex. jcobbb → enkay J) : aucun alias, juste un échange dans CE match
+    const keys=known?bad:[from];const now=new Date().toISOString();
+    if(known&&BET_ALIAS[from]){const nA={...BET_ALIAS};delete nA[from];BET_ALIAS=nA;cloudDb("bet_alias?pkey=eq."+encodeURIComponent(from),{method:"DELETE"}).catch(()=>{});}
+    if(keys.length){try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:keys.map(f=>({pkey:f,alias:to,updated_at:now})),prefer:"resolution=merge-duplicates"});}catch(e){}const nA={...BET_ALIAS};keys.forEach(f=>{nA[f]=to;});BET_ALIAS=nA;}
+    if(known){const t=plFor.t;setExtraP(o=>({...o,[t]:{...(o[t]||{}),[to]:nm}}));setHideP(o=>({...o,[t]:[...Object.keys(roster[t]||{}).filter(z=>z!==from),to]}));}}
    setPk(o=>{const n={...o};Object.keys(o).forEach(key=>{const [mn,kk]=key.split("|");if(kk===from){n[mn+"|"+to]={...(o[mn+"|"+to]||{}),...o[key]};delete n[key];}});return n;});
    setExtraP(o=>{const n={...o};Object.keys(n).forEach(t=>{if(n[t]&&n[t][from]){const x={...n[t]};delete x[from];x[to]=nm;n[t]=x;}});return n;});setHideP(o=>{const n={...o};Object.keys(n).forEach(t=>{n[t]=(n[t]||[]).map(k=>k===from?to:k);});return n;});setPlFor(null);}}/>;})()}
   {cp&&<div role="dialog" aria-label={"Champion de "+cp.n} onClick={()=>setCp(null)} style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"60px 12px"}}>
