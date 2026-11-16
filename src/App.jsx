@@ -13841,14 +13841,19 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    sub={evAlerts.filter(evVis).length+" bet"+(evAlerts.filter(evVis).length>1?"s":"")+" aujourd'hui"}
    open={suiviOpen.ev} onClick={()=>{setSuiviOpen(s=>({...s,ev:!s.ev}));try{localStorage.setItem("ev_seen",String(Date.now()));}catch(e){}}}/>
   {suiviOpen.ev&&<div style={{...SV_BODY,padding:0}}>
-   <div style={{padding:"12px 14px 10px",display:"flex",gap:6,alignItems:"center"}}>
-    {["CS2","Dota2","LoL","Valorant"].map(g=>{const on=evGames.includes(g);return(
-     <button key={g} onClick={()=>setEvGames(l=>on?l.filter(x=>x!==g):[...l,g])} aria-label={g} aria-pressed={on} style={{width:40,height:40,flexShrink:0,borderRadius:11,border:"1.5px solid "+(on?"#22C55E":"rgba(255,255,255,.07)"),background:on?"rgba(34,197,94,.1)":"transparent",opacity:on?1:.4,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><GameLogo game={g} size={22}/></button>);})}
-    <div style={{flex:1}}/>
-    <button disabled={running||!evGames.length} onClick={()=>evLaunch(true)} style={{height:40,padding:"0 12px",borderRadius:11,border:"1px solid rgba(34,197,94,.45)",background:"transparent",color:running?"#4b5563":"#22C55E",fontWeight:800,fontSize:13,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>Betby</button>
-    <button disabled={running||!evGames.length} onClick={()=>evLaunch(false)} style={{height:40,padding:"0 14px",borderRadius:11,border:"none",background:running?"rgba(255,255,255,.06)":"#22C55E",color:running?"#9ca3af":"#05231A",fontWeight:900,fontSize:13,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>{running?"…":"Apify"}</button>
+   {/* Tableau de bord (look B) : 3 cases de chiffres, refresh sous chaque heure, SIM + Cibler en haut à droite */}
+   <div style={{margin:"12px 12px 10px",padding:"12px",borderRadius:14,background:"linear-gradient(135deg,rgba(124,58,237,.28),rgba(124,58,237,.06) 55%,rgba(15,21,36,0))",border:"1px solid rgba(167,139,250,.18)"}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+     <span style={{fontSize:10.5,fontWeight:900,padding:"3px 8px",borderRadius:6,background:running?"rgba(251,191,36,.15)":evRun&&evRun.status==="error"?"rgba(239,68,68,.15)":"rgba(34,197,94,.15)",color:running?"#fde68a":evRun&&evRun.status==="error"?"#fca5a5":"#86efac"}}>● {running?"EN COURS":evRun&&evRun.status==="error"?"ERREUR":"EN LIGNE"}</span>
+     <div style={{flex:1}}/><SimBtn/><FocusBtn/></div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6}}>
+     {(()=>{const nB=evAlerts.filter(evVis).length;const tile={background:"rgba(7,11,22,.55)",borderRadius:12,padding:"9px 10px",minWidth:0};const lab={fontSize:10,fontWeight:800,color:"#8b93a7",letterSpacing:".6px"};
+      const rf=(betby)=><button disabled={running||!evGames.length} onClick={()=>evLaunch(betby)} style={{marginTop:3,padding:0,border:"none",background:"none",color:running||!evGames.length?"#4b5563":"#22C55E",fontSize:11.5,fontWeight:800,cursor:running?"default":"pointer",fontFamily:"Inter,sans-serif"}}>{running?"…":"↻ refresh"}</button>;
+      return <><div style={tile}><div style={lab}>BETS</div><div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.15}}>{nB}</div>{nNew>0&&<div style={{fontSize:11,fontWeight:800,color:"#86efac"}}>{nNew} nouveau{nNew>1?"x":""}</div>}</div>
+       <div style={tile}><div style={lab}>BETBY</div><div style={{fontSize:17,fontWeight:900,color:"#fff",lineHeight:1.3}}>{botSt?hhmm(botSt.betby_at)||"–":"–"}</div>{rf(true)}</div>
+       <div style={tile}><div style={lab}>APIFY</div><div style={{fontSize:17,fontWeight:900,color:"#fff",lineHeight:1.3}}>{botSt?hhmm(botSt.apify_at)||"–":"–"}</div>{rf(false)}</div></>;})()}
+    </div>
    </div>
-   {botSt&&<div style={{display:"flex",gap:14,padding:"0 14px 10px",fontSize:11.5,color:"#6b7280",fontWeight:700}}><span>Betby <b style={{color:"#cbd5e1"}}>{hhmm(botSt.betby_at)}</b></span><span>Apify <b style={{color:"#cbd5e1"}}>{hhmm(botSt.apify_at)}</b></span>{evRun&&evRun.status==="error"&&<span style={{color:"#f87171"}}>Erreur</span>}</div>}
    {evRun&&evRun.log&&evRunning&&<div style={{padding:"0 14px 10px"}}><EvConsole text={evRun.log} live={evRunning}/></div>}
    <div style={{display:"flex",gap:4,margin:"0 14px 10px",padding:3,borderRadius:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
     {[["bets","Bets"+(evAlerts.filter(evVis).length?" "+evAlerts.filter(evVis).length:"")],["board","Board"],["joueur","Joueur"],["outils","Outils"]].map(([k,l])=><button key={k} onClick={()=>setEvTab(k)} style={{flex:1,height:34,borderRadius:9,border:"none",background:evTab===k?"#7c3aed":"transparent",color:evTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
@@ -13858,17 +13863,17 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    {evTab==="outils"&&<><MapPhotos showToast={showToast}/><MLStats bets={seasonBets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
    {evTab==="bets"&&<>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
-   {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
-   {evAlerts.length>0&&<div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center"}}>
+   <div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center",flexWrap:"wrap"}}>
+    {["CS2","Dota2","LoL","Valorant"].map(g=>{const on=evGames.includes(g);return(
+     <button key={g} onClick={()=>setEvGames(l=>on?l.filter(x=>x!==g):[...l,g])} aria-label={"Suivre "+g} aria-pressed={on} title={on?g+" suivi par le bot":g+" pas suivi"} style={{width:30,height:30,flexShrink:0,borderRadius:8,border:"1.5px solid "+(on?"#22C55E":"rgba(255,255,255,.07)"),background:on?"rgba(34,197,94,.1)":"transparent",opacity:on?1:.4,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><GameLogo game={g} size={18}/></button>);})}
+    <div style={{flex:1}}/>
+    <button onClick={()=>{const k=evSort==="time"?"edge":"time";setEvSort(k);try{localStorage.setItem("ev_sort",k);}catch(e){}}} title="Trier par heure ou par écart" style={{height:32,padding:"0 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.08)",background:"transparent",color:"#c4b5fd",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>⇅ {evSort==="time"?"Heure":"Écart"}</button>
+    <div style={{flexBasis:"100%",height:0}}/>
     {[["all","Tous"],["new","NEW"]].map(([k,l])=>{const on=evFilter===k;const n=k==="all"?evAlerts.filter(evVis).length:evAlerts.filter(a=>evVis(a)&&a.status==="new"&&isNew(a)).length;return(
      <button key={k} onClick={()=>setEvFilter(k)} style={{display:"flex",alignItems:"center",gap:5,height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(on?"#22C55E":"rgba(255,255,255,.08)"),background:on?"rgba(34,197,94,.14)":"transparent",color:on?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}<span style={{color:on?"#86efac":"#6b7280"}}>{n}</span></button>);})}
-    <button onClick={()=>setEvSel(x=>x?null:[])} style={{height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(evSel?"#7C3AED":"rgba(255,255,255,.08)"),background:evSel?"rgba(124,58,237,.2)":"transparent",color:evSel?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{evSel?"Annuler":"Sél"}</button>
-    <SimBtn/><FocusBtn/>
-    <div style={{flex:1}}/>
-    <div style={{display:"flex",padding:2,borderRadius:9,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
-     {[["time","Heure"],["edge","Écart"]].map(([k,l])=><button key={k} onClick={()=>{setEvSort(k);try{localStorage.setItem("ev_sort",k);}catch(e){}}} style={{height:28,padding:"0 10px",borderRadius:7,border:"none",background:evSort===k?"#7c3aed":"transparent",color:evSort===k?"#fff":"#9ca3af",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
-    </div>
-   </div>}
+    <button onClick={()=>setEvSel(x=>x?null:[])} style={{height:32,padding:"0 11px",borderRadius:9,border:"1px solid "+(evSel?"#7C3AED":"rgba(255,255,255,.08)"),background:evSel?"rgba(124,58,237,.2)":"transparent",color:evSel?"#fff":"#9ca3af",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{evSel?"Annuler":"Sél."}</button>
+   </div>
+   {!evErr&&!evAlerts.length&&<div style={{padding:"24px 10px",textAlign:"center",color:"#6b7280",fontSize:13}}>Aucun bet</div>}
    {(()=>{const tms=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)?9e15:t;};
     const today=new Date().toDateString();const dayOf=a=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):(a.start||a.created_at));return isNaN(t)?today:t.toDateString();};
     const list=evAlerts.filter(a=>!isMuted(a)&&(dayOf(a)===today||(a.status==="new"&&(()=>{const t=new Date(/^\d+$/.test(String(a.start||""))?Number(a.start)*(Number(a.start)<1e12?1000:1):a.start).getTime();return isNaN(t)||t>Date.now()-3*3600e3;})()))&&(evFilter==="all"||(a.status==="new"&&isNew(a)))).slice().sort((x,y)=>evSort==="time"?(tms(x)-tms(y))||(y.edge-x.edge):(y.edge-x.edge)||(tms(x)-tms(y)));
