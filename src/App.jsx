@@ -4479,7 +4479,7 @@ function ClubBetPicker({pick,setPick,onClose}){
  </div>);
 }
 // ── Map pool d'une équipe CS2 : winrate, % joué, picks, bans, rounds… par map ──
-const CS_ACTIVE=["Ancient","Anubis","Dust2","Inferno","Mirage","Nuke","Train"];
+const CS_ACTIVE=["Ancient","Anubis","Cache","Dust2","Inferno","Mirage","Nuke","Train"];
 function ClubMapPool({team,game}){
  const [d,setD]=useState(null);const [sort,setSort]=useState("n");const [open,setOpen]=useState(null);const [mi,setMi]=useState(MAP_IMG||{});useEffect(()=>{loadMapImg().then(x=>x&&setMi(x)).catch(()=>{});},[]);
  const same=(a,b)=>{const x=teamKey(a),y=teamKey(b);return !!(x&&y&&(x===y||x.includes(y)||y.includes(x)));};
@@ -5799,6 +5799,10 @@ function parseHltvMaps(text,pool,A,B){
   // un chiffre collé à des lettres (« G2 », « 9z », « Dust2 ») fait partie d'un nom, pas un score
   let z;const nre=/(^|[^0-9A-Za-z:.,;])(\d{1,2})(?=$|[^0-9A-Za-z:.,;])/g;while((z=nre.exec(seg)))ev.push({n:+z[2],pos:z.index+z[1].length});
   ev.sort((a,b)=>a.pos-b.pos);const sc={};let cur=null;ev.forEach(e=>{if(e.t){cur=e.t;}else if(cur&&sc[cur]==null){sc[cur]=e.n;cur=null;}});
+  // score d'une équipe absent (collage coupé à la fin) : on le déduit des mi-temps « (3:9; 0:4) » → 3 et 13
+  if((sc[A]==null)!==(sc[B]==null)){const raw2=body.slice(h.end,k+1<hits.length?hits[k+1].pos:body.length);const hm=[...raw2.matchAll(/(\d{1,2})\s*:\s*(\d{1,2})/g)];
+   if(hm.length>=2){const L=hm.reduce((t,m)=>t+ +m[1],0),R=hm.reduce((t,m)=>t+ +m[2],0);const first=ev.find(e=>e.t);const f=first?first.t:A,o=f===A?B:A;
+    if(sc[f]!=null&&sc[f]===L)sc[o]=R;else if(sc[o]!=null&&sc[o]===R)sc[f]=L;}}
   if(sc[A]==null||sc[B]==null)return;seen.add(h.mp);out.push({name:h.mp,a:String(sc[A]),b:String(sc[B]),pick:picks[h.mp]||(dec===h.mp?"Decider":"")});});
  return out;}
 function HltvMapsPaste({pool,A,B,onApply,onVetos,vetos}){const [v,setV]=useState("");const [msg,setMsg]=useState("");const [ok,setOk]=useState(false);
@@ -5930,6 +5934,9 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
   // l'équipe du roster (club du joueur dans l'app) passe avant celle de PrizePicks, parfois inversée ; un joueur n'est jamais dans les 2 équipes ; pas de coach
   const club=k=>Object.values(allPlayers||{}).find(q=>q&&cutNorm(q.name)===k&&GNORM(q.game)===G);
   Object.values(m.players).forEach(p=>{const c=club(p.pkey);if(c&&/coach|analy|manager|staff/i.test(String(c.role||"")))return;const tm=c&&c.team&&(same(c.team,A)||same(c.team,B))?c.team:p.team;const t=same(tm,A)?A:same(tm,B)?B:null;if(t){const o=t===A?B:A;delete out[o][p.pkey];out[t][p.pkey]=p.name;}});
+  // un joueur des paris qui n'est plus dans ce club (FA ou parti) laisse sa place aux joueurs actuels du club (ex. Satanic → rincyq chez PARIVISION)
+  [A,B].forEach(t=>{const inClub=Object.values(allPlayers||{}).filter(p=>p&&p.team&&GNORM(p.game)===G&&same(p.team,t)&&!/coach|analy|manager|staff|bench|sub/i.test(String(p.role||"")));
+   if(inClub.length<5)return;const ck=new Set(inClub.map(p=>cutNorm(p.name)));Object.keys(out[t]).forEach(k=>{if(!ck.has(k)){const c=club(k)||club(BET_ALIAS[k]||"");if(c&&(!c.team||!same(c.team,t)))delete out[t][k];}});});
   [A,B].forEach(t=>Object.entries(extraP[t]||{}).forEach(([k,n])=>{out[t][k]=n;}));
   Object.values(allPlayers||{}).forEach(p=>{if(!p||!p.team||GNORM(p.game)!==G||/coach|analy|manager|staff|bench|sub/i.test(String(p.role||"")))return;const t=same(p.team,A)?A:same(p.team,B)?B:null;if(t&&Object.keys(out[t]).length<5&&!out[t][cutNorm(p.name)]&&!out[t===A?B:A][cutNorm(p.name)])out[t][cutNorm(p.name)]=p.name;});
   if(lol){const RO=["top","jungle","jgl","mid","adc","bot","support","sup"];const rk=k=>{const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===k);const r=String((pl&&pl.role)||"").toLowerCase();const i=RO.findIndex(x=>r.startsWith(x));return i<0?99:i;};
