@@ -7172,7 +7172,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq,evSet]);
  const multiAll=useMemo(()=>{const g={};(Array.isArray(rows)?rows:[]).forEach(x=>{if(x.kind==="duel")return;const tt=String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim().split(/\s+(?:vs\.?|-|–)\s+/i).map(t=>teamKey(t||"")).sort().join("~");const kk=[tt,x.pkey||cutNorm(x.player||""),x.map,x.stat,x.side].join("|");(g[kk]=g[kk]||[]).push(x);});const S=new Set();Object.values(g).forEach(L=>{if(new Set(L.map(x=>Number(x.line))).size>=2){const b=[...L].sort((p,q)=>(Number(q.edge)||0)-(Number(p.edge)||0)||(Number(q.stake_pct)||0)-(Number(p.stake_pct)||0))[0];L.forEach(x=>{if(x.key!==b.key&&Number(x.line)!==Number(b.line))S.add(x.key);});}});return S;},[rows]);
  const all=useMemo(()=>base.filter(x=>(!onlyMulti||multiAll.has(x.key))&&(!onlyOT||isOTb(x))&&nearOk(x)&&(mlF==="all"||mlB(x)===mlF)&&(sd==="all"||x.side===sd||x.kind==="duel"&&sd==="duel")&&(stt==="all"||(stt==="duel"?x.kind==="duel":x.kind!=="duel"&&(stt==="hs")===(x.stat==="headshots")))),[base,sd,stt,close,mlF,evSet,onlyMulti,multiAll,onlyOT,otSet]);
- const done=all.filter(x=>x.result);const wait=all.filter(x=>!x.result);
+ const done=all.filter(x=>x.result);const wait=all.filter(x=>!x.result);const doneAllS=done;
  const [statG,setStatG]=useState(()=>{try{return JSON.parse(localStorage.getItem("sim_statG")||"[]");}catch(e){return [];}});useEffect(()=>{try{localStorage.setItem("sim_statG",JSON.stringify(statG));}catch(e){}},[statG]);
  const [mlStep,setMlStep]=useState(0);
  // kills / minute moyen en Dota (games avec durée enregistrée)
@@ -7409,7 +7409,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
   {tab==="paris"&&<>
    {!months.length?<div style={{...card,padding:14,fontSize:13,color:"#8b93a7",textAlign:"center"}}>Aucun pari pour ces filtres.</div>:months.map(M=><Month key={M.mk} M={M}/>)}
   </>}
-  {tab==="stats"&&(()=>{const done0=done;const done=statG.length?done0.filter(x=>statG.includes(GN(x.game))):done0;
+  {tab==="stats"&&(()=>{const done0=doneAllS;const done=statG.length?done0.filter(x=>statG.includes(GN(x.game))):done0;
    const mlStepL=x=>{const o=Number(x.team_ml);if(!o)return null;const lo=Math.floor((o+1e-9)/mlStep)*mlStep;const f=v=>v.toFixed(2).replace(".",",");return f(lo)+" – "+f(lo+mlStep-0.01);};
    return <>
    <div style={{display:"flex",gap:6,margin:"0 0 8px",flexWrap:"wrap"}}>{["CS2","Dota2","LoL","Valorant"].map(gm=>{const on=statG.includes(gm);return <button key={gm} onClick={()=>setStatG(l=>on?l.filter(z=>z!==gm):[...l,gm])} aria-pressed={on} aria-label={"Stats "+gm} title={gm} style={{width:42,height:42,borderRadius:11,border:"1.5px solid "+(on?"#7c3aed":"#1F2937"),background:on?"rgba(124,58,237,.18)":"#0b1220",opacity:statG.length&&!on?.45:1,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0}}><GameLogo game={gm} size={22}/></button>;})}
