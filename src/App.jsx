@@ -1151,17 +1151,18 @@ function normalizeRole(r,game){
  // LoL/Valorant: normalize to short positions
  var LOL_MAP={
  "top laner":"Top","toplaner":"Top","top laners":"Top","top":"Top",
- "bot laner":"Bot","botlaner":"Bot","bot laners":"Bot","adc":"Bot","marksman":"Bot","bot":"Bot",
+ "bot laner":"ADC","botlaner":"ADC","bot laners":"ADC","adc":"ADC","marksman":"ADC","bot":"ADC","ad carry":"ADC",
  "mid laner":"Mid","midlaner":"Mid","mid laners":"Mid","mid":"Mid",
  "jungler":"Jungle","jng":"Jungle","jngl":"Jungle","jungle":"Jungle",
  "sup":"Support","supp":"Support","support":"Support",
  };
  // Dota2: keep Carry, Hard Support, etc.
  var DOTA_MAP={
- "carry":"Carry","hard carry":"Carry",
- "mid":"Mid","midlaner":"Mid","mid laner":"Mid",
- "offlane":"Offlane","offlaner":"Offlane","hard support":"Hard Support",
- "soft support":"Soft Support","support":"Support",
+ "carry":"Carry","hard carry":"Carry","safe lane":"Carry","safelane":"Carry","safe laner":"Carry","pos 1":"Carry","pos1":"Carry","position 1":"Carry","1":"Carry",
+ "mid":"Midlaner","midlaner":"Midlaner","mid laner":"Midlaner","middle":"Midlaner","pos 2":"Midlaner","pos2":"Midlaner","position 2":"Midlaner","2":"Midlaner",
+ "offlane":"Offlaner","offlaner":"Offlaner","off lane":"Offlaner","pos 3":"Offlaner","pos3":"Offlaner","position 3":"Offlaner","3":"Offlaner",
+ "soft support":"Soft Support","support":"Soft Support","pos 4":"Soft Support","pos4":"Soft Support","position 4":"Soft Support","4":"Soft Support",
+ "hard support":"Hard Support","pos 5":"Hard Support","pos5":"Hard Support","position 5":"Hard Support","5":"Hard Support",
  };
  if(game==="Dota2")return DOTA_MAP[rl]||r;
  if(game==="LoL"||game==="Valorant")return LOL_MAP[rl]||r;
@@ -1735,7 +1736,7 @@ const ROLES_BY_GAME={
   CS2:["Rifler","AWPer","Entry","Lurker","Support","IGL","Coach"],
   LoL:["Top","Jungle","Mid","ADC","Support","Coach"],
   Valorant:["Duelist","Sentinel","Controller","Initiator","IGL","Coach"],
-  Dota2:["Carry","Midlaner","Offlaner","Support","Hard Support","Coach"],
+  Dota2:["Carry","Midlaner","Offlaner","Soft Support","Hard Support","Coach"],
  };
 
 
@@ -2405,7 +2406,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               </div>
               {needLeague&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,fontSize:12,color:"#9ca3af",fontWeight:600}}>{league!=="(Sans ligue)"&&<LeagueLogo league={league} size={16}/>}{league}</div>}
              </div>
-             {GNORM(rosterGame)==="LoL"&&tPlayers.length>0&&(()=>{const miss=["TOP","JGL","MID","ADC","SUP"].filter(r=>!tPlayers.some(p=>ROLE_OF(p.role)===r));return miss.length?<span title={"Poste(s) manquant(s) : "+miss.map(r=>({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[r]).join(", ")} style={{width:18,height:18,borderRadius:9,background:"#EF4444",color:"#fff",fontSize:12,fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>:null;})()}
+             {(GNORM(rosterGame)==="LoL"||GNORM(rosterGame)==="Dota2")&&tPlayers.length>0&&(()=>{const _d=GNORM(rosterGame)==="Dota2";const miss=(_d?["P1","P2","P3","P4","P5"]:["TOP","JGL","MID","ADC","SUP"]).filter(r=>!tPlayers.some(p=>(_d?DOTA_POS(p.role):ROLE_OF(p.role))===r));return miss.length?<span title={"Poste(s) manquant(s) : "+miss.map(r=>({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"ADC",SUP:"Support",...DOTA_POS_L})[r]).join(", ")} style={{width:18,height:18,borderRadius:9,background:"#EF4444",color:"#fff",fontSize:12,fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>:null;})()}
              <span style={{fontSize:12.5,color:"#9ca3af",fontWeight:700}}>{tPlayers.length} joueurs</span>
              <button onClick={e=>{e.stopPropagation();deleteTeam(team,rosterGame,tPlayers);}}
               style={{padding:"3px 7px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:5,color:"#EF4444",fontSize:10,cursor:"pointer",flexShrink:0}}><Ic n="trash" s={12}/></button>
@@ -2485,19 +2486,19 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                )}
               </div>
               {/* Players */}
-              {(()=>{const isL=GNORM(rosterGame)==="LoL";const RO=["TOP","JGL","MID","ADC","SUP"];const ri=p=>{const x=RO.indexOf(ROLE_OF(p.role));return x<0?9:x;};
+              {(()=>{const gg=GNORM(rosterGame);const isL=gg==="LoL"||gg==="Dota2";const RO=gg==="Dota2"?["P1","P2","P3","P4","P5"]:["TOP","JGL","MID","ADC","SUP"];const RF=gg==="Dota2"?(r=>DOTA_POS(r)):ROLE_OF;const ri=p=>{const x=RO.indexOf(RF(p.role));return x<0?9:x;};
                const sorted=[...tPlayers].sort((a,b)=>isL?(ri(a)-ri(b))||a.name.localeCompare(b.name):a.name.localeCompare(b.name));
-               if(!isL)return sorted;const out=[];RO.forEach(r=>{const l=sorted.filter(p=>ROLE_OF(p.role)===r);if(l.length)out.push(...l);else out.push({__empty:r,name:"",id:"empty-"+r});});out.push(...sorted.filter(p=>!ROLE_OF(p.role)));return out;})().map(p=>{
+               if(!isL)return sorted;const out=[];RO.forEach(r=>{const l=sorted.filter(p=>RF(p.role)===r);if(l.length)out.push(...l);else out.push({__empty:r,name:"",id:"empty-"+r});});out.push(...sorted.filter(p=>!RF(p.role)));return out;})().map(p=>{
                if(p.__empty)return <div key={p.id} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)",display:"flex",alignItems:"center",gap:12,opacity:.75}}>
-                <RoleIc r={p.__empty} s={24}/><div style={{width:52,height:52,borderRadius:"50%",border:"2px dashed #374151",flexShrink:0}}/>
-                <span style={{fontSize:14,fontWeight:700,color:"#F59E0B"}}>{({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"Bot",SUP:"Support"})[p.__empty]} manquant</span></div>;
+                {/^P\d$/.test(p.__empty)?<DotaPosIc r={p.__empty} s={24}/>:<RoleIc r={p.__empty} s={24}/>}<div style={{width:52,height:52,borderRadius:"50%",border:"2px dashed #374151",flexShrink:0}}/>
+                <span style={{fontSize:14,fontWeight:700,color:"#F59E0B"}}>{({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"ADC",SUP:"Support",...DOTA_POS_L})[p.__empty]} manquant</span></div>;
                const isEditing=editP&&editP.id===p.id;
                const avatar=p.photo_url||p.avatar_url||null;
                return(
                 <div key={p.id||p.name} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)"}}>
                  {!isEditing?(
                   <div style={{display:"flex",alignItems:"center",gap:12}}>
-                   {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={24}/>:null}
+                   {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={24}/>:null}{GNORM(p.game)==="Dota2"&&DOTA_POS(p.role)?<DotaPosIc r={DOTA_POS(p.role)} s={24}/>:null}
                    {avatar?<img src={avatar} alt={p.name} style={{width:52,height:52,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,background:"#1f2937"}}/>
                     :<div style={{width:52,height:52,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:19,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
                    <div style={{flex:1,minWidth:0}}>
@@ -5338,9 +5339,9 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs .save{height:44px;border:none;border-radius:3px;background:var(--lk);color:#11161D;font-weight:700;font-size:15px;cursor:pointer}.rs .save:disabled{background:var(--pn);color:var(--dm);cursor:default}
 .rs .msg{font-weight:600;font-size:13px;min-height:16px}
 /* LoL : scoreboard façon broadcast, bleu à gauche, rouge à droite */
-.rs.dota{--pg:#0B0B0D;--pn:#141416;--pn2:#1C1B1F;--hd:#100E10;--rw:#17161A;--ln:#2A2528;--fg:#EDE9E6;--sf:#B9AFAB;--dm:#857A76;--lk:#FF5A3C;--wn:#5BD38A;--ls:#E0301E;font-family:Inter,Arial,sans-serif}
-.rs.dota .ban{background:linear-gradient(100deg,#3A0C08,#120808 70%)!important;border-bottom:2px solid #E0301E}
-.rs.dota .ban .no{color:#FF8A70}
+.rs.dota{--pg:#131B2A;--pn:#192133;--pn2:#1E2A40;--hd:#22304A;--rw:#1B2538;--ln:#2C3B57;--fg:#E6ECF7;--sf:#B4C2DA;--dm:#7F8FAD;--lk:#66B2FF;--wn:#66BB6A;--ls:#FF4C4C;font-family:Inter,Arial,sans-serif}
+.rs.dota .ban{background:linear-gradient(100deg,#22304A,#192133 70%)!important;border-bottom:2px solid #66B2FF}
+.rs.dota .ban .no{color:#8EC8FF}
 .rs.dota .dbf{padding:4px 0 0}
 .rs.dota .dbf-r{display:grid;grid-template-columns:1fr 64px 92px;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--ln);border-left:3px solid transparent}
 .rs.dota .dbf-r.rad{border-left-color:#66BB6A;background:linear-gradient(90deg,rgba(102,187,106,.08),transparent 60%)}
@@ -5436,6 +5437,16 @@ const LOL_ROLES=["TOP","JGL","MID","ADC","SUP"];
 // police qui rétrécit avec la longueur du nom, pour qu'il reste lisible en entier (base = taille normale, max = nb de lettres qui tiennent à la taille normale)
 const fitFs=(t,base,max)=>{const n=String(t||"").length;return Math.max(base*0.62,Math.min(base,base*max/Math.max(n,1)))+"px";};
 // Icônes de position LoL (dessin original) : cadre de carte + symbole, dégradé or
+// Dota : positions 1 à 5 (Carry = safe lane / pos 1 …) + icônes dessinées maison
+const DOTA_POS=r=>{const x=String(normalizeRole(r||"","Dota2")||"").toLowerCase();return x==="carry"?"P1":x==="midlaner"?"P2":x==="offlaner"?"P3":x==="soft support"?"P4":x==="hard support"?"P5":null;};
+const DOTA_POS_L={P1:"Carry",P2:"Midlaner",P3:"Offlaner",P4:"Soft Support",P5:"Hard Support"};
+function DotaPosIc({r,s=18}){const c="#C9D1E0";const P={stroke:c,strokeWidth:2,fill:"none",strokeLinecap:"round",strokeLinejoin:"round"};
+ const g={P1:<><path d="M5 19l10-10" {...P}/><path d="M13 5h6v6" {...P}/><path d="M4 16l4 4" {...P}/></>,
+  P2:<><circle cx="12" cy="12" r="7" {...P}/><path d="M12 5v14M5 12h14" {...P} strokeWidth={1.4}/><circle cx="12" cy="12" r="2" fill={c}/></>,
+  P3:<><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" {...P}/><path d="M12 8v8" {...P}/></>,
+  P4:<><path d="M12 4l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9.3l5-.7z" {...P}/></>,
+  P5:<><rect x="4" y="4" width="16" height="16" rx="4" {...P}/><path d="M12 8v8M8 12h8" {...P}/></>}[r];
+ return <svg width={s} height={s} viewBox="0 0 24 24" aria-label={DOTA_POS_L[r]||""} style={{flexShrink:0}}>{g}</svg>;}
 const ROLE_OF=r=>{const x=String(r||"").toLowerCase();return /^top/.test(x)?"TOP":/^(jun|jgl|jng)/.test(x)?"JGL":/^mid/.test(x)?"MID":/^(adc|bot|ad )/.test(x)?"ADC":/^sup/.test(x)?"SUP":null;};
 // Icônes officielles de Riot, chargées depuis Community Dragon (comme les images de champions) ; si elles ne chargent pas → dessin de secours
 const ROLE_CD={TOP:"top",JGL:"jungle",MID:"middle",ADC:"bottom",SUP:"utility"};
@@ -5779,7 +5790,7 @@ async function fetchOpenDota(id,roster,A,B){
   const o={k:String(p.kills||0),h:"",d:String(p.deaths||0),as:String(p.assists||0)};const hero=OD_HEROES&&OD_HEROES[p.hero_id];if(hero)o.c=hero;
   if(hit){out[hit.k]=o;}else{o.raw=raw;o.acc=acc;o.t=p.isRadiant!=null?(p.isRadiant?rT:dT):(p.player_slot<128?rT:dT);out["?"+raw+(acc||"")]=o;}});
  const win=j.radiant_win==null?"":(j.radiant_win?rT:dT)||"";const kills=rT&&dT?{[rT]:j.radiant_score,[dT]:j.dire_score}:null;
- return {out,win,kills,radiant:rT};}
+ return {out,win,kills,radiant:rT,dur:j.duration||null};}
 function isDotabuff(t){return /Lane Outcome|Hero\tR\tL\tPlayer/.test(String(t));}
 // Plusieurs games Dotabuff collés d'un coup : on coupe à chaque « X Victory! » (Dotabuff écrit le nom 2 fois : « GamerLegionGamerLegion Victory! »)
 function dotaGames(t){const s=String(t||"");const re=/([^\n,]*?)\s*Victory!/g;const hits=[];let m;while((m=re.exec(s))){let w=m[1].trim();const h=w.length/2;if(w.length%2===0&&w.slice(0,h)===w.slice(h))w=w.slice(0,h);hits.push({pos:m.index,win:w});}
@@ -5873,13 +5884,13 @@ function boardExtras(txt,roster,A,B,known){txt=hltvJoin(txt);const flat=" "+Stri
  while((m=re.exec(flat))){const k=cutNorm(m[1]);const h=heads.filter(h=>h.pos<m.index).pop();const inA=keyOf(A,k),inB=keyOf(B,k);const t=inA&&!inB?A:inB&&!inA?B:h&&h.t;if(t)rows.push({team:t,k,name:m[1].replace(/~/g," "),kills:m[2],hs:m[3]});}
  const extras=[],present={};rows.forEach(r=>{const kk=keyOf(r.team,r.k)||r.k;(present[r.team]=present[r.team]||[]).push(kk);if(!keyOf(r.team,r.k))extras.push(r);});
  return {extras,present,rows};}
-function ScorePaste({known=null,i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,onTeamStats,dota=false,srcName="",filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
+function ScorePaste({known=null,onDur=null,i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onWin,onUnknown,onTeamStats,dota=false,srcName="",filled=false}){const [st,setSt]=useState("");const [odId,setOdId]=useState("");const [odBusy,setOdBusy]=useState(false);
  // un ID, un lien, ou la page « série » OpenDota collée (Game 1 #…, Game 2 #…) → chaque game dans l'ordre
  const odIds=t=>{const s=String(t||"");const L=[...s.matchAll(/matches\/(\d{8,12})/g)].map(m=>m[1]);const ids=L.length?L:[...s.matchAll(/(?:^|[^\d])(\d{9,12})(?!\d)/g)].map(m=>m[1]);return [...new Set(ids)];};
  const loadOD=async(src)=>{const ids=odIds(src!=null?src:odId);if(!ids.length){setSt("Mets l'ID du match (ex. 8088267544), le lien, ou colle la page de la série OpenDota");return;}setOdBusy(true);
   const rep=[];for(let j=0;j<ids.length;j++){const ii=i+j;setSt("Lecture OpenDota… game "+(ii+1));
    try{const r=await fetchOpenDota(ids[j],roster,A,B);let n=0;Object.entries(r.out).forEach(([k,v])=>{if(k.startsWith("?"))return;n++;setP(ii,k,"k",v.k);setP(ii,k,"d",v.d);setP(ii,k,"as",v.as);if(v.c)setP(ii,k,"c",v.c);});
-    if(onWin)onWin(ii,r.win,r.kills,r.radiant,ids.length);if(onUnknown)onUnknown(ii,Object.entries(r.out).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));
+    if(onWin)onWin(ii,r.win,r.kills,r.radiant,ids.length);if(onDur&&r.dur)onDur(ii,r.dur);if(onUnknown)onUnknown(ii,Object.entries(r.out).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));
     const u=Object.keys(r.out).length-n;rep.push("G"+(ii+1)+" ✓ "+(r.kills?Object.values(r.kills).join("-"):"")+(u?" ("+u+" à attribuer)":""));}
    catch(e){rep.push("G"+(ii+1)+" : "+(e.message||e));}}
   setSt((ids.length>1?"✓ Série : ":"✓ OpenDota : ")+rep.join(" · "));setOdBusy(false);};const [txt,setTxt]=useState("");const [again,setAgain]=useState(false);
@@ -5893,7 +5904,7 @@ function ScorePaste({known=null,i,roster,A,B,setP,hsOn,locked,onExtra,onMiss,onW
    const kills=sc&&hd[0]&&hd[1]?{[hd[0]]:sc.l,[hd[1]]:sc.r}:null;onWin(ii,w,kills);}
   if(isOpenDota(t)){const md=odMeta(t,A,B);if(onWin&&(md.win||md.kills))onWin(ii,md.win,md.kills);if(onUnknown){const d=parseOpenDota(t,roster,A,B);onUnknown(ii,Object.entries(d).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));}}
   if(isDotabuff(t)&&onUnknown){const d=parseDotabuff(t,roster,A,B);onUnknown(ii,Object.entries(d).filter(([k])=>k.startsWith("?")).map(([k,v])=>({...v,id:k})));}
-  const r=parseBoard(t,roster,A,B);let TK=null,RN="",addN=0;
+  if(onDur){const dm=String(t).match(/(?:^|[\s>])(\d{2}):(\d{2})(?=\s|$)/m);if(dm&&+dm[1]>=10&&+dm[1]<=90)onDur(ii,(+dm[1])*60+(+dm[2]));}const r=parseBoard(t,roster,A,B);let TK=null,RN="",addN=0;
   // tableau structuré reconnu (Liquipedia / vlr / HLTV) → il prime : nom exact, sans risque de prendre un autre endroit du texte
   {const rows0=boardRows(t);if(rows0.length>=4){const nm=k=>cutNorm(roster[A][k]||roster[B][k]);const all=[A,B].flatMap(tt=>Object.keys(roster[tt]));const taken=new Set();
    const pick=(k,f)=>rows0.find(x=>!taken.has(x)&&f(x,k));
@@ -5968,7 +5979,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  const [s,setS]=useState({s1:null,s2:null});const [bo,setBo]=useState(3);const [maps,setMaps]=useState([]);const [pk,setPk]=useState({});const [open,setOpen]=useState(0);const [msg,setMsg]=useState(null);const [busy,setBusy]=useState(false);const [ver,setVer]=useState(DD_VER);
  useEffect(()=>{if(lol)ddVer().then(setVer);},[lol]);
  const same=(x,y)=>{const a=teamKey(x),b=teamKey(y);return !!(a&&b&&(a===b||a.includes(b)||b.includes(a)));};
- const knownP=useMemo(()=>new Set(Object.values(allPlayers||{}).filter(p=>p&&GNORM(p.game)===GNORM(m.game)).map(p=>cutNorm(p.name))),[allPlayers,m.game]); const [extraP,setExtraP]=useState({});const [hideP,setHideP]=useState({});const addExtra=(ex,pr)=>{if(pr)setHideP(o=>{const n={...o};Object.entries(pr).forEach(([t,ks])=>{if(ks.length>=5)n[t]=ks;});return n;});setExtraP(o=>{const n={...o};ex.forEach(x=>{n[x.team]={...(n[x.team]||{}),[x.k]:x.name};});return n;});};
+ const knownP=useMemo(()=>new Set(Object.values(allPlayers||{}).filter(p=>p&&GNORM(p.game)===GNORM(m.game)).map(p=>cutNorm(p.name))),[allPlayers,m.game]); const [durs,setDurs]=useState(()=>{const o={};for(let k=0;k<5;k++){try{const v=localStorage.getItem("v7_dur|"+m.key+"|"+k);if(v)o[k]=+v;}catch(e){}}return o;}); const [extraP,setExtraP]=useState({});const [hideP,setHideP]=useState({});const addExtra=(ex,pr)=>{if(pr)setHideP(o=>{const n={...o};Object.entries(pr).forEach(([t,ks])=>{if(ks.length>=5)n[t]=ks;});return n;});setExtraP(o=>{const n={...o};ex.forEach(x=>{n[x.team]={...(n[x.team]||{}),[x.k]:x.name};});return n;});};
  const roster=useMemo(()=>{const out={[A]:{},[B]:{}};
   // l'équipe du roster (club du joueur dans l'app) passe avant celle de PrizePicks, parfois inversée ; un joueur n'est jamais dans les 2 équipes ; pas de coach
   const club=k=>Object.values(allPlayers||{}).find(q=>q&&cutNorm(q.name)===k&&GNORM(q.game)===G);
@@ -6156,13 +6167,17 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
      setPk(o=>{const n={...o};Object.keys(o).forEach(key=>{if(key.split("|")[1]===k)delete n[key];});return n;});
      setExtraP(o=>{const n={...o};if(n[t]&&n[t][k]){const x={...n[t]};delete x[k];n[t]=x;}return n;});setHideP(o=>({...o,[t]:Object.keys(roster[t]||{}).filter(z=>z!==k)}));setPlFor(null);}:null}
     onClose={()=>setPlFor(null)} onPick={async nm=>{const to=cutNorm(nm),from=plFor.k;if(plFor.add){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setHideP(o=>o[plFor.t]?{...o,[plFor.t]:[...o[plFor.t],to]}:o);setPlFor(null);return;}if(plFor.unk){setExtraP(o=>({...o,[plFor.t]:{...(o[plFor.t]||{}),[to]:nm}}));setHideP(o=>o[plFor.t]?{...o,[plFor.t]:[...o[plFor.t],to]}:o);assignUnk(plFor.unk.i,plFor.unk.u,to);setPlFor(null);return;}if(to===from){setPlFor(null);return;}
+   {const known0=Object.values(allPlayers||{}).some(p=>p&&cutNorm(p.name)===from&&GNORM(p.game)===G);
+    if(!known0&&!window.confirm("Relier « "+(plFor.n||from)+" » à "+nm+" ?\n\nCe pseudo sera reconnu comme "+nm+" dans ce match, dans tes anciens résultats déjà enregistrés et dans les prochains collages."))return;}
    // joueur déjà reconnu (ex. masvai pris pour lattykk) : on redirige seulement les pseudos du collage reliés à lui, sans faire de « masvai » un alias
    {const known=Object.values(allPlayers||{}).some(p=>p&&cutNorm(p.name)===from&&GNORM(p.game)===G);const bad=Object.entries(BET_ALIAS).filter(([f,x])=>x===from&&f!==from).map(([f])=>f);
     // joueur connu remplacé (ex. jcobbb → enkay J) : aucun alias, juste un échange dans CE match
     const keys=known?bad:[from];const now=new Date().toISOString();
     if(known&&BET_ALIAS[from]){const nA={...BET_ALIAS};delete nA[from];BET_ALIAS=nA;cloudDb("bet_alias?pkey=eq."+encodeURIComponent(from),{method:"DELETE"}).catch(()=>{});}
     if(keys.length){try{await cloudDb("bet_alias?on_conflict=pkey",{method:"POST",body:keys.map(f=>({pkey:f,alias:to,updated_at:now})),prefer:"resolution=merge-duplicates"});}catch(e){}const nA={...BET_ALIAS};keys.forEach(f=>{nA[f]=to;});BET_ALIAS=nA;}
-    if(known){const t=plFor.t;setExtraP(o=>({...o,[t]:{...(o[t]||{}),[to]:nm}}));setHideP(o=>({...o,[t]:[...Object.keys(roster[t]||{}).filter(z=>z!==from),to]}));}}
+    {const t=plFor.t;setExtraP(o=>{const x={...(o[t]||{})};delete x[from];x[to]=nm;return {...o,[t]:x};});setHideP(o=>({...o,[t]:[...Object.keys(roster[t]||{}).filter(z=>z!==from),to]}));}
+    // pseudo inconnu relié : passé (résultats déjà enregistrés) + futur (alias)
+    if(!known){const gq="&game=eq."+encodeURIComponent(m.game||"");cloudDb("player_results?pkey=eq."+encodeURIComponent(from)+gq,{method:"PATCH",prefer:"return=minimal",body:{pkey:to,player:nm}}).catch(()=>cloudDb("player_results?pkey=eq."+encodeURIComponent(from),{method:"PATCH",prefer:"return=minimal",body:{pkey:to,player:nm}}).catch(()=>{}));}}
    setPk(o=>{const n={...o};Object.keys(o).forEach(key=>{const [mn,kk]=key.split("|");if(kk===from){n[mn+"|"+to]={...(o[mn+"|"+to]||{}),...o[key]};delete n[key];}});return n;});
    setExtraP(o=>{const n={...o};Object.keys(n).forEach(t=>{if(n[t]&&n[t][from]){const x={...n[t]};delete x[from];x[to]=nm;n[t]=x;}});return n;});setHideP(o=>{const n={...o};Object.keys(n).forEach(t=>{n[t]=(n[t]||[]).map(k=>k===from?to:k);});return n;});setPlFor(null);}}/>;})()}
   {cp&&<div role="dialog" aria-label={"Champion de "+cp.n} onClick={()=>setCp(null)} style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"60px 12px"}}>
@@ -6221,23 +6236,23 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
        :<input className="kk" type="number" inputMode="numeric" enterKeyHint="next" data-q value={v.k||""} onChange={ev=>setP(i,k,"k",ev.target.value)} onKeyDown={nextField} placeholder="K" aria-label={"Kills "+n}/>}
        {v.adv&&v.adv.d!=null?<span className="kda" title="K / D / A (kills = 1er chiffre)">{(v.k||0)+"/"+v.adv.d+"/"+v.adv.a}</span>:null}</div>;};
      return <div className="lol-r" key={j}>{side(A,"")}<span className="ro"><RoleIc r={LOL_ROLES[j]} s={18}/></span>{side(B,"r")}</div>;})}
-    <ScorePaste known={knownP} i={i} roster={roster} A={A} B={B} setP={setP} hsOn={false} srcName="Liquipedia"  onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))}/>
+    <ScorePaste known={knownP} onDur={(ii,sec)=>{setDurs(o=>({...o,[ii]:sec}));try{localStorage.setItem("v7_dur|"+m.key+"|"+ii,String(sec));}catch(e){}}} i={i} roster={roster} A={A} B={B} setP={setP} hsOn={false} srcName="Liquipedia"  onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))}/>
    </div>}
    {lol&&W.length>0&&<div className="warn" style={{marginTop:8}}>{W.map((w,j)=><div key={j}><PI n="alert" s={12}/> {w}</div>)}</div>}
   </section>;})}
   {!lol&&<div className="stp">{G==="Dota2"?"2. ID du match de chaque game":"2. Colle le scoreboard de chaque map"} · <SrcBadge g={G}/></div>}
   {!lol&&maps.slice(0,shownN).map((x,i)=>{const isO=open===i;const r=rnd(x);const kA=tot(i,A,"k"),kB=tot(i,B,"k");const W=checks(i);
    return <section className="mp sbd" key={"sb"+i}>
-   <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></div>
-   {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>{kA+kB?"✓ Scoreboard rempli":"👉 Coller le scoreboard de la map "+(i+1)}</span><span className="r">{kA+kB?(kA+kB)+" kills"+(r?" · "+((kA+kB)/r).toFixed(2)+" / round":""):"à remplir"} {isO?"▴":"▾"}</span></button>}
-   {!lol&&isO&&<ScorePaste known={knownP} i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>{/* pseudo du collage = joueur de ta base (même jeu) → relié tout seul, même s'il n'est pas dans ce club */const rest=[];l.forEach(u=>{const rk=cutNorm(u.raw||"");const pl=rk.length>=3?Object.values(allPlayers||{}).find(p=>p&&GNORM(p.game)===G&&cutNorm(p.name)===rk):null;const tm=u.t||null;if(pl&&tm){const kk=cutNorm(pl.name);setExtraP(o=>({...o,[tm]:{...(o[tm]||{}),[kk]:pl.name}}));setHideP(o=>o[tm]?{...o,[tm]:[...o[tm],kk]}:o);setTimeout(()=>assignUnk(ii,u,kk),0);}else rest.push(u);});setUnkR(o=>({...o,[ii]:rest}));}} dota={G==="Dota2"} srcName={(G==="Dota2"?"OpenDota":G==="Valorant"?"vlr.gg":G==="LoL"?"Liquipedia":"HLTV")}
+   <div className="sep" style={mapImg[x.name]?{backgroundImage:"linear-gradient(90deg,rgba(13,16,21,.92),rgba(13,16,21,.55)),url("+mapImg[x.name]+")",backgroundSize:"cover",backgroundPosition:"center"}:x.name&&MAPC[x.name]?{background:"linear-gradient(90deg,"+MAPC[x.name][1]+",var(--hd))"}:undefined}><span>MAP {i+1}</span>{G==="Dota2"&&!x.name?<><b>{x.a!==""&&x.b!==""?x.a+" - "+x.b:"–"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}<b style={{color:"#66BB6A",fontSize:13.5}}>{wOf(x)} win</b></>:null}</em></>:<><b>{x.name||"?"}</b><em>{wOf(x)?<>{L(wOf(x),m.game,20)}</>:null}{x.a!==""&&x.b!==""?x.a+" - "+x.b:""}</em></>}</div>
+   {<button className="tog" onClick={()=>setOpen(isO?-1:i)}><span>{kA+kB?"✓ Scoreboard rempli":"👉 Coller le scoreboard de la map "+(i+1)}</span><span className="r">{kA+kB?(kA+kB)+" kills"+((G==="Dota2"||G==="LoL")?(durs[i]?" · "+((kA+kB)/(durs[i]/60)).toFixed(2)+" / min ("+Math.floor(durs[i]/60)+":"+String(durs[i]%60).padStart(2,"0")+")":""):(r?" · "+((kA+kB)/r).toFixed(2)+" / round":"")):"à remplir"} {isO?"▴":"▾"}</span></button>}
+   {!lol&&isO&&<ScorePaste known={knownP} onDur={(ii,sec)=>{setDurs(o=>({...o,[ii]:sec}));try{localStorage.setItem("v7_dur|"+m.key+"|"+ii,String(sec));}catch(e){}}} i={i} filled={kA+kB>0} roster={roster} A={A} B={B} setP={setP} hsOn={hsOn} locked={!!pool&&!x.name} onExtra={addExtra} onMiss={(ii,l)=>setMiss(o=>({...o,[ii]:l}))} onUnknown={(ii,l)=>{/* pseudo du collage = joueur de ta base (même jeu) → relié tout seul, même s'il n'est pas dans ce club */const rest=[];l.forEach(u=>{const rk=cutNorm(u.raw||"");const pl=rk.length>=3?Object.values(allPlayers||{}).find(p=>p&&GNORM(p.game)===G&&cutNorm(p.name)===rk):null;const tm=u.t||null;if(pl&&tm){const kk=cutNorm(pl.name);setExtraP(o=>({...o,[tm]:{...(o[tm]||{}),[kk]:pl.name}}));setHideP(o=>o[tm]?{...o,[tm]:[...o[tm],kk]}:o);setTimeout(()=>assignUnk(ii,u,kk),0);}else rest.push(u);});setUnkR(o=>({...o,[ii]:rest}));}} dota={G==="Dota2"} srcName={(G==="Dota2"?"OpenDota":G==="Valorant"?"vlr.gg":G==="LoL"?"Liquipedia":"HLTV")}
      onWin={G==="Dota2"?(ii,w,kills,rad,nG)=>{if(nG>1)setBo(nG>=4?5:nG>=2?3:1);setMaps(l=>{const n=[...l];while(n.length<=ii)n.push({name:"",pick:"",ct:"",a:"",b:"",win:""});const t=dbTeam(w,A,B);
       n[ii]={...n[ii],a:kills&&kills[A]!=null?String(kills[A]):"",b:kills&&kills[B]!=null?String(kills[B]):"",...(t?{win:t}:{}),...(rad?{ct:rad}:{})};return n;});}:undefined}/>}
    {!lol&&isO&&<div style={{overflowX:"auto"}}><table className="st"><thead><tr><th>Joueur</th><th>K</th>{hsOn&&<th>HS</th>}<th>K/R</th>{hsOn&&<th>HS %</th>}</tr></thead><tbody>
     {[A,B].map(t=><React.Fragment key={t}><tr className="team"><td colSpan={hsOn?5:3}><span style={{display:"flex",alignItems:"center",gap:9}}><label title="Changer le logo de l'équipe" style={{cursor:"pointer",display:"inline-flex"}}>{L(t,m.game,26)}<input type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;try{const u=await supaUploadPhoto(f,"teams");await cloudDb("players?team=eq."+encodeURIComponent(t)+"&game=eq."+encodeURIComponent(m.game),{method:"PATCH",body:{team_logo_url:u}});try{window.dispatchEvent(new CustomEvent("emeieks-team-logo",{detail:{team:t,game:m.game,url:u}}));}catch(_){}alert("Logo de "+t+" changé ✓ (visible partout au prochain chargement)");}catch(err){alert("Envoi impossible : "+(err.message||err));}}}/></label><span style={{fontSize:15.5,fontWeight:800}}>{t}</span>{Object.values(allPlayers||{}).some(p=>p&&GNORM(p.game)===G&&p.team&&teamKey0(p.team)===teamKey0(t))?<CheckIc title={"Club enregistré ("+G+")"}/>:null}
-     {teamKey(t)!==teamKey0(t)&&<button type="button" title="Équipe liée à une autre : délier" onClick={()=>{if(window.confirm("Délier « "+t+" » de l'équipe à laquelle elle a été liée ?")){unlinkTeam(t);setTeqV(v=>v+1);}}} style={{height:24,padding:"0 8px",borderRadius:6,border:"1px solid #F59E0B",background:"rgba(245,158,11,.12)",color:"#FBBF24",fontSize:11,fontWeight:800,cursor:"pointer"}}>🔗 Délier</button>}<button type="button" onClick={()=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-roster",{detail:{team:t,game:G}}));}catch(e){}}} style={{marginLeft:"auto",height:30,padding:"0 12px",borderRadius:9,border:"1px solid rgba(167,139,250,.45)",background:"rgba(124,108,255,.14)",color:"#c4b5fd",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Équipe ›</button></span></td></tr>
+     {teamKey(t)!==teamKey0(t)&&<button type="button" title="Équipe liée à une autre : délier" onClick={()=>{if(window.confirm("Délier « "+t+" » de l'équipe à laquelle elle a été liée ?")){unlinkTeam(t);setTeqV(v=>v+1);}}} style={{height:24,padding:"0 8px",borderRadius:6,border:"1px solid #F59E0B",background:"rgba(245,158,11,.12)",color:"#FBBF24",fontSize:11,fontWeight:800,cursor:"pointer"}}>🔗 Délier</button>}<button type="button" onClick={()=>{/* téléportation : on ferme la fiche résultat puis on saute directement au club */try{onClose&&onClose();}catch(e){}setTimeout(()=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-roster",{detail:{team:t,game:G}}));}catch(e){}},60);}} style={{marginLeft:"auto",height:30,padding:"0 12px",borderRadius:9,border:"1px solid rgba(167,139,250,.45)",background:"rgba(124,108,255,.14)",color:"#c4b5fd",fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Équipe ›</button></span></td></tr>
      {Object.entries(roster[t]).filter(([k])=>!((unkR[i]||[]).some(u=>u.t===t)&&val(i,k,"k")==null)).filter(([k],_,arr)=>{/* 5 joueurs déjà remplis sur CETTE map → le remplaçant sans stats n'apparaît pas (il reste dans les autres maps) */const full=Object.keys(roster[t]).filter(z=>val(i,z,"k")!=null).length>=5;return !full||val(i,k,"k")!=null;}).map(([k,n])=>{const v=pk[(i+1)+"|"+k]||{};const kv=val(i,k,"k");const pl=Object.values(allPlayers||{}).find(p=>p&&cutNorm(p.name)===k&&GNORM(p.game)===G);const ro=String((pl&&pl.role)||"").trim();const unk=!pl&&!m.players[k];const ar=agentRole(v.c);
-      return <tr key={k}><td><span style={{display:"inline-flex",alignItems:"center",gap:8,flexWrap:"nowrap",maxWidth:"100%",overflow:"hidden"}}>{unk&&<button title="Joueur inconnu : le lier" onClick={()=>setPlFor({k,n,t})} style={{width:10,height:10,borderRadius:5,border:"none",padding:0,background:"#FBBF24",cursor:"pointer"}} aria-label={"Lier "+n}/>}{(()=>{const src=pl?getAvatarSrc(pl):null;return <span role="button" tabIndex={0} title="Modifier la photo du joueur" onClick={()=>openPlayerEditor(pl?pl.name:n)} style={{cursor:"pointer",width:32,height:32,borderRadius:16,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af",border:"1px solid rgba(255,255,255,.08)"}}>{src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}} onError={ev=>{ev.target.style.display="none";}}/>:(n||"?")[0].toUpperCase()}</span>;})()}<span role="button" tabIndex={0} onClick={()=>setAdvFor({i,k,n,t})} style={{cursor:"pointer",fontSize:15,fontWeight:700,textDecoration:v.adv?"underline dotted #60A5FA":"none",textUnderlineOffset:3}}>{n}</span>{pl&&pl.team&&<span title={"Club dans ta base : "+pl.team} style={{display:"inline-flex",flexShrink:0}}>{L(pl.team,m.game,18)}</span>}{pl&&<CheckIc s={15} title={"Joueur enregistré ("+G+(pl.team?" · "+pl.team:"")+")"}/>}{v.src&&cutNorm(v.src)!==k&&<span title={"Dans le collage, ce joueur s'appelle « "+v.src+" » : vérifie que c'est bien lui"} style={{flexShrink:0,display:"inline-flex",alignItems:"center",gap:3,height:20,padding:"0 6px",borderRadius:10,background:"#F59E0B",color:"#111",fontSize:11,fontWeight:900}}>! {v.src}</span>}<button type="button" title={pl?"Changer / désattribuer ce joueur":"Associer ce joueur"} aria-label={(pl?"Changer ":"Associer ")+n} onClick={()=>setPlFor({k,n,t})} style={{flexShrink:0,width:24,height:24,border:"none",borderRadius:6,background:"transparent",color:"#8A94A3",opacity:pl?.55:1,cursor:"pointer",fontSize:14,padding:0}}>⚙</button>{G==="Dota2"&&v.c&&<img src={heroImg(v.c)} alt={v.c} title={v.c} style={{width:40,height:23,objectFit:"cover",borderRadius:5,border:"1px solid rgba(224,48,30,.35)",flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>}
+      return <tr key={k}><td><span style={{display:"inline-flex",alignItems:"center",gap:8,flexWrap:"nowrap",maxWidth:"100%",overflow:"hidden"}}>{(()=>{const src=pl?getAvatarSrc(pl):null;return <span role="button" tabIndex={0} title="Modifier la photo du joueur" onClick={()=>pl?openPlayerEditor(pl.name):setPlFor({k,n,t})} style={{cursor:"pointer",width:32,height:32,borderRadius:16,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#9ca3af",border:"1px solid rgba(255,255,255,.08)"}}>{src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}} onError={ev=>{ev.target.style.display="none";}}/>:(n||"?")[0].toUpperCase()}</span>;})()}<span role="button" tabIndex={0} onClick={()=>setAdvFor({i,k,n,t})} style={{cursor:"pointer",fontSize:15,fontWeight:700,textDecoration:v.adv?"underline dotted #60A5FA":"none",textUnderlineOffset:3}}>{n}</span>{!pl&&<button type="button" onClick={()=>setPlFor({k,n,t})} title="Joueur pas reconnu dans ta base : touche pour le relier" aria-label={n+" pas reconnu, le relier"} style={{flexShrink:0,width:20,height:20,borderRadius:10,border:"none",padding:0,background:"#F59E0B",color:"#111",fontSize:13,fontWeight:900,cursor:"pointer"}}>!</button>}{pl&&pl.team&&<span title={"Club dans ta base : "+pl.team} style={{display:"inline-flex",flexShrink:0}}>{L(pl.team,m.game,18)}</span>}{pl&&<CheckIc s={15} title={"Joueur enregistré ("+G+(pl.team?" · "+pl.team:"")+")"}/>}{v.src&&cutNorm(v.src)!==k&&<span title={"Dans le collage, ce joueur s'appelle « "+v.src+" » : vérifie que c'est bien lui"} style={{flexShrink:0,display:"inline-flex",alignItems:"center",gap:3,height:20,padding:"0 6px",borderRadius:10,background:"#F59E0B",color:"#111",fontSize:11,fontWeight:900}}>! {v.src}</span>}<button type="button" title={pl?"Changer / désattribuer ce joueur":"Associer ce joueur"} aria-label={(pl?"Changer ":"Associer ")+n} onClick={()=>setPlFor({k,n,t})} style={{flexShrink:0,width:24,height:24,border:"none",borderRadius:6,background:"transparent",color:"#8A94A3",opacity:pl?.55:1,cursor:"pointer",fontSize:14,padding:0}}>⚙</button>{G==="Dota2"&&v.c&&<img src={heroImg(v.c)} alt={v.c} title={v.c} style={{width:40,height:23,objectFit:"cover",borderRadius:5,border:"1px solid rgba(224,48,30,.35)",flexShrink:0}} onError={e=>{e.target.style.display="none";}}/>}
        {ro&&!/player|joueur/i.test(ro)&&<span className="rl" title={ro} style={{flexShrink:0}}>{(()=>{const r=ro.toLowerCase();return /soft/.test(r)?"POS 4":/hard/.test(r)?"POS 5":/carry/.test(r)?"CARRY":/^mid/.test(r)?"MID":/^off/.test(r)?"OFF":/^support/.test(r)?"SUP":ro.toUpperCase().slice(0,7);})()}</span>}
        {G==="Valorant"&&<select value={v.c||""} onChange={e=>setP(i,k,"c",e.target.value)} aria-label={"Agent de "+n} style={{height:22,maxWidth:96,background:ar?VAL_ROLE_C[ar]+"22":"var(--rw)",color:ar?VAL_ROLE_C[ar]:"var(--dm)",border:"1px solid "+(ar?VAL_ROLE_C[ar]:"var(--ln)"),borderRadius:3,fontSize:11,fontWeight:700}}><option value="">Agent</option>{Object.entries(VAL_AGENTS).map(([r,l])=><optgroup key={r} label={r}>{l.map(a=><option key={a}>{a}</option>)}</optgroup>)}</select>}
        {ar&&<span className="rl" style={{background:VAL_ROLE_C[ar],color:"#111"}}>{ar.toUpperCase()}</span>}</span></td>
@@ -7146,7 +7161,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const srcOf=x=>x.kind==="duel"?"duel":(x.is_ev||evSet.has([cutNorm(x.player),x.stat,x.side,String(x.map),Number(x.line),String(x.match||"").toLowerCase().replace(/[^a-z0-9]/g,"")].join("|")))?"ev":"sim";
  const mlB=x=>{const o=Number(x.team_ml);return !o?null:o<1.6?"fav":o<2.5?"mid":o<3?"out":"big";};
  const nearOk=x=>!close||(x.result&&x.value!=null&&x.kind!=="duel"&&Math.abs(Number(x.value)-Number(x.line))<=close+.5);
- const roleOf=x=>{const P=allPlayers[String(x.player||"").toLowerCase().trim()]||allPlayers[String(x.pkey||"")];return (P&&P.role)||null;};
+ const roleOf=x=>{const P=allPlayers[String(x.player||"").toLowerCase().trim()]||allPlayers[String(x.pkey||"")];return P&&P.role?normalizeRole(P.role,GNORM(P.game||x.game)):null;};
  // 1 seul pari par joueur · map · stat · côté · match : la ligne dont la cote est la plus proche de 1,85 (ligne principale)
  const one=L=>{if(!uniq)return L;const m={};L.forEach(x=>{const k=[x.pkey,x.kind==="duel"?"duel|"+x.vs:x.stat,x.side,x.map,x.day,String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"")].join("|");const o=m[k];const ev=y=>srcOf(y)==="ev"?0:1;if(!o||ev(x)<ev(o)||ev(x)===ev(o)&&Math.abs(Number(x.odds)-1.85)<Math.abs(Number(o.odds)-1.85))m[k]=x;});return Object.values(m);};
  const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq,evSet]);
@@ -7916,6 +7931,22 @@ function PlayerBanner({name,photo,role,game,team,league,logo,children,profit,pro
 }
 
 // ── Éditeur de joueur : aperçu en direct en haut, modifications en dessous ──
+// Fiche joueur : pseudos reliés à la main (⚙) → délier, et ramener leurs paris sur ce joueur
+function LinkedAliases({p,showToast}){const me=cutNorm(p&&p.name);const [,re]=useState(0);const [nb,setNb]=useState({});
+ const list=Object.entries(BET_ALIAS).filter(([f,to])=>to===me&&f!==me).map(([f])=>f);
+ useEffect(()=>{let st=false;(async()=>{const o={};for(const f of list){try{const r=await cloudDb("bets?select=id&player=ilike."+encodeURIComponent(f)+(p.game?"&game=eq."+encodeURIComponent(p.game):""));o[f]=(r||[]).length;}catch(e){o[f]=0;}}if(!st)setNb(o);})();return()=>{st=true;};},[list.join("|")]);
+ if(!me||!list.length)return null;
+ const unlink=async f=>{if(!window.confirm("Délier « "+f+" » de "+p.name+" ?\n\nLes prochains collages ne le reconnaîtront plus comme "+p.name+". Les résultats déjà enregistrés restent à son nom."))return;
+  try{await cloudDb("bet_alias?pkey=eq."+encodeURIComponent(f),{method:"DELETE"});}catch(e){}const nA={...BET_ALIAS};delete nA[f];BET_ALIAS=nA;re(x=>x+1);showToast&&showToast("« "+f+" » délié","#22C55E");};
+ const move=async f=>{const n=nb[f]||0;if(!n||!window.confirm("Mettre les "+n+" pari(s) de « "+f+" » au nom de "+p.name+" ?"))return;
+  try{await cloudDb("bets?player=ilike."+encodeURIComponent(f)+(p.game?"&game=eq."+encodeURIComponent(p.game):""),{method:"PATCH",prefer:"return=minimal",body:{player:p.name}});setNb(o=>({...o,[f]:0}));showToast&&showToast(n+" pari(s) passés à "+p.name,"#22C55E");}catch(e){showToast&&showToast("Erreur : "+((e&&e.message)||e),"#EF4444");}};
+ return <div style={{margin:"14px 0 4px",padding:"12px 14px",borderRadius:14,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)"}}>
+  <div style={{fontSize:12,fontWeight:800,color:"#9CA3AF",letterSpacing:".5px",marginBottom:8}}>PSEUDOS RELIÉS À LA MAIN</div>
+  {list.map(f=><div key={f} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderTop:"1px solid rgba(255,255,255,.05)"}}>
+   <b style={{flex:1,fontSize:14,color:"#E5E7EB"}}>{f}<span style={{fontSize:11.5,fontWeight:600,color:"#6B7280",marginLeft:6}}>→ {p.name}</span></b>
+   {nb[f]>0&&<button onClick={()=>move(f)} style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid rgba(124,58,237,.4)",background:"rgba(124,58,237,.12)",color:"#c4b5fd",fontSize:12,fontWeight:800,cursor:"pointer"}}>{nb[f]} pari{nb[f]>1?"s":""} → {p.name}</button>}
+   <button onClick={()=>unlink(f)} style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid rgba(239,68,68,.4)",background:"rgba(239,68,68,.08)",color:"#F87171",fontSize:12,fontWeight:800,cursor:"pointer"}}>Délier</button></div>)}
+ </div>;}
 function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showToast,teamLogos={},allPlayers={},onDelete,isNew}){
  const [f,setF]=useState({name:p.name||name||"",game:game0||p.game||"CS2",team:p.team||"",role:p.role||"",league:p.league||"",photo:photo||"",logo:teamLogo||""});
  const [busy,setBusy]=useState("");
@@ -8141,6 +8172,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
       </>}
      </div>
 
+     {p&&p.name&&<LinkedAliases p={p} showToast={showToast}/>}
      {onDelete&&p.id&&(
       <button onClick={()=>{if(window.confirm("Supprimer "+capName(f.name)+" de ta liste de joueurs ?"))onDelete(p);}}
        style={{width:"100%",padding:"12px",borderRadius:12,border:"1px solid rgba(239,68,68,.25)",background:"rgba(239,68,68,.06)",color:"#EF4444",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
@@ -9266,7 +9298,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  useEffect(()=>{cloudDb("bet_match?ot=eq.true&select=id&limit=5000").then(r=>{otIds.current=new Set((r||[]).map(x=>String(x.id)));setBets(p=>p.map(b=>otIds.current.has(String(b.id))&&!b._ot?{...b,_ot:true}:b));}).catch(()=>{});},[]);
  useEffect(()=>{if(!otIds.current.size)return;if(bets.some(b=>otIds.current.has(String(b.id))&&!b._ot))setBets(p=>p.map(b=>otIds.current.has(String(b.id))&&!b._ot?{...b,_ot:true}:b));},[bets]);
  useEffect(()=>{const h=e=>{const d=e.detail||{};setView("players");setSuiviTab("suivi");setSuiviOpen(s=>({...s,roster:true}));setRosterOpen(true);const g=d.game;if(g)setRosterGame(g);setRosterLeague(null);setRosterTeam(null);
-  const tk=x=>String(x||"").toLowerCase().replace(/\b(team|esports?|gaming|club)\b/g,"").replace(/[^a-z0-9]/g,"");let n=0;const go=()=>{n++;const els=[...document.querySelectorAll('[id^="club-'+(g||"")+'-"]')];const el=els.find(x=>{const k=tk(x.id.slice(("club-"+g+"-").length));const t=tk(d.team);return k===t||k.startsWith(t)||t.startsWith(k);});if(el){el.scrollIntoView({behavior:"smooth",block:"start"});const b=el.querySelector("button");if(b)b.click();}else if(n<15)setTimeout(go,250);};setTimeout(go,300);};
+  const tk=x=>String(x||"").toLowerCase().replace(/\b(team|esports?|gaming|club)\b/g,"").replace(/[^a-z0-9]/g,"");let n=0;const go=()=>{n++;const els=[...document.querySelectorAll('[id^="club-'+(g||"")+'-"]')];const el=els.find(x=>{const k=tk(x.id.slice(("club-"+g+"-").length));const t=tk(d.team);return k===t||k.startsWith(t)||t.startsWith(k);});if(el){const b=el.querySelector("button");if(b)b.click();const jump=()=>{const y=el.getBoundingClientRect().top+window.scrollY-70;window.scrollTo({top:y,behavior:"auto"});};jump();setTimeout(jump,150);setTimeout(jump,450);}else if(n<20)setTimeout(go,200);};setTimeout(go,150);};
   window.addEventListener("emeieks-open-roster",h);return()=>window.removeEventListener("emeieks-open-roster",h);},[]);
  useEffect(()=>{const h=e=>{setView("players");setSuiviTab("suivi");setSuiviOpen(s=>({...s,res:true}));window.__openResult=e.detail||null;setTimeout(()=>{try{window.dispatchEvent(new CustomEvent("emeieks-open-result-go"));}catch(x){}},350);};
   window.addEventListener("emeieks-open-result",h);return()=>window.removeEventListener("emeieks-open-result",h);},[setView]);
@@ -10852,9 +10884,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {(()=>{
  // Rôles disponibles selon jeux sélectionnés
  const ROLES_BY_GAME={
- LoL:["Top Laner","Jungler","Mid Laner","Bot Laner","Support"],
+ LoL:["Top","Jungle","Mid","ADC","Support"],
  CS2:["AWPer","Rifler","IGL"],
- Dota2:["Carry","Mid","Offlane","Soft Support","Hard Support"],
+ Dota2:["Carry","Midlaner","Offlaner","Soft Support","Hard Support"],
  Valorant:["Duelist","Initiator","Controller","Sentinel","Flex"],
  };
  // Si un jeu est sélectionné → montre ses rôles, sinon tous
