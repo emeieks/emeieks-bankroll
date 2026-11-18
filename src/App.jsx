@@ -7175,6 +7175,14 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const done=all.filter(x=>x.result);const wait=all.filter(x=>!x.result);const doneAllS=done;
  const [statG,setStatG]=useState(()=>{try{return JSON.parse(localStorage.getItem("sim_statG")||"[]");}catch(e){return [];}});useEffect(()=>{try{localStorage.setItem("sim_statG",JSON.stringify(statG));}catch(e){}},[statG]);
  const [mlStep,setMlStep]=useState(0);
+ // stats des cartes CS2 (toutes les maps enregistrées dans Résultats, tous tournois)
+ const [csMaps,setCsMaps]=useState(null);
+ useEffect(()=>{if(tab!=="stats"||csMaps)return;let st=false;(async()=>{try{
+  const mr=await cloudDb("map_results?map_name=in.("+CS_ACTIVE.concat(["Overpass","Vertigo"]).join(",")+")&select=match_key,map_no,map_name,rounds,ot,score1,score2&limit=20000");
+  const pr=await cloudDb("player_results?game=eq.CS2&select=match_key,map_no,kills&limit=50000").catch(()=>[]);
+  const K={};(pr||[]).forEach(x=>{const k=x.match_key+"|"+x.map_no;K[k]=(K[k]||0)+(+x.kills||0);});
+  const G={};(mr||[]).forEach(x=>{const rd=+x.rounds||((+x.score1||0)+(+x.score2||0));if(!rd)return;const g=G[x.map_name]=G[x.map_name]||{m:x.map_name,n:0,rd:0,ot:0,kk:0,kr:0};g.n++;g.rd+=rd;if(x.ot)g.ot++;const k=K[x.match_key+"|"+x.map_no];if(k){g.kk+=k;g.kr+=rd;}});
+  const L=Object.values(G).map(g=>({m:g.m,n:g.n,rd:g.rd/g.n,ot:g.ot/g.n*100,kr:g.kr?g.kk/g.kr:null})).sort((a,b)=>b.n-a.n);if(!st)setCsMaps(L);}catch(e){if(!st)setCsMaps([]);}})();return()=>{st=true;};},[tab]);
  // kills / minute moyen en Dota (games avec durée enregistrée)
  const [kpm,setKpm]=useState(null);
  useEffect(()=>{let st=false;(async()=>{try{const r=await cloudDb("map_results?duration=gt.0&select=match_key,score1,score2,duration&limit=5000");if(!Array.isArray(r)||!r.length)return;
@@ -7432,6 +7440,14 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
    <Bars title="Pré-match vs live" groups={by(done,x=>(x.mode||"pre")==="live"?"Live":"Pré-match")}/>
    <Bars title="Par position" groups={by(done,x=>roleOf(x))}/>
    <Bars title="Par tournoi" groups={by(done,x=>x.tournament||null).sort((p,q)=>agg(q[1]).p-agg(p[1]).p).slice(0,8)} icon={k=>{const gm=(done.find(x=>x.tournament===k)||{}).game;const u=mediaStore["tourney_"+GN(gm)+"_"+tourAlias(k)]||mediaStore["tourney_"+GN(gm)+"_"+k];return u?<img src={u} alt="" style={{width:20,height:20,objectFit:"contain",borderRadius:4,flexShrink:0}}/>:<GameLogo game={GN(gm)} size={18}/>;}}/>
+   {(statG.length===0||statG.includes("CS2"))&&csMaps&&csMaps.length>0&&<div style={{...card,padding:"12px 14px",marginTop:10}}>
+    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><GameLogo game="CS2" size={18}/><span style={{flex:1,fontSize:14,fontWeight:800,color:"#eef1f7"}}>Cartes CS2 · tous tournois</span><span style={{fontSize:11,color:"#8b93a7",fontWeight:700}}>games · rounds · kills/round · OT</span></div>
+    {csMaps.map(r=><div key={r.m} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderTop:"1px solid rgba(255,255,255,.05)",fontSize:13,flexWrap:"wrap"}}>
+     <b style={{width:70,color:"#fff"}}>{r.m}</b><span style={{color:"#cbd5e1"}}><b>{r.n}</b> g</span><span style={{color:"#8b93a7"}}>·</span>
+     <span style={{color:"#cbd5e1"}}><b>{r.rd.toFixed(1).replace(".",",")}</b> rounds</span><span style={{color:"#8b93a7"}}>·</span>
+     <span style={{color:"#cbd5e1"}}><b>{r.kr==null?"–":r.kr.toFixed(2).replace(".",",")}</b> kills/round</span><span style={{color:"#8b93a7"}}>·</span>
+     <span style={{color:r.ot>=15?"#fbbf24":"#cbd5e1"}}>OT <b>{Math.round(r.ot)}%</b></span></div>)}
+   </div>}
   </>;})()}
   {tab==="scenario"&&<>
    <div style={{...card,padding:14}}>
