@@ -5544,7 +5544,7 @@ function MapPhotos({showToast}){
 let RS_TOURS=[];
 // Bouton SIM : au prochain passage du bot, la simulation prend aussi les cuts PP Map 3 / Map 5 en live (entre les maps), puis s'éteint
 // réglage partagé app ↔ bot (table settings)
-const useSetting=key=>{const [v,setV]=useState(null);
+const useSetting=key=>{const [v,setV0]=useState(()=>{try{const x=localStorage.getItem("set_"+key);return x?JSON.parse(x):null;}catch(e){return null;}});const setV=x=>{setV0(x);try{localStorage.setItem("set_"+key,JSON.stringify(x));}catch(e){}};
  useEffect(()=>{let st=false;const ld=()=>cloudDb("settings?select=value&key=eq."+key).then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(!st)setV(x||{});}).catch(()=>{});ld();const i=setInterval(()=>{if(!document.hidden)ld();},30000);return()=>{st=true;clearInterval(i);};},[key]);
  const set=x=>{setV(x);cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key,value:x}]}).catch(()=>{});};return [v,set];};
 function SimBtn(){const [v,set]=useSetting("sim_live");const [,tick]=useState(0);
@@ -8412,6 +8412,8 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const showBetConfirm=useCallback(function(){},[]);
  const lastPushRef=useRef(0);
  const hydratedRef=useRef(false);
+ // Copie locale (tout appareil) des joueurs / logos / clubs : visible même sans connexion à Supabase
+ useEffect(()=>{if(!hydratedRef.current)return;const t=setTimeout(()=>{idbSet("live",{at:Date.now(),players,teamLogos,customClubs}).catch(()=>{});},1200);return()=>clearTimeout(t);},[players,teamLogos,customClubs]);
  const [syncErr,setSyncErr]=useState("");
  const [liveState,setLiveState]=useState("…");
  const [diag,setDiag]=useState(null);
@@ -8853,6 +8855,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    if(boot.mediaRows){const m=parseMediaRows(boot.mediaRows);if(m.mediaStore||m.customClubs)applyMedia(m);}
    if(boot.players)setPlayers(boot.players);
    if(boot.teamLogos)setTeamLogos(boot.teamLogos);
+  }
+  // Dernières modifs faites sur cet appareil (postes, photos, joueurs par équipe, clubs, logos) : plus récentes que « boot »
+  const live=await Promise.race([idbGet("live"),new Promise(r=>setTimeout(()=>r(null),800))]);
+  if(live&&alive&&(!boot||!boot.at||(live.at||0)>=boot.at)){
+   if(live.players&&Object.keys(live.players).length)setPlayers(live.players);
+   if(live.teamLogos)setTeamLogos(live.teamLogos);
+   if(live.customClubs)setCustomClubs(live.customClubs);
   }}catch(e){}
  const SPECIAL=["__SETTINGS__","__TEAM_LOGOS__","__BK_PHOTOS__","__MEDIA_STORE__"];
  // Les paris s'affichent dès qu'ils arrivent, sans attendre le reste
