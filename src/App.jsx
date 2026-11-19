@@ -1131,8 +1131,8 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  <PosIcon role={p.role} game={p.game} size={14}/>
  </div>
  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2,minWidth:0,fontSize:11.5,color:"#9CA3AF",whiteSpace:"nowrap"}}>
- {p.team?<><TeamLogo team={p.team} game={p.game} size={13}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{p.team}</span></>:<span style={{color:"#6B7280"}}>Agent libre</span>}
- {freq>0&&<span style={{color:"#6B7280",flexShrink:0}}>· {freq} pari{freq>1?"s":""}</span>}
+ {p.team?<><TeamLogo team={p.team} game={p.game} size={15}/><span style={{overflow:"hidden",textOverflow:"ellipsis",color:"#cbd5e1",fontWeight:600}}>{p.team}</span></>:<span style={{color:"#6B7280"}}>Agent libre</span>}
+ {p.league&&<span title={p.league} style={{display:"inline-flex",alignItems:"center",flexShrink:0,marginLeft:2,opacity:.95}}><LeagueLogo league={p.league} size={15}/></span>}
  </div>
  </div>
  {(()=>{
@@ -1140,7 +1140,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  const hasTourney=t&&(!t.end||new Date(t.end)>=new Date());
  return(
  <div style={{display:"flex",gap:4,alignItems:"center"}}>
- {p.league&&!hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#A78BFA",background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)",padding:"1px 5px",borderRadius:4}}>{p.league}</span>}
+ {freq>0&&<span style={{fontSize:11.5,fontWeight:800,color:"#c4b5fd",background:"rgba(124,58,237,.12)",border:"1px solid rgba(124,58,237,.25)",padding:"2px 7px",borderRadius:6,fontVariantNumeric:"tabular-nums"}}>{freq}p</span>}
  {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:3}}>{(()=>{const tl=_GLOBAL_MEDIA_STORE&&_GLOBAL_MEDIA_STORE["tourney_"+(p.game||"")+"_"+t.name];return tl?<img src={tl.replace('__FAILED__','')} alt={t.name} style={{width:12,height:12,objectFit:"contain",borderRadius:1}} onError={e=>e.target.style.display="none"}/>:null;})()}{tourAbbr(t.name)}</span>}
  {p.role&&!["LoL","Dota2"].includes(GNORM(p.game))&&<span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>}
  {isSelected&&<span style={{color:"#22C55E",fontSize:14,fontWeight:700,marginLeft:2}}><Ic n="check" s={13}/></span>}
@@ -4996,7 +4996,7 @@ function notifyAssets(){ASSETS.subs.forEach(f=>{try{f();}catch(e){}});}
 function useAssets(){const [v,setV]=useState(ASSETS.v);useEffect(()=>{const f=()=>setV(ASSETS.v);ASSETS.subs.add(f);if(ASSETS.v!==v)f();return()=>{ASSETS.subs.delete(f);};},[]);return v;}
 function plOf(name,game){if(!name)return null;const k=String(name).toLowerCase().trim();const g=game?GNORM(game):"";const p=ASSETS.pl[k];if(p&&(!g||!p.game||GNORM(p.game)===g))return p;const c=cutNorm(name);return (g&&ASSETS.cut.get(c+"|"+g))||ASSETS.cut.get(c)||p||null;}
 function photoOf(name,game){const p=plOf(name,game);return p?getAvatarSrc(p):null;}
-function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{u=findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
+function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
 const Avatar=memo(function Avatar({name,game,src,size=40,badge=true,radius="50%",ring}){useAssets();const u=src||photoOf(name,game);const [bad,setBad]=useState(false);useEffect(()=>{setBad(false);},[u]);
  const ini=String(name||"?").trim().charAt(0).toUpperCase()||"?";const bs=Math.max(12,Math.round(size*.42));const G=game?GNORM(game):"";
  return <span style={{position:"relative",width:size,height:size,flexShrink:0,display:"inline-block"}}>
@@ -9099,7 +9099,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  return merged;
  },[players]);
  const evLogoIdx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
- useMemo(()=>{setAssets(allPlayers,evLogoIdx);},[allPlayers,evLogoIdx]);useEffect(()=>{notifyAssets();},[allPlayers,evLogoIdx]);
+ useMemo(()=>{ASSETS.tl=teamLogos||{};setAssets(allPlayers,evLogoIdx);},[allPlayers,evLogoIdx,teamLogos]);useEffect(()=>{notifyAssets();},[allPlayers,evLogoIdx,teamLogos]);
  const evLogo=(t,g)=>findLogo(evLogoIdx,t,g);
  // Cote vainqueur enregistrée pour TOUS les paris en cours (bot ou manuels), dès que Betby a le match
  useEffect(()=>{let stop=false;const run=async()=>{try{
