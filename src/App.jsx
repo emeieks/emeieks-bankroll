@@ -2001,6 +2001,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
  const [secOpen,setSecOpen]=useState(()=>{try{return localStorage.getItem("emeieks_roster_open")!=="0";}catch(e){return true;}});
  useEffect(()=>{try{localStorage.setItem("emeieks_roster_open",secOpen?"1":"0");}catch(e){}},[secOpen]);
  const [sortMode,setSortMode]=useState(""); // "asc" | "desc" | ""
+ const [clubRanks]=useSetting("club_ranks");const [rkSort,setRkSort]=useState(true);
  const [filterNoPhoto,setFilterNoPhoto]=useState(false);
  const [filterNoLogo,setFilterNoLogo]=useState(false);
  const [addToTeam,setAddToTeam]=useState(null); // {team, league, game}
@@ -2388,8 +2389,11 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
       if(sortMode==="asc")teams.sort((a,b)=>a.players.length-b.players.length);
       else if(sortMode==="desc")teams.sort((a,b)=>b.players.length-a.players.length);
       else teams.sort((a,b)=>a.team.localeCompare(b.team));
+      const RK=(clubRanks&&clubRanks[rosterGame])||{};const rkOf=t=>RK[t]||RK[String(t).toLowerCase()]||null;const hasRK=Object.keys(RK).length>0;
+      if(hasRK&&rkSort&&!sortMode)teams.sort((a,b)=>(rkOf(a.team)||9999)-(rkOf(b.team)||9999)||a.team.localeCompare(b.team));
       return(
        <div>
+        {hasRK&&<div style={{display:"flex",gap:6,marginBottom:10}}>{[[true,"Classement"],[false,"A – Z"]].map(([v,l])=><button key={l} onClick={()=>setRkSort(v)} style={{height:32,padding:"0 12px",borderRadius:16,border:"1px solid "+(rkSort===v?"#60A5FA":"#1F2937"),background:rkSort===v?"rgba(96,165,250,.12)":"transparent",color:rkSort===v?"#93c5fd":"#9ca3af",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>}
         {needLeague&&(
          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
           {leagues.map(l=>(
@@ -2415,6 +2419,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               :<div style={{width:42,height:42,borderRadius:10,background:"rgba(167,139,250,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16,color:accent,fontWeight:800}}>{team[0]||"?"}</div>}
              <div style={{flex:1}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
+               {rkOf(team)&&<span style={{fontSize:12,fontWeight:900,color:rkOf(team)<=10?"#FACC15":"#93a3b8",fontVariantNumeric:"tabular-nums",minWidth:22}}>#{rkOf(team)}</span>}
                <span style={{fontWeight:800,fontSize:16,color:"#F2F4F8"}}>{team}</span>
                {rosterGame==="CS2"&&!tPlayers.some(p=>(p.role||"").toLowerCase().includes("awp"))&&(
                 <span title="Aucun AWPer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",color:"#EF4444",fontSize:9,fontWeight:900,flexShrink:0}}>!</span>
