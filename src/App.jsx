@@ -1036,7 +1036,7 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
 
  useEffect(()=>{setInputVal(value);},[value]);
 
- const isConfirmed=useMemo(()=>!!allPlayers[inputVal.toLowerCase().trim()],[allPlayers,inputVal]);
+ const isConfirmed=useMemo(()=>{const p=allPlayers[inputVal.toLowerCase().trim()];return !!(p&&String(p.team||"").trim());},[allPlayers,inputVal]);
 
  const sugg=useMemo(function(){
  const q=inputVal.toLowerCase().trim();
@@ -1044,17 +1044,18 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  // Sans query → joueurs les plus betés en premier (fusion récents + fréquence)
  // Prendre top 8 par fréquence de bets
  const topByFreq=Object.entries(betFreq)
- .filter(([k])=>allPlayers[k])
+ .filter(([k])=>allPlayers[k]&&String(allPlayers[k].team||"").trim())
  .sort((a,b)=>b[1]-a[1])
  .slice(0,8)
  .map(([k])=>k);
  // Fusionner: récents d'abord, puis top fréquence, dédupliqué
  const merged=[...recents,...topByFreq.filter(k=>!recents.includes(k))].slice(0,7);
  return merged
- .filter(k=>allPlayers[k])
+ .filter(k=>allPlayers[k]&&String(allPlayers[k].team||"").trim())
  .map(k=>[k,allPlayers[k],recents.includes(k)?'recent':'freq']);
  }
- const all=Object.entries(allPlayers);
+ // Agents libres cachés : seuls les joueurs avec un club sont proposés
+ const all=Object.entries(allPlayers).filter(([k,p])=>p&&String(p.team||"").trim());
  // Priorité 1: commence par q, trié par fréquence desc (cherche aussi par nom sans préfixe)
  const starts=all
  .filter(([k,p])=>k.startsWith(q)||k.includes(":"+q)||(p.name&&p.name.toLowerCase().startsWith(q)))
@@ -11214,8 +11215,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{background:"rgba(8,14,28,0.9)",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"2px 10px"}}>
  <PlayerAC ref={playerACRef} value={form.player} onChange={(v,o)=>{
  const ql=String(v||"").toLowerCase().trim();
- const nMatch=ql?Object.keys(allPlayers).filter(k=>!k.includes(":")&&k.toLowerCase().includes(ql)).length:0;
- const pi=(o&&o.confirmed)||nMatch===1?findPlayer(v):null;
+ const nMatch=ql?Object.keys(allPlayers).filter(k=>!k.includes(":")&&k.toLowerCase().includes(ql)&&String((allPlayers[k]||{}).team||"").trim()).length:0;
+ const pi0=(o&&o.confirmed)||nMatch===1?findPlayer(v):null;const pi=pi0&&String(pi0.team||"").trim()?pi0:null;
  setForm(f=>({
  ...f,
  player:v,
