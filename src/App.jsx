@@ -4094,7 +4094,8 @@ try{applyMediaStore(JSON.parse(localStorage.getItem("v7_media_store")||"{}"));}c
 // ════════════════════════════════════════════════════════════
 //  FICHE JOUEUR (style NHL) — s'ouvre en touchant un nom de joueur
 // ════════════════════════════════════════════════════════════
-const capName=v=>{const x=String(v||"");return x?x.charAt(0).toUpperCase()+x.slice(1):x;};
+// Gamertag : écrit exactement comme dans la base (YEKINDAR, m0NESY, jL…)
+const capName=v=>{const x=String(v||"");if(!x)return x;try{const p=plOf(x);if(p&&p.name&&p.name.toLowerCase()===x.toLowerCase())return p.name;}catch(e){}return x;};
 
 // ── CLUBS : top / flop par jeu + fiche équipe ─────────────────────────────
 function openClubSheet(team,game){try{window.dispatchEvent(new CustomEvent("emeieks-open-club",{detail:{team,game}}));}catch(e){}}
