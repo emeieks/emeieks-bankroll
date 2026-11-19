@@ -1968,6 +1968,9 @@ function RosterPick5({team,game,league,players,teamLogos,onClose,onSave}){
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets,mediaStore={},setMediaStore,tourneyCal=[],setTourneyCal,savedTourneys={}}){
  // Changement de club : les anciens paris du joueur gardent son ancien club (stats et bankroll passées inchangées)
  const [slotPick,setSlotPick]=useState(null);
+ // Valorant : rôle joué d'après les agents des scoreboards (player_results.champion), dès 5 maps
+ const [valRoles,setValRoles]=useState(null);
+ useEffect(()=>{if(rosterGame!=="Valorant"||valRoles)return;let ok=true;cloudDb("player_results?game=eq.Valorant&champion=not.is.null&select=pkey,champion&limit=50000").then(rows=>{if(!ok)return;const M={};(rows||[]).forEach(r=>{const ro=agentRole(r.champion);if(!ro)return;const o=M[r.pkey]=M[r.pkey]||{n:0,c:{}};o.n++;o.c[ro]=(o.c[ro]||0)+1;});setValRoles(M);}).catch(()=>setValRoles({}));return()=>{ok=false;};},[rosterGame]);
  const fillSlot=async(nm)=>{const sp=slotPick;if(!sp)return;setSlotPick(null);
   const G=GNORM(sp.game);const pl=Object.values(allPlayers||players||{}).find(x=>x&&x.name===nm&&GNORM(x.game)===G);if(!pl)return;
   const role=G==="Dota2"?DOTA_POS_L[sp.slot]:({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"ADC",SUP:"Support"})[sp.slot];
@@ -2537,13 +2540,17 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                    <div onClick={()=>openEdit(p)} style={{flex:1,minWidth:0,cursor:"pointer"}}>
                     <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{flex:"0 1 auto",minWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name||"(sans nom)"}</span>
                      {p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
+                    {GNORM(p.game)==="Valorant"&&(()=>{const st=valRoles&&valRoles[cutNorm(p.name)];if(!st||st.n<5)return p.role?<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{p.role}</div>:null;
+                     const [ro,c]=Object.entries(st.c).sort((a,b)=>b[1]-a[1])[0];const pc=Math.round(c/st.n*100);const col=VAL_ROLE_C[ro]||"#9ca3af";const on=p.role===ro;
+                     return <button title={capName(p.name)+" a joué "+pc+"% de ses "+st.n+" maps en "+ro+(on?"":" · toucher pour attribuer")} onClick={async e=>{e.stopPropagation();const u={...p,role:on?"":ro};setPlayers(prev=>{const n={...prev};const key=Object.keys(n).find(x=>n[x]&&n[x].id===p.id)||(p.name||"").toLowerCase();n[key]={...n[key],...u};return n;});try{await supaUpsertPlayer(u);}catch(err){}}}
+                      style={{marginTop:6,height:26,padding:"0 10px",borderRadius:8,whiteSpace:"nowrap",border:"1.5px "+(on?"solid ":"dashed ")+col,background:on?col+"26":"transparent",color:col,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif",display:"inline-flex",alignItems:"center",gap:6}}>{ro}<span style={{opacity:.8,fontWeight:700}}>{pc}%</span></button>;})()}
                     {GNORM(p.game)==="CS2"?(()=>{const r=String(p.role||"").toLowerCase();const aw=/awp/.test(r),ig=/igl/.test(r);
                      const tog=async(e,k)=>{e.stopPropagation();const A=k==="awp"?!aw:aw,I=k==="igl"?!ig:ig;const role=A&&I?"AWPer/IGL":A?"AWPer":I?"IGL":"Rifler";const u={...p,role};
                       setPlayers(prev=>{const n={...prev};const key=Object.keys(n).find(x=>n[x]&&(p.id?n[x].id===p.id:n[x]===p))||(p.name||"").toLowerCase();n[key]={...n[key],...u};return n;});
                       try{await supaUpsertPlayer(u);}catch(err){showToast&&showToast("Erreur poste","#EF4444");}};
                      const B=(k,l,on,c)=><button onClick={e=>tog(e,k)} style={{height:28,minWidth:46,padding:"0 9px",borderRadius:8,border:"1.5px solid "+(on?c:"rgba(255,255,255,.1)"),background:on?c+"26":"rgba(255,255,255,.03)",color:on?c:"#6b7280",fontSize:13,fontWeight:900,letterSpacing:.5,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>;
                      return <div style={{display:"flex",gap:6,marginTop:6}}>{B("awp","AWP",aw,"#F59E0B")}{B("igl","IGL",ig,"#A78BFA")}</div>;})()
-                    :!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
+                    :GNORM(p.game)!=="Valorant"&&!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
                    </div>
                    <button onClick={()=>openEdit(p)} aria-label={"Modifier "+p.name} title="Modifier" style={{width:32,height:32,flexShrink:0,background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:9,color:accent,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Ic n="edit" s={14} w={2.2}/></button>
                    {p.team&&<button onClick={async e=>{e.stopPropagation();freezeTeam(p,"");const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
@@ -5628,9 +5635,10 @@ function DuelAlerts({teamLogos={},allPlayers={},teams=null,map=null,inline=false
  </div>;
 }
 // Agents Valorant et leur rôle
-const VAL_AGENTS={Duelist:["Jett","Raze","Reyna","Phoenix","Yoru","Neon","Iso","Waylay"],Initiator:["Sova","Skye","Breach","KAY/O","Fade","Gekko","Tejo"],Controller:["Omen","Brimstone","Viper","Astra","Harbor","Clove"],Sentinel:["Sage","Cypher","Killjoy","Chamber","Deadlock","Vyse"]};
+// 30 agents (nov. 2026) : classes officielles Riot / vlr.gg
+const VAL_AGENTS={Duelist:["Jett","Raze","Reyna","Phoenix","Yoru","Neon","Iso","Waylay","Hush"],Initiator:["Sova","Skye","Breach","KAY/O","Fade","Gekko","Tejo"],Controller:["Omen","Brimstone","Viper","Astra","Harbor","Clove","Miks"],Sentinel:["Sage","Cypher","Killjoy","Chamber","Deadlock","Vyse","Veto"]};
 const VAL_ROLE_C={Duelist:"#FF4655",Initiator:"#4AE0A1",Controller:"#B48CFF",Sentinel:"#5AB4FF"};
-const agentRole=a=>Object.keys(VAL_AGENTS).find(r=>VAL_AGENTS[r].includes(a))||"";
+const agentRole=a=>{const n=String(a||"").toLowerCase().replace(/[^a-z]/g,"");return Object.keys(VAL_AGENTS).find(r=>VAL_AGENTS[r].some(x=>x.toLowerCase().replace(/[^a-z]/g,"")===n))||"";};
 // Liens club des résultats → club enregistré sur le site (media_store « teamlink:<jeu>:<clé> »), gardés pour toujours
 // ✓ vert du site (cercle + coche)
 const CheckIc=({s=16,title})=><svg width={s} height={s} viewBox="0 0 24 24" role="img" aria-label={title||"Enregistré"} style={{flexShrink:0,verticalAlign:"-3px",marginLeft:4}}>{title?<title>{title}</title>:null}<circle cx="12" cy="12" r="10" fill="none" stroke="#22C55E" strokeWidth="2.6"/><path d="M7 12.4l3.3 3.3L17.2 8.6" fill="none" stroke="#22C55E" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
