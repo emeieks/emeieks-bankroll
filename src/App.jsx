@@ -2523,7 +2523,13 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                    <div onClick={()=>openEdit(p)} style={{flex:1,minWidth:0,cursor:"pointer"}}>
                     <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{flex:"0 1 auto",minWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name||"(sans nom)"}</span>
                      {p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
-                    {!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
+                    {GNORM(p.game)==="CS2"?(()=>{const r=String(p.role||"").toLowerCase();const aw=/awp/.test(r),ig=/igl/.test(r);
+                     const tog=async(e,k)=>{e.stopPropagation();const A=k==="awp"?!aw:aw,I=k==="igl"?!ig:ig;const role=A&&I?"AWPer/IGL":A?"AWPer":I?"IGL":"Rifler";const u={...p,role};
+                      setPlayers(prev=>{const n={...prev};const key=Object.keys(n).find(x=>n[x]&&(p.id?n[x].id===p.id:n[x]===p))||(p.name||"").toLowerCase();n[key]={...n[key],...u};return n;});
+                      try{await supaUpsertPlayer(u);}catch(err){showToast&&showToast("Erreur poste","#EF4444");}};
+                     const B=(k,l,on,c)=><button onClick={e=>tog(e,k)} style={{height:28,minWidth:46,padding:"0 9px",borderRadius:8,border:"1.5px solid "+(on?c:"rgba(255,255,255,.1)"),background:on?c+"26":"rgba(255,255,255,.03)",color:on?c:"#6b7280",fontSize:13,fontWeight:900,letterSpacing:.5,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>;
+                     return <div style={{display:"flex",gap:6,marginTop:6}}>{B("awp","AWP",aw,"#F59E0B")}{B("igl","IGL",ig,"#A78BFA")}</div>;})()
+                    :!(GNORM(p.game)==="LoL"&&ROLE_OF(p.role))&&<div style={{fontSize:11.5,color:"#6B7280",marginTop:2}}>{roleLine([p.role,p.league],p.role)}</div>}
                    </div>
                    <button onClick={()=>openEdit(p)} aria-label={"Modifier "+p.name} title="Modifier" style={{width:32,height:32,flexShrink:0,background:"rgba(167,139,250,.08)",border:"1px solid rgba(167,139,250,.2)",borderRadius:9,color:accent,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center"}}><Ic n="edit" s={14} w={2.2}/></button>
                    {p.team&&<button onClick={async e=>{e.stopPropagation();freezeTeam(p,"");const u={...p,team:""};await supaUpsertPlayer(u);setPlayers(prev=>{const n={...prev};n[(p.name||"").toLowerCase().trim()]={...u,id:p.id};return n;});showToast(p.name+" → Free Agent","#F59E0B");}} style={{padding:"5px 8px",background:"rgba(245,158,11,.08)",border:"1px solid rgba(245,158,11,.2)",borderRadius:6,color:"#F59E0B",fontSize:10,fontWeight:700,cursor:"pointer"}}>FA</button>}
