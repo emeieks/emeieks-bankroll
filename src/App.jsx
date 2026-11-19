@@ -1966,6 +1966,13 @@ function RosterPick5({team,game,league,players,teamLogos,onClose,onSave}){
   </div></div>;}
 const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bets=[],customClubs={},setCustomClubs,rosterOpen,setRosterOpen,rosterGame,setRosterGame,rosterLeague,setRosterLeague,rosterTeam,setRosterTeam,editP,setEditP,editPForm,setEditPForm,editPPhotoUrl,setEditPPhotoUrl,editPSaving,setEditPSaving,editTeam,setEditTeam,teamLogoUrl,setTeamLogoUrl,teamLogoSaving,setTeamLogoSaving,rosterHierarchy,showToast,teamLogos={},setTeamLogos,setBets,supaPushBets,mediaStore={},setMediaStore,tourneyCal=[],setTourneyCal,savedTourneys={}}){
  // Changement de club : les anciens paris du joueur gardent son ancien club (stats et bankroll passées inchangées)
+ const [slotPick,setSlotPick]=useState(null);
+ const fillSlot=async(nm)=>{const sp=slotPick;if(!sp)return;setSlotPick(null);
+  const G=GNORM(sp.game);const pl=Object.values(allPlayers||players||{}).find(x=>x&&x.name===nm&&GNORM(x.game)===G);if(!pl)return;
+  const role=G==="Dota2"?DOTA_POS_L[sp.slot]:({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"ADC",SUP:"Support"})[sp.slot];
+  freezeTeam(pl,sp.team);const lg=sp.league&&sp.league!=="(Sans ligue)"?sp.league:pl.league;const u={...pl,team:sp.team,role,league:lg};
+  setPlayers(prev=>{const n={...prev};const key=Object.keys(n).find(x=>n[x]&&n[x].id===pl.id)||(pl.name||"").toLowerCase();n[key]={...n[key],...u};return n;});
+  try{await supaUpsertPlayer(u);showToast&&showToast(pl.name+" → "+sp.team+" · "+role,"#22C55E");}catch(e){showToast&&showToast("Erreur enregistrement","#EF4444");}};
  const freezeTeam=(p,newTeam)=>{if(!p||!p.team||p.team===newTeam||!setBets)return;const k=(p.name||"").toLowerCase().trim();const ch=[];setBets(prev=>prev.map(b=>{if((b.player||"").toLowerCase().trim()===k&&b.game===p.game&&(!b.team||b.team==="?")){const nb={...b,team:p.team};ch.push(nb);return nb;}return b;}));setTimeout(()=>{if(ch.length&&supaPushBets)supaPushBets(ch).catch(()=>{});},0);
   const today=localYMD(new Date());
   cloudDb("player_teams?player=ilike."+encodeURIComponent(p.name)+"&game=eq."+encodeURIComponent(p.game)+"&date_to=is.null",{method:"PATCH",prefer:"return=minimal",body:{date_to:today}})
@@ -2173,6 +2180,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
 
  return(
   <div style={{marginBottom:8}}>
+   {slotPick&&<PlayerLinkSheet game={slotPick.game} name="" team={slotPick.team} players={allPlayers||players} onPick={fillSlot} onClose={()=>setSlotPick(null)}/>}
    {pick5&&<RosterPick5 team={pick5.team} game={pick5.game} league={pick5.league} players={allPlayers||players} teamLogos={teamLogos} onClose={()=>setPick5(null)} onSave={savePick5}/>}
    {clubEdit&&<ClubEditSheet team={clubEdit.team} game={clubEdit.game} logo={clubEdit.logo} league={clubEdit.league} onClose={()=>setClubEdit(null)} onSave={saveClub} showToast={showToast}/>}
    <SuiviHead n="users" color="#a78bfa" title="Joueurs"
@@ -2422,7 +2430,12 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                {rkOf(team)&&<span style={{fontSize:12,fontWeight:900,color:rkOf(team)<=10?"#FACC15":"#93a3b8",fontVariantNumeric:"tabular-nums",minWidth:22}}>#{rkOf(team)}</span>}
                <span style={{fontWeight:800,fontSize:16,color:"#F2F4F8"}}>{team}</span>
                {rosterGame==="CS2"&&!tPlayers.some(p=>(p.role||"").toLowerCase().includes("awp"))&&(
-                <span title="Aucun AWPer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:16,height:16,borderRadius:"50%",background:"rgba(239,68,68,.2)",border:"1px solid rgba(239,68,68,.4)",color:"#EF4444",fontSize:9,fontWeight:900,flexShrink:0}}>!</span>
+                <span title="Aucun AWPer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"rgba(245,158,11,.12)",border:"1px solid rgba(245,158,11,.35)",flexShrink:0}}>
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="#F59E0B" stroke="none"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></svg></span>
+               )}
+               {(rosterGame==="CS2"||rosterGame==="Valorant")&&tPlayers.length>0&&!tPlayers.some(p=>/igl/i.test(p.role||""))&&(
+                <span title="Aucun IGL" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"rgba(167,139,250,.12)",border:"1px solid rgba(167,139,250,.35)",flexShrink:0}}>
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="#A78BFA" stroke="#A78BFA" strokeWidth="1.4" strokeLinejoin="round"><path d="M3 8.5l4.6 3.6L12 5l4.4 7.1L21 8.5l-1.9 9.5H4.9z"/><path d="M5 20.5h14" fill="none" strokeWidth="2.2" strokeLinecap="round"/></svg></span>
                )}
               </div>
               {needLeague&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,fontSize:12,color:"#9ca3af",fontWeight:600}}>{league!=="(Sans ligue)"&&<LeagueLogo league={league} size={16}/>}{league}</div>}
@@ -2509,7 +2522,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
               {(()=>{const gg=GNORM(rosterGame);const isL=gg==="LoL"||gg==="Dota2";const RO=gg==="Dota2"?["P1","P2","P3","P4","P5"]:["TOP","JGL","MID","ADC","SUP"];const RF=gg==="Dota2"?(r=>DOTA_POS(r)):ROLE_OF;const ri=p=>{const x=RO.indexOf(RF(p.role));return x<0?9:x;};
                const sorted=[...tPlayers].sort((a,b)=>isL?(ri(a)-ri(b))||a.name.localeCompare(b.name):a.name.localeCompare(b.name));
                if(!isL)return sorted;const out=[];RO.forEach(r=>{const l=sorted.filter(p=>RF(p.role)===r);if(l.length)out.push(...l);else out.push({__empty:r,name:"",id:"empty-"+r});});out.push(...sorted.filter(p=>!RF(p.role)));return out;})().map(p=>{
-               if(p.__empty)return <div key={p.id} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)",display:"flex",alignItems:"center",gap:12,opacity:.75}}>
+               if(p.__empty)return <div key={p.id} role="button" tabIndex={0} title="Choisir le joueur" onClick={()=>setSlotPick({team,game:rosterGame,league,slot:p.__empty})} style={{padding:"12px 14px",borderTop:"1px solid rgba(255,255,255,.04)",display:"flex",alignItems:"center",gap:12,opacity:.8,cursor:"pointer"}}>
                 {/^P\d$/.test(p.__empty)?<DotaPosIc r={p.__empty} s={24}/>:<RoleIc r={p.__empty} s={24}/>}<div style={{width:52,height:52,borderRadius:"50%",border:"2px dashed #374151",flexShrink:0}}/>
                 <span style={{fontSize:14,fontWeight:700,color:"#F59E0B"}}>{({TOP:"Top",JGL:"Jungle",MID:"Mid",ADC:"ADC",SUP:"Support",...DOTA_POS_L})[p.__empty]} manquant</span></div>;
                const isEditing=editP&&editP.id===p.id;
