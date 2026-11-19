@@ -1126,13 +1126,12 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  <Avatar name={p.name||key} game={p.game} size={32}/>
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0}}>
- {tag==="recent"&&<Ic n="clock" s={11} c="#6B7280"/>}
  <span style={{fontWeight:750,fontSize:14,color:"#E5E7EB",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(p.name||key)}</span>
  <PosIcon role={p.role} game={p.game} size={14}/>
  </div>
  <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2,minWidth:0,fontSize:11.5,color:"#9CA3AF",whiteSpace:"nowrap"}}>
  {p.team?<><TeamLogo team={p.team} game={p.game} size={15}/><span style={{overflow:"hidden",textOverflow:"ellipsis",color:"#cbd5e1",fontWeight:600}}>{p.team}</span></>:<span style={{color:"#6B7280"}}>Agent libre</span>}
- {p.league&&<span title={p.league} style={{display:"inline-flex",alignItems:"center",flexShrink:0,marginLeft:2,opacity:.95}}><LeagueLogo league={p.league} size={15}/></span>}
+ {p.league&&tourLogoSrc(p.league)&&<span title={p.league} style={{display:"inline-flex",alignItems:"center",flexShrink:0,marginLeft:2}}><LeagueLogo league={p.league} size={15}/></span>}
  </div>
  </div>
  {(()=>{
@@ -1141,8 +1140,6 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  return(
  <div style={{display:"flex",gap:4,alignItems:"center"}}>
  {freq>0&&<span style={{fontSize:11.5,fontWeight:800,color:"#c4b5fd",background:"rgba(124,58,237,.12)",border:"1px solid rgba(124,58,237,.25)",padding:"2px 7px",borderRadius:6,fontVariantNumeric:"tabular-nums"}}>{freq}p</span>}
- {hasTourney&&<span style={{fontSize:10,fontWeight:600,color:"#F59E0B",background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",padding:"1px 5px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:3}}>{(()=>{const tl=_GLOBAL_MEDIA_STORE&&_GLOBAL_MEDIA_STORE["tourney_"+(p.game||"")+"_"+t.name];return tl?<img src={tl.replace('__FAILED__','')} alt={t.name} style={{width:12,height:12,objectFit:"contain",borderRadius:1}} onError={e=>e.target.style.display="none"}/>:null;})()}{tourAbbr(t.name)}</span>}
- {p.role&&!["LoL","Dota2"].includes(GNORM(p.game))&&<span style={{fontSize:10,fontWeight:600,color:"#3B82F6",background:"rgba(96,165,250,0.08)",border:"1px solid rgba(96,165,250,0.15)",padding:"1px 5px",borderRadius:4}}>{p.role}</span>}
  {isSelected&&<span style={{color:"#22C55E",fontSize:14,fontWeight:700,marginLeft:2}}><Ic n="check" s={13}/></span>}
  </div>
  );
@@ -1405,7 +1402,7 @@ const profitColor=isPending?"#93c5fd":isWon?"#22C55E":"#EF4444";
 
  {/* Photo du joueur + logo du jeu */}
  <div title="Voir sur le board" onClick={e=>{e.stopPropagation();try{window.dispatchEvent(new CustomEvent("emeieks-goto-board",{detail:{player:bet.player,team:bet.team,hs:!!bet.isHeadshot}}));}catch(err){}}} style={{flexShrink:0,cursor:"pointer",padding:"0 3px 3px 0"}}>
- <Avatar name={bet.player} game={bet.game} size={38}/>
+ <GameLogo game={bet.game} size={38}/>
  </div>
 
  {/* Centre — 2 lignes */}
@@ -2372,7 +2369,8 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
      {/* Game tree (only when no search) */}
      {!searchQ&&rosterGame&&(()=>{
       const gameH=rosterHierarchy[rosterGame]||{};
-      const leagues=Object.keys(gameH).sort();
+      const DEFL={LoL:["LCK","LPL","LEC","LCS","LCP","CBLOL"]}[rosterGame]||[];
+      const leagues=[...DEFL,...Object.keys(gameH).filter(l=>!DEFL.includes(l)).sort()];
       const needLeague=rosterGame==="LoL"||rosterGame==="Valorant";
       const activeLeagues=needLeague?(rosterLeague?[rosterLeague]:leagues):leagues;
       let teams=[];
