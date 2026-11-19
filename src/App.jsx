@@ -8422,7 +8422,9 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const obj={};
  const RMIG={"Top Laner":"Top","Toplaner":"Top","Bot Laner":"Bot","Botlaner":"Bot","Mid Laner":"Mid","Midlaner":"Mid","Jungler":"Jungle","jungler":"Jungle","Jngl":"Jungle","Jng":"Jungle"};
  rows.forEach(p=>{
- obj[(p.name||"").toLowerCase()]={id:p.id,name:p.name,game:p.game,league:p.league,role:p.role&&RMIG[p.role]?RMIG[p.role]:p.role,team:p.team,
+ // même pseudo dans 2 jeux (ex. « exit » CS2 et Valorant) : les deux sont gardés, le 2e sous « nom|jeu »
+ let k=(p.name||"").toLowerCase();if(obj[k]&&obj[k].game!==p.game)k=k+"|"+GNORM(p.game);
+ obj[k]={id:p.id,name:p.name,game:p.game,league:p.league,role:p.role&&RMIG[p.role]?RMIG[p.role]:p.role,team:p.team,
  photo_url:p.photo_url||null,team_logo_url:p.team_logo_url||null,avatar_url:p.avatar_url||null,avatar_file:p.avatar_file||null};
  });
  setPlayers(obj);
@@ -8964,7 +8966,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  // Logos d'équipes : table teams + anciens logos
  const tl={};
  Object.values(playersObj||{}).forEach(p=>{if(p.team&&p.game&&p.team_logo_url)tl[p.team+"__"+p.game]=p.team_logo_url;});
- Object.assign(tl,legacy.__TEAM_LOGOS__||{},ls("v7_team_logos")||{});
+ // Supabase fait foi : le cache du navigateur ne sert que si la table teams n'a pas pu être lue (sinon un logo supprimé reviendrait)
+ if(!Array.isArray(teamRows)||!teamRows.length)Object.assign(tl,legacy.__TEAM_LOGOS__||{},ls("v7_team_logos")||{});
  (teamRows||[]).forEach(t=>{if(t.logo_url&&t.name&&t.game)tl[t.name+"__"+t.game]=t.logo_url;});
  setTeamLogos(tl);cloudSkip.current.teams=true;
  if(bkRows&&setRows&&mediaRows)idbSet("boot",{at:Date.now(),bkRows,tourRows:tourRows||[],setRows,mediaRows,players:playersObj||null,teamLogos:tl}).catch(()=>{});
