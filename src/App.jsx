@@ -2519,7 +2519,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                  {!isEditing?(
                   <div style={{display:"flex",alignItems:"center",gap:12}}>
                    {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={24}/>:null}{GNORM(p.game)==="Dota2"&&DOTA_POS(p.role)?<DotaPosIc r={DOTA_POS(p.role)} s={24}/>:null}
-                   <span onClick={()=>openEdit(p)} style={{cursor:"pointer",display:"inline-flex"}}><Avatar name={p.name} game={p.game} src={avatar} size={48} badge={false}/></span>
+                   <span onClick={()=>openEdit(p)} style={{cursor:"pointer",display:"inline-flex"}}><Avatar name={p.name} game={p.game} src={avatar} size={76} badge={false}/></span>
                    <div onClick={()=>openEdit(p)} style={{flex:1,minWidth:0,cursor:"pointer"}}>
                     <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{flex:"0 1 auto",minWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name||"(sans nom)"}</span>
                      {p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
@@ -5003,9 +5003,9 @@ function photoOf(name,game){const p=plOf(name,game);return p?getAvatarSrc(p):nul
 function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
 const Avatar=memo(function Avatar({name,game,src,size=40,badge=true,radius="50%",ring}){useAssets();const u=src||photoOf(name,game);const [bad,setBad]=useState(false);useEffect(()=>{setBad(false);},[u]);
  const ini=String(name||"?").trim().charAt(0).toUpperCase()||"?";const bs=Math.max(12,Math.round(size*.42));const G=game?GNORM(game):"";
- return <span style={{position:"relative",width:size,height:size,flexShrink:0,display:"inline-block"}}>
-  <span style={{width:size,height:size,borderRadius:radius,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(145deg,#1d2740,#121a2b)",boxShadow:ring?"0 0 0 2px "+ring:"inset 0 0 0 1px rgba(255,255,255,.07)",color:"#a9b7d0",fontWeight:800,fontSize:Math.round(size*.4),letterSpacing:-.5}}>
-   {u&&!bad?<img src={u} alt="" loading="lazy" decoding="async" onError={()=>setBad(true)} style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:ini}</span>
+ return <span style={{position:"relative",width:size,height:G==="CS2"?Math.round(size*1.02):size,flexShrink:0,display:"inline-block"}}>
+  <span style={{width:size,height:G==="CS2"?Math.round(size*1.02):size,borderRadius:G==="CS2"?Math.round(size*.18):radius,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(145deg,#1d2740,#121a2b)",boxShadow:ring?"0 0 0 2px "+ring:"inset 0 0 0 1px rgba(255,255,255,.07)",color:"#a9b7d0",fontWeight:800,fontSize:Math.round(size*.4),letterSpacing:-.5}}>
+   {u&&!bad?<img src={u} alt="" loading="lazy" decoding="async" onError={()=>setBad(true)} style={G==="CS2"?{width:"100%",height:"100%",objectFit:"contain",objectPosition:"50% 100%"}:{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:ini}</span>
   {badge&&G&&<span style={{position:"absolute",right:-3,bottom:-3,width:bs,height:bs,borderRadius:Math.round(bs*.3),overflow:"hidden",boxShadow:"0 0 0 2px #0B1220",background:"#0B1220",display:"flex"}}><GameLogo game={G} size={bs}/></span>}
  </span>;});
 const TeamLogo=memo(function TeamLogo({team,game,size=16,src}){useAssets();const u=src||teamLogoOf(team,game);const [bad,setBad]=useState(false);useEffect(()=>{setBad(false);},[u]);
@@ -7863,8 +7863,8 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
    if(row.team&&(lg||row.league)){const body={};if(lg)body.team_logo_url=lg;if(row.league)body.league=row.league;await cloudDb("players?team=eq."+encodeURIComponent(row.team)+"&game=eq."+encodeURIComponent(row.game),{method:"PATCH",body}).catch(()=>{});
     if(row.league&&typeof window!=="undefined")window.dispatchEvent(new CustomEvent("emeieks-club-league",{detail:{team:row.team,game:row.game,league:row.league}}));}
    const finalP={...p,...row,...(saved||{})},finalLogo=row.team?lg:null;
-   // Position changée → menu pour choisir quels paris passent sur la nouvelle position
-   if(row.role&&row.role!==(p.role||"")){
+   // Position changée : les paris gardent la position du moment du pari (plus de menu)
+   if(false){
     try{
      const names=[...new Set([row.name,p.name].filter(Boolean).map(x=>x.replace(/[%_*]/g,"")))];
      let list=[];
