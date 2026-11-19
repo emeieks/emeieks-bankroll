@@ -8362,7 +8362,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
   setEvSnap(s0=>{const cur={};evAlerts.forEach(a=>{cur[a.key]=Number(a.book_odds);});const n=s0.at!==at?{at,prev:s0.at?s0.keys:null,keys:cur}:{...s0,keys:{...s0.keys,...cur}};try{localStorage.setItem("ev_snap",JSON.stringify(n));}catch(e){}return n;});},[evAlerts,botSt]);
  const evIsNew=a=>!!(evSnap.prev&&!(a.key in evSnap.prev));
  const evOddsFrom=a=>{const p=evSnap.prev&&evSnap.prev[a.key];return p!=null&&Math.abs(p-Number(a.book_odds))>=0.01?p:null;};
- useEffect(()=>{loadEvRun();const i=setInterval(()=>{if(!document.hidden)loadEvRun();},20000);return()=>clearInterval(i);},[loadEvRun]);
+ useEffect(()=>{loadEvRun();const i=setInterval(()=>{if(!document.hidden)loadEvRun();},60000);return()=>clearInterval(i);},[loadEvRun]);
  const evRunning=!!(evRun&&(evRun.status==="pending"||evRun.status==="running")&&!(evRun.created_at&&Date.now()-new Date(evRun.created_at).getTime()>15*60e3));
  useEffect(()=>{if(!evRunning)return;const i=setInterval(loadEvRun,2000);return()=>clearInterval(i);},[evRunning,loadEvRun]);
  useEffect(()=>{if(evRun&&evRun.status==="done")loadEv();},[evRun&&evRun.status,evRun&&evRun.id]);
