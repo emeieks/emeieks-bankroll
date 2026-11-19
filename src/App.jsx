@@ -2409,7 +2409,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
          {teams.map(({league,team,players:tPlayers})=>{
           const key=team+league;
           const isOpen=rosterTeam===key;
-          const logoUrl=teamLogos[team+"__"+rosterGame]||tPlayers[0]?.team_logo_url||null;
+          const logoUrl=teamLogos[team+"__"+rosterGame]||tPlayers[0]?.team_logo_url||teamLogoOf(team,rosterGame)||null; // même club dans un autre jeu = même logo
           return(
            <div key={key} id={"club-"+rosterGame+"-"+key} style={{...cardStyle,scrollMarginTop:80}}>
             <div style={{display:"flex",width:"100%",alignItems:"center"}}>
@@ -2519,7 +2519,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                  {!isEditing?(
                   <div style={{display:"flex",alignItems:"center",gap:12}}>
                    {GNORM(p.game)==="LoL"&&ROLE_OF(p.role)?<RoleIc r={ROLE_OF(p.role)} s={24}/>:null}{GNORM(p.game)==="Dota2"&&DOTA_POS(p.role)?<DotaPosIc r={DOTA_POS(p.role)} s={24}/>:null}
-                   <span onClick={()=>openEdit(p)} style={{cursor:"pointer",display:"inline-flex"}}><Avatar name={p.name} game={p.game} src={avatar} size={76} badge={false} bgLogo={logoUrl||teamLogoOf(p.team,p.game)}/></span>
+                   <span onClick={()=>openEdit(p)} style={{cursor:"pointer",display:"inline-flex"}}><Avatar name={p.name} game={p.game} src={avatar} size={GNORM(p.game)==="CS2"?76:56} badge={false} bgLogo={GNORM(p.game)==="CS2"?(logoUrl||teamLogoOf(p.team,p.game)):null}/></span>
                    <div onClick={()=>openEdit(p)} style={{flex:1,minWidth:0,cursor:"pointer"}}>
                     <div style={{display:"flex",alignItems:"center",gap:7,fontWeight:800,fontSize:16,color:"#F3F4F6"}}><span style={{flex:"0 1 auto",minWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name||"(sans nom)"}</span>
                      {p.league?<LeagueLogo league={p.league} size={20}/>:null}</div>
@@ -5006,7 +5006,7 @@ function notifyAssets(){ASSETS.subs.forEach(f=>{try{f();}catch(e){}});}
 function useAssets(){const [v,setV]=useState(ASSETS.v);useEffect(()=>{const f=()=>setV(ASSETS.v);ASSETS.subs.add(f);if(ASSETS.v!==v)f();return()=>{ASSETS.subs.delete(f);};},[]);return v;}
 function plOf(name,game){if(!name)return null;const k=String(name).toLowerCase().trim();const g=game?GNORM(game):"";const p=ASSETS.pl[k];if(p&&(!g||!p.game||GNORM(p.game)===g))return p;const c=cutNorm(name);return (g&&ASSETS.cut.get(c+"|"+g))||ASSETS.cut.get(c)||p||null;}
 function photoOf(name,game){const p=plOf(name,game);return p?getAvatarSrc(p):null;}
-function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
+function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||(()=>{const tl=ASSETS.tl||{};const n=String(team).toLowerCase().trim();for(const g of ["CS2","LoL","Dota2","Valorant"]){const x=tl[team+"__"+g];if(x)return x;}const k=Object.keys(tl).find(x=>x.split("__")[0].toLowerCase().trim()===n);return k?tl[k]:null;})()||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
 const Avatar=memo(function Avatar({name,game,src,size=40,badge=true,radius="50%",ring,bgLogo}){useAssets();const u=src||photoOf(name,game);const [bad,setBad]=useState(false);useEffect(()=>{setBad(false);},[u]);
  const ini=String(name||"?").trim().charAt(0).toUpperCase()||"?";const bs=Math.max(12,Math.round(size*.42));const G=game?GNORM(game):"";
  return <span style={{position:"relative",width:size,height:G==="CS2"?Math.round(size*1.02):size,flexShrink:0,display:"inline-block"}}>
