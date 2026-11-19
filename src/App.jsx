@@ -9066,16 +9066,22 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const client=mod.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false}});
  const ch=client.channel("emeieks-live");
  ch.on("postgres_changes",{event:"*",schema:"public",table:"bets"},p=>onBet(p.eventType,p.new,p.old));
- ["bookmakers","tournaments","settings","media_store","teams"].forEach(t=>{
+ ["bookmakers","tournaments","media_store","teams"].forEach(t=>{
  ch.on("postgres_changes",{event:"*",schema:"public",table:t},()=>later(t,refetch[t]));
  });
+ // Réglages : le bot réécrit souvent ses propres clés (betby_events, edge_found…) → on ne relit PAS tous les réglages pour ça
+ // (c'était une grosse source de Disk IO : chaque passage du bot = relecture complète sur chaque appareil ouvert)
+ const BOT_KEYS=/^(betby_events|edge_found|bot_status|bot_focus|sim_live|ev_|apify_|last_)/;
+ ch.on("postgres_changes",{event:"*",schema:"public",table:"settings"},p=>{const k=(p.new&&p.new.key)||(p.old&&p.old.key)||"";if(BOT_KEYS.test(k))return;timers.__s=setTimeout(()=>{},0);clearTimeout(timers.settings);timers.settings=setTimeout(refetch.settings,1500);});
  // Joueurs : on applique juste la ligne modifiée (plus de re-téléchargement de TOUS les joueurs à chaque ajout)
  ch.on("postgres_changes",{event:"*",schema:"public",table:"players"},pl=>{
   const r=pl.new&&pl.new.name?pl.new:null,o=pl.old||{};
   if(pl.eventType==="DELETE"){setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{if(n[k]&&n[k].id===o.id)delete n[k];});return n;});return;}
   if(!r){later("players",refetch.players);return;}
-  setPlayers(prev=>{const n={...prev};Object.keys(n).forEach(k=>{if(n[k]&&n[k].id===r.id&&k!==r.name.toLowerCase())delete n[k];});
-   n[r.name.toLowerCase()]={...(n[r.name.toLowerCase()]||{}),id:r.id,name:r.name,game:r.game,league:r.league,role:r.role,team:r.team,photo_url:r.photo_url||null,team_logo_url:r.team_logo_url||null,avatar_url:r.avatar_url||null,avatar_file:r.avatar_file||null};return n;});
+  setPlayers(prev=>{const n={...prev};let K=Object.keys(n).find(k=>n[k]&&n[k].id===r.id);const base=r.name.toLowerCase();
+   if(K&&K.split("|")[0]!==base){delete n[K];K=null;}
+   if(!K)K=(n[base]&&n[base].id!==r.id&&n[base].game!==r.game)?base+"|"+GNORM(r.game):base; // même pseudo dans 2 jeux : les deux restent
+   n[K]={...(n[K]||{}),id:r.id,name:r.name,game:r.game,league:r.league,role:r.role,team:r.team,photo_url:r.photo_url||null,team_logo_url:r.team_logo_url||null,avatar_url:r.avatar_url||null,avatar_file:r.avatar_file||null};return n;});
  });
  ch.subscribe(s=>{setLiveState(s);});
  stop=()=>client.removeChannel(ch);
