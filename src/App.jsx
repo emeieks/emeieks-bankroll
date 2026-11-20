@@ -1230,6 +1230,20 @@ const clubColorOf=t=>CLUB_COLORS[String(t||"").toLowerCase().trim()]||null;
 if(typeof document!=="undefined"&&!document.getElementById("pcardIn")){const st=document.createElement("style");st.id="pcardIn";st.textContent="@keyframes pcardIn{from{opacity:0;transform:translateY(4px) scale(.985)}to{opacity:1;transform:none}}";document.head.appendChild(st);const ln=document.createElement("link");ln.rel="stylesheet";ln.href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&display=swap";document.head.appendChild(ln);}
 const CLUB_COLORS2={"t1":"#000000","gen.g":"#000000","geng":"#000000","vitality":"#000000","team vitality":"#000000","karmine corp":"#0A1A3C","kc":"#0A1A3C","g2 esports":"#000000","g2":"#000000","fnatic":"#000000","hanwha life esports":"#1A1A1A","hle":"#1A1A1A","cloud9":"#0B3A63","c9":"#0B3A63","team liquid":"#0A1A2F","furia":"#000000","natus vincere":"#000000","navi":"#000000","mouz":"#000000","aurora":"#063F3A","faze clan":"#000000","spirit":"#000000","team spirit":"#000000"};
 function clubColor2(team,cc){const k=String(team||"").toLowerCase().trim();if(CLUB_COLORS2[k])return CLUB_COLORS2[k];const h=String(cc||"#7C3AED").replace("#","");if(h.length<6)return "#000";const d=x=>Math.round(parseInt(x,16)*.38).toString(16).padStart(2,"0");return "#"+d(h.slice(0,2))+d(h.slice(2,4))+d(h.slice(4,6));}
+const _LBG={};
+// logo derrière le joueur : vraies couleurs, sauf si le logo a presque la couleur du fond → version noire (comme T1)
+function LogoBg({src,bg}){
+ const ck=src+"|"+bg;const [r,setR]=useState(()=>_LBG[ck]||null);
+ useEffect(()=>{if(_LBG[ck]){setR(_LBG[ck]);return;}let ok=true;const done=o=>{_LBG[ck]=o;ok&&setR(o);};const im=new Image();im.crossOrigin="anonymous";
+  im.onload=()=>{try{const w=Math.min(600,im.naturalWidth),h=Math.round(im.naturalHeight*w/im.naturalWidth);const cv=document.createElement("canvas");cv.width=w;cv.height=h;const x=cv.getContext("2d");x.drawImage(im,0,0,w,h);const d=x.getImageData(0,0,w,h);const D=d.data;
+   const hx=String(bg||"").replace("#","");const br=parseInt(hx.slice(0,2),16),bgc=parseInt(hx.slice(2,4),16),bb=parseInt(hx.slice(4,6),16);
+   let n=0,near=0;for(let k=0;k<D.length;k+=4){if(D[k+3]<128)continue;n++;const dd=Math.abs(D[k]-br)+Math.abs(D[k+1]-bgc)+Math.abs(D[k+2]-bb);if(dd<150)near++;}
+   if(!n||D[3]>200&&D[D.length-1]>200)return done({url:src,dark:false});
+   if(near/n<0.45)return done({url:src,dark:false});
+   for(let k=0;k<D.length;k+=4){D[k]=0;D[k+1]=0;D[k+2]=0;}x.putImageData(d,0,0);done({url:cv.toDataURL("image/png"),dark:true});}catch(e){done({url:src,dark:false});}};
+  im.onerror=()=>done({url:src,dark:false});im.src=src;return()=>{ok=false;};},[ck]);
+ const u=r?r.url:src;
+ return <img src={u} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 8%)",top:"50%",transform:"translateY(-50%)",height:"92%",width:"44%",objectFit:"contain",opacity:r&&r.dark?.5:.55,zIndex:1,pointerEvents:"none"}}/>;}
 function FitName({text,max=40,min=16,suffix=null}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(6,Math.round(fs*.18))}}>{text}{suffix}</span></div>;}
@@ -11330,7 +11344,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(90deg,"+cc+"d9 0%,"+cc+" 40%,"+cc+"c8 100%)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,boxShadow:"inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 22px rgba(0,0,0,.25)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
-  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 8%)",top:"50%",transform:"translateY(-50%)",height:"92%",width:"44%",objectFit:"contain",opacity:.55,zIndex:1,pointerEvents:"none"}}/>}
+  {tl&&<LogoBg src={tl} bg={cc}/>}
   {/* photo */}
   <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"flex-start"}}>
    {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:124,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
