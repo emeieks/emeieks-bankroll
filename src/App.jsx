@@ -11243,84 +11243,50 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  }} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
  </div>
  )}
- {form.autoInfo&&(
- <div style={{position:"relative",isolation:"isolate",containerType:"inline-size",borderRadius:16,border:"1px solid rgba(139,92,246,.18)",background:"linear-gradient(105deg,rgba(12,18,38,.99) 55%,rgba(20,14,42,.97))",display:"flex",alignItems:"stretch",overflow:"hidden",minHeight:118}}>
- <ClubWatermark team={form.autoInfo.team} logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}/>
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<ClubColor logo={tl} game={form.autoInfo.game}>{cc=>(
-  <div aria-hidden="true" style={{position:"absolute",right:4,top:"calc(50% + 16px)",transform:"translateY(-50%)",width:74,height:74,zIndex:1,pointerEvents:"none"}}>
-   <div style={{position:"absolute",inset:-10,borderRadius:"50%",background:"radial-gradient(circle,"+cc+"38 0%,"+cc+"16 40%,transparent 68%)",filter:"blur(2px)"}}/>
-   <div style={{position:"absolute",inset:6,borderRadius:"50%",background:"radial-gradient(circle at 50% 35%,rgba(255,255,255,.10),rgba(255,255,255,.02) 60%,rgba(0,0,0,.25) 100%)",border:"1px solid rgba(255,255,255,.09)",boxShadow:"inset 0 2px 6px rgba(255,255,255,.06),inset 0 -8px 16px rgba(0,0,0,.45),0 10px 22px rgba(0,0,0,.55)"}}/>
-   <div style={{position:"absolute",left:"18%",right:"18%",bottom:-6,height:10,borderRadius:"50%",background:"radial-gradient(ellipse,rgba(0,0,0,.55),transparent 70%)"}}/>
-  </div>)}</ClubColor>:null;})()}
- {(()=>{const tl=teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url;return tl?<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{position:"absolute",right:16,top:"calc(50% + 16px)",transform:"translateY(-50%)",width:50,height:50,objectFit:"contain",zIndex:2,pointerEvents:"none",
-  filter:"drop-shadow(0 0 1px rgba(255,255,255,.9)) drop-shadow(0 0 6px rgba(255,255,255,.35)) drop-shadow(0 4px 10px rgba(0,0,0,.5))"}}/>:null;})()}
-
- {/* Zone photo (38% de la carte) */}
- <div style={{width:"36%",flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"flex-start",paddingLeft:6,overflow:"hidden"}}>
- {/* Logo équipe en filigrane */}
-
- {/* Glow violet derrière la photo */}
-
- {(()=>{
- const src=getAvatarSrc(form.autoInfo);
- if(src)return(
- <img
- src={src}
- alt={form.autoInfo.name||form.player}
- style={{
- position:"relative",zIndex:1,
- width:"100%",height:"124px",
- objectFit:"contain",
- objectPosition:"bottom left",
- display:"block",
- filter:"drop-shadow(0 6px 14px rgba(0,0,0,.55))",
- }}
- />
- );
- // Avatar par défaut — initiale avec glow
- return(
- <div style={{position:"relative",zIndex:1,width:64,height:64,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#3B82F6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:800,color:"#fff",textTransform:"none",marginBottom:16,boxShadow:"0 0 24px rgba(124,58,237,.5)"}}>
- {(form.autoInfo.name||form.player).charAt(0)}
- </div>
- );
- })()}
- {/* Fondu droit pour transition douce vers le texte */}
-
- </div>
-
- {/* Infos joueur (droite) */}
- <div style={{position:"relative",flex:1,padding:"18px 12px 14px 8px",display:"flex",flexDirection:"column",justifyContent:"flex-start",gap:8,minWidth:0}}>
- <div style={{fontSize:22,fontWeight:800,letterSpacing:-.4,color:"#fff",lineHeight:1.05,paddingRight:104,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
- {capName(form.autoInfo.name||form.player)}
- </div>
- <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",fontSize:13,fontWeight:600,color:"#fff"}}>
- <GameLogo game={form.autoInfo.game} size={14}/>
- <span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{[form.autoInfo.team,form.autoInfo.role].filter(Boolean).join(" · ")}</span>
- </div>
+ {form.autoInfo&&(()=>{const AI=form.autoInfo;const tl=teamLogos[(AI.team||"")+"__"+(AI.game||"")]||AI.team_logo_url||teamLogoOf(AI.team,AI.game);const G=GNORM(AI.game);
+  const ro=String(AI.role||"").trim();const POSL={TOP:"TOPLANE",JGL:"JUNGLE",MID:"MIDLANE",ADC:"BOTLANE",SUP:"SUPPORT"};
+  const lab=G==="LoL"&&ROLE_OF(ro)?POSL[ROLE_OF(ro)]:ro?ro.toUpperCase():String(AI.game||"").toUpperCase();const src=getAvatarSrc(AI);
+  const card=cc=>(
+ <div style={{position:"relative",isolation:"isolate",borderRadius:14,overflow:"hidden",display:"flex",alignItems:"stretch",minHeight:116,background:"#0b1020",border:"1px solid rgba(255,255,255,.08)",boxShadow:"0 10px 26px rgba(0,0,0,.45), 0 0 0 1px "+cc+"22 inset"}}>
+  {/* bande verticale : poste */}
+  <div style={{width:26,flexShrink:0,background:"linear-gradient(180deg,#f4f5f7,#cfd3da)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3}}>
+   <span style={{writingMode:"vertical-rl",transform:"rotate(180deg)",font:"800 11px 'Barlow Condensed',Inter,sans-serif",letterSpacing:1.6,color:"#1f2430",whiteSpace:"nowrap"}}>{lab}</span>
+  </div>
+  {/* bannière couleur du club */}
+  <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(100deg,#141a2c 0%,#141a2c 30%,"+cc+"e6 30.2%,"+cc+" 62%,"+cc+"b3 100%)",zIndex:0}}/>
+  <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
+  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"30%",top:"50%",transform:"translateY(-50%) skewX(-12deg)",height:"118%",maxWidth:"46%",objectFit:"contain",opacity:.28,filter:"grayscale(1) brightness(2.2)",zIndex:0,pointerEvents:"none"}}/>}
+  {/* photo */}
+  <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+   {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:116,objectFit:"contain",objectPosition:"bottom center",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
+    :<div style={{width:60,height:60,borderRadius:"50%",marginBottom:26,background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg></div>}
+  </div>
+  {/* nom + infos */}
+  <div style={{position:"relative",zIndex:2,flex:1,minWidth:0,padding:"40px 12px 12px 6px",display:"flex",flexDirection:"column",justifyContent:"center",gap:4}}>
+   <div style={{font:"900 34px/0.95 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.2,textShadow:"0 2px 0 rgba(0,0,0,.25), 0 6px 18px rgba(0,0,0,.35)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(AI.name||form.player)}</div>
+   <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",font:"700 13.5px 'Barlow Condensed',Inter,sans-serif",letterSpacing:.6,color:"rgba(255,255,255,.92)",textTransform:"uppercase"}}>
+    <GameLogo game={AI.game} size={14}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{[AI.team,AI.role].filter(Boolean).join(" · ")}</span>
+   </div>
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(betsForDisplay.filter(b=>(b.player||"").toLowerCase().trim()===k));
-  if(!a.n)return <div style={{fontSize:13,fontWeight:600,color:"#fff"}}>Aucun pari terminé</div>;
+  if(!a.n)return <div style={{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.75)"}}>Aucun pari terminé</div>;
   const c=a.profit>0?"#22e07a":a.profit<0?"#EF4444":"#fff";
   return <div style={{fontSize:13,fontWeight:600,color:"#fff",whiteSpace:"nowrap"}}>
    {a.won}-{a.lost} · <span style={{color:c,fontWeight:700}}>{fmtM(a.profit)}</span>
   </div>;})()}
  {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 8px 3px 5px",borderRadius:6,background:"rgba(124,58,237,.1)",color:"#c4b5fd",fontWeight:700,fontSize:11,border:"1px solid rgba(124,58,237,.25)",alignSelf:"flex-start"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:15,height:15,objectFit:"contain"}}/>}{t.name}</span>})()}
- </div>
-
- {/* Bouton Changer */}
- <ClubColor logo={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url} game={form.autoInfo.game}>{cc=>(
- <div style={{position:"absolute",top:12,right:12,zIndex:3,display:"flex",alignItems:"flex-start",gap:6}}>
+  </div>
+  <div style={{position:"absolute",top:10,right:10,zIndex:4,display:"flex",alignItems:"flex-start",gap:6}}>
  <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
- style={{padding:"6px 10px",borderRadius:9,border:"1px solid "+cc+"80",color:"#fff",fontWeight:700,fontSize:11,background:cc+"33",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
+ style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.35)",color:"#fff",fontWeight:700,fontSize:11,background:"rgba(0,0,0,.28)",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
  Changer
  </button>
  <button onClick={()=>setAddEditOpen(true)} title="Modifier le joueur" aria-label="Modifier le joueur"
- style={{width:30,height:30,borderRadius:9,border:"1px solid "+cc+"80",background:cc+"33",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ style={{width:30,height:30,borderRadius:9,border:"1px solid rgba(255,255,255,.35)",background:"rgba(0,0,0,.28)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
  </button>
  </div>
- )}</ClubColor>
- </div>
- )}
+ </div>);
+  return tl?<ClubColor logo={tl} game={AI.game}>{cc=>card(cc||"#7C3AED")}</ClubColor>:card("#7C3AED");})()}
  {form.player&&!form.autoInfo&&<div style={{marginTop:7,fontSize:11,color:"#F59E0B",fontWeight:600}}>Joueur non reconnu</div>}
  </div>
 
