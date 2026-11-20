@@ -2382,7 +2382,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
      {/* Game tree (only when no search) */}
      {!searchQ&&rosterGame&&(()=>{
       const gameH=rosterHierarchy[rosterGame]||{};
-      const DEFL={LoL:["LCK","LPL","LEC","LCS","LCP","CBLOL"]}[rosterGame]||[];
+      const DEFL={LoL:["LCK","LPL","LEC","LCS","LCP","CBLOL"],Valorant:["Americas","EMEA","Pacific","China"]}[rosterGame]||[];
       const leagues=[...DEFL,...Object.keys(gameH).filter(l=>!DEFL.includes(l)).sort()];
       const needLeague=rosterGame==="LoL"||rosterGame==="Valorant";
       const activeLeagues=needLeague?(rosterLeague?[rosterLeague]:leagues):leagues;
@@ -2437,10 +2437,14 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
                 <span title="Aucun AWPer" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"rgba(245,158,11,.12)",border:"1px solid rgba(245,158,11,.35)",flexShrink:0}}>
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="1.6" fill="#F59E0B" stroke="none"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></svg></span>
                )}
-               {(rosterGame==="CS2"||rosterGame==="Valorant")&&tPlayers.length>0&&!tPlayers.some(p=>/igl/i.test(p.role||""))&&(
+               {rosterGame==="CS2"&&tPlayers.length>0&&!tPlayers.some(p=>/igl/i.test(p.role||""))&&(
                 <span title="Aucun IGL" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:22,height:22,borderRadius:7,background:"rgba(167,139,250,.12)",border:"1px solid rgba(167,139,250,.35)",flexShrink:0}}>
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#A78BFA" stroke="#A78BFA" strokeWidth="1.4" strokeLinejoin="round"><path d="M3 8.5l4.6 3.6L12 5l4.4 7.1L21 8.5l-1.9 9.5H4.9z"/><path d="M5 20.5h14" fill="none" strokeWidth="2.2" strokeLinecap="round"/></svg></span>
                )}
+               {(()=>{const n=tPlayers.filter(p=>!(p.photo_url||p.avatar_url||p.avatar_file)).length;return n>0&&(
+                <span title={n+" joueur"+(n>1?"s":"")+" sans photo"} style={{display:"inline-flex",alignItems:"center",gap:3,height:22,padding:"0 6px",borderRadius:7,background:"rgba(148,163,184,.12)",border:"1px solid rgba(148,163,184,.35)",flexShrink:0}}>
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg>
+                 <span style={{fontSize:11,fontWeight:800,color:"#cbd5e1"}}>{n}</span></span>);})()}
               </div>
               {needLeague&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,fontSize:12,color:"#9ca3af",fontWeight:600}}>{league!=="(Sans ligue)"&&<LeagueLogo league={league} size={16}/>}{league}</div>}
              </div>
