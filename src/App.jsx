@@ -607,7 +607,7 @@ function LinesBlock({game,bets=[],allPlayers={},onPlayer}){
  const Chip=({l,v,c})=><div style={{flex:1,minWidth:0,background:"#0b1120",border:"1px solid rgba(255,255,255,.07)",borderRadius:11,padding:"8px 8px"}}><div style={{fontSize:10,color:"#7c8599",fontWeight:800,letterSpacing:".5px"}}>{l}</div><div style={{fontSize:14,fontWeight:850,color:c||"#eef1f7",marginTop:2,whiteSpace:"nowrap"}}>{v}</div></div>;
  const Sub=({t})=><div style={{fontSize:11,fontWeight:800,color:"#a78bfa",letterSpacing:".6px",margin:"14px 0 6px"}}>{t}</div>;
  const Mini=({rows})=><div style={{border:"1px solid rgba(255,255,255,.06)",borderRadius:11,overflow:"hidden"}}>{rows.map(([l,a,ic],i)=><div key={l+i} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 40px 44px 46px 70px",gap:4,alignItems:"center",padding:"8px 10px",borderTop:i?"1px solid rgba(255,255,255,.05)":"none",fontSize:12.5,opacity:a.n<3?.55:1}}>
-  <span style={{display:"flex",alignItems:"center",gap:6,minWidth:0,fontWeight:700,color:"#e5e7eb"}}>{ic}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>{l}</span></span>
+  <span style={{display:"flex",alignItems:"center",gap:6,minWidth:0,fontWeight:700,color:"#e5e7eb"}}>{ic}<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span></span>
   <span style={{textAlign:"center",color:"#9ca3af"}}>{a.n}</span><span style={{textAlign:"center",color:a.wr>=55?"#22C55E":a.wr<45?"#EF4444":"#9ca3af",fontWeight:700}}>{Math.round(a.wr)}%</span>
   <span style={{textAlign:"center",color:col(a.roi),fontSize:11.5,fontWeight:700}}>{Math.round(a.roi)}%</span><b style={{textAlign:"right",color:col(a.profit)}}>{fmtM(a.profit)}</b></div>)}</div>;
  const Detail=({x})=>{const L=x.L,a=x.a;
@@ -635,7 +635,7 @@ function LinesBlock({game,bets=[],allPlayers={},onPlayer}){
    {bks.length>1&&<><Sub t="PAR BOOKMAKER"/><Mini rows={bks.map(([k2,q])=>[k2,q])}/></>}
    <Sub t="DERNIERS PARIS"/>
    <div style={{border:"1px solid rgba(255,255,255,.06)",borderRadius:11,overflow:"hidden"}}>{last.map((b,i)=><div key={b.id||i} onClick={()=>onPlayer&&onPlayer(b.player)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderTop:i?"1px solid rgba(255,255,255,.05)":"none",borderLeft:"3px solid "+(b.status==="won"?"#22C55E":"#EF4444"),fontSize:12.5,cursor:"pointer"}}>
-    {av((b.player||"").toLowerCase().trim())}<b style={{color:"#f3f4f6",textTransform:"capitalize",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6b7280",fontWeight:600}}>{b.overUnder} {b.mapTag||""}</span></b>
+    {av((b.player||"").toLowerCase().trim())}<b style={{color:"#f3f4f6",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.player} <span style={{color:"#6b7280",fontWeight:600}}>{b.overUnder} {b.mapTag||""}</span></b>
     <span style={{color:"#9ca3af"}}>{String(b.datetime||"").slice(5,10).split("-").reverse().join("/")}</span><b style={{color:col(b.profit||0),minWidth:56,textAlign:"right"}}>{fmtM(b.profit)}</b></div>)}</div>
   </div>;};
  return <>
@@ -1410,7 +1410,7 @@ const profitColor=isPending?"#93c5fd":isWon?"#22C55E":"#EF4444";
  <div style={{flex:1,minWidth:0}}>
  {/* L1 : Joueur — Kills — Map */}
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"nowrap",minWidth:0}}>
- <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",textTransform:"capitalize",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
+ <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
  {bet.team&&<TeamLogo team={bet.team} game={bet.game} size={14}/>}
  {bet.game==="LoL"&&bet.role&&<RoleLogo role={bet.role} size={14}/>}
  {GNORM(bet.game)==="Dota2"&&bet.role&&DOTA_POS(bet.role)&&<DotaPosIc r={DOTA_POS(bet.role)} s={14}/>}
@@ -2352,7 +2352,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
              {avatar?<img src={avatar} alt={p.name} style={{width:60,height:60,borderRadius:"50%",objectFit:"cover",objectPosition:"top",flexShrink:0,border:"2px solid rgba(255,255,255,.08)"}}/>
               :<div style={{width:60,height:60,borderRadius:"50%",background:"rgba(167,139,250,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:22,fontWeight:800,color:accent}}>{(p.name||"?")[0].toUpperCase()}</div>}
              <div style={{flex:1,minWidth:140}}>
-              <div style={{fontWeight:800,fontSize:19,color:"#F3F4F6",textTransform:"capitalize"}}>{p.name}<TwinMark p={p} all={players}/></div>
+              <div style={{fontWeight:800,fontSize:19,color:"#F3F4F6"}}>{p.name}<TwinMark p={p} all={players}/></div>
               <div style={{display:"flex",alignItems:"center",gap:7,marginTop:3,fontSize:13.5,color:"#9CA3AF"}}>{(()=>{const lg=clubLogo(p.team,p.game,teamLogos,players);return lg?<img src={lg} alt="" style={{width:20,height:20,objectFit:"contain"}}/>:null;})()}<span>{roleLine([p.team,p.role],p.role)}</span><GameLogo game={p.game} size={16}/></div>
              </div>
              <button onClick={()=>openEdit(p)} style={{height:42,padding:"0 16px",background:"rgba(167,139,250,.12)",border:"1px solid rgba(167,139,250,.35)",borderRadius:11,color:accent,fontSize:14,fontWeight:800,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>Modifier</button>
@@ -4310,7 +4310,7 @@ function exDims(ap){return [
  {k:"map",t:"Map",v:b=>b.mapTag||null},
  {k:"month",t:"Mois",v:b=>String(b.datetime||"").slice(0,7)||null,sort:"desc"},
  {k:"club",t:"Clubs",v:b=>b.team&&b.team!=="?"?b.team:null,top:15},
- {k:"player",t:"Joueurs",v:b=>{const p=String(b.player||"").trim();if(!p)return null;const l=p.toLowerCase();return l.charAt(0).toUpperCase()+l.slice(1);},top:15},
+ {k:"player",t:"Joueurs",v:b=>{const p=String(b.player||"").trim();if(!p)return null;return capName(p.toLowerCase());},top:15},
 ];}
 function Explorer({bets,allPlayers,initial=[],title,onClose,teamLogos={},bkPhotos={}}){
  const [stack,setStack]=useState(initial);
@@ -4388,7 +4388,7 @@ function Explorer({bets,allPlayers,initial=[],title,onClose,teamLogos={},bkPhoto
      const rd=a.filter(x=>x.rounds);return {c:[<b>{n}</b>,a.length,<b>{km.length?(km.reduce((t,v)=>t+v,0)/km.length).toFixed(1).replace(".",","):"–"}</b>,rd.length?(rd.reduce((t,x)=>t+Number(x.rounds),0)/rd.length).toFixed(1).replace(".",","):"–",...(ctxF.k==="club"?[<span style={{color:wn/a.length>=.55?C.gr:wn/a.length<.45?C.rd:"#E5E7EB"}}>{pct(wn/a.length*100)}</span>]:[]),<span style={{color:ot?C.yl:C.mu}}>{pct(ot/a.length*100)} <span style={{color:"#6B7280"}}>({ot})</span></span>]};});
     const nM=new Set(mpsF.map(x=>x.match_key)).size,nOT=mpsF.filter(x=>x.ot).length;
     const kp=[["Paris",String(tot.n),tot.w+"-"+tot.l],["WR",pct(tot.wr),tot.avgOdds?"cote @"+tot.avgOdds.toFixed(2):null,tot.wr>=55?C.gr:tot.wr<45?C.rd:null],["Profit",m$(tot.pr),"ROI "+(tot.roi>0?"+":"")+(tot.roi||0).toFixed(1)+" %",pc(tot.pr)],...(ctxF.k==="bk"?[["Misé",Math.round(tot.st)+" $"],["Cote moy.","@"+tot.avgOdds.toFixed(2)],["ROI",(tot.roi>0?"+":"")+tot.roi.toFixed(1)+" %",null,pc(tot.roi)]]:!mpsF.length?[]:[["Matchs",String(nM)],["Maps",String(mpsF.length)],...(ctxG==="LoL"||ctxG==="Dota2"?[]:[["OT",pct(nOT/mpsF.length*100),nOT?nOT+" OT":null,C.yl]])]),];
-    const plRows=grp(list,b=>{const p=String(b.player||"").trim().toLowerCase();return p?p.charAt(0).toUpperCase()+p.slice(1):null;}).sort((a,b)=>b.pr-a.pr);
+    const plRows=grp(list,b=>{const p=String(b.player||"").trim();return p?capName(p.toLowerCase()):null;}).sort((a,b)=>b.pr-a.pr);
     const tmRows=grp(list,b=>clubOfBet(b,allPlayers)||b.team||null).sort((a,b)=>b.pr-a.pr);
     const gmRows=grp(list,b=>b.game||null).sort((a,b)=>b.pr-a.pr);
     const bil=r=><span style={{color:C.mu}}>{r.w}-{r.l}</span>;const prf=r=><b style={{color:pc(r.pr)}}>{m$(r.pr)}</b>;
@@ -7066,7 +7066,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
     {av(x.player)}
     <div style={{flex:1,minWidth:0}}>
      <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,minWidth:0}}>
-      <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0,textTransform:"capitalize"}}>{x.player}</span>
+      <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{x.player}</span>
       {(()=>{const P=clubMis(x);return P?<button type="button" onClick={e=>{e.stopPropagation();setClubFix({x,P});}} title={"Dans ton app : "+P.team+" · ici : "+x.team} aria-label="Club différent" style={{width:18,height:18,borderRadius:9,border:"none",background:"#8B5CF6",color:"#fff",fontSize:12,fontWeight:900,lineHeight:"18px",padding:0,cursor:"pointer",flexShrink:0,boxShadow:"0 0 0 3px rgba(139,92,246,.25)"}}>!</button>:null;})()}
       {x.mode==="live"&&<span style={{fontSize:8.5,fontWeight:900,padding:"2px 5px",borderRadius:4,background:"#EF4444",color:"#fff",flexShrink:0}}>LIVE</span>}<Tag x={x}/>
       <span style={{fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4}}>Map {x.map}</span>
@@ -7164,7 +7164,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
   </div>}</>;})()}
   {clubFix&&(()=>{const {x,P}=clubFix;const nm=String(x.player||"");const g=GN(x.game);return <div onClick={()=>setClubFix(null)} style={{position:"fixed",inset:0,zIndex:96,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
    <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#0f1524",borderRadius:"20px 20px 0 0",border:"1px solid #1F2937",padding:"18px 16px 28px",boxSizing:"border-box"}}>
-    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>{av(nm)}<div style={{flex:1,minWidth:0}}><div style={{fontSize:18,fontWeight:900,color:"#fff",textTransform:"capitalize"}}>{nm}</div><div style={{fontSize:12.5,color:"#a78bfa",fontWeight:700}}>Club différent</div></div></div>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>{av(nm)}<div style={{flex:1,minWidth:0}}><div style={{fontSize:18,fontWeight:900,color:"#fff"}}>{nm}</div><div style={{fontSize:12.5,color:"#a78bfa",fontWeight:700}}>Club différent</div></div></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
      {[["Dans ton app",P.team],["Dans ce match",x.team]].map(([l,t])=><div key={l} style={{padding:"12px",borderRadius:13,background:"#111827",border:"1px solid #1F2937"}}><div style={{fontSize:11,color:"#9ca3af",fontWeight:700}}>{l}</div><div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>{TL(t,g,22)}<b style={{fontSize:14.5,color:"#fff"}}>{t}</b></div></div>)}
     </div>
@@ -7217,7 +7217,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
      {link.done&&<div style={{marginBottom:12}}>
       <div style={{padding:"12px",borderRadius:12,background:"rgba(34,197,94,.1)",border:"1px solid rgba(34,197,94,.4)",color:"#4ADE80",fontWeight:800,fontSize:14,marginBottom:8}}>✅ {link.done.n} paris liés · {link.done.ok} réglés</div>
       {link.done.left.length>0&&<><div style={{fontSize:13,fontWeight:800,color:"#FBBF24",margin:"6px 0"}}>{link.done.left.length} toujours en attente :</div>
-       {link.done.left.map(({x,why})=><div key={x.key} style={{padding:"9px 11px",borderRadius:10,background:"#111827",border:"1px solid #1F2937",marginBottom:5,fontSize:13}}><b style={{color:"#fff",textTransform:"capitalize"}}>{x.player}</b> <span style={{color:"#9ca3af"}}>· Map {x.map} · {x.kind==="duel"?"duel vs "+x.vs:(x.side==="under"?"Under ":"Over ")+x.line}</span><div style={{color:"#FBBF24",fontSize:12,marginTop:3}}>{why}</div></div>)}
+       {link.done.left.map(({x,why})=><div key={x.key} style={{padding:"9px 11px",borderRadius:10,background:"#111827",border:"1px solid #1F2937",marginBottom:5,fontSize:13}}><b style={{color:"#fff"}}>{x.player}</b> <span style={{color:"#9ca3af"}}>· Map {x.map} · {x.kind==="duel"?"duel vs "+x.vs:(x.side==="under"?"Under ":"Over ")+x.line}</span><div style={{color:"#FBBF24",fontSize:12,marginTop:3}}>{why}</div></div>)}
        <div style={{height:8}}/>
        <button onClick={()=>voidLeft(link.done.left)} style={{width:"100%",height:44,borderRadius:12,border:"1px solid #374151",background:"transparent",color:"#e5e7eb",fontWeight:800,cursor:"pointer"}}>Annuler ces {link.done.left.length} paris (void)</button></>}
       <button onClick={()=>setLink(null)} style={{width:"100%",height:44,borderRadius:12,border:"none",background:"#7c3aed",color:"#fff",fontWeight:900,cursor:"pointer",marginTop:8}}>Fermer</button>
@@ -10640,7 +10640,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"flex",alignItems:"center",gap:8}}>
  <GameLogo game={b.game} size={16}/>
  <div>
- <div style={{fontWeight:600,fontSize:13,textTransform:"capitalize",color:"#E5E7EB"}}>{b.player}</div>
+ <div style={{fontWeight:600,fontSize:13,color:"#E5E7EB"}}>{b.player}</div>
  <div style={{fontSize:10,color:"#9CA3AF"}}>{b.description}</div>
  </div>
  </div>
@@ -12416,7 +12416,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3,flexWrap:"wrap"}}>
- <span style={{fontWeight:800,fontSize:13,color:"#f0f4ff",textTransform:"capitalize",flexShrink:0}}>{b.player}</span>
+ <span style={{fontWeight:800,fontSize:13,color:"#f0f4ff",flexShrink:0}}>{b.player}</span>
  <span style={{color:"#2e3d50",fontSize:11,margin:"0 1px"}}>-</span>
  <span style={{fontSize:11,color:"#8a9eb8",fontWeight:500}}>{(b.description||"").replace(/^(Over|Under)\s/,"")}</span>
  {b.mapTag&&<><span style={{color:"#2e3d50",fontSize:11}}>-</span><span style={{fontSize:10.5,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 4px",borderRadius:3,border:"1px solid rgba(251,191,36,.2)"}}>{b.mapTag}</span></>}
@@ -12531,7 +12531,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2,flexWrap:"wrap"}}>
- <span style={{fontWeight:800,fontSize:12,color:"#f0f4ff",textTransform:"capitalize"}}>{b.player}</span>
+ <span style={{fontWeight:800,fontSize:12,color:"#f0f4ff"}}>{b.player}</span>
  <span style={{fontSize:11,color:"#8a9eb8"}}>{(b.description||"").replace(/^(Over|Under)\s/,"")}</span>
  {b.mapTag&&<span style={{fontSize:10.5,fontWeight:700,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"1px 4px",borderRadius:3}}>{b.mapTag}</span>}
  {b.overUnder&&<span style={{fontSize:10.5,fontWeight:700,color:b.overUnder==="Over"?"#22C55E":"#60a5fa",background:b.overUnder==="Over"?"rgba(34,197,94,.1)":"rgba(96,165,250,.1)",padding:"1px 5px",borderRadius:3}}>{b.overUnder}</span>}
@@ -12880,7 +12880,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{width:38,height:38,borderRadius:"50%",overflow:"hidden",background:"#1f2937",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid rgba(255,255,255,.08)"}}>
  {src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:<span style={{fontSize:14,fontWeight:800,color:"#9ca3af"}}>{(p.player||"?")[0].toUpperCase()}</span>}
  </div>
- <div onClick={function(e){e.stopPropagation();openPlayerSheet(p.player);}} style={{flex:1,minWidth:0,fontWeight:700,fontSize:14.5,color:"#F3F4F6",textTransform:"capitalize",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><span style={{display:"inline-flex",alignItems:"center",gap:7,maxWidth:"100%"}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.player}</span>{(function(){var lg=pl&&pl.team&&(teamLogos[pl.team+"__"+game]||pl.team_logo_url);return lg?<img src={lg} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null;})()}</span></div>
+ <div onClick={function(e){e.stopPropagation();openPlayerSheet(p.player);}} style={{flex:1,minWidth:0,fontWeight:700,fontSize:14.5,color:"#F3F4F6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><span style={{display:"inline-flex",alignItems:"center",gap:7,maxWidth:"100%"}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.player}</span>{(function(){var lg=pl&&pl.team&&(teamLogos[pl.team+"__"+game]||pl.team_logo_url);return lg?<img src={lg} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>:null;})()}</span></div>
  <span style={{fontWeight:800,fontSize:15,color:p.profit>=0?"#22C55E":"#EF4444"}}>{fmtM(p.profit)}</span>
  </div>
  );
@@ -14005,7 +14005,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{flex:1,minWidth:0}}>
  <div style={{display:"flex",alignItems:"center",gap:6}}>
  <GameLogo game={b.game} size={13}/>
- <span style={{fontSize:13,fontWeight:700,color:"#9CA3AF",textTransform:"capitalize"}}>{b.player}</span>
+ <span style={{fontSize:13,fontWeight:700,color:"#9CA3AF"}}>{b.player}</span>
  <span style={{fontSize:11,color:"#6B7280"}}>— {b.description}</span>
  </div>
  <div style={{fontSize:10,color:"#4B5563",marginTop:2}}>@{b.odds} · {b.stake}$ · {b.bookmaker||"—"}</div>
@@ -14237,7 +14237,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"flex",alignItems:"center",gap:8}}>
  <GameLogo game={b.game} size={16}/>
  <div>
- <div style={{fontWeight:600,fontSize:13,textTransform:"capitalize"}}>{b.player}</div>
+ <div style={{fontWeight:600,fontSize:13}}>{b.player}</div>
  <div style={{fontSize:10,color:"#9CA3AF"}}>{b.description}</div>
  </div>
  </div>
@@ -14306,7 +14306,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div className="modal" onClick={e=>e.stopPropagation()}>
  <div style={{fontSize:15,fontWeight:700,marginBottom:4}}>Modifier le joueur</div>
  <div style={{fontSize:11,color:"#6B7280",marginBottom:12,fontWeight:500}}>
- Pseudo d'origine : <span style={{color:"#A78BFA",textTransform:"capitalize"}}>{editingPlayer.key}</span>
+ Pseudo d'origine : <span style={{color:"#A78BFA"}}>{editingPlayer.key}</span>
  </div>
 
  {/* Champ nom/pseudo */}
@@ -14390,7 +14390,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"12px 14px",border:"1px solid #1F2937"}}>
  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
  <GameLogo game={splitModal.game} size={16}/>
- <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB",textTransform:"capitalize"}}>{splitModal.player}</span>
+ <span style={{fontSize:14,fontWeight:700,color:"#E5E7EB"}}>{splitModal.player}</span>
  <span style={{fontSize:12,color:"#6B7280"}}>{splitModal.description}</span>
  </div>
  <div style={{display:"flex",flexDirection:"column",gap:4}}>
