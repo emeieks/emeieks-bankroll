@@ -1229,7 +1229,7 @@ const clubColorOf=t=>CLUB_COLORS[String(t||"").toLowerCase().trim()]||null;
 // Nom en gros qui rétrécit tout seul pour toujours tenir en entier sur une ligne
 function FitName({text,max=40,min=16}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min]);
- return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap"}}>{text}</span></div>;}
+ return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap"}}>{text}</span></div>;}
 const _TLC={ms:null,m:new Map()};
 function tourLogoSrc(league){
  if(!league)return null;
@@ -11270,19 +11270,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     :<div style={{width:60,height:60,borderRadius:"50%",marginBottom:26,background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg></div>}
   </div>
   {/* nom + infos */}
-  <div style={{zIndex:2,position:"absolute",left:"47%",right:12,top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start"}}>
-   <div style={{display:"flex",alignItems:"center",gap:6,maxWidth:"calc(100% - 72px)",whiteSpace:"nowrap",overflow:"hidden",font:"700 11px/16px Inter,sans-serif",letterSpacing:1.4,color:"rgba(255,255,255,.82)",textTransform:"uppercase"}}>
-    <GameLogo game={AI.game} size={13}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{AI.team||AI.game}</span>
-   </div>
-   <FitName text={capName(AI.name||form.player)} max={34} min={15}/>
-   <div style={{width:28,height:2,borderRadius:2,background:"rgba(255,255,255,.55)",margin:"2px 0 7px"}}/>
+  <div style={{zIndex:2,position:"absolute",left:"46%",right:10,top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",textAlign:"center",gap:2}}>
+   <FitName text={capName(AI.name||form.player)} max={36} min={15}/>
+   
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(betsForDisplay.filter(b=>(b.player||"").toLowerCase().trim()===k));
   if(!a.n)return <div style={{font:"600 12.5px/18px Inter,sans-serif",color:"rgba(255,255,255,.78)"}}>Aucun pari terminé</div>;
   const c=a.profit>0?"#5CFF9D":a.profit<0?"#FFB4B4":"#fff";
   return <div style={{display:"flex",alignItems:"center",gap:8,font:"700 12.5px/18px Inter,sans-serif",color:"#fff",whiteSpace:"nowrap"}}>
    <span style={{padding:"1px 7px",borderRadius:6,background:"rgba(0,0,0,.25)"}}>{a.won}-{a.lost}</span><span style={{color:c}}>{fmtM(a.profit)}</span>
   </div>;})()}
- {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:5,maxWidth:"100%",padding:"2px 8px 2px 4px",borderRadius:6,background:"rgba(0,0,0,.32)",color:"#fff",font:"600 10.5px/16px Inter,sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:14,height:14,objectFit:"contain",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span></span>})()}
+ {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{marginTop:4,display:"inline-flex",alignItems:"center",gap:5,maxWidth:"100%",padding:"2px 8px 2px 4px",borderRadius:6,background:"rgba(0,0,0,.32)",color:"#fff",font:"600 10.5px/16px Inter,sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:14,height:14,objectFit:"contain",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span></span>})()}
   </div>
   <div style={{position:"absolute",top:8,right:8,zIndex:4,display:"flex",alignItems:"flex-start",gap:6}}>
  <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
