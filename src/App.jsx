@@ -11259,16 +11259,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(90deg,"+cc+"d9 0%,"+cc+" 40%,"+cc+"c8 100%)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,boxShadow:"inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 22px rgba(0,0,0,.25)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
-  {tl&&<div aria-hidden="true" style={{position:"absolute",left:"calc(26px + 4%)",top:"50%",transform:"translateY(-50%)",height:"128%",width:"46%",zIndex:1,pointerEvents:"none",filter:"drop-shadow(0 3px 6px rgba(0,0,0,.35))"}}><div style={{width:"100%",height:"100%",background:(()=>{const h=String(cc).replace("#","").slice(0,6);const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return (0.299*r+0.587*g+0.114*b)>150?"#000":"#fff";})(),WebkitMaskImage:"url("+JSON.stringify(tl)+")",maskImage:"url("+JSON.stringify(tl)+")",WebkitMaskSize:"contain",maskSize:"contain",WebkitMaskRepeat:"no-repeat",maskRepeat:"no-repeat",WebkitMaskPosition:"center",maskPosition:"center",opacity:.3}}/></div>}
+  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 2%)",top:"50%",transform:"translateY(-50%)",height:"125%",width:"46%",objectFit:"contain",opacity:.5,zIndex:1,pointerEvents:"none"}}/>}
   {/* photo */}
   <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"flex-start"}}>
    {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:116,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
     :<div style={{width:60,height:60,borderRadius:"50%",marginBottom:26,background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg></div>}
   </div>
   {/* nom + infos */}
-  <div style={{position:"relative",zIndex:2,flex:1,minWidth:0,padding:"40px 12px 12px 0",marginLeft:"12%",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:3}}>
-   <div style={{font:"900 40px/0.9 'Barlow Condensed',Inter,sans-serif",color:ink,letterSpacing:.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(AI.name||form.player)}</div>
-   <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",font:"700 13.5px 'Barlow Condensed',Inter,sans-serif",letterSpacing:.6,color:light?"rgba(0,0,0,.8)":"rgba(255,255,255,.92)",textTransform:"uppercase"}}>
+  <div style={{position:"relative",zIndex:2,flex:1,minWidth:0,padding:"40px 12px 12px 0",position:"absolute",left:"50%",right:0,top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:3}}>
+   <div style={{font:"900 "+Math.max(18,Math.min(40,Math.floor(300/Math.max(4,String(capName(AI.name||form.player)).length))))+"px/0.95 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(AI.name||form.player)}</div>
+   <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",font:"700 13.5px 'Barlow Condensed',Inter,sans-serif",letterSpacing:.6,color:"rgba(255,255,255,.95)",textTransform:"uppercase"}}>
     <GameLogo game={AI.game} size={14}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{[AI.team,AI.role].filter(Boolean).join(" · ")}</span>
    </div>
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(betsForDisplay.filter(b=>(b.player||"").toLowerCase().trim()===k));
@@ -11383,8 +11383,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:form.odds&&form.stake?9:0}}>
  {quickUnits.map(u=>{
  const s=unitValue*u;
- const sStr=Number.isInteger(s)?String(s):s.toFixed(1);
- const isActive=parseFloat(form.stake)===s;
+ const sStr=String(Math.round(s*100)/100);
+ const isActive=Math.abs((parseFloat(form.stake)||0)-Math.round(s*100)/100)<0.005;
  return(
  <button key={u} onClick={()=>setForm(f=>({...f,stake:sStr}))}
  style={{height:52,borderRadius:12,border:"1px solid "+(isActive?AC:"rgba(255,255,255,.09)"),background:isActive?AC+"26":"rgba(255,255,255,.03)",color:isActive?"#fff":"#8892a4",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:isActive?"0 0 16px "+AC+"33":"none",transition:"all .15s",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}}>
@@ -11738,8 +11738,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  return(
  <div style={{width:90,height:90,flexShrink:0,position:"relative",display:"flex",alignItems:"flex-end",justifyContent:"center",overflow:"hidden",borderRadius:10}}>
  {/* Logo équipe en filigrane */}
- {(form.autoInfo&&form.autoInfo.team_logo_url)&&(
- <img src={form.autoInfo.team_logo_url} alt="" onError={e=>e.target.style.display="none"} style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"75%",height:"75%",objectFit:"contain",opacity:.1,zIndex:0,pointerEvents:"none"}}/>
+ {form.autoInfo&&(teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url||teamLogoOf(form.autoInfo.team,form.autoInfo.game))&&(
+ <img src={teamLogos[(form.autoInfo.team||"")+"__"+(form.autoInfo.game||"")]||form.autoInfo.team_logo_url||teamLogoOf(form.autoInfo.team,form.autoInfo.game)} alt="" onError={e=>e.target.style.display="none"} style={{position:"absolute",top:"45%",left:"50%",transform:"translate(-50%,-50%)",width:"105%",height:"105%",objectFit:"contain",opacity:.4,zIndex:0,pointerEvents:"none"}}/>
  )}
  <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",height:"80%",background:"radial-gradient(ellipse at 50% 100%,rgba(124,58,237,.3),transparent 70%)",zIndex:0,pointerEvents:"none"}}/>
  {src?(
