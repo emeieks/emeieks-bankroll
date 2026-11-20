@@ -1237,13 +1237,13 @@ function LogoBg({src,bg}){
  useEffect(()=>{if(_LBG[ck]){setR(_LBG[ck]);return;}let ok=true;const done=o=>{_LBG[ck]=o;ok&&setR(o);};const im=new Image();im.crossOrigin="anonymous";
   im.onload=()=>{try{const w=Math.min(600,im.naturalWidth),h=Math.round(im.naturalHeight*w/im.naturalWidth);const cv=document.createElement("canvas");cv.width=w;cv.height=h;const x=cv.getContext("2d");x.drawImage(im,0,0,w,h);const d=x.getImageData(0,0,w,h);const D=d.data;
    const hx=String(bg||"").replace("#","");const br=parseInt(hx.slice(0,2),16),bgc=parseInt(hx.slice(2,4),16),bb=parseInt(hx.slice(4,6),16);
-   let n=0,near=0;for(let k=0;k<D.length;k+=4){if(D[k+3]<128)continue;n++;const dd=Math.abs(D[k]-br)+Math.abs(D[k+1]-bgc)+Math.abs(D[k+2]-bb);if(dd<150)near++;}
+   let n=0,near=0,lt=0;for(let k=0;k<D.length;k+=4){if(D[k+3]<128)continue;n++;const dd=Math.abs(D[k]-br)+Math.abs(D[k+1]-bgc)+Math.abs(D[k+2]-bb);if(dd<150)near++;if(D[k]+D[k+1]+D[k+2]>540)lt++;}
    if(!n||D[3]>200&&D[D.length-1]>200)return done({url:src,dark:false});
-   if(near/n<0.45)return done({url:src,dark:false});
-   for(let k=0;k<D.length;k+=4){D[k]=0;D[k+1]=0;D[k+2]=0;}x.putImageData(d,0,0);done({url:cv.toDataURL("image/png"),dark:true});}catch(e){done({url:src,dark:false});}};
+   if(near/n<0.45){if(lt/n<0.6)return done({url:src,dark:false});for(let k=0;k<D.length;k+=4){D[k]=255;D[k+1]=255;D[k+2]=255;}x.putImageData(d,0,0);return done({url:cv.toDataURL("image/png"),white:true});}
+   for(let k=0;k<D.length;k+=4){D[k]=255;D[k+1]=255;D[k+2]=255;}x.putImageData(d,0,0);done({url:cv.toDataURL("image/png"),white:true});}catch(e){done({url:src,dark:false});}};
   im.onerror=()=>done({url:src,dark:false});im.src=src;return()=>{ok=false;};},[ck]);
  const u=r?r.url:src;
- return <img src={u} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 8%)",top:"50%",transform:"translateY(-50%)",height:"92%",width:"44%",objectFit:"contain",opacity:r&&r.dark?.5:.55,zIndex:1,pointerEvents:"none"}}/>;}
+ return <img src={u} alt="" aria-hidden="true" data-no-invert="1" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 8%)",top:"50%",transform:"translateY(-50%)",height:"92%",width:"44%",objectFit:"contain",opacity:r&&r.white?.9:.55,zIndex:1,pointerEvents:"none"}}/>;}
 function FitName({text,max=40,min=16,suffix=null}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(6,Math.round(fs*.18))}}>{text}{suffix}</span></div>;}
