@@ -1247,6 +1247,29 @@ function LogoBg({src,bg}){
   im.onerror=()=>done({url:src,dark:false});im.src=src;return()=>{ok=false;};},[ck]);
  const u=r?r.url:src;
  return <img src={u} alt="" aria-hidden="true" data-no-invert="1" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 8%)",top:"50%",transform:"translateY(-50%)",height:r&&r.nh?"min(92%, "+Math.round(r.nh*1.3)+"px)":"92%",width:"44%",objectFit:"contain",opacity:r&&r.white?.82:.55,zIndex:1,pointerEvents:"none"}}/>;}
+// Garde CS2 : ce que le bot a bloqué (pas de Headshots sur Betby / lignes louches), carte par carte
+function GuardPanel(){
+ const [g,setG]=useState(null);const [open,setOpen]=useState(false);
+ useEffect(()=>{let ok=true;const f=async()=>{try{const r=await cloudDb("settings?key=eq.cs2_guard&select=value");const v=Array.isArray(r)&&r[0]?r[0].value:null;ok&&setG(typeof v==="string"?JSON.parse(v):v);}catch(e){}};f();const t=setInterval(f,60000);return()=>{ok=false;clearInterval(t);};},[]);
+ const rows=(g&&g.rows)||[];const nb=rows.filter(r=>r.status!=="ok").length;
+ const ago=g&&g.at?Math.max(0,Math.round((Date.now()-new Date(g.at).getTime())/60000)):null;
+ const by={};rows.forEach(r=>{(by[r.match]=by[r.match]||[]).push(r);});
+ return <div style={{margin:"0 14px 10px",borderRadius:12,background:"rgba(7,11,22,.55)",border:"1px solid "+(nb?"rgba(239,68,68,.35)":"rgba(255,255,255,.06)")}}>
+  <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:"none",border:"none",color:"#fff",cursor:"pointer",textAlign:"left"}}>
+   <span style={{fontSize:12,fontWeight:900,letterSpacing:".5px"}}>GARDE CS2</span>
+   <span style={{fontSize:10.5,fontWeight:900,padding:"2px 8px",borderRadius:6,background:nb?"rgba(239,68,68,.15)":"rgba(34,197,94,.15)",color:nb?"#fca5a5":"#86efac"}}>{!g?"en attente du bot":nb?nb+" carte"+(nb>1?"s":"")+" bloquée"+(nb>1?"s":""):"tout est ok"}</span>
+   <span style={{flex:1}}/><span style={{fontSize:11,color:"#8b93a7",fontWeight:700}}>{ago==null?"":ago<1?"à l'instant":"il y a "+ago+" min"}</span><span style={{color:"#8b93a7",fontSize:11}}>{open?"▲":"▼"}</span></button>
+  {open&&<div style={{padding:"0 12px 12px",display:"flex",flexDirection:"column",gap:10}}>
+   {!rows.length&&<div style={{fontSize:12,color:"#8b93a7"}}>Aucun match CS2 lu sur Betby au dernier passage.</div>}
+   {Object.entries(by).map(([m,rs])=><div key={m}>
+    <div style={{fontSize:12.5,fontWeight:800,color:"#e5e7eb",marginBottom:5}}>{m}</div>
+    {rs.map(r=>{const bad=r.status!=="ok";return <div key={r.map} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:8,marginBottom:4,background:bad?"rgba(239,68,68,.08)":"rgba(255,255,255,.03)"}}>
+     <span style={{fontSize:11,fontWeight:900,color:"#fbbf24",minWidth:44}}>Map {r.map}</span>
+     <span style={{fontSize:11.5,color:"#cbd5e1",flex:1}}>{r.props} paris joueur · <b style={{color:r.hs?"#86efac":"#fca5a5"}}>{r.hs} Headshots</b> · {r.bets} bet{r.bets>1?"s":""} trouvé{r.bets>1?"s":""}</span>
+     <span style={{fontSize:10.5,fontWeight:900,padding:"2px 7px",borderRadius:6,whiteSpace:"nowrap",background:bad?"rgba(239,68,68,.18)":"rgba(34,197,94,.15)",color:bad?"#fca5a5":"#86efac"}}>{bad?"⛔ "+r.status.replace("bloqué · ",""):"✓ envoyé"}</span></div>;})}
+   </div>)}
+  </div>}
+ </div>;}
 function FitName({text,max=40,min=16,suffix=null}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(6,Math.round(fs*.18))}}>{text}{suffix}</span></div>;}
@@ -13834,6 +13857,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
     </div>
    </div>
    {evRun&&evRun.log&&evRunning&&<div style={{padding:"0 14px 10px"}}><EvConsole text={evRun.log} live={evRunning}/></div>}
+   <GuardPanel/>
    <div style={{display:"flex",gap:4,margin:"0 14px 10px",padding:3,borderRadius:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)"}}>
     {[["bets","Bets"+(evAlerts.filter(evVis).length?" "+evAlerts.filter(evVis).length:"")],["board","Board"],["joueur","Joueur"],["outils","Outils"]].map(([k,l])=><button key={k} onClick={()=>setEvTab(k)} style={{flex:1,height:34,borderRadius:9,border:"none",background:evTab===k?"#7c3aed":"transparent",color:evTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
    </div>
