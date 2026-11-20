@@ -2382,7 +2382,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
      {/* Game tree (only when no search) */}
      {!searchQ&&rosterGame&&(()=>{
       const gameH=rosterHierarchy[rosterGame]||{};
-      const DEFL={LoL:["LCK","LPL","LEC","LCS","LCP","CBLOL"],Valorant:["Americas","EMEA","Pacific","China"]}[rosterGame]||[];
+      const DEFL={LoL:["LCK","LPL","LEC","LCS","LCP","CBLOL"],Valorant:["VCT Americas","VCT EMEA","VCT Pacific","VCT China"]}[rosterGame]||[];
       const leagues=[...DEFL,...Object.keys(gameH).filter(l=>!DEFL.includes(l)).sort()];
       const needLeague=rosterGame==="LoL"||rosterGame==="Valorant";
       const activeLeagues=needLeague?(rosterLeague?[rosterLeague]:leagues):leagues;
