@@ -11253,17 +11253,18 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <span style={{writingMode:"vertical-rl",transform:"rotate(180deg)",font:"800 11px 'Barlow Condensed',Inter,sans-serif",letterSpacing:1.6,color:"#1f2430",whiteSpace:"nowrap"}}>{lab}</span>
   </div>
   {/* bannière couleur du club */}
-  <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(100deg,#141a2c 0%,#141a2c 30%,"+cc+"e6 30.2%,"+cc+" 62%,"+cc+"b3 100%)",zIndex:0}}/>
+  <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(90deg,#e9ebef 0%,#c9ced6 22%,"+cc+" 22.2%,"+cc+" 70%,"+cc+"c8 100%)",zIndex:0}}/>
+  <div style={{position:"absolute",left:"calc(26px + 22%)",right:0,top:0,bottom:0,boxShadow:"inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 22px rgba(0,0,0,.25)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
-  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"30%",top:"50%",transform:"translateY(-50%) skewX(-12deg)",height:"118%",maxWidth:"46%",objectFit:"contain",opacity:.28,filter:"grayscale(1) brightness(2.2)",zIndex:0,pointerEvents:"none"}}/>}
+  {tl&&<div aria-hidden="true" style={{position:"absolute",left:"calc(26px + 30%)",top:"50%",transform:"translateY(-50%)",height:"64%",width:"22%",zIndex:1,pointerEvents:"none",filter:"drop-shadow(0 3px 6px rgba(0,0,0,.35))"}}><div style={{width:"100%",height:"100%",background:"linear-gradient(180deg,#ffffff,#e5e7eb)",WebkitMaskImage:"url("+JSON.stringify(tl)+")",maskImage:"url("+JSON.stringify(tl)+")",WebkitMaskSize:"contain",maskSize:"contain",WebkitMaskRepeat:"no-repeat",maskRepeat:"no-repeat",WebkitMaskPosition:"center",maskPosition:"center",opacity:.95}}/></div>}
   {/* photo */}
-  <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+  <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"center",marginLeft:"-2%"}}>
    {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:116,objectFit:"contain",objectPosition:"bottom center",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
     :<div style={{width:60,height:60,borderRadius:"50%",marginBottom:26,background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg></div>}
   </div>
   {/* nom + infos */}
-  <div style={{position:"relative",zIndex:2,flex:1,minWidth:0,padding:"40px 12px 12px 6px",display:"flex",flexDirection:"column",justifyContent:"center",gap:4}}>
-   <div style={{font:"900 34px/0.95 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.2,textShadow:"0 2px 0 rgba(0,0,0,.25), 0 6px 18px rgba(0,0,0,.35)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(AI.name||form.player)}</div>
+  <div style={{position:"relative",zIndex:2,flex:1,minWidth:0,padding:"40px 12px 12px 0",marginLeft:"23%",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:3}}>
+   <div style={{font:"900 40px/0.9 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,textShadow:"0 2px 0 rgba(0,0,0,.25), 0 6px 18px rgba(0,0,0,.35)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{capName(AI.name||form.player)}</div>
    <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",font:"700 13.5px 'Barlow Condensed',Inter,sans-serif",letterSpacing:.6,color:"rgba(255,255,255,.92)",textTransform:"uppercase"}}>
     <GameLogo game={AI.game} size={14}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{[AI.team,AI.role].filter(Boolean).join(" · ")}</span>
    </div>
