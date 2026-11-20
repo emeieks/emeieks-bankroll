@@ -1232,7 +1232,7 @@ const CLUB_COLORS2={"t1":"#000000","gen.g":"#000000","geng":"#000000","vitality"
 function clubColor2(team,cc){const k=String(team||"").toLowerCase().trim();if(CLUB_COLORS2[k])return CLUB_COLORS2[k];const h=String(cc||"#7C3AED").replace("#","");if(h.length<6)return "#000";const d=x=>Math.round(parseInt(x,16)*.38).toString(16).padStart(2,"0");return "#"+d(h.slice(0,2))+d(h.slice(2,4))+d(h.slice(4,6));}
 function FitName({text,max=40,min=16,suffix=null}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
- return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(4,Math.round(fs*.12))}}>{text}{suffix}</span></div>;}
+ return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(6,Math.round(fs*.18))}}>{text}{suffix}</span></div>;}
 const _TLC={ms:null,m:new Map()};
 function tourLogoSrc(league){
  if(!league)return null;
@@ -11330,7 +11330,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(90deg,"+cc+"d9 0%,"+cc+" 40%,"+cc+"c8 100%)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,boxShadow:"inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 22px rgba(0,0,0,.25)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
-  {tl&&<div aria-hidden="true" style={{position:"absolute",left:"calc(26px + 6%)",top:"50%",transform:"translateY(-50%)",height:"165%",width:"56%",background:clubColor2(AI.team,cc),WebkitMaskImage:"url(\""+tl+"\")",maskImage:"url(\""+tl+"\")",WebkitMaskSize:"contain",maskSize:"contain",WebkitMaskRepeat:"no-repeat",maskRepeat:"no-repeat",WebkitMaskPosition:"center",maskPosition:"center",opacity:.6,zIndex:1,pointerEvents:"none"}}/>}
+  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 8%)",top:"50%",transform:"translateY(-50%)",height:"92%",width:"44%",objectFit:"contain",opacity:.55,zIndex:1,pointerEvents:"none"}}/>}
   {/* photo */}
   <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"flex-start"}}>
    {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:124,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
@@ -11338,7 +11338,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>
   {/* nom + infos */}
   <div style={{zIndex:2,position:"absolute",left:"46%",right:10,top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",textAlign:"center",gap:2}}>
-   <FitName text={capName(AI.name||form.player)} max={46} min={16} suffix={(()=>{const g=GNORM(AI.game);if(g!=="LoL"&&g!=="Valorant")return null;const lg=AI.league;const src=lg&&tourLogoSrc(lg);if(!src)return null;return <img src={String(src).replace("__FAILED__","")} alt={lg} onError={e=>e.target.style.display="none"} style={{height:"0.7em",width:"auto",maxWidth:"0.95em",objectFit:"contain",objectPosition:"left center",flexShrink:0,display:"block",filter:"drop-shadow(0 1px 2px rgba(0,0,0,.4))"}}/>;})()}/>
+   <FitName text={capName(AI.name||form.player)} max={46} min={16} suffix={(()=>{const g=GNORM(AI.game);if(g!=="LoL"&&g!=="Valorant")return null;const lg=AI.league;const src=lg&&tourLogoSrc(lg);if(!src)return null;return <img src={String(src).replace("__FAILED__","")} alt={lg} onError={e=>e.target.style.display="none"} style={{height:"0.68em",width:"auto",maxWidth:"0.95em",objectFit:"contain",objectPosition:"left center",flexShrink:0,display:"block",marginLeft:"0.08em",transform:"translateY(0.05em)",filter:"drop-shadow(0 1px 2px rgba(0,0,0,.4))"}}/>;})()}/>
    
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(betsForDisplay.filter(b=>(b.player||"").toLowerCase().trim()===k));
   if(!a.n)return <div style={{font:"600 14px/20px Inter,sans-serif",color:"rgba(255,255,255,.85)"}}>Aucun pari terminé</div>;
