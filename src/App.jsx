@@ -1227,6 +1227,7 @@ function effectiveTournament(b,allPlayers){
 const CLUB_COLORS={"mouz": "#E30614", "vitality": "#F5D30F", "team vitality": "#F5D30F", "furia": "#1C1C1C", "aurora": "#16B7A6", "aurora gaming": "#16B7A6", "spirit": "#1F2A44", "team spirit": "#1F2A44", "betboom": "#E2232A", "team falcons": "#00A651", "fut esports": "#2B2B2B", "legacy": "#C9A227", "nemiga": "#D7262E", "nemiga gaming": "#D7262E", "g2": "#E10600", "g2 esports": "#E10600", "1win": "#1C1C1C", "natus vincere": "#F7D417", "navi": "#F7D417", "astralis": "#E21B23", "ninjas in pyjamas": "#C6D52B", "parivision": "#0FA89A", "the mongolz": "#B8862B", "heroic": "#E2152B", "mibr": "#1C1C1C", "faze": "#E31F25", "team liquid": "#0A2C5A", "eternal fire": "#E85D1E", "100 thieves": "#E2231A", "9z": "#7B2CBF", "m80": "#B9E000", "hotu": "#3A3A3A", "fnatic": "#FF5900", "b8": "#1C1C1C", "dendele": "#1E5AA8", "inner circle": "#E8353B", "virtus.pro": "#F26522", "big": "#1C1C1C", "sinners esports": "#C8102E", "k27": "#D7262E", "imperial": "#25B35B", "jijiehao": "#C8102E", "gamerlegion": "#5F5F5F", "wildcard": "#E4002B", "luminosity": "#3EA1D9", "team nemesis": "#2B2B2B", "bbl": "#C9A227", "bbl esports": "#C9A227", "magic": "#7B3FE4", "envy": "#1C1C1C", "sangal": "#B31B1B", "bc.game": "#26C281", "private": "#2B2B2B", "nrg": "#E4002B", "flyquest": "#0E9F55", "bestia": "#1C1C1C", "betclic apogee esports": "#E30613", "fokus": "#E30613", "alliance": "#3FBF3F", "pain": "#E4002B", "pain gaming": "#E4002B", "iberian soul": "#1C1C1C", "chinggis warriors": "#D7262E", "lynn vision": "#E0A100", "nuclear tigeres": "#E8591A", "metizport": "#2BA84A", "tyloo": "#D7262E", "fluxo": "#1C1C1C", "voca": "#2B2B2B", "team yandex": "#D7262E", "do konca": "#E30613", "1win team": "#1C1C1C", "team resilience": "#E4002B", "lgd gaming": "#1A3E8C", "cyberhero": "#2B2B2B", "og": "#0E7C66", "yakult brothers": "#E4002B", "xtreme gaming": "#8A8A8A", "froglings": "#6FBF3F", "astra invicta": "#2B2B2B", "yellow submarine": "#F2C200", "legion": "#6B5FA8", "power rangers": "#C8102E", "huligani": "#3E6B2A", "xipto esports": "#C8102E", "team lynx": "#1C1C1C", "playtime": "#F2A900", "execration": "#1E88E5", "royal bear": "#C9A227", "giantx": "#2B2B2B", "karmine corp": "#1C6BF0", "movistar koi": "#1F6FE5", "sk gaming": "#2B2B2B", "team heretics": "#1C1C1C", "dn soopers": "#1F5BD8", "hanjin brion": "#0F7A3E", "kt rolster": "#E30613", "nongshim redforce": "#D7262E", "t1": "#E2012D", "bnk fearx": "#C9A227", "dplus kia": "#1C1C1C", "gen.g": "#AA8A00", "hanwha life esports": "#F37321", "kiwoom drx": "#5A3FD8", "anyone's legend": "#C8102E", "bilibili gaming": "#00A1D6", "edward gaming": "#1C1C1C", "invictus gaming": "#2B2B2B", "jd gaming": "#C8102E", "lng esports": "#3A6FD8", "team we": "#C8102E", "thundertalk gaming": "#1FA8D8", "top esports": "#E8341C", "weibo gaming": "#E6162D", "cloud9": "#1EA3DC", "shopify rebellion": "#2B2B2B", "lyon": "#B8862B", "sentinels": "#CE0037", "disguised": "#C9A227", "optic gaming": "#5FAE2E", "loud": "#13D85C", "vivo keyd stars": "#6A2C91", "fluxo w7m": "#C8102E", "los": "#F04E23", "red canids kalunga": "#C8102E", "leviatán": "#3FA9F5", "ctbc flying oyster": "#C9A227", "deep cross gaming": "#1F5BD8", "gam esports": "#E0A100", "mvk esports": "#F26522", "softbank hawks": "#2B2B2B", "team secret whales": "#2B2B2B", "gentle mates": "#1C1C1C", "barça esports": "#A50044", "joblife": "#2B2B2B", "mandatory": "#D7262E", "ucam esports": "#1F5BD8", "eintracht frankfurt": "#E1000F", "krü esports": "#E5007E", "crazy raccoon": "#C8102E", "paper rex": "#7A3FD8", "zeta division": "#2B2B2B", "full sense": "#F26522", "rex regum qeon": "#E0A100", "qt dig∞": "#E4002B", "xi lai gaming": "#2B2B2B", "all gamers": "#E4002B", "trace esports": "#C9A227"};
 const clubColorOf=t=>CLUB_COLORS[String(t||"").toLowerCase().trim()]||null;
 // Nom en gros qui rétrécit tout seul pour toujours tenir en entier sur une ligne
+if(typeof document!=="undefined"&&!document.getElementById("pcardIn")){const st=document.createElement("style");st.id="pcardIn";st.textContent="@keyframes pcardIn{from{opacity:0;transform:translateY(4px) scale(.985)}to{opacity:1;transform:none}}";document.head.appendChild(st);}
 function FitName({text,max=40,min=16}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap"}}>{text}</span></div>;}
@@ -5421,6 +5422,59 @@ const RS_CSS=`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@
 .rs .pill.won{background:rgba(108,192,112,.18);color:var(--wn)}.rs .pill.lost{background:rgba(226,86,79,.18);color:var(--ls)}.rs .pill.void{background:rgba(169,181,194,.15);color:var(--sf)}.rs .pill.wait{color:var(--dm)}
 .rs .save{height:44px;border:none;border-radius:3px;background:var(--lk);color:#11161D;font-weight:700;font-size:15px;cursor:pointer}.rs .save:disabled{background:var(--pn);color:var(--dm);cursor:default}
 .rs .msg{font-weight:600;font-size:13px;min-height:16px}
+/* thèmes par ligue — couleurs prélevées sur les broadcasts officiels (LEC / LCK / LCS / LPL) */
+.rs.lx .lol.lg-lec{background:#0A2028!important;border-color:#1E3A40!important}
+.rs.lx .lol.lg-lec .lol-h{background:linear-gradient(90deg,#0B4846 0%,#0A2028 42%,#31121B 58%,#561D1B 100%)!important;border-bottom:2px solid #81D3CA!important}
+.rs.lx .lol.lg-lec .lol-h .s,.rs.lx .lol.lg-lec .lol-h .s:first-child,.rs.lx .lol.lg-lec .lol-h .s.r{color:#fff!important;font-family:'Barlow Condensed',Inter,sans-serif!important;letter-spacing:.5px}
+.rs.lx .lol.lg-lec .lol-h .k input:first-child{color:#81D3CA!important}.rs.lx .lol.lg-lec .lol-h .k input:last-child{color:#E8A08C!important}
+.rs.lx .lol.lg-lec .lol-h .kc small{color:#81D3CA!important}
+.rs.lx .lol.lg-lec .lol-o{background:#11222B!important;border-bottom-color:#1E3A40!important}.rs.lx .lol.lg-lec .lol-o .l b{color:#81D3CA!important}.rs.lx .lol.lg-lec .lol-o .r b{color:#E8A08C!important}
+.rs.lx .lol.lg-lec .lol-w.top{background:#11222B!important;border-bottom-color:#1E3A40!important}
+.rs.lx .lol.lg-lec .lol-w.top button.b{border-color:#2F736E;color:#fff;background:transparent}.rs.lx .lol.lg-lec .lol-w.top button.b[aria-pressed=true]{background:#2F736E;color:#fff}
+.rs.lx .lol.lg-lec .lol-w.top button.rd{border-color:#68281D;color:#fff;background:transparent}.rs.lx .lol.lg-lec .lol-w.top button.rd[aria-pressed=true]{background:#68281D;color:#fff}
+.rs.lx .lol.lg-lec .lol-r{background:#0E1A22!important;border-top-color:#1E3A40!important}.rs.lx .lol.lg-lec .lol-r:nth-child(even){background:#11222B!important}
+.rs.lx .lol.lg-lec .lol-r .ro:before,.rs.lx .lol.lg-lec .lol-r .ro:after{background:#81D3CA!important}
+.rs.lx .lol.lg-lec .lol-p .ic{box-shadow:0 0 0 2px #2F736E!important}.rs.lx .lol.lg-lec .lol-p.r .ic{box-shadow:0 0 0 2px #68281D!important}
+.rs.lx .lol.lg-lec .lol-r .kk{color:#fff}.rs.lx .lol.lg-lec .kda{color:#81D3CA}
+.rs.lx .lol.lg-lck{background:#14063A!important;border-color:#2F2667!important}
+.rs.lx .lol.lg-lck .lol-h{background:linear-gradient(90deg,#2F2667 0%,#160740 42%,#240A34 62%,#4F1B46 100%)!important;border-bottom:2px solid #B1A8CF!important}
+.rs.lx .lol.lg-lck .lol-h .s,.rs.lx .lol.lg-lck .lol-h .s:first-child,.rs.lx .lol.lg-lck .lol-h .s.r{color:#fff!important;font-family:'Barlow Condensed',Inter,sans-serif!important;letter-spacing:.5px}
+.rs.lx .lol.lg-lck .lol-h .k input:first-child{color:#B1A8CF!important}.rs.lx .lol.lg-lck .lol-h .k input:last-child{color:#E58BC4!important}
+.rs.lx .lol.lg-lck .lol-h .kc small{color:#B1A8CF!important}
+.rs.lx .lol.lg-lck .lol-o{background:#1A0F41!important;border-bottom-color:#2F2667!important}.rs.lx .lol.lg-lck .lol-o .l b{color:#B1A8CF!important}.rs.lx .lol.lg-lck .lol-o .r b{color:#E58BC4!important}
+.rs.lx .lol.lg-lck .lol-w.top{background:#1A0F41!important;border-bottom-color:#2F2667!important}
+.rs.lx .lol.lg-lck .lol-w.top button.b{border-color:#4B3FB0;color:#fff;background:transparent}.rs.lx .lol.lg-lck .lol-w.top button.b[aria-pressed=true]{background:#4B3FB0;color:#fff}
+.rs.lx .lol.lg-lck .lol-w.top button.rd{border-color:#9A2C78;color:#fff;background:transparent}.rs.lx .lol.lg-lck .lol-w.top button.rd[aria-pressed=true]{background:#9A2C78;color:#fff}
+.rs.lx .lol.lg-lck .lol-r{background:#160740!important;border-top-color:#2F2667!important}.rs.lx .lol.lg-lck .lol-r:nth-child(even){background:#1A0F41!important}
+.rs.lx .lol.lg-lck .lol-r .ro:before,.rs.lx .lol.lg-lck .lol-r .ro:after{background:#B1A8CF!important}
+.rs.lx .lol.lg-lck .lol-p .ic{box-shadow:0 0 0 2px #4B3FB0!important}.rs.lx .lol.lg-lck .lol-p.r .ic{box-shadow:0 0 0 2px #9A2C78!important}
+.rs.lx .lol.lg-lck .lol-r .kk{color:#fff}.rs.lx .lol.lg-lck .kda{color:#B1A8CF}
+.rs.lx .lol.lg-lcs{background:#0C0D0E!important;border-color:#2A2F38!important}
+.rs.lx .lol.lg-lcs .lol-h{background:linear-gradient(90deg,#2E2920 0%,#0E0D09 42%,#06070A 58%,#091F2D 100%)!important;border-bottom:2px solid #BDB19C!important}
+.rs.lx .lol.lg-lcs .lol-h .s,.rs.lx .lol.lg-lcs .lol-h .s:first-child,.rs.lx .lol.lg-lcs .lol-h .s.r{color:#fff!important;font-family:'Barlow Condensed',Inter,sans-serif!important;letter-spacing:.5px}
+.rs.lx .lol.lg-lcs .lol-h .k input:first-child{color:#BDB19C!important}.rs.lx .lol.lg-lcs .lol-h .k input:last-child{color:#5EA9C4!important}
+.rs.lx .lol.lg-lcs .lol-h .kc small{color:#BDB19C!important}
+.rs.lx .lol.lg-lcs .lol-o{background:#131D24!important;border-bottom-color:#2A2F38!important}.rs.lx .lol.lg-lcs .lol-o .l b{color:#BDB19C!important}.rs.lx .lol.lg-lcs .lol-o .r b{color:#5EA9C4!important}
+.rs.lx .lol.lg-lcs .lol-w.top{background:#131D24!important;border-bottom-color:#2A2F38!important}
+.rs.lx .lol.lg-lcs .lol-w.top button.b{border-color:#8C7A55;color:#fff;background:transparent}.rs.lx .lol.lg-lcs .lol-w.top button.b[aria-pressed=true]{background:#8C7A55;color:#fff}
+.rs.lx .lol.lg-lcs .lol-w.top button.rd{border-color:#2A6F8E;color:#fff;background:transparent}.rs.lx .lol.lg-lcs .lol-w.top button.rd[aria-pressed=true]{background:#2A6F8E;color:#fff}
+.rs.lx .lol.lg-lcs .lol-r{background:#101214!important;border-top-color:#2A2F38!important}.rs.lx .lol.lg-lcs .lol-r:nth-child(even){background:#131D24!important}
+.rs.lx .lol.lg-lcs .lol-r .ro:before,.rs.lx .lol.lg-lcs .lol-r .ro:after{background:#BDB19C!important}
+.rs.lx .lol.lg-lcs .lol-p .ic{box-shadow:0 0 0 2px #8C7A55!important}.rs.lx .lol.lg-lcs .lol-p.r .ic{box-shadow:0 0 0 2px #2A6F8E!important}
+.rs.lx .lol.lg-lcs .lol-r .kk{color:#fff}.rs.lx .lol.lg-lcs .kda{color:#BDB19C}
+.rs.lx .lol.lg-lpl{background:#06050A!important;border-color:#2C2C2D!important}
+.rs.lx .lol.lg-lpl .lol-h{background:linear-gradient(90deg,#141717 0%,#040304 50%,#0F1013 100%)!important;border-bottom:2px solid #F60909!important}
+.rs.lx .lol.lg-lpl .lol-h .s,.rs.lx .lol.lg-lpl .lol-h .s:first-child,.rs.lx .lol.lg-lpl .lol-h .s.r{color:#fff!important;font-family:'Barlow Condensed',Inter,sans-serif!important;letter-spacing:.5px}
+.rs.lx .lol.lg-lpl .lol-h .k input:first-child{color:#5FE0DA!important}.rs.lx .lol.lg-lpl .lol-h .k input:last-child{color:#F2CF1E!important}
+.rs.lx .lol.lg-lpl .lol-h .kc small{color:#F60909!important}
+.rs.lx .lol.lg-lpl .lol-o{background:#121317!important;border-bottom-color:#2C2C2D!important}.rs.lx .lol.lg-lpl .lol-o .l b{color:#5FE0DA!important}.rs.lx .lol.lg-lpl .lol-o .r b{color:#F2CF1E!important}
+.rs.lx .lol.lg-lpl .lol-w.top{background:#121317!important;border-bottom-color:#2C2C2D!important}
+.rs.lx .lol.lg-lpl .lol-w.top button.b{border-color:#1A9C98;color:#fff;background:transparent}.rs.lx .lol.lg-lpl .lol-w.top button.b[aria-pressed=true]{background:#1A9C98;color:#fff}
+.rs.lx .lol.lg-lpl .lol-w.top button.rd{border-color:#B89A14;color:#fff;background:transparent}.rs.lx .lol.lg-lpl .lol-w.top button.rd[aria-pressed=true]{background:#B89A14;color:#fff}
+.rs.lx .lol.lg-lpl .lol-r{background:#0C0C10!important;border-top-color:#2C2C2D!important}.rs.lx .lol.lg-lpl .lol-r:nth-child(even){background:#121317!important}
+.rs.lx .lol.lg-lpl .lol-r .ro:before,.rs.lx .lol.lg-lpl .lol-r .ro:after{background:#F60909!important}
+.rs.lx .lol.lg-lpl .lol-p .ic{box-shadow:0 0 0 2px #1A9C98!important}.rs.lx .lol.lg-lpl .lol-p.r .ic{box-shadow:0 0 0 2px #B89A14!important}
+.rs.lx .lol.lg-lpl .lol-r .kk{color:#fff}.rs.lx .lol.lg-lpl .kda{color:#F60909}
 /* LoL : scoreboard façon broadcast, bleu à gauche, rouge à droite */
 .rs.dota{--pg:#131B2A;--pn:#192133;--pn2:#1E2A40;--hd:#22304A;--rw:#1B2538;--ln:#2C3B57;--fg:#E6ECF7;--sf:#B4C2DA;--dm:#7F8FAD;--lk:#66B2FF;--wn:#66BB6A;--ls:#FF4C4C;font-family:Inter,Arial,sans-serif}
 .rs.dota .ban{background:linear-gradient(100deg,#22304A,#192133 70%)!important;border-bottom:2px solid #66B2FF}
@@ -6063,6 +6117,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
  useEffect(()=>{const t0=rsTs(m.start);const since=new Date((isNaN(t0)?Date.now():t0)-3*864e5).toISOString();
   cloudDb("ev_alerts?created_at=gte."+since+"&select=key,player,game,stat,side,map,book_line,book_odds,edge,match,start&limit=2000").then(r=>setEvM(Array.isArray(r)?r:[])).catch(()=>setEvM([]));},[m.key]);
  const [A0,B0]=Object.values(m.teams);const [lnk,setLnk]=useState({});const [clubFor,setClubFor]=useState(null);const A=lnk[A0]||A0,B=lnk[B0]||B0;
+ const lgK=(()=>{const re=/\b(LEC|LCK|LCS|LPL)\b/i;const f=x=>{const r=re.exec(String(x||""));return r?r[1].toLowerCase():null;};return f(m.tour)||f(m.league)||f(clubLeague(A,m.game,allPlayers,bets))||f(clubLeague(B,m.game,allPlayers,bets));})();
  const [teamSt,setTeamSt]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_lol_ts|"+m.key)||"{}");}catch(e){return {};}});
  useEffect(()=>{try{localStorage.setItem("v7_lol_ts|"+m.key,JSON.stringify(teamSt));}catch(e){}},[teamSt]);
  const [unkR,setUnkR]=useState({});const [,setTeqV]=useState(0);const [clubAlways,setClubAlways]=useState(false);
@@ -6315,7 +6370,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
      {rounds?<input className={"rin "+(!isNaN(me)&&!isNaN(op)&&me!==op?(me>op?"w":"l"):"")} type="number" inputMode="numeric" enterKeyHint="next" data-q value={x[f]} onChange={e=>upd(i,f,e.target.value)} onKeyDown={nextField} placeholder="–" aria-label={"Rounds "+t}/>
       :<button className="bdg" aria-pressed={x.win===t} style={{justifySelf:"end",background:x.win===t?"var(--wn)":"transparent",color:x.win===t?"#13301A":"var(--dm)",border:"1px solid var(--ln)"}} onClick={()=>upd(i,"win",t)}>WIN</button>}</div>)}
     <div className="dec"><span>{r?r+" rounds"+(ot?" · prolongation":""):rounds?"Score en rounds":""}</span><button aria-pressed={x.pick==="Decider"} onClick={()=>setPick(i,"Decider")}>Decider</button></div></>}
-   {lol&&<div className="lol">
+   {lol&&<div className={"lol"+(lgK?" lg-"+lgK:"")}>
     <div className="lol-h"><span className="s">{L(A,m.game,22)}{teamAbbr(A)}</span>
      <span className="kc"><span className="k"><input type="number" readOnly tabIndex={-1} title="Somme des kills des joueurs" value={kA||kB?String(kA):""} onKeyDown={nextField} placeholder="–" aria-label={"Kills équipe "+A}/><span style={{fontSize:14,color:"#6B7C90"}}>⚔</span><input type="number" readOnly tabIndex={-1} title="Somme des kills des joueurs" value={kA||kB?String(kB):""} placeholder="–" aria-label={"Kills équipe "+B}/></span><small>KILLS · GAME {i+1}</small></span>
      <span className="s r">{teamAbbr(B)}{L(B,m.game,22)}</span></div>
@@ -11231,10 +11286,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  
  Joueur
  </div>
- <button onClick={()=>{setPform({name:"",game:"LoL",league:"",role:"",team:""});setModalPlayer(true);}}
- style={{padding:"3px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,0.08)",background:"transparent",color:"#6B7280",fontSize:10,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>
- + Ajouter un joueur
+ {form.autoInfo&&<div style={{display:"flex",alignItems:"center",gap:6}}>
+ <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
+ title="Changer de joueur" aria-label="Changer de joueur" style={{width:28,height:28,borderRadius:8,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.06)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
  </button>
+ <button onClick={()=>setAddEditOpen(true)} title="Modifier le joueur" aria-label="Modifier le joueur"
+ style={{width:28,height:28,borderRadius:8,border:"1px solid rgba(255,255,255,.1)",background:"rgba(255,255,255,.06)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+ </button>
+ </div>}
  </div>
  {!form.autoInfo&&(
  <div style={{background:"rgba(8,14,28,0.9)",borderRadius:12,border:"1px solid rgba(255,255,255,0.06)",padding:"2px 10px"}}>
@@ -11254,7 +11315,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   const ro=String(AI.role||"").trim();const POSL={TOP:"TOPLANE",JGL:"JUNGLE",MID:"MIDLANE",ADC:"BOTLANE",SUP:"SUPPORT"};
   const lab=G==="LoL"&&ROLE_OF(ro)?POSL[ROLE_OF(ro)]:ro?ro.toUpperCase():String(AI.game||"").toUpperCase();const src=getAvatarSrc(AI);
   const card=cc=>{const _h=String(cc).replace("#","").slice(0,6);const light=(0.299*parseInt(_h.slice(0,2),16)+0.587*parseInt(_h.slice(2,4),16)+0.114*parseInt(_h.slice(4,6),16))>150;const ink=light?"#111":"#fff";return(
- <div style={{position:"relative",isolation:"isolate",borderRadius:14,overflow:"hidden",display:"flex",alignItems:"stretch",height:124,background:"#0b1020",border:"1px solid rgba(255,255,255,.08)",boxShadow:"0 10px 26px rgba(0,0,0,.45), 0 0 0 1px "+cc+"22 inset"}}>
+ <div key={AI.name||form.player} style={{animation:"pcardIn .18s ease-out",position:"relative",isolation:"isolate",borderRadius:14,overflow:"hidden",display:"flex",alignItems:"stretch",height:124,background:"#0b1020",border:"1px solid rgba(255,255,255,.08)",boxShadow:"0 10px 26px rgba(0,0,0,.45), 0 0 0 1px "+cc+"22 inset"}}>
   {/* bande verticale : poste */}
   <div style={{width:26,flexShrink:0,background:"linear-gradient(180deg,#f4f5f7,#cfd3da)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3}}>
    <span style={{writingMode:"vertical-rl",transform:"rotate(180deg)",font:"800 11px 'Barlow Condensed',Inter,sans-serif",letterSpacing:1.6,color:"#1f2430",whiteSpace:"nowrap"}}>{lab}</span>
@@ -11263,7 +11324,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(90deg,"+cc+"d9 0%,"+cc+" 40%,"+cc+"c8 100%)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,boxShadow:"inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 22px rgba(0,0,0,.25)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
-  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 2%)",top:"50%",transform:"translateY(-50%)",height:"125%",width:"46%",objectFit:"contain",opacity:.5,zIndex:1,pointerEvents:"none"}}/>}
+  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 6%)",top:"50%",transform:"translateY(-50%) rotate(-8deg)",height:"185%",width:"58%",objectFit:"contain",opacity:.42,zIndex:1,pointerEvents:"none",imageRendering:"auto",filter:"saturate(1.15) contrast(1.1)"}}/>}
   {/* photo */}
   <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"flex-start"}}>
    {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:124,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
@@ -11281,16 +11342,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   </div>;})()}
  {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{marginTop:4,display:"inline-flex",alignItems:"center",gap:5,maxWidth:"100%",padding:"2px 8px 2px 4px",borderRadius:6,background:"rgba(0,0,0,.32)",color:"#fff",font:"600 10.5px/16px Inter,sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:14,height:14,objectFit:"contain",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span></span>})()}
   </div>
-  <div style={{position:"absolute",top:8,right:8,zIndex:4,display:"flex",alignItems:"flex-start",gap:6}}>
- <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
- title="Changer de joueur" aria-label="Changer de joueur" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(0,0,0,.3)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
- <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
- </button>
- <button onClick={()=>setAddEditOpen(true)} title="Modifier le joueur" aria-label="Modifier le joueur"
- style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(0,0,0,.3)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
- </button>
- </div>
+  
  </div>);};
   const fix=clubColorOf(AI.team);if(fix)return card(fix);
   return tl?<ClubColor logo={tl} game={AI.game}>{cc=>card(cc||"#7C3AED")}</ClubColor>:card("#7C3AED");})()}
