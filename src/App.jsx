@@ -619,7 +619,7 @@ function LinesBlock({game,bets=[],allPlayers={},onPlayer}){
   const maps=grp(b=>b.mapTag).sort((p,q)=>String(p[0]).localeCompare(String(q[0])));
   const pl=grp(b=>(b.player||"").trim().toLowerCase()).sort((p,q)=>q[1].profit-p[1].profit);
   const bks=grp(b=>b.bookmaker).sort((p,q)=>q[1].profit-p[1].profit);
-  const roles=grp(b=>{const P=allPlayers[(b.player||"").toLowerCase().trim()];return b.role||(P&&P.role)||null;}).sort((p,q)=>q[1].profit-p[1].profit);
+  const roles=grp(b=>{const P=bpl(allPlayers,b.player,b.game);return b.role||(P&&P.role)||null;}).sort((p,q)=>q[1].profit-p[1].profit);
   const last=[...L].sort((p,q)=>String(q.datetime||"").localeCompare(String(p.datetime||""))).slice(0,8);
   const av=n=>{const P=allPlayers[n];const src=getAvatarSrc(P);return <span style={{width:20,height:20,borderRadius:10,overflow:"hidden",background:"#1f2937",flexShrink:0,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#9ca3af"}}>{src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"top"}}/>:(n||"?")[0].toUpperCase()}</span>;};
   return <div style={{padding:"4px 14px 16px",background:"rgba(124,58,237,.05)",borderTop:"1px solid rgba(167,139,250,.2)"}}>
@@ -1094,12 +1094,12 @@ const PlayerAC=forwardRef(function PlayerAC({value,onChange,allPlayers,onConfirm
  },[onChange,allPlayers,onConfirm]);
 
  const handleSelect=useCallback(function(key){
- setInputVal(key);onChange(key,{confirmed:true});setOpen(false);
+ {const pp=allPlayers[key];setInputVal(String(key).includes("|")&&pp&&pp.name?pp.name:key);}onChange(key,{confirmed:true});setOpen(false);
  addRecentPlayer(key);
  setRecents(getRecentPlayers());
  // Focus auto sur champ cote après sélection joueur
  setTimeout(()=>onConfirm&&onConfirm(),60);
- },[onChange,onConfirm]);
+ },[onChange,onConfirm,allPlayers]);
 
  return(
  <div ref={ref} style={{position:"relative"}}>
@@ -1214,7 +1214,7 @@ function effectiveTournament(b,allPlayers){
  if(b.league)return b.league;
  // Try to get league from allPlayers
  if(allPlayers&&b.player){
- var pi=allPlayers[(b.player||"").toLowerCase().trim()];
+ var pi=bpl(allPlayers,b.player,b.game);
  if(pi&&pi.league)return pi.league;
  }
  }
@@ -1227,9 +1227,11 @@ function effectiveTournament(b,allPlayers){
 const CLUB_COLORS={"mouz": "#E30614", "vitality": "#F5D30F", "team vitality": "#F5D30F", "furia": "#1C1C1C", "aurora": "#16B7A6", "aurora gaming": "#16B7A6", "spirit": "#1F2A44", "team spirit": "#1F2A44", "betboom": "#E2232A", "team falcons": "#00A651", "fut esports": "#2B2B2B", "legacy": "#C9A227", "nemiga": "#D7262E", "nemiga gaming": "#D7262E", "g2": "#E10600", "g2 esports": "#E10600", "1win": "#1C1C1C", "natus vincere": "#F7D417", "navi": "#F7D417", "astralis": "#E21B23", "ninjas in pyjamas": "#C6D52B", "parivision": "#0FA89A", "the mongolz": "#B8862B", "heroic": "#E2152B", "mibr": "#1C1C1C", "faze": "#E31F25", "team liquid": "#0A2C5A", "eternal fire": "#E85D1E", "100 thieves": "#E2231A", "9z": "#7B2CBF", "m80": "#B9E000", "hotu": "#3A3A3A", "fnatic": "#FF5900", "b8": "#1C1C1C", "dendele": "#1E5AA8", "inner circle": "#E8353B", "virtus.pro": "#F26522", "big": "#1C1C1C", "sinners esports": "#C8102E", "k27": "#D7262E", "imperial": "#25B35B", "jijiehao": "#C8102E", "gamerlegion": "#5F5F5F", "wildcard": "#E4002B", "luminosity": "#3EA1D9", "team nemesis": "#2B2B2B", "bbl": "#C9A227", "bbl esports": "#C9A227", "magic": "#7B3FE4", "envy": "#1C1C1C", "sangal": "#B31B1B", "bc.game": "#26C281", "private": "#2B2B2B", "nrg": "#E4002B", "flyquest": "#0E9F55", "bestia": "#1C1C1C", "betclic apogee esports": "#E30613", "fokus": "#E30613", "alliance": "#3FBF3F", "pain": "#E4002B", "pain gaming": "#E4002B", "iberian soul": "#1C1C1C", "chinggis warriors": "#D7262E", "lynn vision": "#E0A100", "nuclear tigeres": "#E8591A", "metizport": "#2BA84A", "tyloo": "#D7262E", "fluxo": "#1C1C1C", "voca": "#2B2B2B", "team yandex": "#D7262E", "do konca": "#E30613", "1win team": "#1C1C1C", "team resilience": "#E4002B", "lgd gaming": "#1A3E8C", "cyberhero": "#2B2B2B", "og": "#0E7C66", "yakult brothers": "#E4002B", "xtreme gaming": "#8A8A8A", "froglings": "#6FBF3F", "astra invicta": "#2B2B2B", "yellow submarine": "#F2C200", "legion": "#6B5FA8", "power rangers": "#C8102E", "huligani": "#3E6B2A", "xipto esports": "#C8102E", "team lynx": "#1C1C1C", "playtime": "#F2A900", "execration": "#1E88E5", "royal bear": "#C9A227", "giantx": "#2B2B2B", "karmine corp": "#1C6BF0", "movistar koi": "#1F6FE5", "sk gaming": "#2B2B2B", "team heretics": "#1C1C1C", "dn soopers": "#1F5BD8", "hanjin brion": "#0F7A3E", "kt rolster": "#E30613", "nongshim redforce": "#D7262E", "t1": "#E2012D", "bnk fearx": "#C9A227", "dplus kia": "#1C1C1C", "gen.g": "#AA8A00", "hanwha life esports": "#F37321", "kiwoom drx": "#5A3FD8", "anyone's legend": "#C8102E", "bilibili gaming": "#00A1D6", "edward gaming": "#1C1C1C", "invictus gaming": "#2B2B2B", "jd gaming": "#C8102E", "lng esports": "#3A6FD8", "team we": "#C8102E", "thundertalk gaming": "#1FA8D8", "top esports": "#E8341C", "weibo gaming": "#E6162D", "cloud9": "#1EA3DC", "shopify rebellion": "#2B2B2B", "lyon": "#B8862B", "sentinels": "#CE0037", "disguised": "#C9A227", "optic gaming": "#5FAE2E", "loud": "#13D85C", "vivo keyd stars": "#6A2C91", "fluxo w7m": "#C8102E", "los": "#F04E23", "red canids kalunga": "#C8102E", "leviatán": "#3FA9F5", "ctbc flying oyster": "#C9A227", "deep cross gaming": "#1F5BD8", "gam esports": "#E0A100", "mvk esports": "#F26522", "softbank hawks": "#2B2B2B", "team secret whales": "#2B2B2B", "gentle mates": "#1C1C1C", "barça esports": "#A50044", "joblife": "#2B2B2B", "mandatory": "#D7262E", "ucam esports": "#1F5BD8", "eintracht frankfurt": "#E1000F", "krü esports": "#E5007E", "crazy raccoon": "#C8102E", "paper rex": "#7A3FD8", "zeta division": "#2B2B2B", "full sense": "#F26522", "rex regum qeon": "#E0A100", "qt dig∞": "#E4002B", "xi lai gaming": "#2B2B2B", "all gamers": "#E4002B", "trace esports": "#C9A227"};
 const clubColorOf=t=>CLUB_COLORS[String(t||"").toLowerCase().trim()]||null;
 // Nom en gros qui rétrécit tout seul pour toujours tenir en entier sur une ligne
-if(typeof document!=="undefined"&&!document.getElementById("pcardIn")){const st=document.createElement("style");st.id="pcardIn";st.textContent="@keyframes pcardIn{from{opacity:0;transform:translateY(4px) scale(.985)}to{opacity:1;transform:none}}";document.head.appendChild(st);}
-function FitName({text,max=40,min=16}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);
- useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min]);
+if(typeof document!=="undefined"&&!document.getElementById("pcardIn")){const st=document.createElement("style");st.id="pcardIn";st.textContent="@keyframes pcardIn{from{opacity:0;transform:translateY(4px) scale(.985)}to{opacity:1;transform:none}}";document.head.appendChild(st);const ln=document.createElement("link");ln.rel="stylesheet";ln.href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&display=swap";document.head.appendChild(ln);}
+const CLUB_COLORS2={"t1":"#000000","gen.g":"#000000","geng":"#000000","vitality":"#000000","team vitality":"#000000","karmine corp":"#0A1A3C","kc":"#0A1A3C","g2 esports":"#000000","g2":"#000000","fnatic":"#000000","hanwha life esports":"#1A1A1A","hle":"#1A1A1A","cloud9":"#0B3A63","c9":"#0B3A63","team liquid":"#0A1A2F","furia":"#000000","natus vincere":"#000000","navi":"#000000","mouz":"#000000","aurora":"#063F3A","faze clan":"#000000","spirit":"#000000","team spirit":"#000000"};
+function clubColor2(team,cc){const k=String(team||"").toLowerCase().trim();if(CLUB_COLORS2[k])return CLUB_COLORS2[k];const h=String(cc||"#7C3AED").replace("#","");if(h.length<6)return "#000";const d=x=>Math.round(parseInt(x,16)*.38).toString(16).padStart(2,"0");return "#"+d(h.slice(0,2))+d(h.slice(2,4))+d(h.slice(4,6));}
+function FitName({text,max=40,min=16}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
+ useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap"}}>{text}</span></div>;}
 const _TLC={ms:null,m:new Map()};
 function tourLogoSrc(league){
@@ -3534,7 +3536,7 @@ function SelectionModal({bets,scopeIds=null,scopeLabel="",onClose,setBets,supaPu
  if(scope)filtered=filtered.filter(b=>scope.has(String(b.id)));
  if(q.trim()){const qq=q.trim().toLowerCase();filtered=filtered.filter(b=>[b.player,b.team,b.tournament,b.league,b.description,b.bookmaker].some(x=>String(x||"").toLowerCase().includes(qq)));}
  if(searchTournament){
- const tOf=function(b){if(b.tournament)return b.tournament;if(b.league)return b.league;const pl=allPlayers[(b.player||"").toLowerCase().trim()];return (pl&&pl.league)||"";};
+ const tOf=function(b){if(b.tournament)return b.tournament;if(b.league)return b.league;const pl=bpl(allPlayers,b.player,b.game);return (pl&&pl.league)||"";};
  if(searchTournament==="__NONE__")filtered=filtered.filter(function(b){return !tOf(b);});
  else filtered=filtered.filter(function(b){return tOf(b)===searchTournament;});
  }
@@ -3748,7 +3750,7 @@ function SelectionModal({bets,scopeIds=null,scopeLabel="",onClose,setBets,supaPu
    </div></SelSec>}
    <SelSec t="Tournoi"><div style={{display:"flex",flexWrap:"wrap",gap:8}}>
     {chip(searchTournament==="__NONE__","Sans tournoi",()=>setSearchTournament(searchTournament==="__NONE__"?"":"__NONE__"))}
-    {[...new Set(bets.map(b=>b.tournament||b.league||((allPlayers[(b.player||"").toLowerCase().trim()]||{}).league)).filter(Boolean))].sort().map(t=>chip(searchTournament===t,t,()=>setSearchTournament(searchTournament===t?"":t)))}
+    {[...new Set(bets.map(b=>b.tournament||b.league||((bpl(allPlayers,b.player,b.game)||{}).league)).filter(Boolean))].sort().map(t=>chip(searchTournament===t,t,()=>setSearchTournament(searchTournament===t?"":t)))}
    </div></SelSec>
    <SelSec t="Date"><input type="date" value={searchDate} onChange={e=>setSearchDate(e.target.value)} style={{width:"100%",boxSizing:"border-box",height:46,background:CARD,border:"1px solid "+LINE,borderRadius:12,padding:"0 14px",color:"#e5e7eb",fontSize:15,colorScheme:"dark"}}/></SelSec>
   </SelSheet>}
@@ -4144,7 +4146,7 @@ const capName=v=>{const x=String(v||"");if(!x)return x;try{const p=plOf(x);if(p&
 // ── CLUBS : top / flop par jeu + fiche équipe ─────────────────────────────
 function openClubSheet(team,game){try{window.dispatchEvent(new CustomEvent("emeieks-open-club",{detail:{team,game}}));}catch(e){}}
 // Club au moment du pari (b.team) sinon club actuel du joueur
-function clubOfBet(b,allPlayers){if(b.team&&b.team!=="?")return b.team;const p=allPlayers[(b.player||"").toLowerCase().trim()];return p&&p.team?p.team:null;}
+function clubOfBet(b,allPlayers){if(b.team&&b.team!=="?")return b.team;const p=bpl(allPlayers,b.player,b.game);return p&&p.team?p.team:null;}
 const _clubLogoIdx=new WeakMap();
 function clubLogo(team,game,teamLogos,allPlayers){
  if(teamLogos&&teamLogos[team+"__"+game])return teamLogos[team+"__"+game];
@@ -4775,7 +4777,7 @@ function GamePlayerSearch({game,bets,allPlayers,teamLogos={}}){
 // ── FICHE TOURNOI ─────────────────────────────────────────────────────────
 function tourOfBet(b,allPlayers){
  let t=b.tournament;
- if(!t&&(b.game==="LoL"||b.game==="Valorant")){t=b.league;if(!t&&allPlayers){const p=allPlayers[(b.player||"").toLowerCase().trim()];if(p&&p.league)t=p.league;}}
+ if(!t&&(b.game==="LoL"||b.game==="Valorant")){t=b.league;if(!t&&allPlayers){const p=bpl(allPlayers,b.player,b.game);if(p&&p.league)t=p.league;}}
  return t||"Hors tournoi";
 }
 function openTourSheet(name,game){try{window.dispatchEvent(new CustomEvent("emeieks-open-tour",{detail:{name,game}}));}catch(e){}}
@@ -4899,11 +4901,11 @@ function CleanupPanel({bets,setBets,allPlayers,tourneyCal=[],showToast,onShowBet
  const load=async()=>{try{setRows(await cloudDb("players?select=id,name,game,team,role,league,photo_url,avatar_url,team_logo_url&limit=50000"));}catch(e){setRows([]);showToast&&showToast("Lecture des joueurs impossible","#EF4444");}};
  useEffect(()=>{if(open&&rows==null)load();},[open]);
  const dupGroups=useMemo(()=>{if(!rows)return [];const m={};rows.forEach(r=>{const k=(r.name||"").toLowerCase().trim()+"__"+(r.game||"");(m[k]=m[k]||[]).push(r);});return Object.values(m).filter(a=>a.length>1);},[rows]);
- const noClub=useMemo(()=>bets.filter(b=>(!b.team||b.team==="?")&&allPlayers[(b.player||"").toLowerCase().trim()]?.team),[bets,allPlayers]);
+ const noClub=useMemo(()=>bets.filter(b=>(!b.team||b.team==="?")&&bpl(allPlayers,b.player,b.game)?.team),[bets,allPlayers]);
  const noTour=useMemo(()=>bets.filter(b=>tourOfBet(b,allPlayers)==="Hors tournoi"),[bets,allPlayers]);
  const calFor=b=>{const d=String(b.datetime||"").slice(0,10);if(!d)return null;const hits=(tourneyCal||[]).filter(t=>t&&t.game===b.game&&t.start&&t.end&&d>=String(t.start).slice(0,10)&&d<=String(t.end).slice(0,10));return hits.length===1?hits[0].name:null;};
  const autoTour=noTour.filter(b=>calFor(b));
- const caseMismatch=useMemo(()=>bets.filter(b=>{const p=allPlayers[(b.player||"").toLowerCase().trim()];return p&&p.name&&b.player!==p.name;}),[bets,allPlayers]);
+ const caseMismatch=useMemo(()=>bets.filter(b=>{const p=bpl(allPlayers,b.player,b.game);return p&&p.name&&b.player!==p.name;}),[bets,allPlayers]);
  const merge=async grp=>{
   setBusy("dup");
   try{
@@ -4938,9 +4940,9 @@ function CleanupPanel({bets,setBets,allPlayers,tourneyCal=[],showToast,onShowBet
      <button onClick={()=>merge(g)} disabled={!!busy} style={{padding:"5px 10px",borderRadius:8,border:"1px solid rgba(239,68,68,.35)",background:"rgba(239,68,68,.1)",color:"#EF4444",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>Fusionner</button>
     </div>))}
     <Row n={caseMismatch.length} color="#A78BFA" title="Paris avec un pseudo mal écrit" sub="Le nom du pari diffère de la fiche joueur (majuscules)" action="Corriger"
-     onAction={()=>{setBets(prev=>prev.map(b=>{const p=allPlayers[(b.player||"").toLowerCase().trim()];return p&&p.name&&b.player!==p.name?{...b,player:p.name}:b;}));showToast&&showToast(caseMismatch.length+" pari(s) corrigé(s)","#22C55E");}}/>
+     onAction={()=>{setBets(prev=>prev.map(b=>{const p=bpl(allPlayers,b.player,b.game);return p&&p.name&&b.player!==p.name?{...b,player:p.name}:b;}));showToast&&showToast(caseMismatch.length+" pari(s) corrigé(s)","#22C55E");}}/>
     <Row n={noClub.length} color="#60A5FA" title="Paris sans club" sub="On leur met le club actuel du joueur" action="Ajouter le club"
-     onAction={()=>{setBets(prev=>prev.map(b=>{if(b.team&&b.team!=="?")return b;const p=allPlayers[(b.player||"").toLowerCase().trim()];return p&&p.team?{...b,team:p.team}:b;}));showToast&&showToast(noClub.length+" pari(s) mis à jour","#22C55E");}}/>
+     onAction={()=>{setBets(prev=>prev.map(b=>{if(b.team&&b.team!=="?")return b;const p=bpl(allPlayers,b.player,b.game);return p&&p.team?{...b,team:p.team}:b;}));showToast&&showToast(noClub.length+" pari(s) mis à jour","#22C55E");}}/>
     <Row n={noTour.length} color="#FBBF24" title="Paris sans tournoi" sub={autoTour.length?autoTour.length+" trouvable(s) grâce au calendrier des tournois":"À corriger à la main depuis la liste"}
      action={autoTour.length?"Assigner "+autoTour.length:null}
      onAction={()=>{const ids=new Map(autoTour.map(b=>[String(b.id),calFor(b)]));setBets(prev=>prev.map(b=>ids.has(String(b.id))?{...b,tournament:ids.get(String(b.id))}:b));showToast&&showToast(ids.size+" pari(s) assigné(s)","#22C55E");}}
@@ -5037,6 +5039,7 @@ function setAssets(pl,logo){const cut=new Map();Object.values(pl||{}).forEach(p=
  ASSETS.pl=pl||{};ASSETS.cut=cut;if(logo)ASSETS.logo=logo;ASSETS.lc=new Map();ASSETS.v++;}
 function notifyAssets(){ASSETS.subs.forEach(f=>{try{f();}catch(e){}});}
 function useAssets(){const [v,setV]=useState(ASSETS.v);useEffect(()=>{const f=()=>setV(ASSETS.v);ASSETS.subs.add(f);if(ASSETS.v!==v)f();return()=>{ASSETS.subs.delete(f);};},[]);return v;}
+function bpl(AP,name,game){const k=String(name||"").toLowerCase().trim();if(!k||!AP)return undefined;const p=AP[k];if(!game||!p||!p.game||GNORM(p.game)===GNORM(game))return p;const t=k+"|"+GNORM(game).toLowerCase();const rk=Object.keys(AP).find(x=>x.toLowerCase()===t);return rk?AP[rk]:p;}
 function plOf(name,game){if(!name)return null;const k=String(name).toLowerCase().trim();const g=game?GNORM(game):"";const p=ASSETS.pl[k];if(p&&(!g||!p.game||GNORM(p.game)===g))return p;const c=cutNorm(name);return (g&&ASSETS.cut.get(c+"|"+g))||ASSETS.cut.get(c)||p||null;}
 function photoOf(name,game){const p=plOf(name,game);return p?getAvatarSrc(p):null;}
 function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||(()=>{const tl=ASSETS.tl||{};const n=String(team).toLowerCase().trim();for(const g of ["CS2","LoL","Dota2","Valorant"]){const x=tl[team+"__"+g];if(x)return x;}const k=Object.keys(tl).find(x=>x.split("__")[0].toLowerCase().trim()===n);return k?tl[k]:null;})()||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
@@ -5210,7 +5213,7 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
   setRows(Array.isArray(r)?r:[]);setBb(Array.isArray(b)?b:[]);const o={};(mv||[]).forEach(x=>{(o[x.cut_key]=o[x.cut_key]||[]).push(x);});setMoves(o);}catch(e){setRows([]);}},[]);
  const [moves,setMoves]=useState({});const [q,setQ]=useState("");const [avg,setAvg]=useState({});
  // moyenne réelle du joueur (tes résultats saisis, 10 dernières maps)
- useEffect(()=>{cloudDb("player_results?select=pkey,kills,hs,day&order=day.desc&limit=6000").then(r=>{const o={};(r||[]).forEach(x=>{const a=(o[x.pkey]=o[x.pkey]||{k:[],h:[]});if(a.k.length<10){a.k.push(x.kills);if(x.hs!=null)a.h.push(x.hs);}});setAvg(o);}).catch(()=>{});},[]);
+ useEffect(()=>{cloudDb("player_results?select=pkey,game,kills,hs,day&order=day.desc&limit=6000").then(r=>{const o={};(r||[]).forEach(x=>{const _k=x.pkey+"|"+GNORM(x.game);const a=(o[_k]=o[_k]||{k:[],h:[]});if(a.k.length<10){a.k.push(x.kills);if(x.hs!=null)a.h.push(x.hs);}});setAvg(o);}).catch(()=>{});},[]);
  useEffect(()=>{load();const i=setInterval(()=>{if(!document.hidden)load();},300000);return()=>clearInterval(i);},[load]);
  const clean=t=>String(t||"").replace(/\s*MAPS?\s*\d.*$/i,"").trim();
  const logoIdx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
@@ -5278,7 +5281,7 @@ function PPBoard({allPlayers={},teamLogos={},focus=null}){
      const wrong=pl&&pl.team&&(!same(pl.team,t)||(sides.length===2&&!sides.some(x=>same(x,pl.team))));
      return <CutCard key={r.key} warn={wrong?{site:pl.team,pp:t,onClick:()=>openPlayerSheet(r.player)}:null} player={r.player} team={t} club={(pl&&pl.team)||t} role={pl&&pl.role} photo={pl&&(pl.photo_url||pl.avatar_url)} logo={logoOf(t,m.game)} opp={t===A?B:A} when={m.live?"LIVE":(tsOf(m.start)&&tsOf(m.start)<=Date.now()?"Terminé":fmtT(r.start))} tag={null} game={m.game} back={<BetbyMini rows={bb.filter(x=>x.pkey===r.pkey)} stat={stat} per={r.line/r.maps.split("+").length} tg={bbTag}/>}>
      <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6}}><span style={{fontSize:24,fontWeight:900,color:"#fff"}}>{r.line}</span><span style={{fontSize:11,fontWeight:700,color:"#9ca3af"}}>{mt} {W}</span></div>
-     {(()=>{const mv=moves[r.key];const a=avg[r.pkey];const L=a?(stat==="headshots"?a.h:a.k):[];const n=r.maps.split("+").length;
+     {(()=>{const mv=moves[r.key];const a=avg[r.pkey+"|"+GNORM(r.game)];const L=a?(stat==="headshots"?a.h:a.k):[];const n=r.maps.split("+").length;
       return <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:3,fontSize:11,fontWeight:700,flexWrap:"wrap"}}>
        {mv&&mv.length>0&&<span title={"Ouverture "+mv[0].old} style={{color:Number(mv[mv.length-1].new)>Number(mv[0].old)?"#f87171":"#4ade80"}}>{mv[0].old} → {mv[mv.length-1].new}</span>}
        {L.length>=3&&<span title={"Moyenne de tes résultats saisis · "+L.length+" maps"} style={{color:"#93c5fd"}}>moy. {(L.reduce((t,x)=>t+x,0)/L.length*n).toFixed(1)} <span style={{color:"#6b7280"}}>({L.length})</span></span>}
@@ -6940,7 +6943,7 @@ function useChampData(bets,allPlayers){
   const prI={};rows.forEach(r=>{prI[r.pkey+"|"+r.map_no+"|"+r.day]=r;});
   const nx=d=>{const t=new Date(d+"T12:00:00");t.setDate(t.getDate()+1);return t.toISOString().slice(0,10);};
   const prOf=b=>{const n=parseInt(String(b.mapTag||"").replace(/\D/g,""))||1;const k=typeof aliasOf==="function"?aliasOf(b.player):cutNorm(b.player);const d=String(b.datetime||"").slice(0,10);return prI[k+"|"+n+"|"+d]||prI[k+"|"+n+"|"+nx(d)]||null;};
-  const roleOf=x=>{const p=allPlayers[(x.player||"").toLowerCase().trim()]||allPlayers[x.pkey];return String(normalizeRole((p&&p.role)||"","LoL")||"").toUpperCase();};
+  const roleOf=x=>{const p=bpl(allPlayers,x.player,x.game)||allPlayers[x.pkey];return String(normalizeRole((p&&p.role)||"","LoL")||"").toUpperCase();};
   const o={};const get=c=>o[c]=o[c]||{c,cls:champClass(c,tags),n:0,k:0,sh:0,shn:0,max:0,ks:[],pl:{},pls:{},roles:{},bets:[],ak:0,ad:0,aa:0,an:0,w:0,wn:0,kp:0,kpn:0,cs:0,csn:0,gold:0,gn:0,dmg:0,dn:0,games:[],teams:{}};
   rows.forEach(x=>{const a=get(x.champion);const k=Number(x.kills)||0;a.n++;a.k+=k;a.max=Math.max(a.max,k);a.ks.push(k);const t=tk[x.match_key+"|"+x.map_no+"|"+x.team];if(t>0){a.sh+=k/t;a.shn++;}
    const ad=x.adv&&x.adv.d!=null?x.adv:null;if(ad){a.ak+=k;a.ad+=Number(ad.d)||0;a.aa+=Number(ad.a)||0;a.an++;}
@@ -6951,7 +6954,7 @@ function useChampData(bets,allPlayers){
    if(x.team)a.teams[x.team]=(a.teams[x.team]||0)+1;a.games.push({k,d:ad?ad.d:null,as:ad?ad.a:null,day:x.day,p:x.player,t:x.team,won,mk:x.match_key,no:x.map_no,role:r});});
   const TOT=new Set(rows.map(x=>x.match_key+"|"+x.map_no)).size||1;
   (bets||[]).filter(b=>GNORM(b.game)==="LoL"&&(b.status==="won"||b.status==="lost")&&!isAdjBet(b)).forEach(b=>{const r=prOf(b);if(!r)return;const a=get(r.champion);
-   const pi=allPlayers[(b.player||"").toLowerCase().trim()];a.bets.push({...b,_lg:b.tournament||b.league||(pi&&pi.league)||"",_k:Number(r.kills)||0});});
+   const pi=bpl(allPlayers,b.player,b.game);a.bets.push({...b,_lg:b.tournament||b.league||(pi&&pi.league)||"",_k:Number(r.kills)||0});});
   return Object.values(o).map(a=>{const role=Object.entries(a.roles).sort((x,y)=>y[1]-x[1])[0];const ss=[...a.ks].sort((p,q)=>p-q);const med=ss.length?(ss.length%2?ss[(ss.length-1)/2]:(ss[ss.length/2-1]+ss[ss.length/2])/2):0;const gs=[...a.games].sort((p,q)=>String(q.day).localeCompare(String(p.day))||q.no-p.no);const l5=gs.slice(0,5);
    return {...a,games:gs,med,pick:a.n/TOT*100,dAvg:a.an?a.ad/a.an:null,aAvg:a.an?a.aa/a.an:null,kpAvg:a.kpn?a.kp/a.kpn:null,csAvg:a.csn?a.cs/a.csn:null,goldAvg:a.gn?a.gold/a.gn:null,dmgAvg:a.dn?a.dmg/a.dn:null,l5:l5.length?l5.reduce((t,g)=>t+g.k,0)/l5.length:null,over:[2,3,4,5,6,7].map(L=>({L:L+.5,p:a.ks.filter(k=>k>L).length/Math.max(1,a.ks.length)*100})),role:role?role[0]:"",avg:a.n?a.k/a.n:0,share:a.shn?a.sh/a.shn*100:null,kda:a.an?(a.ak+a.aa)/Math.max(1,a.ad):null,wr:a.wn?a.w/a.wn*100:null,
    players:Object.values(a.pls).map(P=>({...P,avg:P.k/P.n,kda:P.an?(P.ak+P.aa)/Math.max(1,P.ad):null,wr:P.wn?P.w/P.wn*100:null}))};});
@@ -7041,7 +7044,7 @@ function SimulationTab({allPlayers={},teamLogos={},mediaStore={},savedTourneys={
  const srcOf=x=>x.kind==="duel"?"duel":(x.is_ev||evSet.has([cutNorm(x.player),x.stat,x.side,String(x.map),Number(x.line),String(x.match||"").toLowerCase().replace(/[^a-z0-9]/g,"")].join("|")))?"ev":"sim";
  const mlB=x=>{const o=Number(x.team_ml);return !o?null:o<1.6?"fav":o<2.5?"mid":o<3?"out":"big";};
  const nearOk=x=>!close||(x.result&&x.value!=null&&x.kind!=="duel"&&Math.abs(Number(x.value)-Number(x.line))<=close+.5);
- const roleOf=x=>{const P=allPlayers[String(x.player||"").toLowerCase().trim()]||allPlayers[String(x.pkey||"")];return P&&P.role?normalizeRole(P.role,GNORM(P.game||x.game)):null;};
+ const roleOf=x=>{const P=bpl(allPlayers,x.player,x.game)||allPlayers[String(x.pkey||"")];return P&&P.role?normalizeRole(P.role,GNORM(P.game||x.game)):null;};
  // 1 seul pari par joueur · map · stat · côté · match : la ligne dont la cote est la plus proche de 1,85 (ligne principale)
  const one=L=>{if(!uniq)return L;const m={};L.forEach(x=>{const k=[x.pkey,x.kind==="duel"?"duel|"+x.vs:x.stat,x.side,x.map,x.day,String(x.match||"").replace(/\s*MAPS?\s*\d.*$/i,"")].join("|");const o=m[k];const ev=y=>srcOf(y)==="ev"?0:1;if(!o||ev(x)<ev(o)||ev(x)===ev(o)&&Math.abs(Number(x.odds)-1.85)<Math.abs(Number(o.odds)-1.85))m[k]=x;});return Object.values(m);};
  const base=useMemo(()=>Array.isArray(rows)?one(rows.filter(pre).filter(x=>src[srcOf(x)]&&(g==="all"||GN(x.game)===g)&&(md==="all"||(x.mode||"pre")===md))):[],[rows,g,src,md,uniq,evSet]);
@@ -8402,7 +8405,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  useEffect(()=>{loadEv();const i=setInterval(()=>{if(!document.hidden)loadEv();},60000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
  const evToBet=(a,bk,stake,odds,mapTag,idx=0,silent=false)=>{
-  const info=findPlayer(a.player)||{game:a.game,league:"?",role:"?",team:"?"};
+  const info=findPlayer(a.player,a.game)||{game:a.game,league:"?",role:"?",team:"?"};
   const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
   const g={"League of Legends":"LoL","Dota 2":"Dota2"}[a.game]||a.game;
   const st=parseFloat(stake),od=parseFloat(String(odds).replace(",","."));
@@ -8439,7 +8442,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
     showToast(g.ok?"Run lancé sur GitHub · ~1-2 min":"GitHub refuse ("+g.status+") · le run partira au prochain cycle",g.ok?"#7C3AED":"#F59E0B");}
    else showToast(betbyOnly===true?"Betby…":"Apify…","#7C3AED");}
   catch(e){const m=String(e.message||e);showToast("Run impossible : "+m.slice(0,140),"#EF4444");console.error("ev_runs",m);}};
- const evOpenAdd=a=>{const info=findPlayer(a.player)||null;const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
+ const evOpenAdd=a=>{const info=findPlayer(a.player,a.game)||null;const hs=a.stat==="headshots";const word=hs?"Headshots":"Kills";
   const live=false;
   evPrefillRef.current=true;evPendingRef.current=a;setEditingBet(null);
   setForm(f=>({...EMPTY_FORM,datetime:nowDT(),player:(info&&info.name)||a.player,overUnder:a.side==="over"?"Over":"Under",description:a.book_line+" "+word,odds:String(a.book_odds),
@@ -9226,12 +9229,12 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    const need=pend.filter(b=>!have.has(String(b.id)));if(!need.length)return;
    const keys=[...new Set(need.map(b=>cutNorm(b.player)))];
    const props=(await cloudDb("betby_props?select=pkey,match,ml1,ml2&ml1=not.is.null&pkey=in.("+keys.map(k=>encodeURIComponent(k)).join(",")+")&limit=2000"))||[];
-   const out=[];need.forEach(b=>{const r=props.find(x=>x.pkey===cutNorm(b.player));if(!r)return;const pl=findPlayer(b.player)||{};const team=pl.team||b.team||"";
+   const out=[];need.forEach(b=>{const r=props.find(x=>x.pkey===cutNorm(b.player));if(!r)return;const pl=findPlayer(b.player,b.game)||{};const team=pl.team||b.team||"";
     const [h,aw]=String(r.match).split(/\s+vs\.?\s+/i);const k=teamKey(team);const same=x=>{const n=teamKey(x);return k&&n&&(n.includes(k)||k.includes(n));};
     const ml=same(h)?r.ml1:same(aw)?r.ml2:null;if(ml)out.push({id:b.id,team_ml:ml,opp_ml:same(h)?r.ml2:r.ml1,game:b.game,player:b.player});});
    if(out.length&&!stop)await cloudDb("bet_ml",{method:"POST",body:out,prefer:"resolution=ignore-duplicates"});}catch(e){}};
   const t=setTimeout(run,8000);const i=setInterval(run,10*60000);return()=>{stop=true;clearTimeout(t);clearInterval(i);};},[bets.length]);
- const evTeams=a=>{const [t1,t2]=String(a.match||"").split(/\s+vs\.?\s+/i);const pl=findPlayer(a.player)||{};const mine=pl.team||a.team||"";
+ const evTeams=a=>{const [t1,t2]=String(a.match||"").split(/\s+vs\.?\s+/i);const pl=findPlayer(a.player,a.game)||{};const mine=pl.team||a.team||"";
   const k=teamKey(mine);const hit=t=>{const n=teamKey(t);return k&&n&&(n.includes(k)||k.includes(n)||cutNorm(teamAbbr(t))===cutNorm(mine));};
   return t2&&hit(t2)&&!hit(t1)?[t2,t1]:[t1,t2];};
  const [evFocus,setEvFocus]=useState(null);
@@ -9269,7 +9272,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const findPlayer=useCallback(function(name,game){
  const key=String(name||"").toLowerCase().trim();if(!key)return null;
  // 1. Correspondance exacte
+ if(game&&!key.includes("|")){const G=GNORM(game);const p0=allPlayers[key];if(p0&&(!p0.game||GNORM(p0.game)===G))return{name:key,...p0};
+  const rk=Object.keys(allPlayers).find(k=>k.toLowerCase()===key+"|"+G.toLowerCase());if(rk){const pp=allPlayers[rk];return{...pp,name:pp.name||key};}}
  if(allPlayers[key])return{name:key,...allPlayers[key]};
+ if(key.includes("|")){const rk=Object.keys(allPlayers).find(k=>k.toLowerCase()===key);if(rk){const pp=allPlayers[rk];return{...pp,name:pp.name||key.split("|")[0]};}}
  // 2. Clé préfixée par le jeu (ex: "dota2:bach")
  if(game){
  const gKey=String(game).toLowerCase()+":"+key;
@@ -9509,7 +9515,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  var effT=b.tournament;
  if(!effT&&(b.game==="LoL"||b.game==="Valorant")){
  effT=b.league;
- if(!effT&&allPlayers){var pi=allPlayers[(b.player||"").toLowerCase().trim()];if(pi&&pi.league)effT=pi.league;}
+ if(!effT&&allPlayers){var pi=bpl(allPlayers,b.player,b.game);if(pi&&pi.league)effT=pi.league;}
  }
  const k=effT||"Hors tournoi";
  if(!tm[k])tm[k]={name:k,count:0,won:0,profit:0,staked:0};
@@ -9844,7 +9850,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  function addBet(){
  if(!form.player||!form.odds||!form.stake||!form.bookmaker||!form.description||!form.mapTag)return;
- const info=findPlayer(form.player)||{game:"?",league:"?",role:"?",team:"?"};
+ const info=(form.autoInfo&&form.autoInfo.team?form.autoInfo:findPlayer(form.player))||{game:"?",league:"?",role:"?",team:"?"};
  // Conversion devise si le casino a une devise différente de USD
  // CAD conversion removed
  
@@ -9937,7 +9943,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  ppLine:ppFinalLine||null,
  ppEdge:ppEdge,
  };
- {const dk=String(newBet.datetime||"").slice(0,10);const dup=(bets||[]).find(x=>cutNorm(x.player)===cutNorm(newBet.player)&&String(x.description||"").trim().toLowerCase()===String(newBet.description||"").trim().toLowerCase()&&String(x.mapTag||"")===String(newBet.mapTag||"")&&String(x.datetime||"").slice(0,10)===dk);
+ {const dk=String(newBet.datetime||"").slice(0,10);const dup=(bets||[]).find(x=>cutNorm(x.player)===cutNorm(newBet.player)&&GNORM(x.game)===GNORM(newBet.game)&&String(x.description||"").trim().toLowerCase()===String(newBet.description||"").trim().toLowerCase()&&String(x.mapTag||"")===String(newBet.mapTag||"")&&String(x.datetime||"").slice(0,10)===dk);
   if(dup&&!window.confirm("Pari identique déjà enregistré ce jour-là ("+dup.player+" · "+dup.mapTag+" · "+dup.description+"). Ajouter quand même ?"))return;}
  {const sig=[cutNorm(newBet.player),newBet.description,newBet.mapTag,newBet.overUnder,newBet.odds,newBet.stake,newBet.bookmaker].join("|");
   const L=window.__lastAdd;if(L&&L.sig===sig&&Date.now()-L.t<4000){showToast("Déjà ajouté (double appui ignoré)","#F59E0B");return;}window.__lastAdd={sig,t:Date.now()};}
@@ -9955,7 +9961,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  }
 
  function addSession(){
- const info=findPlayer(form.player)||{game:"?",league:"?",role:"?",team:"?"};
+ const info=(form.autoInfo&&form.autoInfo.team?form.autoInfo:findPlayer(form.player))||{game:"?",league:"?",role:"?",team:"?"};
  const desc=form.description?form.overUnder+" "+form.description:form.overUnder;
  const enabled=sessionMaps.filter(m=>m.enabled&&m.odds);
  if(!form.player||enabled.length===0)return;
@@ -10048,7 +10054,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  isLive:b.isLive||false,
  mapTag:b.mapTag||"Map 1",
  tournament:b.tournament||"",
- autoInfo:findPlayer(b.player)||null,
+ autoInfo:findPlayer(b.player,b.game)||null,
  ppMapType:b.ppMapType||"",
  ppDescription:b.ppLine||"",
  }));
@@ -11305,7 +11311,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const pi0=(o&&o.confirmed)||nMatch===1?findPlayer(v):null;const pi=pi0&&String(pi0.team||"").trim()?pi0:null;
  setForm(f=>({
  ...f,
- player:v,
+ player:String(v||"").includes("|")&&pi&&pi.name?pi.name:v,
  autoInfo:pi,
  }));
  }} allPlayers={allPlayers} activeTourneys={activeTourneys} betFreq={betFreq} onConfirm={()=>{setTimeout(()=>{const el=document.getElementById("kills-select");if(el){el.focus();el.click();}else{const odds=document.getElementById("odds-input-field");if(odds)odds.focus();}},80);}}/>
@@ -11324,7 +11330,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(90deg,"+cc+"d9 0%,"+cc+" 40%,"+cc+"c8 100%)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,boxShadow:"inset 0 0 0 2px rgba(255,255,255,.18), inset 0 0 22px rgba(0,0,0,.25)",zIndex:0}}/>
   <div style={{position:"absolute",left:26,right:0,top:0,bottom:0,background:"linear-gradient(180deg,rgba(255,255,255,.14),transparent 38%,rgba(0,0,0,.28))",zIndex:0}}/>
-  {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 6%)",top:"50%",transform:"translateY(-50%) rotate(-8deg)",height:"185%",width:"58%",objectFit:"contain",opacity:.42,zIndex:1,pointerEvents:"none",imageRendering:"auto",filter:"saturate(1.15) contrast(1.1)"}}/>}
+  {tl&&<div aria-hidden="true" style={{position:"absolute",left:"calc(26px + 6%)",top:"50%",transform:"translateY(-50%)",height:"165%",width:"56%",background:clubColor2(AI.team,cc),WebkitMaskImage:"url(\""+tl+"\")",maskImage:"url(\""+tl+"\")",WebkitMaskSize:"contain",maskSize:"contain",WebkitMaskRepeat:"no-repeat",maskRepeat:"no-repeat",WebkitMaskPosition:"center",maskPosition:"center",opacity:.6,zIndex:1,pointerEvents:"none"}}/>}
   {/* photo */}
   <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"flex-start"}}>
    {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:124,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
@@ -11335,10 +11341,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    <FitName text={capName(AI.name||form.player)} max={36} min={15}/>
    
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(betsForDisplay.filter(b=>(b.player||"").toLowerCase().trim()===k));
-  if(!a.n)return <div style={{font:"600 12.5px/18px Inter,sans-serif",color:"rgba(255,255,255,.78)"}}>Aucun pari terminé</div>;
-  const c=a.profit>0?"#5CFF9D":a.profit<0?"#FFB4B4":"#fff";
-  return <div style={{display:"flex",alignItems:"center",gap:8,font:"700 12.5px/18px Inter,sans-serif",color:"#fff",whiteSpace:"nowrap"}}>
-   <span style={{padding:"1px 7px",borderRadius:6,background:"rgba(0,0,0,.25)"}}>{a.won}-{a.lost}</span><span style={{color:c}}>{fmtM(a.profit)}</span>
+  if(!a.n)return <div style={{font:"600 14px/20px Inter,sans-serif",color:"rgba(255,255,255,.85)"}}>Aucun pari terminé</div>;
+  const c=a.profit>0?"#3DFF8A":a.profit<0?"#FF5C5C":"#fff";
+  return <div style={{display:"flex",alignItems:"center",gap:6,font:"800 14px/20px Inter,sans-serif",color:"#fff",whiteSpace:"nowrap"}}>
+   <span style={{padding:"2px 8px",borderRadius:7,background:"rgba(0,0,0,.42)"}}>{a.won}-{a.lost}</span><span style={{padding:"2px 8px",borderRadius:7,background:"rgba(0,0,0,.42)",color:c}}>{fmtM(a.profit)}</span>
   </div>;})()}
  {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{marginTop:4,display:"inline-flex",alignItems:"center",gap:5,maxWidth:"100%",padding:"2px 8px 2px 4px",borderRadius:6,background:"rgba(0,0,0,.32)",color:"#fff",font:"600 10.5px/16px Inter,sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:14,height:14,objectFit:"contain",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span></span>})()}
   </div>
@@ -12897,7 +12903,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>
  </div>
  {displayList.map(function(p,i){
- var pl=allPlayers[(p.player||"").toLowerCase().trim()];
+ var pl=bpl(allPlayers,p.player,p.game);
  var src=getAvatarSrc(pl);
  return(
  <div key={p.player} onClick={function(){openDrill({game,league:null,filterType:"player",filterValue:p.player});}} style={{display:"flex",alignItems:"center",gap:11,padding:"9px 14px",borderBottom:"1px solid #1F2937",cursor:"pointer"}}>
@@ -13925,7 +13931,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    </div></div>;})()}
  {evQuick&&!evQuick.multi&&(()=>{const a=evQuick.a;const hs=a.stat==="headshots";const W=hs?"Headshots":"Kills";const st=parseFloat(evQuick.stake);const ok=evQuick.bk&&st>0;
   const G=({"League of Legends":"LoL","Dota 2":"Dota2"})[a.game]||a.game;const [t1,t2]=evTeams(a);
-  const pl=findPlayer(a.player)||{};const photo=pl.photo_url||pl.avatar_url;const odds=Number(a.book_odds);
+  const pl=findPlayer(a.player,a.game)||{};const photo=pl.photo_url||pl.avatar_url;const odds=Number(a.book_odds);
   const gain=st>0?Math.round(st*(odds-1)*100)/100:null;
   const F={fontFamily:"Inter,system-ui,sans-serif",fontVariantNumeric:"tabular-nums"};
   const muted="#8a93a3",line="rgba(255,255,255,.08)",surf="#151a23";
