@@ -2269,7 +2269,7 @@ const RosterEditor=memo(function RosterEditor({players,setPlayers,allPlayers,bet
       />
       {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:20,padding:6}}>✕</button>}
      </div>
-     <div style={{display:"flex",gap:6,marginBottom:10}}><button type="button" aria-pressed={!!mine} onClick={async()=>{if(mine){setMine(null);return;}setMine("load");try{const r=await cloudDb("players?origin=eq.site&select=id,name,game,team,role,league,created_at&order=created_at.desc&limit=2000");setMine(Array.isArray(r)?r:[]);}catch(e){setMine("err");}}} style={{height:34,padding:"0 12px",borderRadius:10,border:"1px solid "+(mine?"#a78bfa":"#1F2937"),background:mine?"rgba(167,139,250,.15)":"#111827",color:mine?"#ddd6fe":"#9CA3AF",fontSize:12.5,fontWeight:800,cursor:"pointer"}}>👤 Créés par moi{Array.isArray(mine)?" · "+mine.filter(p=>!rosterGame||p.game===rosterGame).length:""}</button></div>
+     {/* bouton « Créés par moi » retiré */}
      {mine&&<div style={{marginBottom:12}}>{mine==="load"?<div style={{fontSize:12,color:"#6B7280",padding:6}}>Chargement…</div>:mine==="err"?<div style={{fontSize:12.5,color:"#FBBF24",padding:6}}>Lance players_origine.sql dans Supabase pour activer ce filtre.</div>:
       (()=>{const L=mine.filter(p=>!rosterGame||p.game===rosterGame);if(!L.length)return <div style={{fontSize:12.5,color:"#6B7280",padding:6}}>Aucun joueur créé depuis le site{rosterGame?" en "+rosterGame:""}.</div>;
        const nb={};(bets||[]).forEach(b=>{const k=String(b.player||"").toLowerCase().trim();if(k)nb[k]=(nb[k]||0)+1;});
