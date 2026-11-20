@@ -1229,7 +1229,7 @@ const clubColorOf=t=>CLUB_COLORS[String(t||"").toLowerCase().trim()]||null;
 // Nom en gros qui rétrécit tout seul pour toujours tenir en entier sur une ligne
 function FitName({text,max=40,min=16}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min]);
- return <div ref={box} style={{width:"100%",height:Math.round(max*1.2),display:"flex",alignItems:"center",flexShrink:0}}><span ref={sp} style={{font:"900 "+fs+"px/1.15 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap"}}>{text}</span></div>;}
+ return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap"}}>{text}</span></div>;}
 const _TLC={ms:null,m:new Map()};
 function tourLogoSrc(league){
  if(!league)return null;
@@ -9263,7 +9263,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const bkBal=useMemo(()=>bkBalances(bkFlows,bets),[bkFlows,bets]);
  const bkOver=useMemo(()=>Object.values(bkBal).filter(x=>x.bal>bkCap).sort((a,b)=>b.bal-a.bal),[bkBal,bkCap]);
  // Nouvelle bankroll = on repart à zéro : les tournois actifs lancés avant son début ne sont plus actifs
- useEffect(()=>{if(!curBk||curBk.to!=="9999")return;setActiveTourneys(prev=>{let ch=false;const n={...(prev||{})};Object.entries(n).forEach(([g,t])=>{const st=t&&t.start?String(t.start).slice(0,10):"";if(!st||st<curBk.from){delete n[g];ch=true;}});return ch?n:prev;});},[curBk&&curBk.id]);
+ useEffect(()=>{if(!curBk||curBk.to!=="9999")return;setActiveTourneys(prev=>{let ch=false;const n={...(prev||{})};Object.entries(n).forEach(([g,t])=>{const st=t&&t.start?String(t.start).slice(0,10):"";if(st&&st<curBk.from){delete n[g];ch=true;}});return ch?n:prev;});},[curBk&&curBk.id]);
  const betsForDisplay=useMemo(()=>isTestActive?filteredByTest(seasonBets):seasonBets,[seasonBets,isTestActive,filteredByTest]);
  const settled=useMemo(()=>betsForDisplay.filter(b=>b.status!=="pending"),[betsForDisplay]);
  // Stats : filtre par mois (toute la section Stats)
@@ -11254,7 +11254,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   const ro=String(AI.role||"").trim();const POSL={TOP:"TOPLANE",JGL:"JUNGLE",MID:"MIDLANE",ADC:"BOTLANE",SUP:"SUPPORT"};
   const lab=G==="LoL"&&ROLE_OF(ro)?POSL[ROLE_OF(ro)]:ro?ro.toUpperCase():String(AI.game||"").toUpperCase();const src=getAvatarSrc(AI);
   const card=cc=>{const _h=String(cc).replace("#","").slice(0,6);const light=(0.299*parseInt(_h.slice(0,2),16)+0.587*parseInt(_h.slice(2,4),16)+0.114*parseInt(_h.slice(4,6),16))>150;const ink=light?"#111":"#fff";return(
- <div style={{position:"relative",isolation:"isolate",borderRadius:14,overflow:"hidden",display:"flex",alignItems:"stretch",minHeight:116,background:"#0b1020",border:"1px solid rgba(255,255,255,.08)",boxShadow:"0 10px 26px rgba(0,0,0,.45), 0 0 0 1px "+cc+"22 inset"}}>
+ <div style={{position:"relative",isolation:"isolate",borderRadius:14,overflow:"hidden",display:"flex",alignItems:"stretch",height:124,background:"#0b1020",border:"1px solid rgba(255,255,255,.08)",boxShadow:"0 10px 26px rgba(0,0,0,.45), 0 0 0 1px "+cc+"22 inset"}}>
   {/* bande verticale : poste */}
   <div style={{width:26,flexShrink:0,background:"linear-gradient(180deg,#f4f5f7,#cfd3da)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:3}}>
    <span style={{writingMode:"vertical-rl",transform:"rotate(180deg)",font:"800 11px 'Barlow Condensed',Inter,sans-serif",letterSpacing:1.6,color:"#1f2430",whiteSpace:"nowrap"}}>{lab}</span>
@@ -11266,30 +11266,31 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   {tl&&<img src={tl} alt="" aria-hidden="true" onError={e=>e.target.style.display="none"} style={{position:"absolute",left:"calc(26px + 2%)",top:"50%",transform:"translateY(-50%)",height:"125%",width:"46%",objectFit:"contain",opacity:.5,zIndex:1,pointerEvents:"none"}}/>}
   {/* photo */}
   <div style={{width:"30%",flexShrink:0,position:"relative",zIndex:2,display:"flex",alignItems:"flex-end",justifyContent:"flex-start"}}>
-   {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:116,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
+   {src?<img src={src} alt={AI.name||form.player} style={{width:"100%",height:124,objectFit:"contain",objectPosition:"bottom left",display:"block",filter:"drop-shadow(0 6px 12px rgba(0,0,0,.6))"}}/>
     :<div style={{width:60,height:60,borderRadius:"50%",marginBottom:26,background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.8 4.2-5.6 7.5-5.6s6.3 1.8 7.5 5.6"/></svg></div>}
   </div>
   {/* nom + infos */}
-  <div style={{position:"relative",zIndex:2,flex:1,minWidth:0,padding:"34px 12px 10px 0",position:"absolute",left:"50%",right:0,top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start",gap:6}}>
-   <FitName text={capName(AI.name||form.player)} max={40} min={16}/>
-   <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",overflow:"hidden",font:"700 13.5px/18px 'Barlow Condensed',Inter,sans-serif",letterSpacing:.6,color:"rgba(255,255,255,.95)",textTransform:"uppercase"}}>
-    <GameLogo game={AI.game} size={14}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{[AI.team,AI.role].filter(Boolean).join(" · ")}</span>
+  <div style={{zIndex:2,position:"absolute",left:"47%",right:12,top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"flex-start"}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,maxWidth:"calc(100% - 72px)",whiteSpace:"nowrap",overflow:"hidden",font:"700 11px/16px Inter,sans-serif",letterSpacing:1.4,color:"rgba(255,255,255,.82)",textTransform:"uppercase"}}>
+    <GameLogo game={AI.game} size={13}/><span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{AI.team||AI.game}</span>
    </div>
+   <FitName text={capName(AI.name||form.player)} max={34} min={15}/>
+   <div style={{width:28,height:2,borderRadius:2,background:"rgba(255,255,255,.55)",margin:"2px 0 7px"}}/>
  {(()=>{const k=(form.autoInfo.name||form.player||"").toLowerCase().trim();const a=psAgg(betsForDisplay.filter(b=>(b.player||"").toLowerCase().trim()===k));
-  if(!a.n)return <div style={{fontSize:13,lineHeight:"18px",fontWeight:600,color:"rgba(255,255,255,.75)"}}>Aucun pari terminé</div>;
-  const c=a.profit>0?"#22e07a":a.profit<0?"#EF4444":"#fff";
-  return <div style={{fontSize:13,lineHeight:"18px",fontWeight:600,color:"#fff",whiteSpace:"nowrap"}}>
-   {a.won}-{a.lost} · <span style={{color:c,fontWeight:700}}>{fmtM(a.profit)}</span>
+  if(!a.n)return <div style={{font:"600 12.5px/18px Inter,sans-serif",color:"rgba(255,255,255,.78)"}}>Aucun pari terminé</div>;
+  const c=a.profit>0?"#5CFF9D":a.profit<0?"#FFB4B4":"#fff";
+  return <div style={{display:"flex",alignItems:"center",gap:8,font:"700 12.5px/18px Inter,sans-serif",color:"#fff",whiteSpace:"nowrap"}}>
+   <span style={{padding:"1px 7px",borderRadius:6,background:"rgba(0,0,0,.25)"}}>{a.won}-{a.lost}</span><span style={{color:c}}>{fmtM(a.profit)}</span>
   </div>;})()}
- {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 8px 3px 5px",borderRadius:6,background:"rgba(124,58,237,.1)",color:"#c4b5fd",fontWeight:700,fontSize:11,border:"1px solid rgba(124,58,237,.25)",alignSelf:"flex-start"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:15,height:15,objectFit:"contain"}}/>}{t.name}</span>})()}
+ {(()=>{const t=activeTourneys[form.autoInfo.game];const isExpired=t&&t.end&&new Date(t.end)<new Date();if(!t||isExpired)return null;const tl=anyTourLogo(t.name,form.autoInfo.game);return <span style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:5,maxWidth:"100%",padding:"2px 8px 2px 4px",borderRadius:6,background:"rgba(0,0,0,.32)",color:"#fff",font:"600 10.5px/16px Inter,sans-serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tl&&<img src={tl} alt="" onError={e=>e.target.style.display='none'} style={{width:14,height:14,objectFit:"contain",flexShrink:0}}/>}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{t.name}</span></span>})()}
   </div>
-  <div style={{position:"absolute",top:10,right:10,zIndex:4,display:"flex",alignItems:"flex-start",gap:6}}>
+  <div style={{position:"absolute",top:8,right:8,zIndex:4,display:"flex",alignItems:"flex-start",gap:6}}>
  <button onClick={()=>{setForm(f=>({...f,player:"",autoInfo:null}));setTimeout(()=>playerACRef.current&&playerACRef.current.focus(),50);}}
- style={{padding:"6px 10px",borderRadius:9,border:"1px solid rgba(255,255,255,.35)",color:"#fff",fontWeight:700,fontSize:11,background:"rgba(0,0,0,.28)",cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}}>
- Changer
+ title="Changer de joueur" aria-label="Changer de joueur" style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(0,0,0,.3)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3l4 4-4 4"/><path d="M3 7h18"/><path d="M7 21l-4-4 4-4"/><path d="M21 17H3"/></svg>
  </button>
  <button onClick={()=>setAddEditOpen(true)} title="Modifier le joueur" aria-label="Modifier le joueur"
- style={{width:30,height:30,borderRadius:9,border:"1px solid rgba(255,255,255,.35)",background:"rgba(0,0,0,.28)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+ style={{width:28,height:28,borderRadius:8,border:"none",background:"rgba(0,0,0,.3)",color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
  </button>
  </div>
