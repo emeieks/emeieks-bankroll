@@ -1449,10 +1449,10 @@ const profitColor=isPending?"#93c5fd":isWon?"#22C55E":"#EF4444";
  return(
  <div style={{borderBottom:"1px solid rgba(255,255,255,.1)",WebkitTapHighlightColor:"transparent",contain:"layout style",contentVisibility:open?"visible":"auto",containIntrinsicSize:"auto 72px",borderLeft:"2.5px solid "+(isPending?"#60a5fa":isWon?"#22C55E":"#f43f5e"),background:"transparent",position:"relative",transition:"all .15s"}}>
  <div onClick={()=>setOpen(v=>!v)} style={{padding:"11px 13px 11px 12px",cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>
- <div style={{display:"flex",alignItems:"center",gap:11}}>
+ <div style={{display:"flex",alignItems:"center",gap:9}}>
 
  {/* Photo du joueur + logo du jeu */}
- <div title="Voir sur le board" onClick={e=>{e.stopPropagation();try{window.dispatchEvent(new CustomEvent("emeieks-goto-board",{detail:{player:bet.player,team:bet.team,hs:!!bet.isHeadshot}}));}catch(err){}}} style={{flexShrink:0,cursor:"pointer",padding:"0 3px 3px 0"}}>
+ <div title="Voir sur le board" onClick={e=>{e.stopPropagation();try{window.dispatchEvent(new CustomEvent("emeieks-goto-board",{detail:{player:bet.player,team:bet.team,hs:!!bet.isHeadshot}}));}catch(err){}}} style={{flexShrink:0,cursor:"pointer",display:"flex"}}>
  <GameLogo game={bet.game} size={38}/>
  </div>
 
