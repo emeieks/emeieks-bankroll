@@ -1250,7 +1250,7 @@ function LogoBg({src,bg}){
 // Garde CS2 : ce que le bot a bloqué (pas de Headshots sur Betby / lignes louches), carte par carte
 function GuardPanel(){
  const [g,setG]=useState(null);const [open,setOpen]=useState(false);
- useEffect(()=>{let ok=true;const f=async()=>{try{const r=await cloudDb("settings?key=eq.cs2_guard&select=value");const v=Array.isArray(r)&&r[0]?r[0].value:null;ok&&setG(typeof v==="string"?JSON.parse(v):v);}catch(e){}};f();const t=setInterval(f,60000);return()=>{ok=false;clearInterval(t);};},[]);
+ useEffect(()=>{let ok=true;const f=async()=>{try{const r=await cloudDb("settings?key=eq.cs2_guard&select=value");const v=Array.isArray(r)&&r[0]?r[0].value:null;ok&&setG(typeof v==="string"?JSON.parse(v):v);}catch(e){}};f();const t=setInterval(()=>{if(!document.hidden)f();},180000);return()=>{ok=false;clearInterval(t);};},[]);
  const rows=(g&&g.rows)||[];const nb=rows.filter(r=>r.status!=="ok").length;
  const ago=g&&g.at?Math.max(0,Math.round((Date.now()-new Date(g.at).getTime())/60000)):null;
  const by={};rows.forEach(r=>{(by[r.match]=by[r.match]||[]).push(r);});
@@ -5704,7 +5704,7 @@ let RS_TOURS=[];
 // Bouton SIM : au prochain passage du bot, la simulation prend aussi les cuts PP Map 3 / Map 5 en live (entre les maps), puis s'éteint
 // réglage partagé app ↔ bot (table settings)
 const useSetting=key=>{const [v,setV0]=useState(()=>{try{const x=localStorage.getItem("set_"+key);return x?JSON.parse(x):null;}catch(e){return null;}});const setV=x=>{setV0(x);try{localStorage.setItem("set_"+key,JSON.stringify(x));}catch(e){}};
- useEffect(()=>{let st=false;const ld=()=>cloudDb("settings?select=value&key=eq."+key).then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(!st)setV(x||{});}).catch(()=>{});ld();const i=setInterval(()=>{if(!document.hidden)ld();},30000);return()=>{st=true;clearInterval(i);};},[key]);
+ useEffect(()=>{let st=false;const ld=()=>cloudDb("settings?select=value&key=eq."+key).then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(!st)setV(x||{});}).catch(()=>{});ld();const i=setInterval(()=>{if(!document.hidden)ld();},180000);return()=>{st=true;clearInterval(i);};},[key]);
  const set=x=>{setV(x);cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key,value:x}]}).catch(()=>{});};return [v,set];};
 function SimBtn(){const [v,set]=useSetting("sim_live");const [,tick]=useState(0);
  const on=!!(v&&v.on&&(!v.until||new Date(v.until).getTime()>Date.now()));
@@ -5742,7 +5742,7 @@ const duelInMatch=(d,t1,t2)=>{const [A,B]=String(d.match||"").split(/\s+vs\.?\s+
 function DuelAlerts({teamLogos={},allPlayers={},teams=null,map=null,inline=false,exclude=null}){
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
  const [rows0,setRows]=useState(null);
- useEffect(()=>{let stop=false;const ld=()=>loadDuels().then(r=>{if(!stop)setRows(r);}).catch(()=>{if(!stop)setRows([]);});ld();const t=setInterval(()=>{if(!document.hidden)ld();},60000);return()=>{stop=true;clearInterval(t);};},[]);
+ useEffect(()=>{let stop=false;const ld=()=>loadDuels().then(r=>{if(!stop)setRows(r);}).catch(()=>{if(!stop)setRows([]);});ld();const t=setInterval(()=>{if(!document.hidden)ld();},180000);return()=>{stop=true;clearInterval(t);};},[]);
  const rows=(rows0||[]).map(d=>({...d,gap:(d.pp_me!=null&&d.pp_vs!=null)?Math.round((Number(d.pp_me)-Number(d.pp_vs))*100)/100:d.gap}))
   .filter(d=>!teams||(duelInMatch(d,teams[0],teams[1])&&(map==null||String(d.map)===String(map))))
   .filter(d=>!exclude||!exclude.some(([a,b])=>duelInMatch(d,a,b)));
@@ -8472,7 +8472,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const evVis=a=>{if(isMuted(a))return false;const t=evTs(a);if(!isNaN(t)&&new Date(t).toDateString()===new Date().toDateString())return true;return a.status==="new"&&(isNaN(t)||t>Date.now()-3*3600e3);};
  useEffect(()=>{const h=()=>loadMute();window.addEventListener("emeieks-mute",h);return()=>window.removeEventListener("emeieks-mute",h);},[loadMute]);
  const loadEv=useCallback(async()=>{try{const since=new Date(Date.now()-36*3600e3).toISOString();const r=await cloudDb("ev_alerts?or=(status.eq.new,and(status.in.(expired,added),created_at.gte."+since+"))&order=edge.desc&limit=300");{const n=Array.isArray(r)?r:[];setEvAlerts(p=>sameJ(p,n)?p:n);}setEvErr(e=>e?"":e);}catch(e){const m=String(e.message||e).slice(0,120);setEvErr(x=>x===m?x:m);}},[]);
- useEffect(()=>{loadEv();const i=setInterval(()=>{if(!document.hidden)loadEv();},60000);return()=>clearInterval(i);},[loadEv]);
+ useEffect(()=>{loadEv();const i=setInterval(()=>{if(!document.hidden)loadEv();},120000);return()=>clearInterval(i);},[loadEv]);
  const evSetStatus=async(a,st)=>{setEvAlerts(l=>l.filter(x=>x.key!==a.key));try{await cloudDb("ev_alerts?key=eq."+encodeURIComponent(a.key),{method:"PATCH",body:{status:st}});}catch(e){}};
  const evToBet=(a,bk,stake,odds,mapTag,idx=0,silent=false)=>{
   const info=findPlayer(a.player,a.game)||{game:a.game,league:"?",role:"?",team:"?"};
@@ -8501,9 +8501,9 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
   setEvSnap(s0=>{const cur={};evAlerts.forEach(a=>{cur[a.key]=Number(a.book_odds);});const n=s0.at!==at?{at,prev:s0.at?s0.keys:null,keys:cur}:{...s0,keys:{...s0.keys,...cur}};try{localStorage.setItem("ev_snap",JSON.stringify(n));}catch(e){}return n;});},[evAlerts,botSt]);
  const evIsNew=a=>!!(evSnap.prev&&!(a.key in evSnap.prev));
  const evOddsFrom=a=>{const p=evSnap.prev&&evSnap.prev[a.key];return p!=null&&Math.abs(p-Number(a.book_odds))>=0.01?p:null;};
- useEffect(()=>{loadEvRun();const i=setInterval(()=>{if(!document.hidden)loadEvRun();},60000);return()=>clearInterval(i);},[loadEvRun]);
+ useEffect(()=>{loadEvRun();const i=setInterval(()=>{if(!document.hidden)loadEvRun();},180000);return()=>clearInterval(i);},[loadEvRun]);
  const evRunning=!!(evRun&&(evRun.status==="pending"||evRun.status==="running")&&!(evRun.created_at&&Date.now()-new Date(evRun.created_at).getTime()>15*60e3));
- useEffect(()=>{if(!evRunning)return;const i=setInterval(loadEvRun,2000);return()=>clearInterval(i);},[evRunning,loadEvRun]);
+ useEffect(()=>{if(!evRunning)return;const i=setInterval(()=>{if(!document.hidden)loadEvRun();},5000);return()=>clearInterval(i);},[evRunning,loadEvRun]);
  useEffect(()=>{if(evRun&&evRun.status==="done")loadEv();},[evRun&&evRun.status,evRun&&evRun.id]);
  const evLaunch=async(betbyOnly)=>{if(!evGames.length)return;const codes={CS2:"cs2",LoL:"lol",Dota2:"dota",Valorant:"valo"};
   try{const r=await cloudDb("ev_runs",{method:"POST",body:{games:(betbyOnly===true?"betby:":"")+evGames.map(g=>codes[g]).join(","),status:"pending"},prefer:"return=representation"});
@@ -9074,7 +9074,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const [bkRows,tourRows,setRows,mediaRows,teamRows,playersObj]=await Promise.all([
  safe(cloudDb("bookmakers?select=*&order=name.asc&limit=2000"),"Table bookmakers"),
  safe(cloudDb("tournaments?select=*&order=game.asc,name.asc&limit=5000"),"Table tournaments"),
- safe(cloudDb("settings?select=key,value&limit=5000"),"Table settings"),
+ safe(cloudDb("settings?select=key,value&and=(key.not.like.betby_*,key.not.like.edge_*,key.not.like.ev_*,key.not.like.apify_*,key.not.like.last_*,key.not.in.(bot_status,bot_focus,sim_live,cs2_guard))&limit=5000"),"Table settings"),
  safe(cloudDb("media_store?select=key,value&key=not.like.backup:*&limit=50000"),"Table media_store"),
  safe(cloudDb("teams?select=name,game,logo_url&order=name.asc,game.asc&limit=20000"),"Table teams"),
  loadPlayers(),
@@ -9176,7 +9176,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const refetch={
  bookmakers:()=>cloudDb("bookmakers?select=*&order=name.asc&limit=2000").then(r=>{if(r){good("bookmakers");cloudSkip.current.bookmakers=true;applyRemote.current.applyBk(r);}}).catch(e=>fail("Relecture bookmakers",e)),
  tournaments:()=>cloudDb("tournaments?select=*&order=game.asc,name.asc&limit=5000").then(r=>{if(r){good("tournaments");cloudSkip.current.tournaments=true;applyRemote.current.applyTour(r);}}),
- settings:()=>cloudDb("settings?select=key,value&limit=5000").then(r=>{if(r){good("settings");const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}).catch(e=>fail("Relecture settings",e)),
+ settings:()=>cloudDb("settings?select=key,value&and=(key.not.like.betby_*,key.not.like.edge_*,key.not.like.ev_*,key.not.like.apify_*,key.not.like.last_*,key.not.in.(bot_status,bot_focus,sim_live,cs2_guard))&limit=5000").then(r=>{if(r){good("settings");const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}).catch(e=>fail("Relecture settings",e)),
  media_store:()=>cloudDb("media_store?select=key,value&key=not.like.backup:*&limit=50000").then(r=>{if(r){good("media_store");const o=parseMediaRows(r);cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
  teams:()=>cloudDb("teams?select=name,game,logo_url&order=name.asc,game.asc&limit=20000").then(r=>{if(r){good("teams");cloudSkip.current.teams=true;setTeamLogos(prev=>{const m={...prev};r.forEach(t=>{if(t.logo_url)m[t.name+"__"+t.game]=t.logo_url;});return m;});}}).catch(e=>fail("Relecture teams",e)),
  players:()=>applyRemote.current.loadPlayers(),
@@ -9227,14 +9227,14 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  }catch(e){
  setLiveState("indisponible ("+((e&&e.message)||e).toString().slice(0,60)+")");
  // Pas de temps réel (réseau) → relecture toutes les 20 s
- const iv=setInterval(()=>{if(document.visibilityState==="visible"){pullRecentRef.current&&pullRecentRef.current();Object.values(refetch).forEach(f=>f());}},30000);
+ const iv=setInterval(()=>{if(document.visibilityState==="visible"){pullRecentRef.current&&pullRecentRef.current();Object.values(refetch).forEach(f=>f());}},180000);
  stop=()=>clearInterval(iv);
  }
  })();
  timers._integrity=setTimeout(()=>integrityRef.current&&integrityRef.current(),9000);
  timers._backup=setTimeout(()=>{supaFetch("/rest/v1/rpc/backup_bets_daily",{method:"POST",body:"{}"}).catch(()=>{});},15000);
  // Au retour sur l'app : relecture légère + contrôle (max toutes les 5 min)
- const onVisible=()=>{if(document.visibilityState==="visible"){pullRecentRef.current&&pullRecentRef.current();dqFlush().catch(()=>{});setTimeout(()=>integrityRef.current&&integrityRef.current(),4000);Object.values(refetch).forEach(f=>f());}};
+ let _lastVis=Date.now();const onVisible=()=>{if(document.visibilityState!=="visible")return;dqFlush().catch(()=>{});pullRecentRef.current&&pullRecentRef.current();if(Date.now()-_lastVis<5*60000)return;_lastVis=Date.now();setTimeout(()=>integrityRef.current&&integrityRef.current(),4000);Object.values(refetch).forEach(f=>f());};
  document.addEventListener("visibilitychange",onVisible);
  return()=>{stop&&stop();document.removeEventListener("visibilitychange",onVisible);Object.values(timers).forEach(clearTimeout);};
  },[hydrated,pullFromSupa]);
