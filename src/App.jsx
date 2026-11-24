@@ -1270,6 +1270,35 @@ function GuardPanel(){
    </div>)}
   </div>}
  </div>;}
+// Réglage partagé entre composants (même valeur partout, sauvée dans Supabase settings + localStorage)
+const _SH={};
+function useSharedSetting(key,def){
+ const st=_SH[key]||(_SH[key]={v:(()=>{try{const x=localStorage.getItem("set_"+key);return x?JSON.parse(x):null;}catch(e){return null;}})(),subs:new Set(),loaded:false});
+ const [,tick]=useState(0);
+ useEffect(()=>{const f=()=>tick(t=>t+1);st.subs.add(f);
+  if(!st.loaded){st.loaded=true;cloudDb("settings?select=value&key=eq."+key).then(r=>{let x=r&&r[0]&&r[0].value;if(typeof x==="string")try{x=JSON.parse(x);}catch(e){}if(x&&typeof x==="object"){st.v=x;try{localStorage.setItem("set_"+key,JSON.stringify(x));}catch(e){}st.subs.forEach(g=>g());}}).catch(()=>{});}
+  return()=>{st.subs.delete(f);};},[key]);
+ const set=x=>{const v=typeof x==="function"?x(st.v||def):x;st.v=v;try{localStorage.setItem("set_"+key,JSON.stringify(v));}catch(e){}st.subs.forEach(g=>g());
+  cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key,value:v}]}).catch(()=>{});};
+ return [st.v||def,set];}
+// Comptes d'un bookmaker : { Stake: [{id,name,on}] }
+const accOn=(acc,bk)=>((acc||{})[bk]||[]).filter(a=>a.on!==false);
+function BkAccountsBox({bk}){
+ const [acc,setAcc]=useSharedSetting("bk_accounts",{});const L=(acc||{})[bk]||[];
+ const put=list=>setAcc(a=>({...(a||{}),[bk]:list}));
+ const add=()=>{const base=L.length?L:[{id:"c1",name:"Compte 1",on:true}];const nm=window.prompt("Nom du nouveau compte","Compte "+(base.length+1));if(!nm||!nm.trim())return;put([...base,{id:"c"+Date.now(),name:nm.trim(),on:true}]);};
+ const row={display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,background:"#0b1120",border:"1px solid #1F2937",marginBottom:6};
+ return <div style={{marginTop:4}}>
+  <div style={{fontSize:11,fontWeight:800,color:"#9CA3AF",letterSpacing:".6px",margin:"12px 0 6px"}}>COMPTES</div>
+  {!L.length&&<div style={{fontSize:12,color:"#6b7280",marginBottom:6}}>Un seul compte pour l'instant. Ajoute-en un autre pour choisir le compte quand tu paries.</div>}
+  {L.map((a,i)=><div key={a.id} style={row}>
+   <button onClick={()=>put(L.map(x=>x.id===a.id?{...x,on:x.on===false}:x))} aria-label={(a.on!==false?"Désactiver ":"Activer ")+a.name} style={{width:42,height:24,borderRadius:12,border:"none",cursor:"pointer",position:"relative",background:a.on!==false?"#22C55E":"#374151",flexShrink:0}}><span style={{position:"absolute",top:3,left:a.on!==false?21:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .15s"}}/></button>
+   <b style={{flex:1,minWidth:0,fontSize:13.5,color:a.on!==false?"#fff":"#6b7280",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</b>
+   <button onClick={()=>{const nm=window.prompt("Nouveau nom",a.name);if(nm&&nm.trim())put(L.map(x=>x.id===a.id?{...x,name:nm.trim()}:x));}} style={{height:28,padding:"0 9px",borderRadius:8,border:"1px solid #1F2937",background:"transparent",color:"#cbd5e1",fontSize:12,cursor:"pointer"}}>Renommer</button>
+   <button onClick={()=>{if(window.confirm("Supprimer "+a.name+" ?"))put(L.filter(x=>x.id!==a.id));}} aria-label={"Supprimer "+a.name} style={{width:28,height:28,borderRadius:8,border:"1px solid rgba(239,68,68,.25)",background:"transparent",color:"#f87171",cursor:"pointer"}}>✕</button>
+  </div>)}
+  <button onClick={add} style={{width:"100%",height:38,borderRadius:10,border:"1px dashed #374151",background:"transparent",color:"#a78bfa",fontWeight:800,fontSize:13,cursor:"pointer"}}>+ Ajouter un compte</button>
+ </div>;}
 function FitName({text,max=40,min=16,suffix=null}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(6,Math.round(fs*.18))}}>{text}{suffix}</span></div>;}
@@ -3090,6 +3119,7 @@ const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmak
    </div>
    {(addr!==(c.addr||"")||net!==(c.net||"SOL"))&&<button onClick={()=>{setCrypto(bk,{addr,net});showToast("Adresse enregistrée","#22C55E");}} style={{width:"100%",marginTop:8,height:40,borderRadius:10,border:"none",background:"#60A5FA",color:"#061226",fontWeight:900,fontSize:13.5,cursor:"pointer"}}>Enregistrer l'adresse</button>}
    <div style={{fontSize:11.5,color:"#6b7280",marginTop:6}}>{c.addr?"Adresse gardée · le suivi automatique des dépôts arrive bientôt.":"Pour suivre plus tard tes dépôts automatiquement sur la blockchain."}</div>
+   <BkAccountsBox bk={bk}/>
    <Lbl t="OPTIONS"/>
    <div style={{display:"flex",gap:6}}>
     <button onClick={()=>toggleHideBK&&toggleHideBK(bk)} style={{flex:1,height:40,borderRadius:10,border:"1px solid #1F2937",background:"#0b1120",color:hiddenBKs.has(bk)?"#22C55E":"#cbd5e1",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><Ic n={hiddenBKs.has(bk)?"eye":"eyeOff"} s={14}/>{hiddenBKs.has(bk)?"Afficher":"Masquer"}</button>
@@ -8318,7 +8348,7 @@ function AppMain(){
  const DEFAULT_HIDDEN_BKS=[];
  const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
  const toggleHideBK=useCallback(bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;}),[]);
- const visibleBKs=bookmakers.filter(bk=>!hiddenBKs.has(bk));
+ const [bkAcc]=useSharedSetting("bk_accounts",{});const [,setBetAcc]=useSharedSetting("bet_accounts",{});
  const [modalPlayer,setModalPlayer]=useState(false);
  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
  const [editingPlayer,setEditingPlayer]=useState(null); // {key, data}
@@ -9359,9 +9389,16 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  const seasonYears=useMemo(()=>{const y=new Set([String(new Date().getFullYear())]);bets.forEach(b=>{const k=String(b.datetime||"").slice(0,4);if(/^20\d\d$/.test(k))y.add(k);});return [...y].sort().reverse().slice(0,3);},[bets]);
  const curBk=useMemo(()=>{const i=bkrolls.findIndex(x=>x.id===season);if(i<0)return null;return {...bkrolls[i],to:bkrolls[i+1]?bkrolls[i+1].from:"9999"};},[bkrolls,season]);
+ // Liste des bookmakers propre à la bankroll : une nouvelle bankroll repart avec une liste vide
+ const bkInBk=curBk?(Array.isArray(curBk.books)?curBk.books:(curBk.to==="9999"?[]:null)):null;
+ const bkList=bkInBk?bkInBk.slice():bookmakers;
+ const visibleBKs=bkList.filter(bk=>!hiddenBKs.has(bk));
+ const setBkList=v=>{const next=typeof v==="function"?v(bkList):v;if(!bkInBk){setBookmakers(next);return;}
+  const add=next.filter(b=>!bookmakers.includes(b));if(add.length)setBookmakers(p=>[...p,...add.filter(b=>!p.includes(b))]);
+  setBkrolls(p=>p.map(x=>x.id===curBk.id?{...x,books:next}:x));};
  const seasonBets=useMemo(()=>season==="all"?bets:curBk?bets.filter(b=>{const d=String(b.datetime||"").slice(0,10);return d>=curBk.from&&d<curBk.to;}):bets.filter(b=>String(b.datetime||"").slice(0,4)===season),[bets,season,curBk]);
  const seasonOpts=useMemo(()=>bkrolls.length?bkrolls.map(x=>[x.id,x.name]).reverse():seasonYears.map(y=>[y,"Saison "+y]),[bkrolls,seasonYears]);
- const bkBal=useMemo(()=>bkBalances(bkFlows,bets),[bkFlows,bets]);
+ const bkBal=useMemo(()=>bkBalances(curBk?(bkFlows||[]).filter(f=>String(f.date)>=curBk.from&&String(f.date)<curBk.to):bkFlows,curBk?bets.filter(b=>{const d=String(b.datetime||"").slice(0,10);return d>=curBk.from&&d<curBk.to;}):bets),[bkFlows,bets,curBk]);
  const bkOver=useMemo(()=>Object.values(bkBal).filter(x=>x.bal>bkCap).sort((a,b)=>b.bal-a.bal),[bkBal,bkCap]);
  // Nouvelle bankroll = on repart à zéro : les tournois actifs lancés avant son début ne sont plus actifs
  useEffect(()=>{if(!curBk||curBk.to!=="9999")return;setActiveTourneys(prev=>{let ch=false;const n={...(prev||{})};Object.entries(n).forEach(([g,t])=>{const st=t&&t.start?String(t.start).slice(0,10):"";if(st&&st<curBk.from){delete n[g];ch=true;}});return ch?n:prev;});},[curBk&&curBk.id]);
@@ -9983,6 +10020,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  ppLine:ppFinalLine||null,
  ppEdge:ppEdge,
  };
+ if(form.bookmaker&&accOn(bkAcc,form.bookmaker).length>1){const aid=form.bkAccount||accOn(bkAcc,form.bookmaker)[0].id;setBetAcc(m=>({...(m||{}),[newBet.id]:aid}));}
  {const dk=String(newBet.datetime||"").slice(0,10);const dup=(bets||[]).find(x=>cutNorm(x.player)===cutNorm(newBet.player)&&GNORM(x.game)===GNORM(newBet.game)&&String(x.description||"").trim().toLowerCase()===String(newBet.description||"").trim().toLowerCase()&&String(x.mapTag||"")===String(newBet.mapTag||"")&&String(x.datetime||"").slice(0,10)===dk);
   if(dup&&!window.confirm("Pari identique déjà enregistré ce jour-là ("+dup.player+" · "+dup.mapTag+" · "+dup.description+"). Ajouter quand même ?"))return;}
  {const sig=[cutNorm(newBet.player),newBet.description,newBet.mapTag,newBet.overUnder,newBet.odds,newBet.stake,newBet.bookmaker].join("|");
@@ -10137,7 +10175,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  
  function saveBookmaker(){
  if(!newBK.trim())return;
- setBookmakers(b=>[...b,newBK.trim()]);
+ setBkList(b=>[...b,newBK.trim()]);
  if(newBKPhoto){
  const updated={...bkPhotos,[newBK.trim()]:newBKPhoto};
  setBkPhotos(updated);
@@ -11304,12 +11342,13 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <button onClick={()=>setModalBK(true)} style={{padding:"3px 9px",borderRadius:7,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#555e72",fontSize:10,cursor:"pointer",fontFamily:"Inter,sans-serif",fontWeight:600}}>+</button>
  </div>
  </div>
+ {!visibleBKs.length&&<button onClick={()=>setModalBK(true)} style={{width:"100%",height:52,borderRadius:13,border:"1.5px dashed rgba(255,255,255,0.12)",background:"transparent",color:"#a78bfa",fontSize:13,fontWeight:800,cursor:"pointer"}}>Nouvelle bankroll : ajoute tes bookmakers (+)</button>}
  <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:1}}>
  {visibleBKs.map(bk=>{
  const bkLogo=BK_LOGOS[bk]||bkPhotos[bk]||null;
  const isOn=form.bookmaker===bk;
  return(
- <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk}))}
+ <button key={bk} onClick={()=>setForm(f=>({...f,bookmaker:bk,bkAccount:(accOn(bkAcc,bk)[0]||{}).id||null}))}
  title={bk}
  style={{minWidth:52,height:52,borderRadius:13,border:"1.5px solid "+(isOn?AC:"rgba(255,255,255,0.07)"),background:isOn?AC+"1f":"rgba(10,18,34,0.9)",cursor:"pointer",padding:0,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,position:"relative",transition:"all .15s",boxShadow:isOn?"0 0 0 1px rgba(139,92,246,.3),0 0 16px rgba(139,92,246,.25),inset 0 0 12px rgba(139,92,246,.06)":"inset 0 1px 0 rgba(255,255,255,.03)"}}>
  {isOn&&<span style={{position:"absolute",top:-7,right:-5,width:18,height:18,borderRadius:"50%",background:AC,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 2px 8px rgba(139,92,246,.5)"}}><Ic n="check" s={10} c="#fff" w={3.5}/></span>}
@@ -11320,6 +11359,9 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  );
  })}
  </div>
+ {(()=>{const L=accOn(bkAcc,form.bookmaker);if(L.length<2)return null;const cur=form.bkAccount||L[0].id;return <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+  {L.map(a=>{const on=cur===a.id;return <button key={a.id} onClick={()=>setForm(f=>({...f,bkAccount:a.id}))} style={{height:30,padding:"0 12px",borderRadius:9,border:"1.5px solid "+(on?AC:"rgba(255,255,255,0.08)"),background:on?AC+"22":"rgba(10,18,34,0.9)",color:on?"#fff":"#8b93a7",fontSize:12,fontWeight:800,cursor:"pointer"}}>{a.name}</button>;})}
+ </div>;})()}
  </div>
  );
  })()}
@@ -13741,7 +13783,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div></>}
  </div>
  </div>
- {entityEd&&<EntityEditor kind={entityEd} onClose={()=>setEntityEd(null)} teamLogos={teamLogos} setTeamLogos={setTeamLogos} customClubs={customClubs} setCustomClubs={setCustomClubs} bkPhotos={bkPhotos} setBkPhotos={setBkPhotos} bookmakers={bookmakers} setBookmakers={setBookmakers} showToast={showToast}/>}
+ {entityEd&&<EntityEditor kind={entityEd} onClose={()=>setEntityEd(null)} teamLogos={teamLogos} setTeamLogos={setTeamLogos} customClubs={customClubs} setCustomClubs={setCustomClubs} bkPhotos={bkPhotos} setBkPhotos={setBkPhotos} bookmakers={bkList} setBookmakers={setBkList} showToast={showToast}/>}
 
  <div style={{display:"flex",gap:4,padding:3,borderRadius:12,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.06)",margin:"10px 0 6px"}}>
  {[["suivi","Suivi"],["reglages","Réglages"]].map(([k,l])=><button key={k} onClick={()=>setSuiviTab(k)} style={{flex:1,height:38,borderRadius:9,border:"none",background:suiviTab===k?"#7c3aed":"transparent",color:suiviTab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}
@@ -14032,15 +14074,15 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   taxTool={<TaxAccount deposits={taxDeposits} setDeposits={setTaxDeposits} profitUsd={totalProfit}/>}
   tools={{adj:<Adjustments bets={bets} setBets={setBets} bookmakers={bookmakers}/>,clean:<><BetDupes bets={bets} setBets={setBets} showToast={showToast}/><CleanupPanel bets={bets} setBets={setBets} allPlayers={allPlayers} tourneyCal={tourneyCal} showToast={showToast} onShowBets={(t,list)=>setLineBets({title:t,ids:new Set(list.map(b=>String(b.id)))})}/></>}}/>
  <SuiviLabel>ARGENT</SuiviLabel>
-<BkFlows flows={bkFlows} setFlows={setBkFlows} bookmakers={bookmakers} bets={betsForDisplay} season={curBk?"all":season} cap={bkCap} setCap={setBkCap} bal={bkBal}/>
+<BkFlows flows={bkFlows} setFlows={setBkFlows} bookmakers={bkList} bets={betsForDisplay} season={curBk?"all":season} cap={bkCap} setCap={setBkCap} bal={bkBal}/>
 
  <SuiviLabel>BOOKMAKERS</SuiviLabel>
  {/* ── Bookmakers ── */}
  <BookmarkersSection
-  bookmakers={bookmakers} setBookmakers={setBookmakers}
+  bookmakers={bkList} setBookmakers={setBkList}
   bkPhotos={bkPhotos} setBkPhotos={setBkPhotos}
   showToast={showToast}
-  hiddenBKs={hiddenBKs} toggleHideBK={toggleHideBK} bets={bets}
+  hiddenBKs={hiddenBKs} toggleHideBK={toggleHideBK} bets={betsForDisplay}
  />
 
 
@@ -14342,6 +14384,10 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div className="moverlay" onClick={()=>{setModalBK(false);setNewBK("");setNewBKPhoto("");}}>
  <div className="modal" onClick={e=>e.stopPropagation()}>
  <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>Nouveau bookmaker</div>
+ {bkInBk&&bookmakers.some(b=>!bkList.includes(b))&&<div style={{marginBottom:12}}>
+  <div style={{fontSize:11,color:"#9CA3AF",marginBottom:7}}>Remettre un bookmaker déjà utilisé (un toucher)</div>
+  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{bookmakers.filter(b=>!bkList.includes(b)).map(b=>{const lg=BK_LOGOS[b]||bkPhotos[b];return <button key={b} onClick={()=>{setBkList(l=>[...l,b]);showToast(b+" ajouté");}} style={{display:"flex",alignItems:"center",gap:6,height:34,padding:"0 10px",borderRadius:9,border:"1px solid #1F2937",background:"#0b1120",color:"#e5e7eb",fontSize:12.5,fontWeight:700,cursor:"pointer"}}>{lg&&<img src={lg} alt="" style={{width:18,height:18,borderRadius:4,objectFit:"contain"}}/>}{b}</button>;})}</div>
+ </div>}
  <input className="ifield" placeholder="Nom du bookmaker..." value={newBK} onChange={e=>setNewBK(e.target.value)} style={{marginBottom:10}}/>
   <div style={{marginBottom:12}}>
   <div style={{fontSize:11,color:"#9CA3AF",marginBottom:7}}>Logo — URL (optionnel)</div>
