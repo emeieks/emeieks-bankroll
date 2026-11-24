@@ -1299,6 +1299,28 @@ function BkAccountsBox({bk}){
   </div>)}
   <button onClick={add} style={{width:"100%",height:38,borderRadius:10,border:"1px dashed #374151",background:"transparent",color:"#a78bfa",fontWeight:800,fontSize:13,cursor:"pointer"}}>+ Ajouter un compte</button>
  </div>;}
+// Stats figées avant le grand ménage (table stats_archive : jeu × mois)
+function StatsArchive(){
+ const [rows,setRows]=useState(null);const [open,setOpen]=useState(false);const [g,setG]=useState(null);
+ useEffect(()=>{cloudDb("stats_archive?select=*&order=month.asc").then(r=>setRows(Array.isArray(r)?r:[])).catch(()=>setRows([]));},[]);
+ if(!rows||!rows.length)return null;
+ const by={};rows.forEach(r=>{const x=by[r.game]=by[r.game]||{game:r.game,n:0,won:0,lost:0,staked:0,profit:0,m:[]};x.n+=+r.n||0;x.won+=+r.won||0;x.lost+=+r.lost||0;x.staked+=+r.staked||0;x.profit+=+r.profit||0;x.m.push(r);});
+ const G=Object.values(by).sort((a,b)=>b.n-a.n);const T=G.reduce((t,x)=>({n:t.n+x.n,p:t.p+x.profit,s:t.s+x.staked}),{n:0,p:0,s:0});
+ const roi=(p,s)=>s>0?(p/s*100).toFixed(1)+" %":"–";const col=v=>v>=0?"#22C55E":"#EF4444";const money=v=>(v>=0?"+":"−")+Math.abs(Math.round(v)).toLocaleString("fr-CA")+" $";
+ const cell={fontSize:12.5,textAlign:"right"};
+ return <div style={{marginBottom:14,borderRadius:16,border:"1px solid rgba(167,139,250,.25)",background:"#0f1524",overflow:"hidden"}}>
+  <button onClick={()=>setOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"none",border:"none",color:"#fff",cursor:"pointer",textAlign:"left"}}>
+   <div style={{flex:1}}><div style={{fontSize:14,fontWeight:900}}>Historique archivé</div><div style={{fontSize:11.5,color:"#8b93a7"}}>{T.n.toLocaleString("fr-CA")} paris · ROI {roi(T.p,T.s)}</div></div>
+   <b style={{fontSize:16,color:col(T.p)}}>{money(T.p)}</b><span style={{color:"#8b93a7",fontSize:11}}>{open?"▲":"▼"}</span></button>
+  {open&&<div style={{padding:"0 12px 12px"}}>
+   {G.map(x=><div key={x.game} style={{borderTop:"1px solid #1F2937"}}>
+    <button onClick={()=>setG(v=>v===x.game?null:x.game)} style={{width:"100%",display:"grid",gridTemplateColumns:"22px minmax(0,1fr) 56px 64px 76px",alignItems:"center",gap:6,padding:"10px 2px",background:"none",border:"none",color:"#e5e7eb",cursor:"pointer",textAlign:"left"}}>
+     <GameLogo game={x.game} size={20}/><b style={{fontSize:13.5}}>{x.game}</b><span style={cell}>{x.won}-{x.lost}</span><span style={{...cell,color:"#cbd5e1"}}>{roi(x.profit,x.staked)}</span><b style={{...cell,color:col(x.profit)}}>{money(x.profit)}</b></button>
+    {g===x.game&&x.m.map(m=><div key={m.month} style={{display:"grid",gridTemplateColumns:"22px minmax(0,1fr) 56px 64px 76px",gap:6,padding:"5px 2px",color:"#9ca3af"}}>
+     <span/><span style={{fontSize:12.5}}>{(()=>{const l=new Date(String(m.month)+"-15").toLocaleDateString("fr-FR",{month:"long",year:"numeric"});return l.charAt(0).toUpperCase()+l.slice(1);})()}</span><span style={cell}>{m.won}-{m.lost}</span><span style={cell}>{roi(+m.profit,+m.staked)}</span><span style={{...cell,color:col(+m.profit)}}>{money(+m.profit)}</span></div>)}
+   </div>)}
+  </div>}
+ </div>;}
 function FitName({text,max=40,min=16,suffix=null}){const box=useRef(null),sp=useRef(null);const [fs,setFs]=useState(max);const [ft,setFt]=useState(0);useEffect(()=>{let ok=true;try{document.fonts&&document.fonts.ready.then(()=>ok&&setFt(1));}catch(e){}return()=>{ok=false};},[]);
  useLayoutEffect(()=>{const b=box.current,t=sp.current;if(!b||!t)return;let f=max;t.style.fontSize=f+"px";const W=b.clientWidth;while(f>min&&t.offsetWidth>W){f-=1;t.style.fontSize=f+"px";}setFs(f);},[text,max,min,ft]);
  return <div ref={box} style={{width:"100%",height:Math.round(max*1.18),display:"flex",alignItems:"center",flexShrink:0,justifyContent:"center"}}><span ref={sp} style={{font:"800 "+fs+"px/1.1 'Barlow Condensed',Inter,sans-serif",color:"#fff",letterSpacing:.3,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:Math.max(6,Math.round(fs*.18))}}>{text}{suffix}</span></div>;}
@@ -8862,12 +8884,18 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const rIds=new Set(remote.map(r=>String(r.id)));
  const ns=new Map();remote.forEach(r=>ns.set(String(r.id),betJson(r)));
  const toCheck=[];
+ // Grand ménage fait dans Supabase (réglage bets_reset_at) : les vieux paris gardés sur cet appareil sont oubliés une fois
+ let resetAt=0;try{const rr=await cloudDb("settings?select=value&key=eq.bets_reset_at");let v=rr&&rr[0]&&rr[0].value;if(typeof v==="string")v=Number(v)||Date.parse(v)||0;resetAt=Number(v)||0;}catch(e){}
+ let seen=0;try{seen=Number(localStorage.getItem("bets_reset_seen"))||0;}catch(e){}
+ const wipe=resetAt>seen;
  betsRef.current.forEach(l=>{const id=String(l.id);if(rIds.has(id))return;
+  if(wipe&&(Number(l.updatedAt)||Number(l.id)||0)<resetAt)return; // supprimé par le ménage
   next.push(l); // on garde toujours
   if(snap.has(id)){ns.set(id,snap.get(id));toCheck.push(id);}});
  next.sort((a,b)=>String(b.datetime||"").localeCompare(String(a.datetime||"")));
  betSnap.current=ns;
  setBets(next);
+ if(wipe){try{localStorage.setItem("bets_reset_seen",String(resetAt));}catch(e){}}
  verifyMissing(toCheck);
  good("bets");
  }catch(e){fail("Lecture des paris",e);}
@@ -12021,6 +12049,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {/* STATS */}
  {view==="statistiques"&&(
  <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
+ <StatsArchive/>
  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
  <div style={{fontSize:16,fontWeight:800,textTransform:"none",letterSpacing:0,color:"#dce8ff"}}>Statistiques</div>
  <select value={season} onChange={e=>{setSeason(e.target.value);setStatsMonth("");}} aria-label="Saison" style={{height:36,padding:"0 10px",borderRadius:10,border:"1px solid rgba(167,139,250,.6)",background:"rgba(124,58,237,.18)",color:"#fff",fontSize:13,fontWeight:800,fontFamily:"Inter,sans-serif",colorScheme:"dark"}}>{seasonOpts.map(([k,l])=><option key={k} value={k}>{l}</option>)}<option value="all">Toutes</option></select>
