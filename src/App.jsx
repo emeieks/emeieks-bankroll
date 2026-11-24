@@ -9102,7 +9102,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const [bkRows,tourRows,setRows,mediaRows,teamRows,playersObj]=await Promise.all([
  safe(cloudDb("bookmakers?select=*&order=name.asc&limit=2000"),"Table bookmakers"),
  safe(cloudDb("tournaments?select=*&order=game.asc,name.asc&limit=5000"),"Table tournaments"),
- safe(cloudDb("settings?select=key,value&and=(key.not.like.betby_*,key.not.like.edge_*,key.not.like.ev_*,key.not.like.apify_*,key.not.like.last_*,key.not.in.(bot_status,bot_focus,sim_live,cs2_guard))&limit=5000"),"Table settings"),
+ safe(cloudDb("settings?select=key,value&and=(key.not.like.betby_*,key.not.like.edge_*,key.not.like.ev_*,key.not.like.apify_*,key.not.like.last_*,key.not.in.(bot_status,bot_focus,sim_live,cs2_guard,ui_sync))&limit=5000"),"Table settings"),
  safe(cloudDb("media_store?select=key,value&key=not.like.backup:*&limit=50000"),"Table media_store"),
  safe(cloudDb("teams?select=name,game,logo_url&order=name.asc,game.asc&limit=20000"),"Table teams"),
  loadPlayers(),
@@ -9204,7 +9204,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const refetch={
  bookmakers:()=>cloudDb("bookmakers?select=*&order=name.asc&limit=2000").then(r=>{if(r){good("bookmakers");cloudSkip.current.bookmakers=true;applyRemote.current.applyBk(r);}}).catch(e=>fail("Relecture bookmakers",e)),
  tournaments:()=>cloudDb("tournaments?select=*&order=game.asc,name.asc&limit=5000").then(r=>{if(r){good("tournaments");cloudSkip.current.tournaments=true;applyRemote.current.applyTour(r);}}),
- settings:()=>cloudDb("settings?select=key,value&and=(key.not.like.betby_*,key.not.like.edge_*,key.not.like.ev_*,key.not.like.apify_*,key.not.like.last_*,key.not.in.(bot_status,bot_focus,sim_live,cs2_guard))&limit=5000").then(r=>{if(r){good("settings");const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}).catch(e=>fail("Relecture settings",e)),
+ settings:()=>cloudDb("settings?select=key,value&and=(key.not.like.betby_*,key.not.like.edge_*,key.not.like.ev_*,key.not.like.apify_*,key.not.like.last_*,key.not.in.(bot_status,bot_focus,sim_live,cs2_guard,ui_sync))&limit=5000").then(r=>{if(r){good("settings");const o={};r.forEach(x=>{o[x.key]=x.value;});cloudSkip.current.settings=true;applyRemote.current.applySettings(o);}}).catch(e=>fail("Relecture settings",e)),
  media_store:()=>cloudDb("media_store?select=key,value&key=not.like.backup:*&limit=50000").then(r=>{if(r){good("media_store");const o=parseMediaRows(r);cloudSkip.current.media=true;applyRemote.current.applyMedia(o);}}),
  teams:()=>cloudDb("teams?select=name,game,logo_url&order=name.asc,game.asc&limit=20000").then(r=>{if(r){good("teams");cloudSkip.current.teams=true;setTeamLogos(prev=>{const m={...prev};r.forEach(t=>{if(t.logo_url)m[t.name+"__"+t.game]=t.logo_url;});return m;});}}).catch(e=>fail("Relecture teams",e)),
  players:()=>applyRemote.current.loadPlayers(),
@@ -14987,14 +14987,14 @@ class ErrorBoundary extends React.Component{
 // ── Réglages du navigateur sauvegardés dans Supabase (settings « ui_sync », une seule petite ligne JSON) ──
 // au démarrage : si Supabase a une version plus récente → on la remet dans le navigateur et on recharge une fois ; ensuite : envoi toutes les 15 s si quelque chose a changé
 const UI_SYNC_KEYS=["v7_bkrolls","v7_bk_flows","v7_bk_cap","v7_hidden_bks","v7_split_lock",   // bankroll (important)
- "v7_season","stat_filt","ev_sort","v7_sim_msort","v7_duels_open","emeieks_hide_over","emeieks_roster_open","emeieks_pp_open","emeieks_logo_mode","v7_recent_players","ev_seen","dark_logos_v2"];
+ "v7_season","stat_filt","ev_sort","v7_sim_msort","v7_duels_open","emeieks_hide_over","emeieks_roster_open","emeieks_pp_open","emeieks_logo_mode","v7_recent_players","ev_seen"];   // dark_logos_v2 : cache recalculé sur chaque appareil, trop lourd à synchroniser
 if(typeof window!=="undefined"&&!window.__uiSync){window.__uiSync=1;
- const snap=()=>{const o={};UI_SYNC_KEYS.forEach(k=>{try{let v=localStorage.getItem(k);if(v==null)return;if(k==="ev_seen"&&v.length>8000)v=v.slice(-8000).replace(/^[^,]*,/,"[");o[k]=v;}catch(e){}});return o;};
+ const snap=()=>{const o={};UI_SYNC_KEYS.forEach(k=>{try{let v=localStorage.getItem(k);if(v==null)return;if(k==="ev_seen"&&v.length>8000)v=v.slice(-8000).replace(/^[^,]*,/,"[");if(v.length>40000)return;o[k]=v;}catch(e){}});return o;};
  let last=JSON.stringify(snap());
  setTimeout(async()=>{try{const r=await cloudDb("settings?key=eq.ui_sync&select=value");let v=r&&r[0]&&r[0].value;if(typeof v==="string")try{v=JSON.parse(v);}catch(e){}
    const lt=+(localStorage.getItem("ui_sync_at")||0);
    if(v&&v.data&&(v.at||0)>lt){let ch=false;Object.entries(v.data).forEach(([k,x])=>{if(UI_SYNC_KEYS.includes(k)&&localStorage.getItem(k)!==x){localStorage.setItem(k,x);ch=true;}});localStorage.setItem("ui_sync_at",String(v.at));last=JSON.stringify(snap());
     if(ch&&!sessionStorage.getItem("ui_sync_reloaded")){sessionStorage.setItem("ui_sync_reloaded","1");location.reload();return;}}}catch(e){}
   setInterval(()=>{const cur=JSON.stringify(snap());if(cur===last||document.hidden)return;last=cur;const at=Date.now();try{localStorage.setItem("ui_sync_at",String(at));}catch(e){}
-   cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"ui_sync",value:{at,data:JSON.parse(cur)}}]}).catch(()=>{});},15000);},2000);}
+   cloudDb("settings?on_conflict=key",{method:"POST",prefer:"resolution=merge-duplicates,return=minimal",body:[{key:"ui_sync",value:{at,data:JSON.parse(cur)}}]}).catch(()=>{});},60000);},2000);}
 export default function App(){return <ErrorBoundary><AppMain/></ErrorBoundary>;}
