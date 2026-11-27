@@ -701,8 +701,10 @@ async function removeWhiteBgBlob(src){
  const url=URL.createObjectURL(blob);
  try{
   const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
-  const W=img.naturalWidth,H=img.naturalHeight;const c=document.createElement("canvas");c.width=W;c.height=H;
-  const x=c.getContext("2d");x.drawImage(img,0,0);const im=x.getImageData(0,0,W,H);const d=im.data;
+  // réduit d'abord (max 360 px) : 10 à 50× moins de pixels à traiter et à envoyer
+  const sc=Math.min(1,360/Math.max(img.naturalWidth,img.naturalHeight));
+  const W=Math.max(1,Math.round(img.naturalWidth*sc)),H=Math.max(1,Math.round(img.naturalHeight*sc));const c=document.createElement("canvas");c.width=W;c.height=H;
+  const x=c.getContext("2d");x.imageSmoothingQuality="high";x.drawImage(img,0,0,W,H);const im=x.getImageData(0,0,W,H);const d=im.data;
   const white=i=>d[i+3]>0&&d[i]>232&&d[i+1]>232&&d[i+2]>232&&Math.max(d[i],d[i+1],d[i+2])-Math.min(d[i],d[i+1],d[i+2])<22;
   const seen=new Uint8Array(W*H);const st=[];
   for(let X=0;X<W;X++){st.push(X,(H-1)*W+X);}for(let Y=0;Y<H;Y++){st.push(Y*W,Y*W+W-1);}
@@ -712,13 +714,28 @@ async function removeWhiteBgBlob(src){
   for(let q=0;q<W*H;q++){const i=q*4;if(d[i+3]===0||seen[q])continue;const l=(d[i]+d[i+1]+d[i+2])/3;if(l>215){const X=q%W,Y=(q/W)|0;
    if((X>0&&d[i-1]===0)||(X<W-1&&d[i+7]===0)||(Y>0&&d[i-W*4+3]===0)||(Y<H-1&&d[i+W*4+3]===0))d[i+3]=Math.round(255*(255-l)/40);}}
   x.putImageData(im,0,0);
-  return await new Promise(res=>c.toBlob(res,"image/png"));
+  return await new Promise(res=>c.toBlob(b=>b?res(b):c.toBlob(res,"image/png"),"image/webp",0.86));
  }finally{URL.revokeObjectURL(url);}
 }
 
+// Photo / logo : réduit à 360 px max et converti en WebP avant l'envoi (≈ 15-40 ko au lieu de 0,5-3 Mo)
+async function shrinkImage(file,max=360){
+ try{if(!file||!/^image\//.test(file.type||"")||/svg|gif/.test(file.type))return file;
+  const url=URL.createObjectURL(file);
+  try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+   const sc=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));if(sc>=1&&file.size<120000)return file;
+   const c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.naturalWidth*sc));c.height=Math.max(1,Math.round(img.naturalHeight*sc));
+   const x=c.getContext("2d");x.imageSmoothingQuality="high";x.drawImage(img,0,0,c.width,c.height);
+   const b=await new Promise(res=>c.toBlob(res,"image/webp",0.86));
+   if(!b||b.size>=file.size)return file;
+   return new File([b],(file.name||"img").replace(/\.[a-z0-9]+$/i,"")+".webp",{type:"image/webp"});
+  }finally{URL.revokeObjectURL(url);}
+ }catch(e){return file;}
+}
 async function supaUploadPhoto(file, folder) {
  // Upload image to Supabase Storage and return permanent public URL
- const ext = file.name.split('.').pop() || 'png';
+ file = await shrinkImage(file);
+ const ext = (file.type==='image/webp'?'webp':(file.name||'').split('.').pop()) || 'png';
  const fileName = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
  const res = await fetch(SUPA_URL + '/storage/v1/object/photos/' + fileName, {
   method: 'POST',
@@ -727,6 +744,7 @@ async function supaUploadPhoto(file, folder) {
    'Authorization': 'Bearer ' + SUPA_KEY,
    'Content-Type': file.type || 'image/png',
    'x-upsert': 'true',
+   'cache-control': 'public, max-age=31536000, immutable',
   },
   body: file,
  });
@@ -1487,6 +1505,11 @@ const profitColor=isPending?"#93c5fd":isWon?"#22C55E":"#EF4444";
  {/* L1 : Joueur — Kills — Map */}
  <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:4,flexWrap:"nowrap",minWidth:0}}>
  <span style={{fontWeight:800,fontSize:14.5,color:"#f0f4ff",letterSpacing:"-.4px",lineHeight:1,flexShrink:0}}>{bet.player}</span>
+ {bet.mapTag&&<span onClick={e=>e.stopPropagation()} style={{position:"relative",display:"inline-flex",alignItems:"center",fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4,marginRight:2}}>{bet.mapTag}
+  <select aria-label="Changer la map" value={bet.mapTag} onChange={e=>{const m=e.target.value;if(m!==bet.mapTag&&onSave)onSave(Object.assign({},bet,{mapTag:m,ppMapType:bet.ppMapType&&/^Map \d$/.test(bet.ppMapType)?m:bet.ppMapType,updatedAt:Date.now()}));}}
+   style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}>
+   {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=><option key={m} value={m}>{m}</option>)}
+  </select></span>}
  {bet.team&&<TeamLogo team={bet.team} game={bet.game} size={14}/>}
  {bet.game==="LoL"&&bet.role&&<RoleLogo role={bet.role} size={14}/>}
  {GNORM(bet.game)==="Dota2"&&bet.role&&DOTA_POS(bet.role)&&<DotaPosIc r={DOTA_POS(bet.role)} s={14}/>}
@@ -1494,11 +1517,6 @@ const profitColor=isPending?"#93c5fd":isWon?"#22C55E":"#EF4444";
  {bet.isLive&&<span style={{fontSize:8,fontWeight:800,color:"#fb7185",background:"rgba(251,113,133,.12)",padding:"1px 5px",borderRadius:4,border:"1px solid rgba(251,113,133,.25)",letterSpacing:.3,flexShrink:0}}>LIVE</span>}
  {bet._ot&&<span title="Map allée en prolongation" style={{fontSize:8,fontWeight:900,color:"#1a1205",background:"#f59e0b",padding:"1px 5px",borderRadius:4,letterSpacing:.3,flexShrink:0}}>OT</span>}
  {bet.isHeadshot&&<img src={HEADSHOT_LOGO_B64} alt="HS" style={{width:13,height:13,objectFit:"contain",flexShrink:0,filter:"brightness(0) invert(1)",opacity:.7,verticalAlign:"middle"}}/>}
- {bet.mapTag&&<span onClick={e=>e.stopPropagation()} style={{position:"relative",display:"inline-flex",alignItems:"center",fontSize:10.5,fontWeight:700,lineHeight:1,color:"#fbbf24",background:"rgba(251,191,36,.1)",padding:"2px 5px",borderRadius:4,border:"1px solid rgba(251,191,36,.25)",flexShrink:0,marginLeft:4,marginRight:2}}>{bet.mapTag}
-  <select aria-label="Changer la map" value={bet.mapTag} onChange={e=>{const m=e.target.value;if(m!==bet.mapTag&&onSave)onSave(Object.assign({},bet,{mapTag:m,ppMapType:bet.ppMapType&&/^Map \d$/.test(bet.ppMapType)?m:bet.ppMapType,updatedAt:Date.now()}));}}
-   style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}>
-   {["Map 1","Map 2","Map 3","Map 4","Map 5"].map(m=><option key={m} value={m}>{m}</option>)}
-  </select></span>}
  {descLine&&<><span style={{color:"#2e3d50",fontSize:10,lineHeight:1,flexShrink:0,margin:"0 1px"}}>-</span><span style={{fontSize:12,color:"#aab8ca",fontWeight:500,flexShrink:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{descLine}</span></>}
  </div>
  {/* L2 : Cote · BK · Mise · Ligue — plus visible */}
@@ -3126,7 +3144,7 @@ const BookmarkersSection=memo(function BookmarkersSection({bookmakers,setBookmak
   </div>;};
  return(
   <div style={{marginBottom:8}}>
-   <SuiviHead n="wallet" color="#60a5fa" title="Bookmakers" sub={bookmakers.length+" bookmakers"+(hiddenBKs.size?" · "+hiddenBKs.size+" masqué(s)":"")} open={open} onClick={()=>setOpen(o=>!o)}/>
+   <SuiviHead n="wallet" color="#60a5fa" title="Bookmakers" sub={(()=>{const h=bookmakers.filter(b=>hiddenBKs.has(b)).length;return bookmakers.length+" bookmaker"+(bookmakers.length>1?"s":"")+(h?" · "+h+" masqué"+(h>1?"s":""):"");})()} open={open} onClick={()=>setOpen(o=>!o)}/>
    {open&&(
     <div style={{...SV_BODY,padding:0,overflow:"hidden"}}>
      {editingBK==="new"?(
@@ -5008,7 +5026,14 @@ function buildLogoIdx(teamLogos,allPlayers){const exact={},extra={},byG={};
  Object.entries(teamLogos||{}).forEach(([kk,u])=>{const [t,g]=kk.split("__");add(t,u,GNORM(g));});Object.values(allPlayers||{}).forEach(p=>{if(p)add(p.team,p.team_logo_url,GNORM(p.game));});
  return {exact,extra,byG};}
 // Logo d'un club : d'abord celui du MÊME jeu (Falcons CS2 ≠ Falcons Dota), sinon n'importe lequel
-function findLogo(idx,t,game){const n=teamKey(t),c=cutNorm(t);if(!n&&!c)return null;
+// Club lié : nom Betby / PrizePicks relié à un club du site (TEAM_LINK), ou club lié à un club d'un autre jeu (CLUB_ALIAS → un seul logo)
+function clubResolve(t,game){let T=t,G=game;try{if(!_caLoaded)loadClubAlias();for(let i=0;i<3;i++){const g=G?GNORM(G):"";const k=g+":"+teamKey(T);
+  const l=typeof TEAM_LINK!=="undefined"&&TEAM_LINK&&g&&TEAM_LINK[k];if(l&&typeof l==="string"&&l!==T){T=l;continue;}
+  const a=CLUB_ALIAS[k];if(a&&a.t){T=a.t;G=a.g||G;continue;}break;}}catch(e){}return [T,G];}
+let CLUB_ALIAS={};let _caLoaded=false;
+function loadClubAlias(){if(_caLoaded)return Promise.resolve(CLUB_ALIAS);_caLoaded=true;return cloudDb("media_store?select=value&key=eq.clubalias").then(r=>{let v=r&&r[0]&&r[0].value;try{v=typeof v==="string"?JSON.parse(v):v;}catch(e){v=null;}CLUB_ALIAS=v&&typeof v==="object"?v:{};if(typeof ASSETS!=="undefined"){ASSETS.lc=new Map();ASSETS.v++;notifyAssets();}return CLUB_ALIAS;}).catch(()=>CLUB_ALIAS);}
+async function saveClubAlias(next){CLUB_ALIAS=next;try{ASSETS.lc=new Map();ASSETS.v++;notifyAssets();}catch(e){}await cloudDb("media_store?on_conflict=key",{method:"POST",body:[{key:"clubalias",value:JSON.stringify(next)}],prefer:"resolution=merge-duplicates,return=minimal"});}
+function findLogo(idx,t,game){[t,game]=clubResolve(t,game);const n=teamKey(t),c=cutNorm(t);if(!n&&!c)return null;
  const look=I=>{if(!I)return null;if(I.exact[n])return I.exact[n];if(I.extra[c])return I.extra[c];if(I.extra[n])return I.extra[n];const hit=Object.keys(I.exact).find(x=>x.length>=3&&n.length>=3&&(x.includes(n)||n.includes(x)));return hit?I.exact[hit]:null;};
  return (game&&look(idx.byG&&idx.byG[GNORM(game)]))||look(idx);}
 // ── Index global joueurs + logos : lecture instantanée partout (photos, logos d'équipe), mis à jour par AppMain ──
@@ -5020,7 +5045,7 @@ function useAssets(){const [v,setV]=useState(ASSETS.v);useEffect(()=>{const f=()
 function bpl(AP,name,game){const k=String(name||"").toLowerCase().trim();if(!k||!AP)return undefined;const p=AP[k];if(!game||!p||!p.game||GNORM(p.game)===GNORM(game))return p;const t=k+"|"+GNORM(game).toLowerCase();const rk=Object.keys(AP).find(x=>x.toLowerCase()===t);return rk?AP[rk]:p;}
 function plOf(name,game){if(!name)return null;const k=String(name).toLowerCase().trim();const g=game?GNORM(game):"";const p=ASSETS.pl[k];if(p&&(!g||!p.game||GNORM(p.game)===g))return p;const c=cutNorm(name);return (g&&ASSETS.cut.get(c+"|"+g))||ASSETS.cut.get(c)||p||null;}
 function photoOf(name,game){const p=plOf(name,game);return p?getAvatarSrc(p):null;}
-function teamLogoOf(team,game){if(!team)return null;const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||(()=>{const tl=ASSETS.tl||{};const n=String(team).toLowerCase().trim();for(const g of ["CS2","LoL","Dota2","Valorant"]){const x=tl[team+"__"+g];if(x)return x;}const k=Object.keys(tl).find(x=>x.split("__")[0].toLowerCase().trim()===n);return k?tl[k]:null;})()||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
+function teamLogoOf(team,game){if(!team)return null;[team,game]=clubResolve(team,game);const k=team+"|"+(game?GNORM(game):"");if(ASSETS.lc.has(k))return ASSETS.lc.get(k);let u=null;try{const G=game?GNORM(game):"";u=(G&&ASSETS.tl&&ASSETS.tl[team+"__"+G])||(G&&typeof clubLogo==="function"?clubLogo(team,G,ASSETS.tl,ASSETS.pl):null)||(()=>{const tl=ASSETS.tl||{};const n=String(team).toLowerCase().trim();for(const g of ["CS2","LoL","Dota2","Valorant"]){const x=tl[team+"__"+g];if(x)return x;}const k=Object.keys(tl).find(x=>x.split("__")[0].toLowerCase().trim()===n);return k?tl[k]:null;})()||findLogo(ASSETS.logo,team,game)||null;}catch(e){}ASSETS.lc.set(k,u);return u;}
 const Avatar=memo(function Avatar({name,game,src,size=40,badge=true,radius="50%",ring,bgLogo}){useAssets();const u=src||photoOf(name,game);const [bad,setBad]=useState(false);useEffect(()=>{setBad(false);},[u]);
  const ini=String(name||"?").trim().charAt(0).toUpperCase()||"?";const bs=Math.max(12,Math.round(size*.42));const G=game?GNORM(game):"";
  return <span style={{position:"relative",width:size,height:G==="CS2"?Math.round(size*1.02):size,flexShrink:0,display:"inline-block"}}>
@@ -5824,7 +5849,7 @@ function ResultsEntry({allPlayers,teamLogos,bets=[],setBets,tours={}}){
       <span className="sc">{r?<><span className={s1>s2?"w":"l"}>{s1}</span><span className="p"> - </span><span className={s2>s1?"w":"l"}>{s2}</span></>:<span className="p">vs</span>}</span>
       <span className="t2"><span>{B}</span><span style={{position:"relative",display:"inline-flex",flexShrink:0}}>{L(B,m.game)}{!clubKnown(B,clubL[GNORM(m.game)]||[])&&<span title="Club non lié" className="nl dt">!</span>}</span></span><span style={{display:"inline-flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>{(()=>{const mm=mpOf[m.key]||[];const nOT=mm.filter(x=>x.ot).length;const noMap=r&&["CS2","Valorant"].includes(GNORM(m.game))&&(mm.length===0||mm.some(x=>!x.map_name));
         const pk=new Set(Object.keys(m.players));const pend=!!lockB&&(bets||[]).some(b=>GNORM(b.game)===GNORM(m.game)&&pk.has(aliasOf(b.player))&&String(b.datetime||"").slice(0,10)===m.day&&!lockB.has(String(b.id)));
-        const gg=GNORM(m.game);const site=gg==="CS2"?["HLTV","https://www.hltv.org/search?query="+encodeURIComponent(A),"#2D6DA3"]:gg==="Valorant"?["VLR","https://www.vlr.gg/search/?q="+encodeURIComponent(A),"#E34A4A"]:gg==="Dota2"?["DOTABUFF","https://www.dotabuff.com/esports/search?q="+encodeURIComponent(A),"#B81D13"]:null;
+        const gg=GNORM(m.game);const site=gg==="CS2"?["HLTV","https://www.hltv.org/search?query="+encodeURIComponent(A),"#2D6DA3"]:gg==="Valorant"?["VLR","https://www.vlr.gg/search/?q="+encodeURIComponent(A),"#E34A4A"]:gg==="Dota2"?["OPENDOTA","https://www.opendota.com/search?q="+encodeURIComponent(A),"linear-gradient(90deg,#1E9F5A,#2FB57D)"]:null;
         return <>{site&&<span role="link" tabIndex={0} title={"Ouvrir sur "+site[0]} onClick={e=>{e.stopPropagation();window.open(site[1],"_blank","noopener");}} style={{font:"900 9px Inter,sans-serif",letterSpacing:.3,padding:"2px 5px",borderRadius:3,background:site[2],color:"#fff",cursor:"pointer"}}>{site[0]}</span>}{Array.from({length:nOT}).map((_,j)=><span key={j} style={{font:"800 10px Inter,sans-serif",background:"var(--ot)",color:"#2A1C05",padding:"1px 5px",borderRadius:3}}>OT</span>)}
          {noMap&&<span title="Carte non assignée" style={{width:16,height:16,borderRadius:"50%",background:"#E0533F",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
          {pend&&<span title="Paris pas verrouillés" style={{width:16,height:16,borderRadius:"50%",background:"#3B82F6",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>}
@@ -6025,7 +6050,7 @@ function ScorePaste({known=null,onDur=null,i,roster,A,B,setP,hsOn,locked,onExtra
  const apply=(t0,ii=i)=>{
   // Liquipedia : le bloc « Team Stats » (4/19/12, 19/4/61…) ne doit jamais être lu comme un joueur → joueurs lus à partir de « Player Performance »
   const tsTxt=t0;const t=/Player Performance/i.test(t0)?t0.slice(t0.search(/Player Performance/i)):t0;
-  if(ii===i&&isDotabuff(t)){const gs=dotaGames(t);if(gs.length>1){gs.forEach((g,j)=>apply(g.text,i+j));setSt("✓ "+gs.length+" games Dotabuff remplis (games "+(i+1)+" à "+(i+gs.length)+") — vérifie les chiffres");return;}}
+  if(ii===i&&isDotabuff(t)){const gs=dotaGames(t);if(gs.length>1){gs.forEach((g,j)=>apply(g.text,i+j));setSt("✓ "+gs.length+" games remplies (games "+(i+1)+" à "+(i+gs.length)+") — vérifie les chiffres");return;}}
   if(isDotabuff(t)&&onWin){const w=dotaGames(t)[0].win;const sc=dbScore(t);const Ls=String(t).split(/\r?\n/);const hd=[];Ls.forEach((l,j)=>{if(/^Hero\tR\tL\tPlayer/.test(l))hd.push(dbTeam(Ls[j-1],A,B));});
    if(hd.length===2&&!hd[0]&&hd[1])hd[0]=hd[1]===A?B:A;if(hd.length===2&&!hd[1]&&hd[0])hd[1]=hd[0]===A?B:A;
    const kills=sc&&hd[0]&&hd[1]?{[hd[0]]:sc.l,[hd[1]]:sc.r}:null;onWin(ii,w,kills);}
@@ -6283,7 +6308,7 @@ function ResultForm({m,allPlayers,clubs=[],tours=[],L,onClose,bets=[],setBets}){
       <div style={{flex:1}}><div style={{color:"#fff",fontWeight:900,fontSize:17}}>{advFor.n}</div><div style={{color:"#0AC8B9",fontSize:12.5,fontWeight:700}}>{lol?(v.c||"Champion ?")+" · Game ":(v.c?v.c+" · ":"")+"Map "}{advFor.i+1}</div></div>
       <button onClick={()=>setAdvFor(null)} aria-label="Fermer" style={{border:"none",background:"none",color:"#8A94A3",fontSize:22,cursor:"pointer"}}>×</button></div>
      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:1,background:"#252B35"}}>{S.map(([l,x])=><div key={l} style={{background:"#0D1015",padding:"12px 6px",textAlign:"center"}}><div style={{fontSize:10.5,color:"#6B7380",fontWeight:800,letterSpacing:.5}}>{l}</div><div style={{fontSize:17,fontWeight:900,color:"#fff",marginTop:3}}>{x}</div></div>)}</div>
-     {!v.adv&&<div style={{padding:12,fontSize:12.5,color:"#8A94A3"}}>{lol?"Colle le tableau Liquipedia de la game":G==="Valorant"?"Colle le tableau vlr.gg de la map":G==="Dota2"?"Colle la page Dotabuff de la game":"Colle le tableau HLTV de la map"} pour avoir les stats avancées.</div>}</div></div>;})()}
+     {!v.adv&&<div style={{padding:12,fontSize:12.5,color:"#8A94A3"}}>{lol?"Colle le tableau Liquipedia de la game":G==="Valorant"?"Colle le tableau vlr.gg de la map":G==="Dota2"?"Colle l'ID ou le lien OpenDota de la game":"Colle le tableau HLTV de la map"} pour avoir les stats avancées.</div>}</div></div>;})()}
   {clubFor&&<ClubPick g={m.game} name={lnk[clubFor]||clubFor} list={clubs} logo={c=>L(c,m.game,22)} onClose={()=>setClubFor(null)}
    top={<div style={{padding:"0 12px 10px",display:"flex",flexDirection:"column",gap:8}}>
     <label style={{display:"flex",alignItems:"center",gap:8,color:"#C9D1DB",fontSize:13,cursor:"pointer"}}><input type="checkbox" checked={!!clubAlways} onChange={e=>setClubAlways(e.target.checked)}/>Toujours ({G}) : « {clubFor} » = ce club pour les prochains matchs</label>
@@ -6557,6 +6582,79 @@ function nameSim(a,b){a=cutNorm(a);b=cutNorm(b);if(!a||!b)return 0;if(a===b)retu
  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
  return 1-d[a.length][b.length]/Math.max(a.length,b.length);}
 const rankNames=(n,l)=>l.map(c=>({...c,sim:nameSim(n,c.name)})).sort((x,y)=>y.sim-x.sim);
+// ── Réglages : clubs liés entre jeux (un seul logo) ──
+const _GAMES4=["CS2","Dota2","LoL","Valorant"];
+const _box={background:"#111827",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:14,marginBottom:12};
+const _inp={width:"100%",height:42,borderRadius:11,border:"1px solid #1F2937",background:"#0b1120",color:"#fff",padding:"0 12px",fontSize:16,fontFamily:"Inter,sans-serif",boxSizing:"border-box"};
+function ClubFind({clubs,value,onPick,exclude,label}){const [q,setQ]=useState("");
+ const L=useMemo(()=>{const n=cutNorm(q);return clubs.filter(c=>!exclude||c.game!==exclude).filter(c=>!n||cutNorm(c.name).includes(n)).slice(0,30);},[clubs,q,exclude]);
+ if(value)return <button onClick={()=>onPick(null)} style={{..._inp,display:"flex",alignItems:"center",gap:8,cursor:"pointer",textAlign:"left"}}>{teamLogoOf(value.name,value.game)&&<img src={teamLogoOf(value.name,value.game)} alt="" style={{width:20,height:20,objectFit:"contain"}}/>}<b style={{flex:1}}>{value.name}</b><span style={{fontSize:11,color:"#9ca3af"}}>{value.game} ✕</span></button>;
+ return <div><input value={q} onChange={e=>setQ(e.target.value)} placeholder={label} aria-label={label} style={_inp}/>
+  {q&&<div style={{maxHeight:220,overflowY:"auto",marginTop:6,borderRadius:11,border:"1px solid #1F2937"}}>{L.length?L.map(c=><button key={c.game+c.name} onClick={()=>{onPick(c);setQ("");}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"transparent",border:"none",borderBottom:"1px solid #1F2937",color:"#e5e7eb",cursor:"pointer",fontSize:14,textAlign:"left"}}>{teamLogoOf(c.name,c.game)?<img src={teamLogoOf(c.name,c.game)} alt="" style={{width:18,height:18,objectFit:"contain"}}/>:<span style={{width:18}}/>}<span style={{flex:1}}>{c.name}</span><span style={{fontSize:11,color:"#9ca3af"}}>{c.game}</span></button>):<div style={{padding:10,fontSize:13,color:"#9ca3af"}}>Aucun club</div>}</div>}</div>;}
+function useSiteClubs(){const [c,setC]=useState([]);useEffect(()=>{cloudDb("teams?select=name,game,logo_url&limit=5000").then(r=>setC((r||[]).filter(x=>x&&x.name).map(x=>({name:x.name,game:GNORM(x.game),logo:x.logo_url})))).catch(()=>{});},[]);return [c,setC];}
+function ClubLinks({showToast}){const [clubs,setClubs]=useSiteClubs();const [A,setA]=useState(null);const [B,setB]=useState(null);const [,force]=useState(0);
+ useEffect(()=>{loadClubAlias().then(()=>force(x=>x+1));},[]);
+ const links=Object.entries(CLUB_ALIAS||{});
+ const link=async()=>{if(!A||!B)return;const k=B.game+":"+teamKey(B.name);await saveClubAlias({...CLUB_ALIAS,[k]:{t:A.name,g:A.game,n:B.name}});
+  // le logo du 2e club ne sert plus : on libère la place
+  try{await cloudDb("teams?name=eq."+encodeURIComponent(B.name)+"&game=eq."+encodeURIComponent(B.game),{method:"PATCH",body:{logo_url:null},prefer:"return=minimal"});}catch(e){}
+  setClubs(p=>p.map(c=>c.name===B.name&&c.game===B.game?{...c,logo:null}:c));setA(null);setB(null);force(x=>x+1);showToast&&showToast("✓ "+B.name+" utilise le logo de "+A.name);};
+ const unlink=async k=>{const n={...CLUB_ALIAS};delete n[k];await saveClubAlias(n);force(x=>x+1);};
+ return <div style={_box}>
+  <div style={{fontSize:13,color:"#9ca3af",marginBottom:10}}>Même club dans deux jeux (ex. Navi CS2 ↔ Natus Vincere Dota 2) : le 2e garde le logo du 1er, un seul logo stocké.</div>
+  <ClubFind clubs={clubs} value={A} onPick={setA} label="Club qui garde son logo"/>
+  <div style={{height:8}}/>
+  <ClubFind clubs={clubs} value={B} onPick={setB} exclude={A&&A.game} label="Même club, autre jeu"/>
+  <button disabled={!A||!B} onClick={link} style={{width:"100%",height:46,marginTop:10,borderRadius:12,border:"none",background:A&&B?"linear-gradient(135deg,#7c3aed,#6366f1)":"#1f2937",color:"#fff",fontWeight:800,fontSize:14.5,cursor:A&&B?"pointer":"default"}}>Lier les clubs</button>
+  {links.length>0&&<div style={{marginTop:12}}>{links.map(([k,v])=><div key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderTop:"1px solid #1F2937",fontSize:13.5,color:"#e5e7eb"}}>
+   {teamLogoOf(v.t,v.g)&&<img src={teamLogoOf(v.t,v.g)} alt="" style={{width:18,height:18,objectFit:"contain"}}/>}<span style={{flex:1}}><b>{v.t}</b> <span style={{color:"#9ca3af"}}>{v.g}</span> ↔ <b>{v.n||k.split(":")[1]}</b> <span style={{color:"#9ca3af"}}>{k.split(":")[0]}</span></span>
+   <button onClick={()=>unlink(k)} aria-label="Délier" style={{height:30,padding:"0 10px",borderRadius:8,border:"1px solid #374151",background:"transparent",color:"#fca5a5",fontSize:12,cursor:"pointer"}}>Délier</button></div>)}</div>}
+ </div>;}
+// ── Réglages : ce que le bot (PrizePicks / Betby) ne reconnaît pas ──
+function BotUnmatched({allPlayers,teamLogos,showToast}){const [tab,setTab]=useState("j");const [clubs]=useSiteClubs();const [raw,setRaw]=useState(null);const [sel,setSel]=useState(null);const [tgt,setTgt]=useState(null);const [,force]=useState(0);
+ useEffect(()=>{if(tab!=="c"||raw)return;(async()=>{await loadTeamLink();await loadClubAlias();let a=[],b=[];
+  try{a=await cloudDb("betby_props?select=game,match&limit=5000")||[];}catch(e){}try{b=await cloudDb("cut_history?select=game,team&source=eq.pp&order=at.desc&limit=5000")||[];}catch(e){}
+  const m=new Map();const add=(g,t,src)=>{t=String(t||"").trim();g=GNORM(g||"");if(!t||!g)return;const k=g+":"+teamKey(t);const o=m.get(k)||{game:g,name:t,src:new Set()};o.src.add(src);m.set(k,o);};
+  a.forEach(r=>String(r.match||"").replace(/\s*MAPS?\s*\d.*$/i,"").split(/\s+vs\.?\s+/i).forEach(t=>add(r.game,t,"Betby")));b.forEach(r=>add(r.game,r.team,"PrizePicks"));
+  setRaw([...m.values()]);})();},[tab,raw]);
+ const known=c=>clubs.some(x=>x.game===c.game&&teamKey(x.name)===teamKey(c.name))||(TEAM_LINK&&TEAM_LINK[tlKey(c.game,c.name)]);
+ const list=(raw||[]).filter(c=>!known(c)).sort((x,y)=>x.game.localeCompare(y.game)||x.name.localeCompare(y.name));
+ const link=async()=>{await saveTeamLink(sel.game,sel.name,tgt.name);showToast&&showToast("✓ "+sel.name+" → "+tgt.name+" (lié pour toujours)");setSel(null);setTgt(null);force(x=>x+1);};
+ const T=(k,l)=><button onClick={()=>setTab(k)} style={{flex:1,height:38,borderRadius:10,border:"none",background:tab===k?"#7c3aed":"transparent",color:tab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13.5,cursor:"pointer"}}>{l}</button>;
+ return <div style={_box}>
+  <div style={{display:"flex",gap:4,background:"#0b1120",borderRadius:12,padding:4,marginBottom:12}}>{T("j","Joueurs")}{T("c","Clubs"+(raw?" · "+list.length:""))}</div>
+  {tab==="j"&&<AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/>}
+  {tab==="c"&&(!raw?<div style={{fontSize:13,color:"#9ca3af"}}>Chargement…</div>:!list.length?<div style={{fontSize:13,color:"#22C55E"}}>✓ Tous les clubs du bot sont reconnus</div>:
+   list.map(c=>{const k=c.game+":"+c.name;const on=sel&&sel.game===c.game&&sel.name===c.name;return <div key={k} style={{borderTop:"1px solid #1F2937"}}>
+    <button onClick={()=>{setSel(on?null:c);setTgt(null);}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"10px 2px",background:"transparent",border:"none",color:"#e5e7eb",cursor:"pointer",fontSize:14,textAlign:"left"}}>
+     <span style={{width:16,height:16,borderRadius:"50%",background:"#E0533F",color:"#fff",font:"900 11px Inter,sans-serif",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>!</span>
+     <b style={{flex:1}}>{c.name}</b><span style={{fontSize:11,color:"#9ca3af"}}>{c.game} · {[...c.src].join(" + ")}</span></button>
+    {on&&<div style={{padding:"0 0 12px"}}><ClubFind clubs={clubs.filter(x=>x.game===c.game)} value={tgt} onPick={setTgt} label={"Chercher le club du site ("+c.game+")"}/>
+     <button disabled={!tgt} onClick={link} style={{width:"100%",height:42,marginTop:8,borderRadius:11,border:"none",background:tgt?"#22C55E":"#1f2937",color:tgt?"#05210f":"#6b7280",fontWeight:900,fontSize:14,cursor:tgt?"pointer":"default"}}>Lier</button></div>}
+   </div>;}))}
+ </div>;}
+// ── Bot EV : lanceur — cocher les options, copier la commande exacte ──
+function BotLauncher(){const [st,setSt]=useState(()=>{try{return JSON.parse(localStorage.getItem("v8_launch")||"null")||{};}catch(e){return {};}});
+ const S={apify:true,loop:false,every:10,jeux:{cs2:true,lol:true,dota:true,valo:false},headful:false,...st};const up=p=>{const n={...S,...p};setSt(n);try{localStorage.setItem("v8_launch",JSON.stringify(n));}catch(e){}};
+ const j=Object.keys(S.jeux).filter(k=>S.jeux[k]);
+ const cmd="python bot.py "+(S.loop?"--auto --every "+S.every:"--cycle"+(S.apify?" --apify":""))+(j.length&&j.join(",")!=="cs2,lol,dota"?" --jeux "+j.join(","):"")+(S.headful?" --headful":"");
+ const [ok,setOk]=useState(false);const copy=()=>{try{navigator.clipboard.writeText(cmd);setOk(true);setTimeout(()=>setOk(false),1500);}catch(e){}};
+ const Chk=({on,onClick,children})=><button onClick={onClick} style={{display:"inline-flex",alignItems:"center",gap:7,height:36,padding:"0 12px",borderRadius:10,border:"1px solid "+(on?"#8b5cf6":"#1F2937"),background:on?"rgba(124,58,237,.2)":"#0b1120",color:on?"#fff":"#9ca3af",fontWeight:700,fontSize:13,cursor:"pointer"}}><span style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(on?"#a78bfa":"#4b5563"),background:on?"#7c3aed":"transparent",color:"#fff",fontSize:11,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{on?"✓":""}</span>{children}</button>;
+ return <div style={_box}>
+  <div style={{fontSize:15,fontWeight:900,color:"#fff",marginBottom:2}}>Lancer le bot</div>
+  <div style={{fontSize:12.5,color:"#9ca3af",marginBottom:12}}>Coche, copie, colle dans le terminal du PC.</div>
+  <div style={{fontSize:11,fontWeight:800,color:"#6b7489",letterSpacing:.4,marginBottom:6}}>QUAND</div>
+  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}><Chk on={!S.loop} onClick={()=>up({loop:false})}>Une fois</Chk><Chk on={S.loop} onClick={()=>up({loop:true})}>En boucle</Chk>
+   {S.loop&&[1,5,10,15].map(n=><Chk key={n} on={S.every===n} onClick={()=>up({every:n})}>{n} min{n===1?" (live)":""}</Chk>)}</div>
+  <div style={{fontSize:11,fontWeight:800,color:"#6b7489",letterSpacing:.4,marginBottom:6}}>SOURCES</div>
+  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}><Chk on>Betby</Chk>{!S.loop?<Chk on={S.apify} onClick={()=>up({apify:!S.apify})}>PrizePicks (Apify)</Chk>:<span style={{fontSize:12,color:"#9ca3af",alignSelf:"center"}}>PrizePicks : bouton « Lancer un run » de l'app</span>}</div>
+  <div style={{fontSize:11,fontWeight:800,color:"#6b7489",letterSpacing:.4,marginBottom:6}}>JEUX</div>
+  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>{[["cs2","CS2"],["lol","LoL"],["dota","Dota 2"],["valo","Valorant"]].map(([k,l])=><Chk key={k} on={!!S.jeux[k]} onClick={()=>up({jeux:{...S.jeux,[k]:!S.jeux[k]}})}>{l}</Chk>)}
+   <Chk on={S.headful} onClick={()=>up({headful:!S.headful})}>Voir le navigateur</Chk></div>
+  <div style={{display:"flex",gap:8,alignItems:"stretch"}}><code style={{flex:1,minWidth:0,background:"#05070d",border:"1px solid #1F2937",borderRadius:11,padding:"11px 12px",color:"#86efac",fontSize:13,fontFamily:"ui-monospace,Menlo,monospace",wordBreak:"break-all"}}>{cmd}</code>
+   <button onClick={copy} style={{width:84,borderRadius:11,border:"none",background:ok?"#22C55E":"#7c3aed",color:"#fff",fontWeight:900,fontSize:13.5,cursor:"pointer"}}>{ok?"Copié ✓":"Copier"}</button></div>
+  {!j.length&&<div style={{fontSize:12,color:"#fca5a5",marginTop:6}}>Coche au moins un jeu.</div>}
+ </div>;}
 function AliasManager({allPlayers={},teamLogos={}}){
  const [rows,setRows]=useState(null);const [sel,setSel]=useState(null);const [cand,setCand]=useState(null);const [f,setF]=useState("");const [note,setNote]=useState(null);
  const idx=useMemo(()=>buildLogoIdx(teamLogos,allPlayers),[teamLogos,allPlayers]);
@@ -6830,8 +6928,7 @@ function BankrollManager({bkrolls=[],setBkrolls,season,setSeason,bets=[],bankrol
   </div>;};
  const G=gear&&bkrolls.find(x=>x.id===gear);
  return(<div style={{marginBottom:12}}>
-  {rows.map(x=><Card key={x.id} x={x}/>)}
-  <Card all/>
+  {rows.slice(0,1).map(x=><Card key={x.id} x={x}/>)}
   {ask&&<div onClick={()=>setAsk(null)} style={{position:"fixed",inset:0,zIndex:90,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
    <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,background:"#0f1524",borderRadius:"22px 22px 0 0",border:"1px solid rgba(255,255,255,.08)",padding:"20px 18px 28px"}}>
     <div style={{width:40,height:4,borderRadius:2,background:"#374151",margin:"0 auto 16px"}}/>
@@ -6847,7 +6944,7 @@ function BankrollManager({bkrolls=[],setBkrolls,season,setSeason,bets=[],bankrol
    <div style={{fontSize:16,fontWeight:800,color:"#fff"}}>Chargement de la bankroll…</div>
    <div style={{fontSize:13,color:"#9ca3af"}}>{loading==="all"?"Tout l'historique":(bkrolls.find(x=>x.id===loading)||{}).name}</div>
   </div>}
-  {G&&<BkSettings bk={G} onClose={()=>setGear(null)} upd={patch=>upd(G.id,patch)} onDelete={()=>{setBkrolls(p=>p.filter(y=>y.id!==G.id));if(season===G.id)setSeason("all");setGear(null);}} quickUnits={quickUnits} setQuickUnits={setQuickUnits} bookmakers={bookmakers} tools={tools} taxTool={taxTool} stats={rows.find(r=>r.id===G.id)}/>}
+  {G&&<BkSettings bk={G} onClose={()=>setGear(null)} upd={patch=>upd(G.id,patch)} onDelete={null} quickUnits={quickUnits} setQuickUnits={setQuickUnits} bookmakers={bookmakers} tools={tools} taxTool={taxTool} stats={rows.find(r=>r.id===G.id)}/>}
  </div>);
 }
 function BkSettings({bk,onClose,upd,onDelete,quickUnits,setQuickUnits,bookmakers=[],tools,taxTool,stats}){
@@ -6895,12 +6992,12 @@ function BkSettings({bk,onClose,upd,onDelete,quickUnits,setQuickUnits,bookmakers
    </>}
    {tab==="adj"&&<div style={{marginTop:12}}>{tools&&tools.adj}</div>}
    {tab==="net"&&<div style={{marginTop:12}}>{tools&&tools.clean}
-    <L t="ZONE SENSIBLE"/>
+    {onDelete&&<><L t="ZONE SENSIBLE"/>
     <div style={{padding:12,borderRadius:14,border:"1px solid rgba(239,68,68,.25)",background:"rgba(239,68,68,.04)"}}>
      <div style={{fontSize:13,color:"#fca5a5",fontWeight:700,marginBottom:8}}>Retirer cette bankroll (les paris restent, ils passent dans la bankroll précédente). Écris le nom pour confirmer.</div>
      <input value={delTxt} onChange={e=>setDelTxt(e.target.value)} placeholder={bk.name} aria-label="Confirmer le nom" style={{...inp,fontSize:14,fontWeight:500}}/>
      <button disabled={delTxt!==bk.name} onClick={onDelete} style={{width:"100%",height:44,marginTop:8,borderRadius:12,border:"none",background:delTxt===bk.name?"#EF4444":"#1f2937",color:delTxt===bk.name?"#fff":"#6b7280",fontWeight:900,fontSize:13.5,cursor:delTxt===bk.name?"pointer":"default"}}>Retirer la bankroll</button>
-    </div></div>}
+    </div></>}</div>}
    {tab==="cap"&&<button disabled={!dirty} onClick={save} style={{width:"100%",height:52,marginTop:20,borderRadius:14,border:"none",background:dirty?"linear-gradient(135deg,#7c3aed,#6366f1)":"#1f2937",color:dirty?"#fff":"#6b7280",fontWeight:900,fontSize:15.5,cursor:dirty?"pointer":"default"}}>{dirty?"Enregistrer":"Aucun changement"}</button>}
    {tab==="imp"&&String(tax)!==String(bk.taxPct??"")&&<button onClick={()=>upd({taxPct:tax===""?null:num(tax)})} style={{width:"100%",height:50,marginTop:16,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7c3aed,#6366f1)",color:"#fff",fontWeight:900,fontSize:15,cursor:"pointer"}}>Enregistrer le taux</button>}
   </div></div>;
@@ -7629,7 +7726,7 @@ function PlayerEditSheet({p,name,game:game0,teamLogo,photo,onClose,onSaved,showT
      <button type="button" style={smallBtn} onClick={()=>pasteImg(folder,k)}>Coller</button>
      {f[k]&&<button type="button" style={smallBtn} disabled={busy===k} onClick={async()=>{
       setBusy(k);
-      try{const b=await removeWhiteBgBlob(f[k]);const url=await supaUploadPhoto(new File([b],"image.png",{type:"image/png"}),folder);set(k,url);showToast&&showToast("Fond blanc retiré ✓","#22C55E");}
+      try{const b=await removeWhiteBgBlob(f[k]);const url=await supaUploadPhoto(new File([b],"image."+((b.type||"image/png").split("/")[1]),{type:b.type||"image/png"}),folder);set(k,url);showToast&&showToast("Fond blanc retiré ✓","#22C55E");}
       catch(e){showToast&&showToast("Impossible de retirer le fond : "+((e&&e.message)||e),"#EF4444");}
       setBusy("");}}>{busy===k?"…":"Retirer le fond blanc"}</button>}
      {f[k]&&<button type="button" style={{...smallBtn,color:"#EF4444"}} onClick={()=>set(k,"")}>Retirer</button>}
@@ -7974,8 +8071,8 @@ function AppMain(){
  const addBorder="rgba(139,92,246,.2)";
  const AC=(()=>{const c=addClubCol;if(!c)return "#8b5cf6";const h=String(c).replace("#","");if(h.length<6)return c;const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);const L=(0.2126*r+0.7152*g+0.0722*b)/255;return L<0.22?"#8b5cf6":c;})(); // couleur de sélection = couleur du club
  const DEFAULT_HIDDEN_BKS=[];
- const [hiddenBKs,setHiddenBKs]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem("v7_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
- const toggleHideBK=useCallback(bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v7_hidden_bks",JSON.stringify(arr));return n;}),[]);
+ const [hiddenBKs,setHiddenBKs]=useState(()=>{try{localStorage.removeItem("v7_hidden_bks");const saved=JSON.parse(localStorage.getItem("v8_hidden_bks")||"null");if(saved!==null)return new Set(saved);return new Set(DEFAULT_HIDDEN_BKS);}catch(e){return new Set(DEFAULT_HIDDEN_BKS);}});
+ const toggleHideBK=useCallback(bk=>setHiddenBKs(prev=>{const n=new Set(prev);n.has(bk)?n.delete(bk):n.add(bk);const arr=[...n];localStorage.setItem("v8_hidden_bks",JSON.stringify(arr));return n;}),[]);
  const [bkAcc]=useSharedSetting("bk_accounts",{});const [,setBetAcc]=useSharedSetting("bet_accounts",{});
  const [modalPlayer,setModalPlayer]=useState(false);
  const [pform,setPform]=useState({name:"",game:"LoL",league:"",role:"",team:""});
@@ -7983,12 +8080,7 @@ function AppMain(){
  // Tournois actifs par jeu: {CS2: {name:"PGL Astana 2026", end:"2026-04-10"}, ...}
  const [activeTourneys,setActiveTourneys]=useState({});
  // Tous les tournois sauvegardés (historique + réactivation)
- const [savedTourneys,setSavedTourneys]=useState({
- CS2:["PGL Astana 2026","IEM Rio 2026","BLAST Rivals 2026","PGL Bucharest 2026","ESL Pro League S24","BLAST Open Fall 2026","IEM Cologne Major 2026","Esports World Cup 2026"],
- Dota2:["ESL One 2026","PGL Wallachia S3","Riyadh Masters 2026","The International 2026","BetBoom Dacha 2026"],
- LoL:["Worlds 2026","MSI 2026","LEC Spring 2026","LCK Summer 2026","Esports World Cup"],
- Valorant:["VCT Masters 2026","Champions 2026","VCT Americas 2026","VCT EMEA 2026"],
- });
+ const [savedTourneys,setSavedTourneys]=useState({CS2:[],Dota2:[],LoL:[],Valorant:[]});
  const [confirmDelete,setConfirmDelete]=useState(false);
  const [modalTourney,setModalTourney]=useState(false); // game string ou false
 const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:true,bookmakers:false,prizepicks:false});
@@ -8017,15 +8109,16 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
   if(changed)setBets(fix);
  // eslint-disable-next-line
  },[bets.length,activeTourneys,savedTourneys]);
- const [tourneyCal,setTourneyCal]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_tourney_cal")||"[]");}catch(e){return[];}});
+ const [tourneyCal,setTourneyCal]=useState(()=>{try{if(!localStorage.getItem("v8_tour_wipe")){localStorage.removeItem("v7_tourney_cal");localStorage.removeItem("v7_saved_tourneys");localStorage.removeItem("v7_active_tourneys");localStorage.setItem("v8_tour_wipe","1");}return JSON.parse(localStorage.getItem("v7_tourney_cal")||"[]");}catch(e){return[];}});
  
  
  const [ppData,setPpData]=useState(()=>{try{const s=localStorage.getItem("v7_pp_data");return s?JSON.parse(s):[];}catch(e){return[];}});
- const [season,setSeasonRaw]=useState(()=>{try{const v=localStorage.getItem("v7_season");return v&&!/^20\d\d$/.test(v)?v:"all";}catch(e){return "all";}});
- const setSeason=v=>{setSeasonRaw(v);try{localStorage.setItem("v7_season",v);}catch(e){}};
+ // Une seule bankroll : Saison 2027 (plus de saisons 2026 / multi-bankrolls)
+ const season="s2027";const setSeason=()=>{};
  // Bankrolls nommées : chaque bankroll va de sa date de début jusqu'au début de la suivante
- const [bkrolls,setBkrollsRaw]=useState(()=>{try{return JSON.parse(localStorage.getItem("v7_bkrolls")||"[]");}catch(e){return [];}});
- const setBkrolls=v=>setBkrollsRaw(prev=>{const n=(typeof v==="function"?v(prev):v).slice().sort((a,b)=>String(a.from).localeCompare(String(b.from)));try{localStorage.setItem("v7_bkrolls",JSON.stringify(n));}catch(e){}return n;});
+ const [bkrolls,setBkrollsRaw]=useState(()=>{let old=null;try{old=JSON.parse(localStorage.getItem("v8_bk2027")||"null")||(JSON.parse(localStorage.getItem("v7_bkrolls")||"[]").slice(-1)[0]);}catch(e){}
+  return [{...(old||{}),id:"s2027",name:"Saison 2027",from:"2000-01-01"}];});
+ const setBkrolls=v=>setBkrollsRaw(prev=>{const n=(typeof v==="function"?v(prev):v);const one={...(prev[0]||{}),...((n&&n.find(x=>x.id==="s2027"))||{}),id:"s2027",name:"Saison 2027",from:"2000-01-01"};try{localStorage.setItem("v8_bk2027",JSON.stringify(one));localStorage.removeItem("v7_bkrolls");localStorage.removeItem("v7_season");}catch(e){}return [one];});
  const [bkFlows,setBkFlowsRaw]=useState(()=>{try{const s=localStorage.getItem("v7_bk_flows");return s?JSON.parse(s):[];}catch(e){return[];}});
  const setBkFlows=v=>setBkFlowsRaw(prev=>{const n=typeof v==="function"?v(prev):v;try{localStorage.setItem("v7_bk_flows",JSON.stringify(n));}catch(e){}return n;});
  const [bkCap,setBkCapRaw]=useState(()=>{try{return parseFloat(localStorage.getItem("v7_bk_cap"))||500;}catch(e){return 500;}});
@@ -11656,7 +11749,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
  <div style={{fontSize:16,fontWeight:800,textTransform:"none",letterSpacing:0,color:"#dce8ff"}}>Statistiques</div>
- <select value={season} onChange={e=>{setSeason(e.target.value);setStatsMonth("");}} aria-label="Saison" style={{height:36,padding:"0 10px",borderRadius:10,border:"1px solid rgba(167,139,250,.6)",background:"rgba(124,58,237,.18)",color:"#fff",fontSize:13,fontWeight:800,fontFamily:"Inter,sans-serif",colorScheme:"dark"}}>{seasonOpts.map(([k,l])=><option key={k} value={k}>{l}</option>)}<option value="all">{seasonOpts.length?"Toutes":"Saison 2027"}</option></select>
+ <span style={{height:36,display:"inline-flex",alignItems:"center",padding:"0 10px",borderRadius:10,border:"1px solid rgba(167,139,250,.6)",background:"rgba(124,58,237,.18)",color:"#fff",fontSize:13,fontWeight:800}}>Saison 2027</span>
  <select value={statsMonth} onChange={e=>setStatsMonth(e.target.value)} aria-label="Mois"
   style={{marginLeft:"auto",height:36,padding:"0 12px",borderRadius:10,border:"1px solid "+(statsMonth?"rgba(167,139,250,.6)":"rgba(255,255,255,.1)"),background:statsMonth?"rgba(124,58,237,.18)":"#0f1524",color:"#fff",fontSize:13,fontWeight:700,fontFamily:"Inter,sans-serif",colorScheme:"dark"}}>
   <option value="">{season==="all"?"Tout l'historique":"Toute la saison"}</option>
@@ -13537,7 +13630,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
    </div>
    {evTab==="board"&&<PPBoard allPlayers={allPlayers} teamLogos={teamLogos} focus={evFocus}/>}
    {evTab==="joueur"&&<CutSearch allPlayers={allPlayers} teamLogos={teamLogos}/>}
-   {evTab==="outils"&&<><MapPhotos showToast={showToast}/><MLStats bets={seasonBets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
+   {evTab==="outils"&&<><BotLauncher/><MapPhotos showToast={showToast}/><MLStats bets={seasonBets}/><CutCheck allPlayers={allPlayers} teamLogos={teamLogos}/><AliasManager allPlayers={allPlayers} teamLogos={teamLogos}/></>}
    {evTab==="bets"&&<>
    {evErr&&<div style={{padding:12,color:"#EF4444",fontSize:12.5}}>Table ev_alerts inaccessible : {evErr}</div>}
    <div style={{display:"flex",gap:5,padding:"10px 14px",borderBottom:"1px solid "+SV.line,alignItems:"center",flexWrap:"wrap"}}>
@@ -13717,6 +13810,11 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
   hiddenBKs={hiddenBKs} toggleHideBK={toggleHideBK} bets={betsForDisplay}
  />
 
+
+ <SuiviLabel>CLUBS LIÉS ENTRE JEUX</SuiviLabel>
+ <ClubLinks showToast={showToast}/>
+ <SuiviLabel>BOT · NON RECONNUS (PRIZEPICKS / BETBY)</SuiviLabel>
+ <BotUnmatched allPlayers={allPlayers} teamLogos={teamLogos} showToast={showToast}/>
 
  <SuiviLabel>DONNÉES & SAUVEGARDE</SuiviLabel>
  <div style={{marginBottom:8}}><SuiviHead n="cloud" color={supaOk?"#22C55E":"#a78bfa"} title="Cloud (Supabase)" sub={syncing?"Synchronisation…":supaOk?"Connecté"+(pendingSync>0?" · "+pendingSync+" en attente":""):"Non connecté"} open={false} onClick={()=>setSupaModal(true)}/></div>
@@ -14591,6 +14689,17 @@ class ErrorBoundary extends React.Component{
 // au démarrage : si Supabase a une version plus récente → on la remet dans le navigateur et on recharge une fois ; ensuite : envoi toutes les 15 s si quelque chose a changé
 const UI_SYNC_KEYS=["v7_bkrolls","v7_bk_flows","v7_bk_cap","v7_hidden_bks","v7_split_lock",   // bankroll (important)
  "v7_season","stat_filt","ev_sort","v7_sim_msort","v7_duels_open","emeieks_hide_over","emeieks_roster_open","emeieks_pp_open","emeieks_logo_mode","v7_recent_players","ev_seen"];   // dark_logos_v2 : cache recalculé sur chaque appareil, trop lourd à synchroniser
+// Remise à zéro faite dans Supabase (réglage bets_reset_at) : on efface UNE fois toute la mémoire locale de cet appareil
+// (paris, file d'envoi, copies hors ligne) puis on recharge — sinon l'appareil réafficherait l'ancienne saison
+if(typeof window!=="undefined"&&!window.__resetChk){window.__resetChk=1;
+ cloudDb("settings?select=value&key=eq.bets_reset_at").then(r=>{let v=r&&r[0]&&r[0].value;v=Number(v)||0;if(!v)return;
+  let seen=0;try{seen=Number(localStorage.getItem("bets_reset_seen"))||0;}catch(e){}
+  if(v<=seen)return;
+  try{Object.keys(localStorage).forEach(k=>{if(k!=="bets_reset_seen")localStorage.removeItem(k);});localStorage.setItem("bets_reset_seen",String(v));}catch(e){}
+  try{sessionStorage.clear();}catch(e){}
+  const done=()=>location.reload();
+  try{const q=indexedDB.deleteDatabase("emeieks");q.onsuccess=done;q.onerror=done;q.onblocked=()=>setTimeout(done,800);}catch(e){done();}
+ }).catch(()=>{});}
 if(typeof window!=="undefined"&&!window.__uiSync){window.__uiSync=1;
  const snap=()=>{const o={};UI_SYNC_KEYS.forEach(k=>{try{let v=localStorage.getItem(k);if(v==null)return;if(k==="ev_seen"&&v.length>8000)v=v.slice(-8000).replace(/^[^,]*,/,"[");if(v.length>40000)return;o[k]=v;}catch(e){}});return o;};
  let last=JSON.stringify(snap());
