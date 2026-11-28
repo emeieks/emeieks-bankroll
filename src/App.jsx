@@ -7098,7 +7098,7 @@ function potToBet(x){
   datetime:x.start||x.at,mapTag:"Map "+x.map,isHeadshot:hs,isLive:x.mode==="live",isDuel:duel,isEv:!!x.is_ev,
   profit:x.profit!=null&&st!=="pending"?Number(x.profit):calcProfit(st,stake,odds),
   ppLine:x.pp_line!=null?Number(x.pp_line):null,ppMapType:x.pp_maps?("Map "+x.pp_maps):null,ppEdge:x.edge!=null?Number(x.edge):null,updatedAt:0});}
-function SimulationTab({allPlayers={}}){
+function SimulationTab({allPlayers={},onStats}){
  const [per,setPer]=useState(()=>{try{return localStorage.getItem("v7_sim_per")||"30";}catch(e){return "30";}});
  const [tab,setTab]=useState("apercu");const [rows,setRows]=useState(()=>_SIMC[per]||null);const [err,setErr]=useState(null);
  const [homeN,setHomeN]=useState(15);const [period,setPeriod]=useState(null);
@@ -7132,7 +7132,7 @@ function SimulationTab({allPlayers={}}){
  const pill=(on)=>({padding:"5px 12px",borderRadius:9,border:"1px solid "+(on?"rgba(167,139,250,.45)":"transparent"),background:on?"rgba(124,58,237,.18)":"transparent",color:on?"#c4b5fd":"#6b7280",fontSize:12.5,fontWeight:700,cursor:"pointer",fontFamily:"Inter,sans-serif"});
  return <div>
   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-   <div style={{display:"flex",gap:4,padding:3,background:"#111827",border:"1px solid #1F2937",borderRadius:12,flex:1,maxWidth:240}}>{[["apercu","Aperçu"],["paris","Paris"]].map(([k,l])=><button key={k} onClick={()=>setTab(k)} aria-pressed={tab===k} style={{flex:1,height:34,border:"none",borderRadius:9,background:tab===k?"#7c3aed":"transparent",color:tab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13.5,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>
+   <div style={{display:"flex",gap:4,padding:3,background:"#111827",border:"1px solid #1F2937",borderRadius:12,flex:1,maxWidth:300}}>{[["apercu","Aperçu"],["paris","Paris"],["stats","Stats"]].map(([k,l])=><button key={k} onClick={()=>{if(k==="stats"){onStats&&onStats(rows||[]);return;}setTab(k);}} aria-pressed={tab===k} style={{flex:1,height:34,border:"none",borderRadius:9,background:tab===k?"#7c3aed":"transparent",color:tab===k?"#fff":"#9ca3af",fontWeight:800,fontSize:13.5,cursor:"pointer",fontFamily:"Inter,sans-serif"}}>{l}</button>)}</div>
    <select value={per} onChange={e=>setPer(e.target.value)} aria-label="Période chargée" style={{marginLeft:"auto",height:34,padding:"0 10px",borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"#0f1524",color:"#fff",fontWeight:700,fontSize:13}}>
     <option value="7">7 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="all">Tout</option></select>
    <button onClick={()=>load(true)} aria-label="Recharger" style={{width:34,height:34,borderRadius:10,border:"1px solid rgba(255,255,255,.1)",background:"#0f1524",color:"#a78bfa",cursor:"pointer",fontSize:16}}>↻</button>
@@ -8147,6 +8147,7 @@ const [suiviOpen,setSuiviOpen]=useState({ev:true,res:true,roster:false,tournois:
  const [bkDrillGame,setBkDrillGame]=useState(null); // selected game within bookmaker
  
  const [statsTab,setStatsTab]=useState("apercu");
+ const [statsSim,setStatsSim]=useState(null); // paris Simulation affichés dans Stats (mêmes onglets)
  useEffect(()=>{if(view!=="statistiques")return;const id=requestAnimationFrame(()=>{try{const P=document.querySelector(".st-tabs");const el=P&&P.querySelector("[aria-selected=true]");if(!el)return;const l=el.offsetLeft-P.offsetLeft,r=l+el.offsetWidth;if(l<P.scrollLeft||r>P.scrollLeft+P.clientWidth-28)P.scrollTo({left:Math.max(0,l-40),behavior:"smooth"});}catch(e){}});return()=>cancelAnimationFrame(id);},[statsTab,view]);
  useEffect(()=>{try{window.scrollTo(0,0);}catch(e){}},[statsTab]);
  const [hideOver,setHideOver]=useState(()=>{try{return localStorage.getItem("emeieks_hide_over")==="1";}catch(e){return false;}});
@@ -9128,7 +9129,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const bkOver=useMemo(()=>Object.values(bkBal).filter(x=>x.bal>bkCap).sort((a,b)=>b.bal-a.bal),[bkBal,bkCap]);
  // Nouvelle bankroll = on repart à zéro : les tournois actifs lancés avant son début ne sont plus actifs
  useEffect(()=>{if(!curBk||curBk.to!=="9999")return;setActiveTourneys(prev=>{let ch=false;const n={...(prev||{})};Object.entries(n).forEach(([g,t])=>{const st=t&&t.start?String(t.start).slice(0,10):"";if(st&&st<curBk.from){delete n[g];ch=true;}});return ch?n:prev;});},[curBk&&curBk.id]);
- const betsForDisplay=useMemo(()=>isTestActive?filteredByTest(seasonBets):seasonBets,[seasonBets,isTestActive,filteredByTest]);
+ const simMode=!!statsSim&&view==="statistiques";
+ const betsForDisplay=useMemo(()=>{const B=simMode?statsSim:seasonBets;return isTestActive?filteredByTest(B):B;},[seasonBets,isTestActive,filteredByTest,simMode,statsSim]);
  const settled=useMemo(()=>betsForDisplay.filter(b=>b.status!=="pending"),[betsForDisplay]);
  // Stats : filtre par mois (toute la section Stats)
  const periodCut=statsPeriod?(()=>{const c=new Date();c.setDate(c.getDate()-statsPeriod);return localYMD(c);})():null;
@@ -9137,7 +9139,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  const statsBets=useMemo(()=>(statsMonth||periodCut)?betsForDisplay.filter(inMonth):betsForDisplay,[betsForDisplay,statsMonth,periodCut]);
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const statsSettled=useMemo(()=>(statsMonth||periodCut)?settled.filter(inMonth):settled,[settled,statsMonth,periodCut]);
- const statsMonths=useMemo(()=>[...new Set(seasonBets.map(b=>String(b.datetime||"").slice(0,7)).filter(k=>/^\d{4}-\d{2}$/.test(k)))].sort().reverse(),[seasonBets]);
+ const statsMonths=useMemo(()=>[...new Set((simMode?statsSim:seasonBets).map(b=>String(b.datetime||"").slice(0,7)).filter(k=>/^\d{4}-\d{2}$/.test(k)))].sort().reverse(),[seasonBets,simMode,statsSim]);
  const statsProfit=useMemo(()=>statsSettled.reduce((t,b)=>t+(b.profit||0),0),[statsSettled]);
  const statsChartPoints=useMemo(()=>{const pts=[{v:0,dt:""}];let run=0;[...statsSettled].sort((a,b2)=>String(a.datetime||"").localeCompare(String(b2.datetime||""))).forEach(b=>{run+=b.profit||0;pts.push({v:run,dt:toDateKey(b.datetime)});});return pts;},[statsSettled]);
 
@@ -11748,8 +11750,8 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  {view==="statistiques"&&(
  <div className="view-enter" style={{display:statsDrill?"none":"block"}}>
  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
- <div style={{fontSize:16,fontWeight:800,textTransform:"none",letterSpacing:0,color:"#dce8ff"}}>Statistiques</div>
- <span style={{height:36,display:"inline-flex",alignItems:"center",padding:"0 10px",borderRadius:10,border:"1px solid rgba(167,139,250,.6)",background:"rgba(124,58,237,.18)",color:"#fff",fontSize:13,fontWeight:800}}>Saison 2027</span>
+ <div style={{fontSize:16,fontWeight:800,textTransform:"none",letterSpacing:0,color:"#dce8ff"}}>{simMode?"Stats Simulation":"Statistiques"}</div>
+ {simMode?<button onClick={()=>{setStatsSim(null);setStatsMonth("");setStatsTab("sim");}} style={{height:36,padding:"0 12px",borderRadius:10,border:"1px solid rgba(56,189,248,.6)",background:"rgba(56,189,248,.15)",color:"#e0f2fe",fontSize:13,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>← Retour</button>:<span style={{height:36,display:"inline-flex",alignItems:"center",padding:"0 10px",borderRadius:10,border:"1px solid rgba(167,139,250,.6)",background:"rgba(124,58,237,.18)",color:"#fff",fontSize:13,fontWeight:800}}>Saison 2027</span>}
  <select value={statsMonth} onChange={e=>setStatsMonth(e.target.value)} aria-label="Mois"
   style={{marginLeft:"auto",height:36,padding:"0 12px",borderRadius:10,border:"1px solid "+(statsMonth?"rgba(167,139,250,.6)":"rgba(255,255,255,.1)"),background:statsMonth?"rgba(124,58,237,.18)":"#0f1524",color:"#fff",fontSize:13,fontWeight:700,fontFamily:"Inter,sans-serif",colorScheme:"dark"}}>
   <option value="">{season==="all"?"Tout l'historique":"Toute la saison"}</option>
@@ -11759,7 +11761,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
 
  {/* TAB BAR : APERÇU / JEUX / JOUEURS / TOURNOIS / PLUS */}
  <div className="st-tabs" style={{display:"flex",gap:18,marginBottom:16,borderBottom:"1px solid rgba(255,255,255,.07)",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",WebkitMaskImage:"linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)",maskImage:"linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)",paddingRight:24}}>
- {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"clubs",l:"Clubs"},{k:"tournois",l:"Tournois"},{k:"cote_bk",l:"Bookmakers"},{k:"sim",l:"Simulation"},{k:"plus",l:"Plus"}].map(t=>{
+ {[{k:"apercu",l:"Aperçu"},{k:"jeux",l:"Jeux"},{k:"clubs",l:"Clubs"},{k:"tournois",l:"Tournois"},{k:"cote_bk",l:"Bookmakers"},{k:"sim",l:"Simulation"},{k:"plus",l:"Plus"}].filter(t=>!(simMode&&t.k==="sim")).map(t=>{
  const on=statsTab===t.k;
  return(
  <button key={t.k} aria-selected={on} onClick={()=>setStatsTab(t.k)}
@@ -11995,7 +11997,7 @@ try{localStorage.removeItem("v7_bets");localStorage.removeItem("v7_overrides");}
  </div>);
  })()}
 
- {statsTab==="sim"&&<SimulationTab allPlayers={allPlayers}
+ {statsTab==="sim"&&!simMode&&<SimulationTab allPlayers={allPlayers} onStats={L=>{setStatsSim(L);setStatsMonth("");setStatsTab("apercu");try{window.scrollTo(0,0);}catch(e){}}}
   onTour={(g,name,target,opts)=>{const G=GNORM(g)||g;let t=target;
    if(!t){t=(opts&&opts.name)||name;setSavedTourneys(p=>({...p,[G]:[...new Set([...((p||{})[G]||[]),t])]}));
     if(opts&&opts.logo){(async()=>{let u=opts.logo;try{if(u.startsWith("data:")){const bl=await (await fetch(u)).blob();u=await supaUploadPhoto(new File([bl],"logo.png",{type:bl.type||"image/png"}),"tourneys");}else if(u.startsWith("http")&&!u.includes("/storage/v1/object/public/"))u=await supaUploadPhotoFromUrl(u,"tourneys");}catch(e){}
